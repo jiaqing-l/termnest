@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs>
+  <radialGradient id="face" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset=".75" stop-color="#fbf6ec"/><stop offset="1" stop-color="#eee4d2"/></radialGradient>
+  <radialGradient id="blush" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#f7a3ab" stop-opacity=".95"/><stop offset="1" stop-color="#f7a3ab" stop-opacity="0"/></radialGradient>
+  <linearGradient id="win" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b3561"/><stop offset="1" stop-color="#132a4d"/></linearGradient>
+  <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#43b873"/><stop offset="1" stop-color="#2e9a5c"/></linearGradient>
+  </defs><rect width="200" height="200" rx="45" fill="#ffffff"/><g transform="translate(4 -2) scale(0.96)">
+    
+    <!-- ears -->
+    <path d="M44 52 C36 30 60 16 76 30 C70 40 58 50 52 60 Z" fill="#2b2b33"/>
+    <path d="M156 52 C164 30 140 16 124 30 C130 40 142 50 148 60 Z" fill="#2b2b33"/>
+    <path d="M50 46 C48 34 60 28 68 34 C62 40 56 46 54 52Z" fill="#4b4b56"/>
+    <path d="M150 46 C152 34 140 28 132 34 C138 40 144 46 146 52Z" fill="#4b4b56"/>
+    <!-- head -->
+    <path d="M100 26 C140 26 160 54 158 84 C156 112 132 122 100 122 C68 122 44 112 42 84 C40 54 60 26 100 26Z" fill="url(#face)" stroke="#2b2b33" stroke-width="3"/>
+    <!-- eye patches: droopy teardrops -->
+    <path d="M70 70 C80 62 94 68 93 82 C92 96 78 102 68 96 C60 90 62 76 70 70Z" fill="#2b2b33"/>
+    <path d="M130 70 C120 62 106 68 107 82 C108 96 122 102 132 96 C140 90 138 76 130 70Z" fill="#2b2b33"/>
+    <circle cx="81" cy="82" r="8" fill="#fff"/><circle cx="119" cy="82" r="8" fill="#fff"/>
+    <circle cx="82" cy="83.5" r="5.6" fill="#1b1b22"/><circle cx="118" cy="83.5" r="5.6" fill="#1b1b22"/>
+    <circle cx="84.3" cy="81" r="2.1" fill="#fff"/><circle cx="120.3" cy="81" r="2.1" fill="#fff"/>
+    <circle cx="80.4" cy="86" r="1" fill="#fff"/><circle cx="116.4" cy="86" r="1" fill="#fff"/>
+    <ellipse cx="62" cy="100" rx="11" ry="7" fill="url(#blush)"/><ellipse cx="138" cy="100" rx="11" ry="7" fill="url(#blush)"/>
+    <path d="M95.5 96 C95.5 93 104.5 93 104.5 96 C104.5 99 101 101 100 101 C99 101 95.5 99 95.5 96Z" fill="#2b2b33"/>
+    <path d="M93 104 C95 108 99 108 100 104.5 C101 108 105 108 107 104" fill="none" stroke="#2b2b33" stroke-width="2.2" stroke-linecap="round"/>
+    <!-- window -->
+    <rect x="26" y="114" width="148" height="72" rx="18" fill="url(#win)" stroke="#2b2b33" stroke-width="3"/>
+    <path d="M44 114 H156 A18 18 0 0 1 174 132 V134 H26 V132 A18 18 0 0 1 44 114Z" fill="url(#bar)" stroke="#2b2b33" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="42" cy="124" r="3.2" fill="#ffd166"/><circle cx="52" cy="124" r="3.2" fill="#fffaf0" opacity=".9"/><circle cx="62" cy="124" r="3.2" fill="#fffaf0" opacity=".9"/>
+    <path d="M52 150 L66 160 L52 170" fill="none" stroke="#fffaf0" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="73" y="165" width="26" height="6.5" rx="3.2" fill="#ffd166"/>
+    <!-- paws with pink pads -->
+    <path d="M52 120 C50 108 66 104 76 110 C84 115 82 124 74 126 C66 128 54 128 52 120Z" fill="#2b2b33"/>
+    <path d="M148 120 C150 108 134 104 124 110 C116 115 118 124 126 126 C134 128 146 128 148 120Z" fill="#2b2b33"/>
+    <ellipse cx="66" cy="118" rx="5" ry="3.6" fill="#f5b3ba"/><circle cx="58" cy="112.5" r="2" fill="#f5b3ba"/><circle cx="64" cy="110" r="2" fill="#f5b3ba"/><circle cx="70.5" cy="110.5" r="2" fill="#f5b3ba"/>
+    <ellipse cx="134" cy="118" rx="5" ry="3.6" fill="#f5b3ba"/><circle cx="142" cy="112.5" r="2" fill="#f5b3ba"/><circle cx="136" cy="110" r="2" fill="#f5b3ba"/><circle cx="129.5" cy="110.5" r="2" fill="#f5b3ba"/>
+  </g></svg>

@@ -1,0 +1,33 @@
+{
+  "name": "termnest",
+  "version": "1.1.0",
+  "description": "A home for every tmux session: local and SSH terminals, monitoring and AI session tools.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "prepare:desktop": "node packaging/prepare-desktop.js",
+    "set-password": "node scripts/set-password.js",
+    "test": "node --test test/*.test.js",
+    "postinstall": "node scripts/prepare-pty.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
+    "markdown-it": "14.3.3",
+    "node-pty": "1.1.0",
+    "ssh2": "1.16.0",
+    "ws": "8.18.0"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jiaqing-l/termnest"
+  },
+  "homepage": "https://github.com/jiaqing-l/termnest#readme"
+}

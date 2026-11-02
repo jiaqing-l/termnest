@@ -1,0 +1,10 @@
+node_modules/
+data/*
+!data/.gitkeep
+npm-debug.log*
+.DS_Store
+packaging/out/
+
+desktop/target/
+desktop/resources/
+desktop/gen/

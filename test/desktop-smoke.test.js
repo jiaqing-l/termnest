@@ -1,0 +1,33 @@
+'use strict';
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {waitReady, diagnostics} = require('../packaging/desktop-smoke');
+test('native readiness distinguishes timeout, early exit and actual ready marker', async t => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'tmux-smoke-tiếng Việt-'));
+  t.after(() => fs.rmSync(temp, {recursive:true, force:true}));
+  const marker = path.join(temp, 'ready');
+  const live = {exitCode:null, signalCode:null};
+  await assert.rejects(waitReady(live, marker, 0), /readiness timed out/);
+  await assert.rejects(waitReady({exitCode:1}, marker), /exited before rendering: 1/);
+  await assert.rejects(waitReady({...live, signalCode:'SIGTERM'}, marker), /SIGTERM/);
+  fs.writeFileSync(marker, 'wrong');
+  await assert.rejects(waitReady(live, marker));
+  fs.writeFileSync(marker, 'webview-ready');
+  await waitReady(live, marker);
+});
+test('failure diagnostics preserve UTF-8 shell/server errors without setup credentials', t => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'tmux-diagnostic-'));
+  t.after(() => fs.rmSync(temp, {recursive:true, force:true}));
+  const token = 'a'.repeat(48);
+  fs.writeFileSync(path.join(temp, 'shell.log'), 'webview: fonts\nKhông thể mở');
+  fs.writeFileSync(path.join(temp, 'server.log'), `failed http://127.0.0.1:7681/#setup=${token}\n{"setupToken":"${token}"}`);
+  const output = diagnostics(temp);
+  assert.match(output, /webview: fonts/);
+  assert.match(output, /Không thể mở/);
+  assert.match(output, /process.log:\n\(not created\)/);
+  assert.ok(!output.includes(token));
+  assert.ok(!output.includes('http://'));
+});

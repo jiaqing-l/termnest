@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-smoke"
+description = "Enables the desktop_smoke command without any pre-configured scope."
+commands.allow = ["desktop_smoke"]
+
+[[permission]]
+identifier = "deny-desktop-smoke"
+description = "Denies the desktop_smoke command without any pre-configured scope."
+commands.deny = ["desktop_smoke"]
