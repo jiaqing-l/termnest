@@ -55,17 +55,29 @@ fn migrate_window_state(current: &std::path::Path) -> std::io::Result<()> {
     Ok(())
 }
 
+fn classify_connect_error(error: std::io::Error) -> String {
+    if error.kind() == std::io::ErrorKind::ConnectionRefused
+        || (cfg!(windows)
+            && (error.kind() == std::io::ErrorKind::TimedOut
+                || error.raw_os_error() == Some(10061)))
+    {
+        "free".into()
+    } else {
+        error.to_string()
+    }
+}
+
 // No proxy, redirects, DNS or HTTP client environment settings for discovery.
 fn identity(port: u16) -> Result<serde_json::Value, String> {
     let address = SocketAddr::from(([127, 0, 0, 1], port));
+    // Windows retries closed loopback ports for about two seconds before refusing.
+    let connect_timeout = if cfg!(windows) {
+        Duration::from_secs(3)
+    } else {
+        Duration::from_millis(500)
+    };
     let mut stream =
-        TcpStream::connect_timeout(&address, Duration::from_millis(500)).map_err(|e| {
-            if e.kind() == std::io::ErrorKind::ConnectionRefused {
-                "free".into()
-            } else {
-                e.to_string()
-            }
-        })?;
+        TcpStream::connect_timeout(&address, connect_timeout).map_err(classify_connect_error)?;
     stream
         .set_read_timeout(Some(Duration::from_secs(1)))
         .map_err(|e| e.to_string())?;
@@ -588,6 +600,29 @@ fn main() {
 mod tests {
     use super::*;
     use std::net::TcpListener;
+
+    #[test]
+    fn classifies_connect_errors_without_sockets() {
+        use std::io::{Error, ErrorKind};
+
+        assert_eq!(
+            classify_connect_error(Error::from(ErrorKind::ConnectionRefused)),
+            "free"
+        );
+        for error in [
+            Error::from(ErrorKind::TimedOut),
+            Error::from_raw_os_error(10061),
+        ] {
+            let expected = if cfg!(windows) {
+                "free".to_string()
+            } else {
+                error.to_string()
+            };
+            assert_eq!(classify_connect_error(error), expected);
+        }
+        let error = Error::new(ErrorKind::PermissionDenied, "probe denied");
+        assert_eq!(classify_connect_error(error), "probe denied");
+    }
 
     #[test]
     fn window_state_survives_identifier_change_without_overwriting_new_state() {
