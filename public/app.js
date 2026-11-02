@@ -149,12 +149,19 @@
     return c;
   }
   var crewSelection = null, crewPaused = false, crewFollow = true, crewBusy = false, crewGeneration = 0;
+  var crewMinimized = false, crewScrollTop = 0;
+  try { crewMinimized = localStorage.getItem('tw-crew-minimized') === 'true'; } catch (e) { /* optional */ }
+  function renderCrewSize() {
+    $('crew-output').hidden = crewMinimized;
+    $('crew-min').textContent = crewMinimized ? 'Mở rộng' : 'Thu nhỏ';
+    $('crew-min').setAttribute('aria-expanded', String(!crewMinimized));
+  }
+  renderCrewSize();
   function closeCrew() { crewSelection = null; crewGeneration++; $('crew-panel').hidden = true; }
   function openCrew(v, w) {
     crewGeneration++; crewSelection = { id: v.id, task: w.task, track: w.track }; crewPaused = false; crewFollow = true;
-    $('crew-title').textContent = w.task + ' / ' + w.track; $('crew-output').textContent = (w.lines || []).join('\n');
+    $('crew-title').textContent = $('crew-title').title = w.task + ' / ' + w.track; $('crew-output').textContent = (w.lines || []).join('\n');
     $('crew-panel').hidden = false; $('crew-pause').textContent = 'Tạm dừng'; pollCrew();
-    $('crew-panel').scrollIntoView({ block: 'nearest' });
   }
   function pollCrew() {
     if (!crewSelection || crewPaused || crewBusy || document.hidden) return;
@@ -169,7 +176,17 @@
       }).catch(function (e) { if (generation === crewGeneration) $('crew-status').textContent = e.message; })
       .finally(function () { crewBusy = false; });
   }
-  $('crew-output').onscroll = function () { crewFollow = this.scrollHeight - this.scrollTop - this.clientHeight < 24; };
+  $('crew-output').onscroll = function () { if (!crewMinimized) crewFollow = this.scrollHeight - this.scrollTop - this.clientHeight < 24; };
+  $('crew-min').onclick = function () {
+    if (!crewMinimized) crewScrollTop = $('crew-output').scrollTop;
+    crewMinimized = !crewMinimized; renderCrewSize();
+    if (!crewMinimized) $('crew-output').scrollTop = crewFollow ? $('crew-output').scrollHeight : crewScrollTop;
+    try { localStorage.setItem('tw-crew-minimized', String(crewMinimized)); } catch (e) { /* optional */ }
+  };
+  $('crew-panel').addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing || e.keyCode === 229 || document.querySelector('dialog[open]')) return;
+    e.preventDefault(); e.stopPropagation(); closeCrew();
+  });
   $('crew-pause').onclick = function () { crewPaused = !crewPaused; this.textContent = crewPaused ? 'Tiếp tục' : 'Tạm dừng'; if (!crewPaused) pollCrew(); };
   $('crew-close').onclick = closeCrew;
   setInterval(pollCrew, CREW_POLL_MS);

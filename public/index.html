@@ -103,7 +103,7 @@
         </div>
       </section>
 
-        <section id="crew-panel" hidden aria-label="Log Crew"><div class="crew-controls"><b id="crew-title"></b><button class="btn" id="crew-pause">Tạm dừng</button><button class="btn" id="crew-close">Đóng</button></div><p id="crew-status" role="status"></p><pre id="crew-output" tabindex="0"></pre></section>
+        <section id="crew-panel" hidden role="region" aria-label="Log Crew"><div class="crew-controls"><b id="crew-title"></b><button class="btn" id="crew-pause">Tạm dừng</button><button class="btn" id="crew-min" aria-controls="crew-output" aria-expanded="true">Thu nhỏ</button><button class="btn" id="crew-close">Đóng</button></div><p id="crew-status" role="status"></p><pre id="crew-output" tabindex="0"></pre></section>
       <nav class="bnav" aria-label="Điều hướng">
         <button id="nav-over" aria-pressed="true"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Tổng quan</button>
         <button id="nav-focus" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m7 10 3 2-3 2M13 15h4"/></svg>Terminal</button>

@@ -439,10 +439,17 @@ dialog{max-height:92vh;overflow:auto}dialog [hidden]{display:none!important}
 .crew-pet{display:inline-flex;position:relative;margin-right:12px}.crew-pet svg{width:36px;height:36px}
 .team-band{position:absolute;bottom:0;left:3px;background:var(--primary);color:var(--on-primary);border-radius:3px;font-size:8px;padding:0 4px}
 .high-five svg:first-child{animation:five-left .7s alternate 8}.high-five svg:nth-child(2){animation:five-right .7s alternate 8}
-#crew-panel{margin:16px 22px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
-.crew-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.crew-controls b{flex:1;overflow-wrap:anywhere}
-#crew-output{max-height:340px;min-height:120px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--term);color:var(--term-fg);padding:12px;font:12px var(--mono)}
-#crew-status{font-size:12px;color:var(--fg-2)}
+/* Below the file viewer (100), login (20), and native modal top layer. */
+#crew-panel{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:10;width:min(420px,calc(100vw - 32px));max-width:calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));max-height:min(46vh,360px);display:flex;flex-direction:column;gap:6px;margin:0;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+#crew-panel[hidden],#crew-output[hidden]{display:none}
+.crew-controls{display:flex;align-items:center;gap:4px;flex:none;min-width:0}.crew-controls b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crew-controls .btn{flex:none;min-height:28px;padding:2px 6px;font-size:11px;border-radius:8px}
+#crew-output{flex:1 1 auto;min-height:0;margin:0;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--term);color:var(--term-fg);padding:8px;font:12px/1.5 var(--mono)}
+#crew-status{flex:none;margin:0;font-size:11px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Key bar: 38px buttons + 14px padding; compact navigation adds 53px. */
+#app.narrow #crew-panel,#app.compact #crew-panel{right:max(8px,env(safe-area-inset-right));width:calc(100vw - 16px);max-width:calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));bottom:calc(52px + max(8px,env(safe-area-inset-bottom)))}
+#app.compact #crew-panel{bottom:calc(105px + max(8px,env(safe-area-inset-bottom)))}
+@media(max-width:760px){#crew-panel{right:max(8px,env(safe-area-inset-right));width:calc(100vw - 16px);max-width:calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));bottom:calc(105px + max(8px,env(safe-area-inset-bottom)))}}
 .pets-off .pet-art,.pets-off #pet-yard,.pets-off .crew-pet,.pets-off .scene{display:none!important}
 .pets-still .pet-art *,.pets-still #pet-yard *,.pets-still .scene *,.pets-still .crew-pet *{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){.pet-art * ,#pet-yard *,.scene *,.crew-pet *{animation:none!important;transition:none!important}}
@@ -476,7 +483,7 @@ dialog{max-height:92vh;overflow:auto}dialog [hidden]{display:none!important}
 .pets-still .pet-slot *,.pets-still .meeting-room *{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){.pet-slot *,.meeting-room *{animation:none!important;transition:none!important}}
 #app.narrow .detail,#app.compact .detail{display:flex}#app.narrow .focus-body{flex-wrap:wrap;overflow:auto}#app.narrow .detail{width:100%;border-left:0;border-top:1px solid var(--line)}#app.narrow .term-wrap{width:100%;min-height:380px;flex:none}#app.compact .main-top{display:flex}
-@media(max-width:760px){.ranking-grid{grid-template-columns:1fr}.crew-controls{align-items:flex-start}#pet-weather{top:-16px}.playground{margin:10px}.detail{padding:12px}}
+@media(max-width:760px){.ranking-grid{grid-template-columns:1fr}#pet-weather{top:-16px}.playground{margin:10px}.detail{padding:12px}}
 
 #v-over> *{flex-shrink:0}.playground{flex:none}.scene{padding-top:14px}#pet-weather{top:-5px}
 
