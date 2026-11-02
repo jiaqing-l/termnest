@@ -56,6 +56,8 @@ Lịch sử, cảnh báo và khôi phục chỉ thu thập khi Termnest đang ch
 
 Trong terminal, chọn **1 ô**, **2 ô** hoặc **4 ô**. Mỗi ô là terminal riêng và có danh sách chọn phiên trong phạm vi máy chủ hiện tại. Bấm một ô để chọn; phím nhanh và lệnh mẫu tác động tới ô đó. Về **1 ô** sẽ giữ phiên đang chọn và đóng kết nối của các ô còn lại. Trên màn hình nhỏ chỉ có **1 ô**.
 
+Dùng **A− / A+ / ⟲** để chỉnh hoặc đặt lại cỡ chữ terminal; log Crew có **A− / A+** riêng. Phím tắt **⌘ + / − / 0** trên macOS hoặc **Ctrl + / − / 0** trên Windows/Linux tăng, giảm hoặc đặt lại cỡ chữ (cũng nhận phím `=`); bấm/chọn popup Crew để áp dụng cho log. Có thể giữ **Ctrl** và cuộn chuột trên terminal hoặc log để đổi cỡ chữ. Cỡ chữ được lưu riêng cho terminal và Crew. Bấm **⛶**, **F11** hoặc **⌘/Ctrl+Shift+F** để bật/tắt toàn màn hình cho ô đang chọn; bấm **Thoát toàn màn hình** để trở lại. **Esc** vẫn dành cho terminal.
+
 **Rời** giữ việc trên máy chủ chạy; **Dừng** kết thúc phiên sau khi xác nhận.
 
 ## Máy chủ khác

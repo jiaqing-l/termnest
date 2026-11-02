@@ -1,4 +1,4 @@
 [[permission]]
 identifier = "desktop-bridge"
-description = "Save an export with user-selected destination, open HTTP links and acknowledge page readiness."
-commands.allow = ["save_export", "open_external", "desktop_ready", "desktop_smoke", "desktop_stage"]
+description = "Save an export with user-selected destination, open HTTP links change fullscreen and acknowledge page readiness."
+commands.allow = ["save_export", "open_external", "set_fullscreen", "desktop_ready", "desktop_smoke", "desktop_stage"]

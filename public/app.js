@@ -335,10 +335,17 @@
     if (view === 'over') { renderHero(); renderGrid(); } else if(view==='token'){tokens.render();} else { renderTabs(); renderDetail(); renderBar(); }
     petSync(); deliverMessages();
   }
-  function say(t, good, ms) {
-    var b = $('banner'); b.textContent = t; b.className = 'show' + (good ? ' good' : '');
+  function say(t, good, ms, floating) {
+    var b = $('banner'); b.textContent = t; b.className = 'show' + (good ? ' good' : '') + (floating ? ' text-hint' : '');
     if (ms) setTimeout(function () { if (b.textContent === t) b.className = ''; }, ms);
   }
+  var viewControls = window.ViewControls({ document: document, window: window, navigator: navigator,
+    get storage() { return localStorage; }, app: $('app'), panes: function () { return panes; }, composing: terminalComposing,
+    fit: function () { requestAnimationFrame(sizeTerm); }, say: say,
+    showTerminal: function () { if (view !== 'focus') setView('focus'); },
+    terminalHost: $('split'), crewPanel: $('crew-panel'), crewOutput: $('crew-output'),
+    termMinus: $('term-font-minus'), termPlus: $('term-font-plus'), termReset: $('term-font-reset'),
+    crewMinus: $('crew-font-minus'), crewPlus: $('crew-font-plus'), fullscreenButton: $('term-fullscreen'), exitChip: $('fullscreen-exit') });
   function setScope(id) { scope = id; var x = curItem(); if (id !== 'all' && x && x.v.id !== id) { closeTerm(); cur = null; } setView(view === 'focus' && !vis().length ? 'over' : view); }
 
   /* Each pane owns its terminal, socket, observer and reconnect timer. */
@@ -375,12 +382,13 @@
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
     p.node = el('div', 'pane'); p.node.classList.toggle('active', index === focusedPane); p.picker = el('select'); p.picker.setAttribute('aria-label', 'Phiên ô ' + (index + 1));
     p.host = el('div', 'terminal'); p.node.append(p.picker, p.host); $('split').append(p.node); panes.push(p);
-    p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: $('app').classList.contains('compact') ? 12 : 13, scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
+    p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
     p.fit = new window.FitAddon.FitAddon(); p.term.loadAddon(p.fit); p.term.open(p.host);
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
     function send(d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
-    p.ime = window.TerminalIME.attach(p.term, send, { onIdle: paneInputIdle });
+    p.ime = window.TerminalIME.attach(p.term, send, { onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
     p.term.attachCustomKeyEventHandler(function(event) {
+      if (viewControls.handleKey(event)) return false;
       if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
         event.preventDefault(); (window.TW_DESKTOP ? window.TW_DESKTOP.copy(p.term.getSelection()) : navigator.clipboard.writeText(p.term.getSelection())).catch(function() { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); }); return false;
       }
@@ -678,7 +686,7 @@
     $('recent').textContent = ''; prefs.recentDirs.forEach(function (dir) { var b = el('button', 'btn', dir); b.type = 'button'; b.onclick = function () { $('n-dir').value = dir; }; $('recent').append(b); });
   }
   function renderCommands() {
-    var box = $('cmds'); box.textContent = '';
+    var box = $('command-list'); box.textContent = '';
     [1, 2, 4].forEach(function (n) { var b = el('button', 'btn' + (n > 1 ? ' split-option' : ''), n + ' ô'); b.setAttribute('aria-pressed', paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
     prefs.commands.forEach(function (c) { var b = el('button', 'btn', c); b.onclick = function () { var x = curItem(); if (!x) { say('Chọn phiên trước khi gửi lệnh.', false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
@@ -877,7 +885,7 @@
     if (terminalComposing()) { pendingPaneWidth = w; return; }
     $('app').classList.toggle('compact', w < 760); $('app').classList.toggle('narrow', w < 1120); if (w < 760 && paneCount > 1) setSplit(1);
   }
-  new ResizeObserver(function (e) { resizePanes(e[0].contentRect.width); }).observe($('app'));
+  new ResizeObserver(function (e) { resizePanes(e[0].contentRect.width); viewControls.applyTerminalFont(); }).observe($('app'));
 
   /* Data */
   function sig() {

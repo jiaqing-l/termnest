@@ -70,6 +70,7 @@ const STATIC = {
   '/file-viewer.js': [path.join(PUB, 'file-viewer.js'), 'text/javascript; charset=utf-8'],
   '/token-ui.js': [path.join(PUB, 'token-ui.js'), 'text/javascript; charset=utf-8'],
   '/app.js': [path.join(PUB, 'app.js'), 'text/javascript; charset=utf-8'],
+  '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
   '/ime-input.js': [path.join(PUB, 'ime-input.js'), 'text/javascript; charset=utf-8'],
   '/pet-state.js': [path.join(PUB, 'pet-state.js'), 'text/javascript; charset=utf-8'],
   '/pet-scene.js': [path.join(PUB, 'pet-scene.js'), 'text/javascript; charset=utf-8'],

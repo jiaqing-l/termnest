@@ -3,6 +3,7 @@ fn main() {
         tauri_build::AppManifest::new().commands(&[
             "save_export",
             "open_external",
+            "set_fullscreen",
             "desktop_ready",
             "desktop_smoke",
             "desktop_stage",

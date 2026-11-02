@@ -7,6 +7,7 @@
   const report = error => alert('Không thực hiện được: ' + error);
   window.TW_DESKTOP = {
     ready: () => invoke('desktop_ready'),
+    setFullscreen: enabled => invoke('set_fullscreen', {enabled}),
     copy: text => invoke('plugin:clipboard-manager|write_text', {text}),
     paste: () => invoke('plugin:clipboard-manager|read_text'),
     save: (name, text) => invoke('save_export', {name, data: Array.from(new TextEncoder().encode(text))})

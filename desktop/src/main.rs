@@ -216,6 +216,14 @@ fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
     external(&app, &url)
 }
 
+#[tauri::command]
+fn set_fullscreen(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "Không tìm thấy cửa sổ Termnest.".to_string())?
+        .set_fullscreen(enabled)
+        .map_err(|e| e.to_string())
+}
+
 // CI waits for the actual page to render and complete authenticated startup
 // requests, then invoke Rust through the same origin-scoped bridge as exports.
 #[tauri::command]
@@ -464,7 +472,14 @@ fn main() {
                 })
                 .build(),
         )
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::FULLSCREEN,
+                )
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -482,6 +497,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             save_export,
             open_external,
+            set_fullscreen,
             desktop_ready,
             desktop_smoke,
             desktop_stage
@@ -579,6 +595,17 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if matches!(
+                event,
+                tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true)
+            ) {
+                if let (Ok(enabled), Some(webview)) = (
+                    window.is_fullscreen(),
+                    window.app_handle().get_webview_window("main"),
+                ) {
+                    let _ = webview.eval(format!("window.dispatchEvent(new CustomEvent('tw-fullscreen',{{detail:{enabled}}}));"));
+                }
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 stop(window.app_handle());

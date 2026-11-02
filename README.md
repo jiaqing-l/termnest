@@ -31,7 +31,7 @@ Bạn chạy Claude Code trên máy chủ, build ở máy khác, rồi gập lap
 - 🖥️ **Một cửa sổ cho nhiều máy**, cả máy bạn lẫn máy chủ SSH
 - 🔔 **Báo khi phiên cần bạn** và trả lời ngay trên thẻ phiên
 - 🤖 **Mở nhanh Claude Code, Codex**, xem lượng token đã dùng
-- 🪟 **Chia 1, 2 hoặc 4 ô** terminal
+- 🪟 **Chia 1, 2 hoặc 4 ô** terminal, chỉnh cỡ chữ terminal/Crew và mở toàn màn hình
 - 📊 **Theo dõi CPU, RAM, ổ đĩa** từng máy
 - 🇻🇳 **Gõ tiếng Việt** (Telex, VNI) ngay trong terminal
 - 🐼 **Mỗi phiên một bạn thú cưng**, nhìn là biết trạng thái

@@ -591,3 +591,30 @@ body{font-size:13px}.top{padding:7px 14px;gap:10px}.brand{font-size:16px}.brand 
 .fc-details:focus-visible{outline:2px solid var(--primary);outline-offset:3px;border-radius:4px}
 .fc .reboot{font-size:11px;min-height:26px;padding:2px 7px}
 .fc{cursor:default}
+
+/* Keep text tools reachable while commands scroll within the same row. */
+#cmds{overflow:hidden;flex-wrap:nowrap}
+#command-list{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;flex:1}
+.text-controls{display:flex;gap:4px;flex:none;margin-left:auto}
+#cmds .text-controls .btn{padding:2px 7px;min-height:28px}
+#crew-output{font-size:var(--crew-font,12px);height:250px}
+.crew-controls{white-space:nowrap;flex-wrap:nowrap}
+#banner.text-hint{position:absolute;right:14px;bottom:105px;z-index:20;max-width:calc(100% - 28px);border-radius:9px;box-shadow:var(--shadow);pointer-events:none}
+#fullscreen-exit{position:fixed;right:12px;top:8px;z-index:11;opacity:.65;min-height:26px;padding:3px 8px;font-size:11px}
+#fullscreen-exit:hover,#fullscreen-exit:focus-visible{opacity:1}
+#fullscreen-exit[hidden]{display:none}
+#app.narrow .text-controls .btn,#app.compact .text-controls .btn{padding:2px 4px;min-width:25px}
+@media(max-width:450px){.crew-controls{gap:2px}.crew-controls .btn{padding:2px 3px;font-size:10px}.crew-controls b{font-size:11px}}
+/* Focus mode always shows the active pane; split selection is retained on exit. */
+#app.fs{position:fixed;inset:0;width:100%;height:100%;border:0;border-radius:0;z-index:5}
+#app.fs .top,#app.fs .side,#app.fs .main-top,#app.fs .tabs,#app.fs .detail,#app.fs .m-head,#app.fs .bnav,#app.fs .terminal-copy-help{display:none}
+#app.fs .body,#app.fs .main,#app.fs #v-focus,#app.fs .focus-body{min-height:0;overflow:hidden;flex:1;flex-wrap:nowrap}
+#app.fs .term-wrap{min-height:0;width:100%;flex:1}
+#app.fs #split{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+#app.fs .pane:not(.active){display:none}
+#app.fs .pane select{padding:2px 8px;padding-right:160px}
+#app.fs #cmds{padding:3px 6px;gap:4px}
+#app.fs .keybar{display:flex;padding:3px 6px;gap:4px}
+#app.fs .keybar .btn{min-height:27px;padding:2px 7px;font-size:11px}
+#app.fs .tmux-bar{padding:1px 8px;font-size:11px}
+#app.fs #crew-panel{bottom:70px}
