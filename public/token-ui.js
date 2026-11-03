@@ -10,13 +10,26 @@ window.TokenUI = function (hooks) {
   let accounts=[], hosts=[], filter='all', period='days', busy=false, last=0, generation=0, scanning=true, updatedAt=null, scanError=null, readError='Chưa có nguồn dữ liệu từ máy.';
   const tab=node('button','','Token AI');tab.id='tab-token';tab.setAttribute('aria-pressed','false');tab.onclick=()=>hooks.view('token');document.querySelector('.main-top .seg').append(tab);
   const section=node('section','view');section.id='v-token';const box=node('div','token-page');section.append(box);$('v-focus').after(section);
-  const head=node('div','token-heading');head.append(node('h1','','Token AI'));
+  const head=node('div','token-heading token-hero'),heroSub=node('p','token-hero-sub','Đang đọc…'),heroCopy=node('div','token-hero-copy');
+  heroCopy.append(node('h1','','Token AI'),heroSub);head.append(node('div','token-mascots','🦊🐰🐼'),heroCopy);
   const filters=node('div','seg');
   [['days','Theo ngày'],['weeks','Theo tuần']].forEach(([key,label])=>{const b=node('button','',label);b.dataset.period=key;b.onclick=()=>{period=key;render();};filters.append(b);});
-  const ai=node('select');ai.setAttribute('aria-label','Lọc AI');[['all','Tất cả AI'],['claude','Claude'],['codex','Codex']].forEach(([key,label])=>{const o=node('option','',label);o.value=key;ai.append(o);});ai.onchange=()=>{filter=ai.value;render();};
-  const config=node('button','btn','Tài khoản');config.onclick=editAccounts;head.append(filters,ai,config);
+  const ai=node('select');ai.setAttribute('aria-label','Lọc AI');[['all','Tất cả AI'],['claude','Claude'],['codex','Codex']].forEach(([key,label])=>{const o=node('option','',label);o.value=key;ai.append(o);});ai.onchange=()=>{filter=ai.value;render();usage.render();};
+  const config=node('button','btn','Tài khoản');config.onclick=editAccounts;
+  const refreshBtn=node('button','btn token-refresh');refreshBtn.type='button';refreshBtn.title='Đọc lại log và báo cáo ngay, bỏ qua bộ nhớ đệm';
+  refreshBtn.append(node('span','token-spin'),node('span','token-refresh-ico','↻'),node('span','','Làm mới'));
+  async function refreshAll(){if(refreshBtn.classList.contains('busy'))return;refreshBtn.classList.add('busy');try{await Promise.all([poll(true),usage.reload(true)]);}finally{refreshBtn.classList.remove('busy');}}
+  refreshBtn.onclick=refreshAll;head.append(filters,ai,config,refreshBtn);
   const note=node('p','token-note'), cards=node('div','token-accounts'), chart=node('section','token-panel'), sessions=node('section','token-panel');
-  note.setAttribute('role','status');box.append(head,note,cards,chart,sessions,node('p','token-help','Ngưỡng do bạn tự đặt chỉ dùng để cảnh báo. Số token gồm đầu vào, đầu ra và cache theo log CLI.'));
+  note.setAttribute('role','status');
+  let usageAt=null;
+  // Optional module: without it the page keeps the quota cards and the session list.
+  const noUsage={root:node('div'),render(){},reload:async()=>{},ensure(){}};
+  const usage=!window.UsageUI?noUsage:window.UsageUI({api:hooks.api,tool:()=>filter,scope:()=>hooks.scope(),
+    view:v=>{chart.hidden=sessions.hidden=filters.hidden=v==='day';},
+    loaded:at=>{usageAt=at;heroSub.textContent=at?'Báo cáo cập nhật lúc '+new Date(at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false}):'Chưa có báo cáo';},
+    summary:()=>{}});
+  box.append(head,note,cards,usage.root,chart,sessions,node('p','token-help','Ngưỡng do bạn tự đặt chỉ dùng để cảnh báo. Số token gồm đầu vào, đầu ra và cache theo log CLI.'));
   const mini=node('button','token-mini','Token AI · Đang đọc…');mini.id='token-mini';mini.onclick=()=>hooks.view('token');document.querySelector('.top .right').before(mini);
   function remaining(at) { const minutes=Math.max(0,Math.ceil((at-Date.now())/60000));return minutes>=1440?Math.floor(minutes/1440)+' ngày '+Math.floor(minutes%1440/60)+' giờ':Math.floor(minutes/60)+' giờ '+minutes%60+' phút'; }
   function ring(label,w,reason) {
@@ -132,5 +145,5 @@ window.TokenUI = function (hooks) {
     const rows=accounts.filter(a=>(a.hostIds || [a.hostId]).includes(host)).flatMap(a=>a.sessions.filter(s=>(s.hostId || a.hostId)===host&&s.tmuxName===name).map(s=>({a,s})));
     return rows.length?{total:rows.reduce((n,r)=>n+r.s.total,0),today:rows.reduce((n,r)=>n+r.s.today,0),email:rows.map(r=>r.a.email||'Không đọc được email').join(', ')}:null;
   }
-  return {poll,render,session,fmt,setView:v=>{section.classList.toggle('on',v==='token');tab.setAttribute('aria-pressed',v==='token');},clear:()=>{generation++;rendered=null;completeView=false;accounts=[];hosts=[];last=0;scanning=true;updatedAt=null;scanError=null;readError='Chưa có nguồn dữ liệu từ máy.';render();}};
+  return {poll,render:()=>{render();usage.render();},session,fmt,setView:v=>{section.classList.toggle('on',v==='token');tab.setAttribute('aria-pressed',v==='token');if(v==='token')usage.ensure();},clear:()=>{generation++;rendered=null;completeView=false;accounts=[];hosts=[];last=0;scanning=true;updatedAt=null;scanError=null;readError='Chưa có nguồn dữ liệu từ máy.';render();}};
 };

@@ -10,6 +10,7 @@ const { Remote } = require('./lib/remote');
 const { LOCAL_ID, localConfig, createBackend } = require('./lib/backends');
 const daily = require('./lib/daily');
 const { TokenCache } = require('./lib/token-cache');
+const { UsageService, validRange } = require('./lib/usage');
 const diary = require('./lib/diary');
 const { scrollScript, parseScrollState } = require('./lib/scroll');
 const { injectReportLinks } = require('./lib/report-links');
@@ -19,6 +20,7 @@ const HOST = '127.0.0.1'; // Local command execution is available: never expose 
 const PORT = Number(process.env.TW_PORT || 7681);
 const DATA = process.env.TW_DATA || path.join(__dirname, 'data');
 const tokenCache = new TokenCache({dataDir:DATA});
+const usage = new UsageService();
 const POLL_MS = Number(process.env.TW_POLL_MS || 3000);
 const DEFAULT_DIR = process.env.TW_DEFAULT_DIR || os.homedir();
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -71,6 +73,7 @@ const STATIC = {
   '/vendor/markdown-it.js': [path.join(NM, 'markdown-it/dist/markdown-it.min.js'), 'text/javascript; charset=utf-8'],
   '/file-viewer.js': [path.join(PUB, 'file-viewer.js'), 'text/javascript; charset=utf-8'],
   '/token-ui.js': [path.join(PUB, 'token-ui.js'), 'text/javascript; charset=utf-8'],
+  '/usage-ui.js': [path.join(PUB, 'usage-ui.js'), 'text/javascript; charset=utf-8'],
   '/app.js': [path.join(PUB, 'app.js'), 'text/javascript; charset=utf-8'],
   '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
   '/terminal-keys.js': [path.join(PUB, 'terminal-keys.js'), 'text/javascript; charset=utf-8'],
@@ -584,6 +587,19 @@ async function api(req, res, url) {
     try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); } catch { send(res, 400, { error: 'Invalid timezone' }); return; }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
     res.end(tokenCache.get([...remotes.values()], mergePrefs(vault.data.prefs).aiAccounts, { zone })); return;
+  }
+  if (p === '/api/usage' && m === 'GET') {
+    const zone = url.searchParams.get('zone') || 'UTC';
+    try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); validRange(url.searchParams.get('from'), url.searchParams.get('to')); }
+    catch { send(res, 400, { error: 'Khoảng ngày hoặc múi giờ chưa đúng.' }); return; }
+    const accounts = mergePrefs(vault.data.prefs).aiAccounts;
+    // Account emails come from the token scan, so the report names accounts the same way the cards do.
+    const emails = new Map();
+    try { for (const a of JSON.parse(tokenCache.get([...remotes.values()], accounts, { zone })).accounts || []) if (a.email) emails.set(a.id, a.email); } catch { /* names fall back to nickname or directory */ }
+    const backendOf = (id) => { const r = remotes.get(id); return r?.ready ? r : null; };
+    try { send(res, 200, await usage.get(backendOf, accounts, { from: url.searchParams.get('from'), to: url.searchParams.get('to'), zone, refresh: url.searchParams.get('refresh') === '1', emails })); }
+    catch { send(res, 500, { error: 'Không đọc được báo cáo sử dụng.' }); }
+    return;
   }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
   if (p === '/api/prefs' && m === 'PUT') {
