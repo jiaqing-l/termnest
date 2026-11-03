@@ -76,6 +76,7 @@ const STATIC = {
   '/token-ui.js': [path.join(PUB, 'token-ui.js'), 'text/javascript; charset=utf-8'],
   '/usage-ui.js': [path.join(PUB, 'usage-ui.js'), 'text/javascript; charset=utf-8'],
   '/features-host.js': [path.join(PUB, 'features-host.js'), 'text/javascript; charset=utf-8'],
+  '/notes-core.js': [path.join(PUB, 'notes-core.js'), 'text/javascript; charset=utf-8'],
   '/app.js': [path.join(PUB, 'app.js'), 'text/javascript; charset=utf-8'],
   '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
   '/terminal-keys.js': [path.join(PUB, 'terminal-keys.js'), 'text/javascript; charset=utf-8'],
