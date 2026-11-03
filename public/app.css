@@ -685,9 +685,12 @@ body{font-size:13px}.top{padding:7px 14px;gap:10px}.brand{font-size:16px}.brand 
 /* ---- feature host: banners and feature screens ---- */
 .tw-banners{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px;width:min(760px,92vw);pointer-events:none}
 .tw-banner{pointer-events:auto;display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-radius:14px;background:var(--surface);color:var(--fg);box-shadow:var(--shadow),0 0 0 1px var(--line-strong);border-left:5px solid var(--hero-b)}
-.tw-banner.urgent{border-left-color:var(--bad);background:var(--bad-soft)}.tw-banner.warn{border-left-color:var(--wait-line);background:var(--wait-soft)}
+/* The soft tints are translucent: layer them over the solid surface so the page never shows through the banner. */
+.tw-banner.urgent{border-left-color:var(--bad);background:linear-gradient(var(--bad-soft),var(--bad-soft)),var(--surface)}.tw-banner.warn{border-left-color:var(--wait-line);background:linear-gradient(var(--wait-soft),var(--wait-soft)),var(--surface)}
 .tw-banner-detail{font-size:12.5px;color:var(--fg-2)}.tw-banner-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:5px}
-.feature-page{padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px;max-width:1120px}
+.feature-page{padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px;max-width:1120px;width:100%;box-sizing:border-box}
+/* A feature screen scrolls inside its own page; without this a tall screen is cut off at the window edge. */
+.view>.feature-page{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden}.feature-page>*{flex-shrink:0}
 
 /* thanh lệnh mẫu: mờ dần ở mép phải để báo còn lệnh cuộn được, thay vì cắt cụt nút */
 #command-list{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}

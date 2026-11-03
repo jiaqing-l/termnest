@@ -9,7 +9,7 @@
   function pct(i) { return Math.min(100, Math.round(i.ctx / i.window * 100)); }
   function fill(node, i) {
     node.textContent = ''; node.hidden = !i; if (!i) return;
-    var p = pct(i); node.className = 'ctx-chip ' + level(p); node.title = 'Ngữ cảnh ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token' + (i.model ? ' · ' + i.model : '');
+    var p = pct(i); node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip ' + level(p); node.title = 'Ngữ cảnh ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token' + (i.model ? ' · ' + i.model : '');
     var ring = el('span', 'ctx-ring'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%')); node.append(ring, el('span', 'ctx-t', 'ngữ cảnh'));
   }
   TW.addCardDecorator(function (card, v, s) {
