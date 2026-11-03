@@ -452,7 +452,7 @@
   function drawScrollbar(p) {
     var st = p.scroll, bar = p.bar;
     if (!bar) return;
-    if (!st || st.history <= 0) { bar.hidden = true; return; }
+    if (!st || st.history <= 0 || st.alternate) { bar.hidden = true; return; }
     bar.hidden = false; // measure only after it is shown: a hidden element has no height
     var total = st.history + st.height, track = bar.clientHeight || 1;
     var size = Math.max(24, Math.round(track * st.height / total));
@@ -478,6 +478,17 @@
     p.host.addEventListener('wheel', function (e) {
       if (e.ctrlKey || !p.cur || !e.deltaY) return;
       e.preventDefault(); e.stopPropagation();
+      if (p.scroll && p.scroll.alternate) {
+        // Fullscreen apps (Claude, Codex) keep their conversation on the alternate screen: hand the wheel to the app as
+        // mouse wheel events when it asked for the mouse, instead of showing the shell history underneath.
+        var key0 = p.cur.id + '/' + p.cur.name;
+        if (p.scroll.mouse) {
+          var r = p.host.getBoundingClientRect(), col = Math.max(1, Math.min(p.term.cols, Math.floor((e.clientX - r.left) / r.width * p.term.cols) + 1)), row = Math.max(1, Math.min(p.term.rows, Math.floor((e.clientY - r.top) / r.height * p.term.rows) + 1));
+          var seq = '\x1b[<' + (e.deltaY < 0 ? 64 : 65) + ';' + col + ';' + row + 'M', n = Math.min(5, Math.max(1, Math.abs(lines(e))));
+          rawSend(p, new Array(n + 1).join(seq));
+        } else if (hinted !== key0) { hinted = key0; say('Ứng dụng trong phiên đang dùng màn hình thay thế và không nhận cuộn chuột. Với Codex, chạy lại bằng --no-alt-screen.', false, 6000); }
+        return;
+      }
       if (p.scroll && p.scroll.history <= 0) {
         var key = p.cur.id + '/' + p.cur.name;
         if (hinted !== key && p.scroll.alternate) { hinted = key; say('Ứng dụng trong phiên đang dùng màn hình thay thế nên chưa có lịch sử để cuộn. Với Codex, chạy lại bằng --no-alt-screen.', false, 6000); }
