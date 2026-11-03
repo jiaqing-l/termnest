@@ -378,6 +378,19 @@
     panes[focusedPane].cur = cur; syncPanePickers(); requestAnimationFrame(sizeTerm);
   }
   var fileViewer = window.FileViewer.create(api);
+  // ---- Text selection: Claude Code turns on mouse reporting, which makes xterm hand every drag to the app.
+  function appMouse() { try { return localStorage.getItem('termnest.appMouse') === '1'; } catch (e) { return false; } }
+  function setMouseLabel() { var b = $('mouse-mode'); if (!b) return; var on = appMouse(); b.textContent = on ? '🖱 Chuột cho ứng dụng' : '🖱 Chọn chữ'; b.setAttribute('aria-pressed', String(!on)); b.title = on ? 'Đang gửi chuột cho ứng dụng trong phiên (giữ Option/Shift để chọn chữ). Bấm để chuyển sang chọn chữ.' : 'Kéo chuột để chọn và sao chép chữ. Bấm để trả chuột cho ứng dụng (nhấp để mở, cuộn trong ứng dụng).'; }
+  function toggleMouseMode() {
+    try { localStorage.setItem('termnest.appMouse', appMouse() ? '0' : '1'); } catch (e) { /* private mode */ }
+    setMouseLabel();
+    if (appMouse()) { panes.forEach(function (p) { if (p.cur) { closePane(p); connectPane(p); } }); say('Chuột đã trả cho ứng dụng. Giữ Option (Mac) hoặc Shift để chọn chữ.', true, 3500); }
+    else { panes.forEach(function (p) { p.term.write(window.MouseFilter ? window.MouseFilter.RESET : ''); }); say('Kéo chuột để chọn chữ, Cmd+C để sao chép.', true, 3000); }
+  }
+  function copySelection(p) {
+    var text = p && p.term.getSelection(); if (!text) { say('Chưa chọn đoạn chữ nào. Kéo chuột trên màn hình phiên để chọn.', false, 2500); return Promise.resolve(); }
+    return (window.TW_DESKTOP ? window.TW_DESKTOP.copy(text) : navigator.clipboard.writeText(text)).then(function () { say('Đã sao chép ' + text.length + ' ký tự', true, 1600); }).catch(function () { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); });
+  }
   // ---- Scrollback: tmux owns the history, so wheel and scrollbar drive tmux copy-mode (lib/scroll.js).
   function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
   // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
@@ -460,7 +473,7 @@
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
       if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
-        event.preventDefault(); (window.TW_DESKTOP ? window.TW_DESKTOP.copy(p.term.getSelection()) : navigator.clipboard.writeText(p.term.getSelection())).catch(function() { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); }); return false;
+        event.preventDefault(); copySelection(p);
       }
       // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
       var keySeq = window.TerminalKeys && window.TerminalKeys.sequence(event, /Mac/.test(navigator.platform || ''));
@@ -501,7 +514,9 @@
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
     sock.onopen = function () { scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
-    sock.onmessage = function (e) { if (p.ws === sock) p.term.write(new Uint8Array(e.data)); };
+    p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
+    // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
+    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
     function retry() { clearTimeout(p.retry); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, 2000); }
     sock.onclose = function (e) {
       if (p.ws !== sock) return; p.ws = null; p.key = '';
@@ -1013,6 +1028,11 @@
     $('login').hidden = false; $('login-pass').value = '';
     api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
   }
+  (function wireSelectionButtons() {
+    var m = $('mouse-mode'), c = $('copy-sel');
+    if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
+    if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
+  })();
   function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load(); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
