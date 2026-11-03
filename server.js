@@ -587,7 +587,8 @@ async function api(req, res, url) {
           'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
         res.end(injectReportLinks(value.text));return;
       }
-      send(res, value.error ? 400 : 200, value);
+      // Candidates are an answer, not a failure: send them with 200 so the viewer can list them.
+      send(res, value.error && !value.candidates ? 400 : 200, value);
     } catch (e) { fail(res, 400, e.message); }
     return;
   }

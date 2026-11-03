@@ -81,7 +81,11 @@ window.TokenUI = function (hooks) {
       c.append(h,windows,line);
       if(a.stale){const at=a.observedAt||a.limits.observedAt||updatedAt,age=node('p','token-help',ageText(at));ages.push({node:age,at});c.append(age);}
       if(a.reason)c.append(node('p','token-help',a.reason));
-      if(a.limits.observedAt)c.append(node('p','token-help','Cập nhật '+new Date(a.limits.observedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})));
+      // Every card says when this refresh ran; the quota's own time is shown only when it is older, with the reason.
+      // Claude's quota is asked at most once per 5 minutes, and Codex only records it while a session runs.
+      const clock=t=>new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false});
+      if(updatedAt!=null)c.append(node('p','token-help','Đã kiểm tra lúc '+clock(updatedAt)));
+      if(a.limits.observedAt&&(updatedAt==null||updatedAt-a.limits.observedAt>120000))c.append(node('p','token-help','Quota ghi nhận lúc '+clock(a.limits.observedAt)+(a.tool==='codex'?' · Codex chỉ ghi quota khi có phiên chạy, nên giữ số của lần dùng gần nhất.':' · Quota Claude chỉ hỏi lại tối đa 5 phút một lần.')));
       if(a.threshold&&a.today>=a.threshold){c.classList.add('token-hot');c.append(node('small','','Đã vượt ngưỡng hôm nay do bạn đặt'));}
       cards.append(c);
     });
