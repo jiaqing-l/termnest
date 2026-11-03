@@ -84,3 +84,18 @@ test('screen lines become needles: real sentences only, never the CLI chrome', (
   assert.deepEqual(crew.needlesOf(backend, 's'), ['Chế độ tự gộp đã đặt trên MR #170 sẽ chạy ngay khi pipeline xanh.']);
   assert.deepEqual(crew.needlesOf(backend, 'nope'), []);
 });
+
+const cpx = require('node:child_process');
+const hasTmux = process.platform !== 'win32' && cpx.spawnSync('tmux', ['-V']).status === 0;
+test('needles are read from the live tmux scrollback of the named session', { skip: !hasTmux }, async () => {
+  const sock = 'twcrew' + process.pid, f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
+  const lines = ['Pipeline thirty five failed exactly one job named host_migration_link', 'The gate asks for host-migration-follows label on the merge request'];
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), lines.join(' ') + ' 20261103-idle-pending\n');
+  fs.writeFileSync(path.join(proj, 'b.jsonl'), 'talking about 20261102-sv-perf only\n');
+  try {
+    cpx.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 'sess1', '-x', '200', '-y', '40', `printf '%s\\n' ${lines.map((l) => `'${l}'`).join(' ')}; sleep 30`]);
+    await new Promise((r) => setTimeout(r, 500));
+    const out = await crew.crewRuntime()({ cwd, home, session: 'sess1', socket: sock });
+    assert.equal(out.linked, 'match'); assert.deepEqual(out.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
+  } finally { cpx.spawnSync('tmux', ['-L', sock, 'kill-server']); }
+});
