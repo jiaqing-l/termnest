@@ -10,12 +10,15 @@ function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-')), sub = path.join(root, 'tools', 'app'); fs.mkdirSync(sub, { recursive: true });
   const task = (id, fm, tracks = {}) => {
     const d = path.join(root, '_crew', 'tasks', id); fs.mkdirSync(path.join(d, 'tracks'), { recursive: true });
-    fs.writeFileSync(path.join(d, 'MANIFEST.md'), `---\ntask_id: ${id}\ntitle: "${fm.title}"\nstatus: ${fm.status}\nupdated: 2026-11-03T10:00:00+07:00\ntracks: ${fm.tracks}\n---\n# body\n`);
+    fs.writeFileSync(path.join(d, 'MANIFEST.md'), `---\ntask_id: ${id}\ntitle: ${JSON.stringify(fm.title).replace(/[^\x00-\x7f]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'))}\nstatus: ${fm.status}\nupdated: 2026-11-03T10:00:00+07:00\ntracks: ${fm.tracks}\n---\n# body\n`);
     for (const [t, files] of Object.entries(tracks)) { fs.mkdirSync(path.join(d, 'tracks', t), { recursive: true }); for (const [n, c] of Object.entries(files)) fs.writeFileSync(path.join(d, 'tracks', t, n), c); }
   };
-  task('20261102-sv-perf', { title: 'Smart Visibility perf', status: 'executing', tracks: '[{ id: W0, state: merged, executor: codex }, { id: W6, state: pending, executor: codex }, { id: W7, state: dispatched, executor: claude }]' },
+  task('20261102-sv-perf', { title: 'SV perf tải ảnh Đặt', status: 'executing', tracks: '[{ id: W0, state: merged, executor: codex }, { id: W6, state: pending, executor: codex }, { id: W7, state: dispatched, executor: claude }]' },
     { W6: { QUEUED: 'ts=2026-11-03T10:38:12+07:00 reason=resources disk free 5.2 GB, need 6.3 GB\n' } });
   task('20260101-old-finished', { title: 'Old', status: 'done', tracks: '[{ id: W1, state: done, executor: codex }]' });
+  task('20261103-empty', { title: 'No tracks', status: 'executing', tracks: '[]' });
+  task('20261103-idle-pending', { title: 'Idle', status: 'executing', tracks: '[{ id: W1, state: pending, executor: codex }]' });
+  const idle = new Date(Date.now() - 6 * 3600000); fs.utimesSync(path.join(root, '_crew', 'tasks', '20261103-idle-pending', 'MANIFEST.md'), idle, idle);
   const old = new Date(Date.now() - 5 * 86400000); fs.utimesSync(path.join(root, '_crew', 'tasks', '20260101-old-finished', 'MANIFEST.md'), old, old);
   return { root, sub };
 }
@@ -24,7 +27,7 @@ test('finds the workspace root above the session directory and lists active task
   const f = fixture(); const out = await crew.crewRuntime()({ cwd: f.sub });
   assert.equal(fs.realpathSync(out.root), fs.realpathSync(f.root));
   assert.deepEqual(out.tasks.map((t) => t.task), ['20261102-sv-perf']);
-  const t = out.tasks[0]; assert.equal(t.title, 'Smart Visibility perf'); assert.equal(t.status, 'executing');
+  const t = out.tasks[0]; assert.equal(t.title, 'SV perf tải ảnh Đặt'); assert.equal(t.status, 'executing');
   assert.deepEqual(t.tracks.map((x) => [x.id, x.state, x.executor]), [['W0', 'merged', 'codex'], ['W6', 'queued', 'codex'], ['W7', 'dispatched', 'claude']]);
   assert.match(t.tracks[1].reason, /^resources disk free/);
 });
