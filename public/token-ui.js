@@ -134,6 +134,10 @@ window.TokenUI = function (hooks) {
       const row=node('fieldset');const values={};
       const fields=[['hostId','Máy',hooks.servers().map(v=>[v.id,v.name])],['tool','AI',[['claude','Claude'],['codex','Codex']]],['directory','Thư mục cấu hình'],['nickname','Tên gợi nhớ'],['threshold','Ngưỡng token/ngày']];
       fields.forEach(([key,label,options])=>{const l=node('label','',label),input=node(options?'select':'input');if(options)options.forEach(([value,text])=>{const o=node('option','',text);o.value=value;input.append(o);});input.value=a[key]??'';if(key==='threshold'){input.type='number';input.min='1';input.step='1';}if(key==='nickname')input.maxLength=40;if(key==='directory')input.placeholder='~/.claude-work';l.append(input);row.append(l);values[key]=input;});
+      // The same account can live in different folders on each machine: show the folder of the machine picked here.
+      const known=(selected&&selected.dirs)||{};let shown=values.directory.value;
+      const refill=()=>{const dir=known[values.hostId.value];if(values.directory.value!==shown&&values.directory.value)return;values.directory.value=dir||'~/.'+values.tool.value;shown=values.directory.value;};
+      values.hostId.onchange=refill;values.tool.onchange=()=>{if(!known[values.hostId.value])refill();};
       const remove=node('button','btn','Gỡ');remove.type='button';remove.onclick=()=>row.remove();row.append(remove);row.read=()=>({id:a.id,...Object.fromEntries(Object.entries(values).map(([k,v])=>[k,k==='threshold'?(v.value?Number(v.value):null):v.value]))});list.append(row);
     }
     configs.forEach(add);form.append(list);
