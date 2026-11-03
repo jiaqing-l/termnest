@@ -157,21 +157,21 @@
   }
   renderCrewSize();
   function closeCrew() { crewSelection = null; crewGeneration++; $('crew-panel').hidden = true; }
-  function openCrew(v, w) {
-    crewGeneration++; crewSelection = { id: v.id, task: w.task, track: w.track }; crewPaused = false; crewFollow = true;
+  function openCrew(v, w, load) {
+    crewGeneration++; crewSelection = { id: v.id, task: w.task, track: w.track, load: load }; crewPaused = false; crewFollow = true;
     $('crew-title').title = w.task + ' / ' + w.track; $('crew-title').textContent = w.track + ' · ' + w.task; // track first: the long task name is what gets cut off $('crew-output').textContent = (w.lines || []).join('\n');
     $('crew-panel').hidden = false; $('crew-pause').textContent = 'Tạm dừng'; pollCrew();
   }
   function pollCrew() {
     if (!crewSelection || crewPaused || crewBusy || document.hidden) return;
     var selected = crewSelection, generation = crewGeneration; crewBusy = true;
-    api('GET', '/api/servers/' + selected.id + '/crew-log?task=' + encodeURIComponent(selected.task) + '&track=' + encodeURIComponent(selected.track))
+    (selected.load ? selected.load() : api('GET', '/api/servers/' + selected.id + '/crew-log?task=' + encodeURIComponent(selected.task) + '&track=' + encodeURIComponent(selected.track)))
       .then(function (log) {
         if (generation !== crewGeneration || crewPaused) return;
         var output = $('crew-output'), oldTop = output.scrollTop;
         if (output.textContent !== log.text) output.textContent = log.text;
         output.scrollTop = crewFollow ? output.scrollHeight : oldTop;
-        $('crew-status').textContent = (log.finishedAt ? 'Đã kết thúc · ' + log.result : 'Đang chạy') + ' · ' + span(log.elapsed) + ' · 64 KiB cuối';
+        if (log.status) $('crew-status').textContent = log.status; else $('crew-status').textContent = (log.finishedAt ? 'Đã kết thúc · ' + log.result : 'Đang chạy') + ' · ' + span(log.elapsed) + ' · 64 KiB cuối';
       }).catch(function (e) { if (generation === crewGeneration) $('crew-status').textContent = e.message; })
       .finally(function () { crewBusy = false; });
   }
@@ -1090,7 +1090,7 @@
     if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
     if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
   })();
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });
