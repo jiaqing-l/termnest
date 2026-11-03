@@ -380,7 +380,7 @@
   var fileViewer = window.FileViewer.create(api);
   // ---- Text selection: Claude Code turns on mouse reporting, which makes xterm hand every drag to the app.
   function appMouse() { try { return localStorage.getItem('termnest.appMouse') === '1'; } catch (e) { return false; } }
-  function setMouseLabel() { var b = $('mouse-mode'); if (!b) return; var on = appMouse(); b.textContent = on ? '🖱 Chuột cho ứng dụng' : '🖱 Chọn chữ'; b.setAttribute('aria-pressed', String(!on)); b.title = on ? 'Đang gửi chuột cho ứng dụng trong phiên (giữ Option/Shift để chọn chữ). Bấm để chuyển sang chọn chữ.' : 'Kéo chuột để chọn và sao chép chữ. Bấm để trả chuột cho ứng dụng (nhấp để mở, cuộn trong ứng dụng).'; }
+  function setMouseLabel() { var b = $('mouse-mode'); if (!b) return; var on = appMouse(); b.textContent = on ? 'Chuột: ứng dụng' : 'Chọn chữ'; b.setAttribute('aria-pressed', String(!on)); b.title = on ? 'Đang gửi chuột cho ứng dụng trong phiên (giữ Option/Shift để chọn chữ). Bấm để chuyển sang chọn chữ.' : 'Kéo chuột để chọn và sao chép chữ. Bấm để trả chuột cho ứng dụng (nhấp để mở, cuộn trong ứng dụng).'; }
   function toggleMouseMode() {
     try { localStorage.setItem('termnest.appMouse', appMouse() ? '0' : '1'); } catch (e) { /* private mode */ }
     setMouseLabel();
