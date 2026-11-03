@@ -7,15 +7,28 @@
   function qs(x) { return '?server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name); }
   function open(x, task, t) {
     var app = TW.app(); if (!app || !app.crewPopup) return;
+    if (t.state === 'pending' || t.state === 'queued') {
+      var why = t.state === 'queued' ? 'Đang xếp hàng chờ tài nguyên' + (t.reason ? ': ' + t.reason : '.') : 'Chưa tới lượt chạy, đang chờ track trước hoàn thành.';
+      app.crewPopup(x.v.id, task, t.id, function () { return Promise.resolve({ text: why + '\n\nChưa có worker nên chưa có log. Khi track bắt đầu chạy, log sẽ hiện ở đây.', status: t.state === 'queued' ? 'Xếp hàng' : 'Chờ' }); });
+      return;
+    }
     app.crewPopup(x.v.id, task, t.id, function () {
       return TW.api('GET', '/api/features/crew/log' + qs(x) + '&task=' + encodeURIComponent(task) + '&track=' + encodeURIComponent(t.id)).then(function (r) {
         return { text: r.text, status: r.result === 'DONE' ? 'Đã xong' : r.result === 'FAILED' ? 'Đã lỗi' : 'Đang chạy' };
       });
     });
   }
+  // The manifest does not say which session started a task; the app attributes running workers to their tmux session,
+  // so a task belongs to this session only when one of its workers is owned by it.
+  function mine(x) {
+    var ids = {}, v = TW.app().servers().filter(function (h) { return h.id === x.v.id; })[0];
+    ((v && v.workers) || []).forEach(function (w) { if (w.task && w.owner && w.owner.name === x.s.name && w.owner.created === x.s.created) ids[w.task] = true; });
+    return ids;
+  }
   function draw(box, x, data) {
-    box.textContent = ''; var tasks = (data && data.tasks) || []; box.hidden = !tasks.length; if (!tasks.length) return;
-    box.append(el('h3', '', 'Crew của phiên này'));
+    var own = mine(x);
+    box.textContent = ''; var tasks = ((data && data.tasks) || []).filter(function (t) { return own[t.task] || t.mentioned; }); box.hidden = !tasks.length; if (!tasks.length) return;
+    box.append(el('h3', '', 'Crew đã làm trong phiên'));
     tasks.forEach(function (task) {
       var done = task.tracks.filter(function (t) { return t.state === 'merged' || t.state === 'done'; }).length, total = task.tracks.length;
       var head = el('div', 'crew-task'), bar = el('span', 'crew-bar'), fill = el('i'); fill.style.width = (total ? Math.round(done / total * 100) : 0) + '%'; bar.append(fill);

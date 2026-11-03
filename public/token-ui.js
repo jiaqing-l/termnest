@@ -134,6 +134,13 @@ window.TokenUI = function (hooks) {
       const row=node('fieldset');const values={};
       const fields=[['hostId','Máy',hooks.servers().map(v=>[v.id,v.name])],['tool','AI',[['claude','Claude'],['codex','Codex']]],['directory','Thư mục cấu hình'],['nickname','Tên gợi nhớ'],['threshold','Ngưỡng token/ngày']];
       fields.forEach(([key,label,options])=>{const l=node('label','',label),input=node(options?'select':'input');if(options)options.forEach(([value,text])=>{const o=node('option','',text);o.value=value;input.append(o);});input.value=a[key]??'';if(key==='threshold'){input.type='number';input.min='1';input.step='1';}if(key==='nickname')input.maxLength=40;if(key==='directory')input.placeholder='~/.claude-work';l.append(input);row.append(l);values[key]=input;});
+      // Same folder browser as "Phiên mới", opened on the machine picked in this row; a path can still be typed.
+      const known=(selected&&selected.dirs)||{},dirInput=values.directory,browse=node('button','btn','Chọn');browse.type='button';
+      const wrap=node('div','dir-input');dirInput.parentNode.insertBefore(wrap,dirInput);wrap.append(dirInput,browse);
+      browse.onclick=()=>hooks.browse(values.hostId.value,dirInput.value.startsWith('/')?dirInput.value:'',p=>{dirInput.value=p;});
+      // The same account can live in a different folder on each machine: switching machine shows that machine's folder.
+      values.hostId.onchange=()=>{dirInput.value=known[values.hostId.value]||'';};
+      values.tool.onchange=()=>{if(!known[values.hostId.value])dirInput.value='';};
       const remove=node('button','btn','Gỡ');remove.type='button';remove.onclick=()=>row.remove();row.append(remove);row.read=()=>({id:a.id,...Object.fromEntries(Object.entries(values).map(([k,v])=>[k,k==='threshold'?(v.value?Number(v.value):null):v.value]))});list.append(row);
     }
     configs.forEach(add);form.append(list);

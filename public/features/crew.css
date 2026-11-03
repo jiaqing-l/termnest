@@ -4,3 +4,4 @@
 .crew-tracks{display:flex;flex-wrap:wrap;gap:6px}
 .crew-track{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:1px solid var(--line,#ddd);background:var(--surface);color:var(--fg);font:inherit;font-size:12px;cursor:pointer}
 .crew-track b{font-weight:800}.crew-track span{color:var(--fg-2)}.crew-track.dispatched{border-color:var(--hero-a)}.crew-track.failed{border-color:var(--bad);color:var(--bad)}.crew-track.queued span{color:var(--wait)}
+.crew-note{margin:2px 0 4px;font-size:11px;color:var(--fg-3)}
