@@ -49,8 +49,8 @@ const LINES = ['Pipeline #35884 hong dung mot job host_migration_link', 'Cong na
 
 test('two sessions in one folder are told apart by what is on their screen', async () => {
   const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
-  fs.writeFileSync(path.join(proj, 'a.jsonl'), JSON.stringify({ text: LINES.join(' ') + ' and 20261103-idle-pending' }) + '\n');
-  fs.writeFileSync(path.join(proj, 'b.jsonl'), JSON.stringify({ text: 'something else entirely, about 20261102-sv-perf' }) + '\n');
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), JSON.stringify({ text: LINES.join(' ') + ' and bash scripts/crew/crew-task.sh status 20261103-idle-pending' }) + '\n');
+  fs.writeFileSync(path.join(proj, 'b.jsonl'), JSON.stringify({ text: 'something else entirely, about bash scripts/crew/crew-dispatch.sh 20261102-sv-perf' }) + '\n');
   const mine = await crew.crewRuntime()({ cwd, home, needles: LINES });
   assert.equal(mine.linked, 'match');
   assert.deepEqual(mine.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
@@ -60,7 +60,7 @@ test('two sessions in one folder are told apart by what is on their screen', asy
 
 test('a tie between transcripts, or one weak hit, is unknown rather than a guess', async () => {
   const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
-  for (const n of ['a', 'b']) fs.writeFileSync(path.join(proj, n + '.jsonl'), LINES.join(' ') + ' 20261103-idle-pending\n');
+  for (const n of ['a', 'b']) fs.writeFileSync(path.join(proj, n + '.jsonl'), LINES.join(' ') + ' bash scripts/crew/crew-task.sh status 20261103-idle-pending\n');
   assert.equal((await crew.crewRuntime()({ cwd, home, needles: LINES })).linked, 'none');
   fs.unlinkSync(path.join(proj, 'b.jsonl'));
   assert.equal((await crew.crewRuntime()({ cwd, home, needles: [LINES[0]] })).linked, 'none');
@@ -68,8 +68,8 @@ test('a tie between transcripts, or one weak hit, is unknown rather than a guess
 
 test('the transcript named after the session id wins without needing the screen', async () => {
   const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
-  fs.writeFileSync(path.join(proj, 'mine-id.jsonl'), 'worked on 20261103-idle-pending\n');
-  fs.writeFileSync(path.join(proj, 'newer.jsonl'), 'talking about 20261102-sv-perf\n');
+  fs.writeFileSync(path.join(proj, 'mine-id.jsonl'), 'worked on bash scripts/crew/crew-task.sh status 20261103-idle-pending\n');
+  fs.writeFileSync(path.join(proj, 'newer.jsonl'), 'talking about bash scripts/crew/crew-task.sh status 20261102-sv-perf\n');
   const out = await crew.crewRuntime()({ cwd, home, claudeId: 'mine-id' });
   assert.equal(out.linked, 'exact'); assert.deepEqual(out.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
 });
@@ -90,12 +90,19 @@ const hasTmux = process.platform !== 'win32' && cpx.spawnSync('tmux', ['-V']).st
 test('needles are read from the live tmux scrollback of the named session', { skip: !hasTmux }, async () => {
   const sock = 'twcrew' + process.pid, f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
   const lines = ['Pipeline thirty five failed exactly one job named host_migration_link', 'The gate asks for host-migration-follows label on the merge request'];
-  fs.writeFileSync(path.join(proj, 'a.jsonl'), lines.join(' ') + ' 20261103-idle-pending\n');
-  fs.writeFileSync(path.join(proj, 'b.jsonl'), 'talking about 20261102-sv-perf only\n');
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), lines.join(' ') + ' bash scripts/crew/crew-task.sh status 20261103-idle-pending\n');
+  fs.writeFileSync(path.join(proj, 'b.jsonl'), 'talking about bash scripts/crew/crew-task.sh status 20261102-sv-perf only\n');
   try {
     cpx.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 'sess1', '-x', '200', '-y', '40', `printf '%s\\n' ${lines.map((l) => `'${l}'`).join(' ')}; sleep 30`]);
     await new Promise((r) => setTimeout(r, 500));
     const out = await crew.crewRuntime()({ cwd, home, session: 'sess1', socket: sock });
     assert.equal(out.linked, 'match'); assert.deepEqual(out.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
   } finally { cpx.spawnSync('tmux', ['-L', sock, 'kill-server']); }
+});
+
+test('merely reading about a task is not working on it', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), 'I read the tracker of 20261103-idle-pending and 20261102-sv-perf but ran nothing\n');
+  const out = await crew.crewRuntime()({ cwd, home, claudeId: 'a' });
+  assert.equal(out.linked, 'exact'); assert.ok(out.tasks.every((t) => !t.mentioned));
 });
