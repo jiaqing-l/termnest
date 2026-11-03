@@ -11,6 +11,8 @@ const { LOCAL_ID, localConfig, createBackend } = require('./lib/backends');
 const daily = require('./lib/daily');
 const { TokenCache } = require('./lib/token-cache');
 const { UsageService, validRange } = require('./lib/usage');
+const { createDiscovery, merge: mergeUsageAccounts } = require('./lib/usage-discover');
+const discoverUsage = createDiscovery();
 const diary = require('./lib/diary');
 const { scrollScript, parseScrollState } = require('./lib/scroll');
 const { injectReportLinks } = require('./lib/report-links');
@@ -599,9 +601,11 @@ async function api(req, res, url) {
     const zone = url.searchParams.get('zone') || 'UTC';
     try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); validRange(url.searchParams.get('from'), url.searchParams.get('to')); }
     catch { send(res, 400, { error: 'Khoảng ngày hoặc múi giờ chưa đúng.' }); return; }
-    const accounts = mergePrefs(vault.data.prefs).aiAccounts;
+    // Declared accounts plus the default config folders found on each host, so the report matches the token cards.
+    const found = await discoverUsage([...remotes.values()].filter((r) => r.ready && r.mode !== 'powershell')).catch(() => []);
+    const merged = mergeUsageAccounts(mergePrefs(vault.data.prefs).aiAccounts, found), accounts = merged.accounts;
     // Account emails come from the token scan, so the report names accounts the same way the cards do.
-    const emails = new Map();
+    const emails = new Map(merged.emails);
     try { for (const a of JSON.parse(tokenCache.get([...remotes.values()], accounts, { zone })).accounts || []) if (a.email) emails.set(a.id, a.email); } catch { /* names fall back to nickname or directory */ }
     const backendOf = (id) => { const r = remotes.get(id); return r?.ready ? r : null; };
     try { send(res, 200, await usage.get(backendOf, accounts, { from: url.searchParams.get('from'), to: url.searchParams.get('to'), zone, refresh: url.searchParams.get('refresh') === '1', emails })); }
