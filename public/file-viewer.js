@@ -117,6 +117,7 @@
    try{
     const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path);
     const file=await api('GET','/api/file?'+query);if(request!==generation)return;
+    if(file.candidates&&file.candidates.length){showCandidates(file,host,session,path);return;}
     if(file.error)throw Error(file.error);current=file;setTitle(file.path);body.textContent='';copy.disabled=download.disabled=reload.disabled=false;
     if(file.kind==='image'){showImage(file,host,session);return;}
     if(file.kind==='html'){
@@ -141,7 +142,20 @@
      if(preview.length<file.text.length){const note=doc.createElement('p');note.textContent='Bản xem trước văn bản tối đa 200.000 ký tự / 2.000 dòng. Tải xuống để xem toàn bộ tệp (tối đa 5 MB).';body.append(note);}
      content.textContent=preview;body.append(content);
     }
-   }catch(e){if(request===generation){body.textContent=e.message;reload.disabled=false;}}
+   }catch(e){if(request===generation){body.textContent=e.message;reload.disabled=false;pathForm(host,session,path);}}
+  }
+  // Not found in the session's folder: list same-named files found below it and let the path be edited.
+  // Editable path so a wrong or partial path can be fixed and opened again without going back to the terminal.
+  function pathForm(host,session,path){
+   const form=doc.createElement('form');form.className='viewer-path';const input=doc.createElement('input');input.value=path;input.setAttribute('aria-label','Đường dẫn tệp');
+   const go=doc.createElement('button');go.type='submit';go.className='btn primary';go.textContent='Mở đường dẫn này';form.append(input,go);
+   form.onsubmit=e=>{e.preventDefault();if(input.value.trim())open(host,session,input.value.trim());};body.append(form);
+  }
+  function showCandidates(file,host,session,path){
+   body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent=file.error;body.append(note);
+   const list=doc.createElement('div');list.className='viewer-candidates';
+   file.candidates.forEach(c=>{const b=doc.createElement('button');b.type='button';b.className='btn';b.textContent=c;b.title=c;b.onclick=()=>open(host,session,c);list.append(b);});
+   body.append(list);pathForm(host,session,path);
   }
   function showImage(file,host,session){
    const bar=doc.createElement('div');bar.className='viewer-imgbar';
