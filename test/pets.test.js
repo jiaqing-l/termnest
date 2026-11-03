@@ -273,3 +273,16 @@ test('house pets populate an empty yard, sleep 23–06, and share random activit
  for(const hour of [23,0,5]){const h=sceneHarness({hour});h.sync([]);h.tick(24000);assert.equal(h.nodes['pet-yard'].querySelectorAll('.yard-pet.act-sleep').length,3);}
  for(const [random,action] of [[.1,'soccer'],[.5,'fish'],[.9,'walk']]){const h=sceneHarness({random});h.sync([]);h.tick(24000);assert.ok(h.nodes['pet-yard'].querySelectorAll('.yard-pet.act-'+action).length>=2);}
 });
+
+test('Crew ownership survives setsid through the TMUX_PANE of the dispatcher, still never by directory', () => {
+  const { findWorkers, parsePoll } = require('../lib/parse');
+  const ps = [{ pid: 10, ppid: 1, args: 'bash', elapsed: 100 },
+    { pid: 30, ppid: 1, args: 'bash crew-dispatch.sh --task task-1 --track W1', elapsed: 80 },
+    { pid: 40, ppid: 30, args: 'codex exec work', elapsed: 70 }];
+  const panes = [{ panePid: 10, paneId: '%3', name: 'a', created: 123 }, { panePid: 11, paneId: '%4', name: 'b', created: 124 }];
+  assert.deepEqual(findWorkers(ps, new Map([[30, '/same']]), panes, new Map([[30, '%3']]))[0].owner, { name: 'a', created: 123 });
+  assert.equal(findWorkers(ps, new Map([[30, '/same']]), panes, new Map())[0].owner, null);
+  assert.equal(findWorkers(ps, new Map([[30, '/same']]), panes, new Map([[30, '%9']]))[0].owner, null);
+  const snap = parsePoll('@@PS\n30 1 2 bash crew-dispatch.sh --task t --track W1\n@@PANEENV\n30 %3\n@@SESS\n$0|~|a|~|0|~|123|~|20|~|bash|~|/same\n@@DETAIL\n$0|~|10|~|0|~|\n@@OWNERS\n$0|~|10|~|%3\n@@END', 30);
+  assert.deepEqual(snap.workers[0].owner, { name: 'a', created: 123 });
+});
