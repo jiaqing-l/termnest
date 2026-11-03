@@ -101,7 +101,11 @@
   doc.addEventListener('contextmenu',resetOutside,true);
   window.addEventListener('blur',resetOutside);
   copy.onclick=async()=>{if(current)try{await (window.TW_DESKTOP ? window.TW_DESKTOP.copy(current.path) : navigator.clipboard.writeText(current.path));}catch{const note=doc.createElement('p');note.textContent='Không sao chép được. Đường dẫn đầy đủ: '+current.path;body.prepend(note);}};
-  download.onclick=()=>{if(!current)return;const url=URL.createObjectURL(new Blob([current.text],{type:'text/plain;charset=utf-8'})),a=doc.createElement('a');a.href=url;a.download=current.path.split(/[\\/]/).pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  download.onclick=()=>{if(!current)return;
+    // The desktop webview cannot fetch a blob: URL (connect-src 'self'), so hand the text straight to the native save dialog.
+    if(doc.defaultView&&doc.defaultView.TW_DESKTOP){const label=download.textContent,name=current.path.split(/[\\/]/).pop();
+      Promise.resolve(doc.defaultView.TW_DESKTOP.save(name,current.text)).then(()=>{download.textContent=label;},()=>{download.textContent='Không lưu được';setTimeout(()=>{download.textContent=label;},3000);});return;}
+    const url=URL.createObjectURL(new Blob([current.text],{type:'text/plain;charset=utf-8'})),a=doc.createElement('a');a.href=url;a.download=current.path.split(/[\\/]/).pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   const setTitle=path=>{title.textContent=path.length>80?'…/'+path.split(/[\\/]/).slice(-2).join('/'):path;title.title=path;};
   async function open(host,session,path){
    const request=++generation;cancel();location=[host,session,path];current=null;panel.hidden=false;setTitle(path);body.textContent='Đang đọc tệp…';copy.disabled=download.disabled=reload.disabled=true;
