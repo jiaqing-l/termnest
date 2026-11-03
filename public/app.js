@@ -363,6 +363,7 @@
   }
   function closePane(p) {
     clearTimeout(p.retry); p.key = '';
+    p.scroll = null; p.sendChain = null; if (p.bar) p.bar.hidden = true;
     if (p.ime) p.ime.reset();
     if (p.ws) { p.ws.onclose = null; p.ws.close(); p.ws = null; }
   }
@@ -378,6 +379,75 @@
     panes[focusedPane].cur = cur; syncPanePickers(); requestAnimationFrame(sizeTerm);
   }
   var fileViewer = window.FileViewer.create(api);
+  // ---- Scrollback: tmux owns the history, so wheel and scrollbar drive tmux copy-mode (lib/scroll.js).
+  function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
+  // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
+  function paneSend(p, d) {
+    if (p.scroll && p.scroll.inMode) {
+      p.scroll.inMode = false;
+      p.sendChain = scrollCall(p, 'bottom').catch(function () {}).then(function () { rawSend(p, d); });
+      return;
+    }
+    if (p.sendChain) { p.sendChain = p.sendChain.then(function () { rawSend(p, d); }); return; }
+    rawSend(p, d);
+  }
+  function scrollPath(p) { return '/api/servers/' + p.cur.id + '/sessions/' + encodeURIComponent(p.cur.name) + '/scroll'; }
+  function scrollCall(p, op, n) {
+    if (!p.cur) return Promise.reject(new Error('no session'));
+    return api('POST', scrollPath(p), { op: op, n: n }).then(function (st) { p.scroll = st; drawScrollbar(p); return st; });
+  }
+  function drawScrollbar(p) {
+    var st = p.scroll, bar = p.bar;
+    if (!bar) return;
+    if (!st || st.history <= 0) { bar.hidden = true; return; }
+    bar.hidden = false; // measure only after it is shown: a hidden element has no height
+    var total = st.history + st.height, track = bar.clientHeight || 1;
+    var size = Math.max(24, Math.round(track * st.height / total));
+    p.thumb.style.height = size + 'px';
+    p.thumb.style.top = Math.round((track - size) * (st.history - st.position) / st.history) + 'px';
+    bar.classList.toggle('scrolled', st.inMode && st.position > 0);
+  }
+  function scrollbar(p) {
+    p.bar = el('div', 'tscroll'); p.thumb = el('div', 'tscroll-thumb'); p.bar.append(p.thumb); p.bar.hidden = true; p.host.append(p.bar);
+    var pending = 0, busy = false, hinted = '';
+    function flush() {
+      if (busy || !pending) return;
+      var n = pending; pending = 0; busy = true;
+      scrollCall(p, n > 0 ? 'up' : 'down', Math.abs(n)).catch(function () {}).then(function () { busy = false; flush(); });
+    }
+    function lines(e) {
+      if (e.deltaMode === 1) return Math.round(e.deltaY);
+      if (e.deltaMode === 2) return Math.round(e.deltaY * p.term.rows);
+      var cell = (p.host.clientHeight / p.term.rows) || 16;
+      return Math.round(e.deltaY / cell) || Math.sign(e.deltaY);
+    }
+    // Capture on the host keeps xterm from turning the wheel into Up/Down keys for the app; Ctrl+wheel stays zoom.
+    p.host.addEventListener('wheel', function (e) {
+      if (e.ctrlKey || !p.cur || !e.deltaY) return;
+      e.preventDefault(); e.stopPropagation();
+      if (p.scroll && p.scroll.history <= 0) {
+        var key = p.cur.id + '/' + p.cur.name;
+        if (hinted !== key && p.scroll.alternate) { hinted = key; say('Ứng dụng trong phiên đang dùng màn hình thay thế nên chưa có lịch sử để cuộn. Với Codex, chạy lại bằng --no-alt-screen.', false, 6000); }
+        return;
+      }
+      pending = Math.max(-500, Math.min(500, pending - lines(e))); flush(); // wheel down (deltaY > 0) scrolls toward the newest output
+    }, { capture: true, passive: false });
+    function toPosition(y) {
+      var st = p.scroll; if (!st || st.history <= 0) return;
+      var rect = p.bar.getBoundingClientRect(), size = p.thumb.offsetHeight;
+      var ratio = Math.max(0, Math.min(1, (y - rect.top - size / 2) / Math.max(1, rect.height - size)));
+      var target = Math.round(st.history * (1 - ratio)), delta = target - st.position;
+      if (delta) { pending += delta; flush(); }
+    }
+    p.bar.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); e.stopPropagation(); p.bar.setPointerCapture(e.pointerId); toPosition(e.clientY);
+      var move = function (ev) { toPosition(ev.clientY); };
+      p.bar.addEventListener('pointermove', move);
+      p.bar.addEventListener('pointerup', function () { p.bar.removeEventListener('pointermove', move); }, { once: true });
+    });
+    // Keep the thumb honest when the pane changes on its own (new output, resize, another client).
+    p.scrollTimer = setInterval(function () { if (view === 'focus' && p.cur && p.ws && p.ws.readyState === 1 && !busy) scrollCall(p, 'state').catch(function () {}); }, 3000);
+  }
   function createPane() {
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
     p.node = el('div', 'pane'); p.node.classList.toggle('active', index === focusedPane); p.picker = el('select'); p.picker.setAttribute('aria-label', 'Phiên ô ' + (index + 1));
@@ -385,13 +455,17 @@
     p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
     p.fit = new window.FitAddon.FitAddon(); p.term.loadAddon(p.fit); p.term.open(p.host);
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
-    function send(d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
+    function send(d) { paneSend(p, d); }
+    scrollbar(p);
     p.ime = window.TerminalIME.attach(p.term, send, { onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
       if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
         event.preventDefault(); (window.TW_DESKTOP ? window.TW_DESKTOP.copy(p.term.getSelection()) : navigator.clipboard.writeText(p.term.getSelection())).catch(function() { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); }); return false;
       }
+      // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
+      var keySeq = window.TerminalKeys && window.TerminalKeys.sequence(event, /Mac/.test(navigator.platform || ''));
+      if (keySeq != null) { event.preventDefault(); send(keySeq); return false; }
       if (window.TW_DESKTOP && event.type === 'keydown' && event.key.toLowerCase() === 'v' && (event.metaKey || event.ctrlKey && event.shiftKey)) {
         event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say('Không dán được.', false, 4000); }); return false;
       }
@@ -417,7 +491,7 @@
   }
   function fitPane(p) { if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) { try { p.fit.fit(); } catch (e) { /* hidden */ } } }
   function sizeTerm() { panes.forEach(fitPane); }
-  function sendData(d) { var p = panes[focusedPane]; if (p && p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
+  function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
   function connectTerm() { if (panes.length) { panes[focusedPane].cur = cur; panes.forEach(connectPane); syncPanePickers(); } }
   function connectPane(p) {
@@ -427,7 +501,7 @@
     closePane(p); p.key = key; p.term.reset(); fitPane(p);
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
-    sock.onopen = function () { fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
+    sock.onopen = function () { scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     sock.onmessage = function (e) { if (p.ws === sock) p.term.write(new Uint8Array(e.data)); };
     function retry() { clearTimeout(p.retry); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, 2000); }
     sock.onclose = function (e) {
@@ -448,7 +522,7 @@
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
   function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
-  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02' };
+  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   function detach() { if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say('Đã rời ' + n + '. Việc vẫn chạy.', true, 2800); setView('over'); }
 
