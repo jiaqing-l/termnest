@@ -43,3 +43,27 @@ test('track and task names are validated before anything reaches a shell', () =>
   for (const ok of ['W6', 'C0', '20261102-sv-perf']) assert.ok(crew.COMPONENT.test(ok));
   for (const bad of ['', '../x', 'a b', 'a;rm', '$(x)', '-x']) assert.ok(!crew.COMPONENT.test(bad));
 });
+
+test('a task the session talked about is shown even when idle; others stay hidden', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), cwd = fs.realpathSync(f.root);
+  const proj = path.join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
+  fs.writeFileSync(path.join(proj, 'other.jsonl'), JSON.stringify({ text: 'worked on 20261103-idle-pending today' }) + '\n');
+  const out = await crew.crewRuntime()({ cwd, home });
+  assert.equal(out.linked, 'guess');
+  assert.deepEqual(out.tasks.map((t) => [t.task, t.mentioned]).sort(), [['20261102-sv-perf', false], ['20261103-idle-pending', true]]);
+});
+
+test('the transcript named after the session id wins over the newest one in the folder', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), cwd = fs.realpathSync(f.root);
+  const proj = path.join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
+  fs.writeFileSync(path.join(proj, 'mine-id.jsonl'), 'no tasks mentioned here\n');
+  const later = new Date(Date.now() + 5000); fs.writeFileSync(path.join(proj, 'newer.jsonl'), 'talking about 20261103-idle-pending\n'); fs.utimesSync(path.join(proj, 'newer.jsonl'), later, later);
+  const out = await crew.crewRuntime()({ cwd, home, claudeId: 'mine-id' });
+  assert.equal(out.linked, 'exact');
+  assert.ok(out.tasks.every((t) => !t.mentioned));
+});
+
+test('without any transcript nothing is claimed as mentioned', async () => {
+  const f = fixture(), out = await crew.crewRuntime()({ cwd: f.sub, home: fs.mkdtempSync(path.join(os.tmpdir(), 'tw-nohome-')) });
+  assert.equal(out.linked, 'none'); assert.ok(out.tasks.every((t) => !t.mentioned));
+});
