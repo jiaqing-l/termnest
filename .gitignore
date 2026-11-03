@@ -8,3 +8,6 @@ packaging/out/
 desktop/target/
 desktop/resources/
 desktop/gen/
+
+# local-only pet pack (cartoon characters) - never published
+public/features/pets-cartoon.*

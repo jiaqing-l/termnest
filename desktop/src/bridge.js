@@ -10,7 +10,8 @@
     setFullscreen: enabled => invoke('set_fullscreen', {enabled}),
     copy: text => invoke('plugin:clipboard-manager|write_text', {text}),
     paste: () => invoke('plugin:clipboard-manager|read_text'),
-    save: (name, text) => invoke('save_export', {name, data: Array.from(new TextEncoder().encode(text))})
+    save: (name, text) => invoke('save_export', {name, data: Array.from(new TextEncoder().encode(text))}),
+    saveBytes: (name, bytes) => invoke('save_export', {name, data: Array.from(bytes)})
   };
   class DesktopNotification {
     static permission = 'default';

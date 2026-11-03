@@ -184,8 +184,8 @@ function terminalFixture(f) {
     TerminalIME: { attach(term, send, options) { term.send = send; term.idle = options.onIdle; return { onData: send, isComposing: () => false }; } } };
   const ctx = { window, viewControls: f.c, panes: f.panes, focusedPane: 0, el: () => node(), $: () => f.o.terminalHost,
     ResizeObserver: class { observe() {} }, TextEncoder, paneInputIdle() {}, focusPane() {}, connectPane() {}, fitPane() {},
-    vis: () => [], closePane() {}, fileViewer: {}, navigator: {}, say() {} };
-  vm.runInNewContext(appSource.slice(appSource.indexOf('  function createPane('), appSource.indexOf('  function syncPanePickers(')), ctx);
+    vis: () => [], closePane() {}, fileViewer: {}, navigator: {}, say() {}, api: async () => ({}), setInterval: () => 0, clearTimeout() {}, setTimeout: () => 0, Math };
+  vm.runInNewContext(appSource.slice(appSource.indexOf('  // ---- Scrollback'), appSource.indexOf('  function syncPanePickers(')), ctx);
   vm.runInNewContext(appSource.slice(appSource.indexOf('  function fitPane('), appSource.indexOf('  function sendData(')), ctx);
   ctx.view = 'focus';
   f.o.fit = () => ctx.sizeTerm();

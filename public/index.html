@@ -94,12 +94,12 @@
           <div class="term-wrap" id="term-wrap">
             <div id="split" class="one"></div>
             <div id="cmds" aria-label="Lệnh mẫu và chia màn"><div id="command-list"></div><div class="text-controls" role="group" aria-label="Cỡ chữ và toàn màn hình">
-              <button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" aria-label="Toàn màn hình" title="Toàn màn hình">⛶</button>
+              <button class="btn" id="mouse-mode" aria-pressed="true">Chọn chữ</button><button class="btn" id="copy-sel" title="Sao chép đoạn chữ đang chọn">Sao chép</button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" aria-label="Toàn màn hình" title="Toàn màn hình">⛶</button>
             </div></div>
-            <div class="terminal-copy-help">Chọn văn bản: Shift + kéo chuột (macOS: Option). Sao chép: Ctrl+Shift+C / ⌘C.</div>
+            <div class="terminal-copy-help">Kéo chuột để chọn chữ, sao chép bằng ⌘C (Ctrl+Shift+C) hoặc nút “Sao chép”. Nút “Chuột cho ứng dụng” trả chuột cho ứng dụng trong phiên (khi đó giữ Option/Shift để chọn chữ).</div>
             <div class="tmux-bar"><span id="bar-s"></span><span id="bar-h"></span></div>
             <div class="keybar" aria-label="Phím nhanh">
-              <button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button>
+              <button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" title="Xuống dòng trong ô soạn mà không gửi (Shift+Enter)">⏎ Dòng mới</button>
             </div>
           </div>
           <aside class="detail" id="detail" aria-label="Chi tiết phiên"></aside>
@@ -197,7 +197,7 @@
 <dialog id="dlg-pet"><form id="form-pet" class="f">
   <div class="dlg-h"><h2>Thú cưng của phiên</h2><button type="button" class="btn" data-close>Đóng</button></div>
   <label>Tên thú cưng<input id="pet-nickname" maxlength="40" placeholder="Dùng tên phiên"></label>
-  <label>Chọn thú<select id="pet-kind"><option value="">Tự động</option value="cat">Mèo</option><option value="fox">Cáo</option><option value="bunny">Thỏ</option><option value="owl">Cú</option><option value="penguin">Cánh cụt</option><option value="frog">Ếch</option></select></label>
+  <div class="lab-s">Chọn thú</div><input type="hidden" id="pet-kind" value=""><div id="pet-pick" class="pet-pick" role="group" aria-label="Chọn thú cưng"></div>
   <label>Mũ theo mùa<select id="pet-hat"><option value="">Không mũ</option><option value="flower">Hoa xuân</option><option value="summer">Mũ hè</option><option value="pumpkin">Bí ngô</option><option value="winter">Mũ đông</option></select></label>
   <p id="pet-error" role="status"></p><button class="btn primary">Lưu</button>
 </form></dialog>
@@ -225,10 +225,16 @@
 <script src="/pets.js"></script>
 <script src="/pet-state.js"></script>
 <script src="/pet-scene.js"></script>
+<script src="/notes-core.js"></script>
+<script src="/features-host.js"></script>
+<script src="/usage-ui.js"></script>
 <script src="/token-ui.js"></script>
 <script src="/vendor/markdown-it.js"></script>
 <script src="/file-viewer.js"></script>
 <script src="/ime-input.js"></script>
+<script src="/tab-hide.js"></script>
+<script src="/mouse-filter.js"></script>
+<script src="/terminal-keys.js"></script>
 <script src="/view-controls.js"></script>
 <script src="/app.js"></script>
 </body>

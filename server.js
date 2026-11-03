@@ -10,13 +10,18 @@ const { Remote } = require('./lib/remote');
 const { LOCAL_ID, localConfig, createBackend } = require('./lib/backends');
 const daily = require('./lib/daily');
 const { TokenCache } = require('./lib/token-cache');
+const { UsageService, validRange } = require('./lib/usage');
 const diary = require('./lib/diary');
+const { scrollScript, parseScrollState } = require('./lib/scroll');
+const { injectReportLinks } = require('./lib/report-links');
+const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
 const DATA = process.env.TW_DATA || path.join(__dirname, 'data');
 const tokenCache = new TokenCache({dataDir:DATA});
+const usage = new UsageService();
 const POLL_MS = Number(process.env.TW_POLL_MS || 3000);
 const DEFAULT_DIR = process.env.TW_DEFAULT_DIR || os.homedir();
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -69,8 +74,14 @@ const STATIC = {
   '/vendor/markdown-it.js': [path.join(NM, 'markdown-it/dist/markdown-it.min.js'), 'text/javascript; charset=utf-8'],
   '/file-viewer.js': [path.join(PUB, 'file-viewer.js'), 'text/javascript; charset=utf-8'],
   '/token-ui.js': [path.join(PUB, 'token-ui.js'), 'text/javascript; charset=utf-8'],
+  '/usage-ui.js': [path.join(PUB, 'usage-ui.js'), 'text/javascript; charset=utf-8'],
+  '/features-host.js': [path.join(PUB, 'features-host.js'), 'text/javascript; charset=utf-8'],
+  '/notes-core.js': [path.join(PUB, 'notes-core.js'), 'text/javascript; charset=utf-8'],
   '/app.js': [path.join(PUB, 'app.js'), 'text/javascript; charset=utf-8'],
   '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
+  '/terminal-keys.js': [path.join(PUB, 'terminal-keys.js'), 'text/javascript; charset=utf-8'],
+  '/mouse-filter.js': [path.join(PUB, 'mouse-filter.js'), 'text/javascript; charset=utf-8'],
+  '/tab-hide.js': [path.join(PUB, 'tab-hide.js'), 'text/javascript; charset=utf-8'],
   '/ime-input.js': [path.join(PUB, 'ime-input.js'), 'text/javascript; charset=utf-8'],
   '/pet-state.js': [path.join(PUB, 'pet-state.js'), 'text/javascript; charset=utf-8'],
   '/pet-scene.js': [path.join(PUB, 'pet-scene.js'), 'text/javascript; charset=utf-8'],
@@ -174,6 +185,7 @@ function onPoll(r, snap, sessionVersion = r.sessionVersion) {
   }
   saveVault();
   updateLost(r);
+  if (typeof features !== 'undefined') features.emitSnapshot(r, snap);
   if (r.cfg.local && vault.data.prefs.autoRestoreLocal && r.lost.length && !r.restoring) {
     // One attempt per boot; failures stay visible for manual retry.
     if (r.restoreBoot !== snap.bootId) {
@@ -480,6 +492,18 @@ function dismissLost(res, r) {
   send(res, 200, { ok: true });
 }
 
+async function scrollSession(req, res, r, name) {
+  const b = await readJson(req);
+  let script;
+  try { script = scrollScript(name, b.op, b.n); }
+  catch { fail(res, 400, 'Lệnh cuộn chưa đúng.'); return; }
+  if (r.mode === 'powershell') { fail(res, 400, 'Máy này chưa hỗ trợ cuộn.'); return; }
+  if (!r.ready) { fail(res, 503, 'Máy chủ chưa kết nối.'); return; }
+  const out = await r.exec(`sh -c ${shq(script)}`);
+  try { send(res, 200, parseScrollState(out.out)); }
+  catch { fail(res, 400, 'Không đọc được vị trí cuộn.'); }
+}
+
 async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
   if (!name || name.length > 128 || typeof b.text !== 'string' || b.text.length > 1000 ||
@@ -540,6 +564,7 @@ async function api(req, res, url) {
   }
   if (p === '/api/login' && m === 'POST') { await login(req, res); return; }
   if (!authed(req)) { fail(res, 401, 'Hãy đăng nhập lại.'); return; }
+  if (features.handles(p)) { await features.handle(req, res, url); return; }
   if (p === '/api/quit' && m === 'POST') {
     res.once('finish', drain);
     send(res, 200, { ok: true }); return;
@@ -558,7 +583,7 @@ async function api(req, res, url) {
         if(value.kind !== 'html'){fail(res,400,'Chỉ hỗ trợ bản xem trước HTML.');return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
           'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
-        res.end(value.text);return;
+        res.end(injectReportLinks(value.text));return;
       }
       send(res, value.error ? 400 : 200, value);
     } catch (e) { fail(res, 400, e.message); }
@@ -569,6 +594,19 @@ async function api(req, res, url) {
     try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); } catch { send(res, 400, { error: 'Invalid timezone' }); return; }
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
     res.end(tokenCache.get([...remotes.values()], mergePrefs(vault.data.prefs).aiAccounts, { zone })); return;
+  }
+  if (p === '/api/usage' && m === 'GET') {
+    const zone = url.searchParams.get('zone') || 'UTC';
+    try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); validRange(url.searchParams.get('from'), url.searchParams.get('to')); }
+    catch { send(res, 400, { error: 'Khoảng ngày hoặc múi giờ chưa đúng.' }); return; }
+    const accounts = mergePrefs(vault.data.prefs).aiAccounts;
+    // Account emails come from the token scan, so the report names accounts the same way the cards do.
+    const emails = new Map();
+    try { for (const a of JSON.parse(tokenCache.get([...remotes.values()], accounts, { zone })).accounts || []) if (a.email) emails.set(a.id, a.email); } catch { /* names fall back to nickname or directory */ }
+    const backendOf = (id) => { const r = remotes.get(id); return r?.ready ? r : null; };
+    try { send(res, 200, await usage.get(backendOf, accounts, { from: url.searchParams.get('from'), to: url.searchParams.get('to'), zone, refresh: url.searchParams.get('refresh') === '1', emails })); }
+    catch { send(res, 500, { error: 'Không đọc được báo cáo sử dụng.' }); }
+    return;
   }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
   if (p === '/api/prefs' && m === 'PUT') {
@@ -595,7 +633,7 @@ async function api(req, res, url) {
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
-  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/sessions(?:\/([^/]+)(\/keys)?)?)?$/);
+  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
   if (sv) {
     const id = sv[1];
     const tail = sv[2] || '';
@@ -616,7 +654,8 @@ async function api(req, res, url) {
     }
     if (tail === '/restore' && m === 'POST') { await restore(req, res, r); return; }
     if (tail === '/lost' && m === 'DELETE') { dismissLost(res, r); return; }
-    if (sv[4] && m === 'POST') { await sendKeys(req, res, r, decodeURIComponent(sv[3])); return; }
+    if (sv[4] === '/keys' && m === 'POST') { await sendKeys(req, res, r, decodeURIComponent(sv[3])); return; }
+    if (sv[4] === '/scroll' && m === 'POST') { await scrollSession(req, res, r, decodeURIComponent(sv[3])); return; }
     if (tail === '/dirs' && m === 'GET') { await listDirs(res, r, url.searchParams.get('path') || ''); return; }
     if (tail === '/sessions' && m === 'POST') { await createSession(req, res, r); return; }
     if (sv[3] && !sv[4] && m === 'DELETE') { await killSession(res, r, decodeURIComponent(sv[3])); return; }
@@ -625,6 +664,12 @@ async function api(req, res, url) {
 }
 
 let activeRequests = 0;
+// Drop-in features (lib/features/*.js + public/features/*): see lib/features.js.
+const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'), publicDir: path.join(PUB, 'features'),
+  deps: { remotes: () => remotes, backendOf: (id) => { const r = remotes.get(id); return r?.ready ? r : null; }, send, fail, readJson, shq,
+    vault: () => vault, save: () => saveVault() } });
+features.load();
+
 const server = http.createServer(async (req, res) => {
   if (!hostOk(req)) { res.writeHead(403); res.end(); return; }
   const url = new URL(req.url, 'http://localhost');
@@ -643,7 +688,7 @@ const server = http.createServer(async (req, res) => {
     } finally { activeRequests--; }
     return;
   }
-  const entry = STATIC[url.pathname];
+  const entry = STATIC[url.pathname] || (req.method === 'GET' ? features.staticFile(url.pathname) : null);
   if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
   fs.readFile(entry[0], (err, buf) => {
     if (err) { res.writeHead(500); res.end(); return; }

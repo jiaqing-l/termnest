@@ -32,7 +32,7 @@
   }
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function petOf(name) { return /claude/i.test(name) ? 'cat' : ORDER[hash(name) % ORDER.length]; }
-  function petFor(v, s) { var choice = (prefs.pets || {})[v.id + '/' + s.name]; return choice && ORDER.indexOf(choice.kind) >= 0 ? choice.kind : petOf(s.name); }
+  function petFor(v, s) { var choice = (prefs.pets || {})[v.id + '/' + s.name]; return choice && PETS[choice.kind] ? choice.kind : petOf(s.name); }
   function color(s) { return PETS[petOf(s.name)].c; }
   function srv(id) { return servers.filter(function (v) { return v.id === id; })[0]; }
   function subOf(s) { return s.state === 'wait' ? 'Chờ bạn' : s.state === 'idle' ? 'Đang nghỉ' : 'Đang chạy ' + s.cmd; }
@@ -139,6 +139,7 @@
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
     var f = el('div', 'card-foot'); band(v,s,f);f.append(ref.foot, ref.path);
     c.append(h, ref.mini, f); fillCard(ref, s); cardRefs[v.id + '/' + s.name] = ref;
+    if (window.TW) window.TW.decorateCard(c, v, s);
     c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.onkeydown = function (e) { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openSession(v.id, s.name); } };
     addReply(c, ref, v, s);
@@ -156,21 +157,21 @@
   }
   renderCrewSize();
   function closeCrew() { crewSelection = null; crewGeneration++; $('crew-panel').hidden = true; }
-  function openCrew(v, w) {
-    crewGeneration++; crewSelection = { id: v.id, task: w.task, track: w.track }; crewPaused = false; crewFollow = true;
-    $('crew-title').textContent = $('crew-title').title = w.task + ' / ' + w.track; $('crew-output').textContent = (w.lines || []).join('\n');
+  function openCrew(v, w, load) {
+    crewGeneration++; crewSelection = { id: v.id, task: w.task, track: w.track, load: load }; crewPaused = false; crewFollow = true;
+    $('crew-title').title = w.task + ' / ' + w.track; $('crew-title').textContent = w.track + ' · ' + w.task; // track first: the long task name is what gets cut off $('crew-output').textContent = (w.lines || []).join('\n');
     $('crew-panel').hidden = false; $('crew-pause').textContent = 'Tạm dừng'; pollCrew();
   }
   function pollCrew() {
     if (!crewSelection || crewPaused || crewBusy || document.hidden) return;
     var selected = crewSelection, generation = crewGeneration; crewBusy = true;
-    api('GET', '/api/servers/' + selected.id + '/crew-log?task=' + encodeURIComponent(selected.task) + '&track=' + encodeURIComponent(selected.track))
+    (selected.load ? selected.load() : api('GET', '/api/servers/' + selected.id + '/crew-log?task=' + encodeURIComponent(selected.task) + '&track=' + encodeURIComponent(selected.track)))
       .then(function (log) {
         if (generation !== crewGeneration || crewPaused) return;
         var output = $('crew-output'), oldTop = output.scrollTop;
         if (output.textContent !== log.text) output.textContent = log.text;
         output.scrollTop = crewFollow ? output.scrollHeight : oldTop;
-        $('crew-status').textContent = (log.finishedAt ? 'Đã kết thúc · ' + log.result : 'Đang chạy') + ' · ' + span(log.elapsed) + ' · 64 KiB cuối';
+        if (log.status) $('crew-status').textContent = log.status; else $('crew-status').textContent = (log.finishedAt ? 'Đã kết thúc · ' + log.result : 'Đang chạy') + ' · ' + span(log.elapsed) + ' · 64 KiB cuối';
       }).catch(function (e) { if (generation === crewGeneration) $('crew-status').textContent = e.message; })
       .finally(function () { crewBusy = false; });
   }
@@ -249,6 +250,7 @@
       var sec = el('section', 'srv-sec'), h = el('div', 'srv-head');
       var t = el('div', 't'); t.append(el('b', '', v.name), el('span', 'mono', (v.local ? v.hostname + ' · không cần SSH' : v.user + '@' + v.host)));
       h.append(el('span', 'flag-d ' + (v.on ? 'on' : 'off')), t);
+      if (window.TW) window.TW.decorateServer(h, v);
 
       if (!v.local) { var rm = el('button', 'btn', 'Gỡ'); rm.setAttribute('aria-label', 'Gỡ ' + (v.local ? 'Máy này · ' + v.hostname : v.user + '@' + v.name)); rm.onclick = function () { delDlg(v); }; h.append(rm); }
       sec.append(h); addLost(sec, v);
@@ -277,14 +279,49 @@
     });
     if (active && active.isConnected && selection) { active.focus({ preventScroll: true }); active.setSelectionRange(selection[0], selection[1]); }
   }
+  // Tabs can be closed (hidden). The session itself is untouched: it stays in the sidebar and overview.
+  var tabHide = window.TabHide ? window.TabHide.create((function () { try { return window.localStorage; } catch (e) { return { getItem: function () { return null; }, setItem: function () {} }; } })()) : null;
+  function tabKey(x) { return x.v.id + '/' + x.s.name; }
+  function closeTab(x) {
+    if (!tabHide) return;
+    var list = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
+    var wasCurrent = cur && cur.id === x.v.id && cur.name === x.s.name, next = list[i + 1] || list[i - 1];
+    tabHide.hide(tabKey(x));
+    if (wasCurrent && next && next !== x) { cur = { id: next.v.id, name: next.s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
+    renderTabs(); renderDetail(); renderBar();
+    sayUndo('Đã đóng tab ' + x.s.name + '. Phiên vẫn chạy.', 'Hoàn tác', function () { tabHide.show(tabKey(x)); renderTabs(); }, 4500);
+  }
+  function hiddenItems() { return tabHide ? vis().filter(function (y) { return tabHide.isHidden(tabKey(y)); }) : []; }
   function renderTabs() {
     var box = $('tabs'); box.textContent = '';
-    vis().forEach(function (x) {
+    // Only forget a hidden tab once its host is loaded, online and really no longer has that session.
+    if (tabHide) tabHide.prune(function (k) { var id = k.split('/')[0], v = srv(id); return !v || !v.on || v.sessions.some(function (s) { return id + '/' + s.name === k; }); });
+    vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
       b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name); band(x.v, x.s, b);
+      if (tabHide) {
+        var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', 'Đóng tab ' + x.s.name); close.title = 'Đóng tab (phiên vẫn chạy)';
+        close.onclick = function (e) { e.stopPropagation(); closeTab(x); }; b.append(close);
+        b.onauxclick = function (e) { if (e.button === 1) { e.preventDefault(); closeTab(x); } };
+      }
       b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
     });
+    var hid = hiddenItems();
+    if (hid.length) {
+      var waits = hid.filter(function (y) { return y.s.state === 'wait'; }).length;
+      var more = el('button', 'tab tab-more' + (waits ? ' wait' : ''), '↩ Tab đã đóng (' + hid.length + ')' + (waits ? ' · ' + waits + ' chờ bạn' : ''));
+      more.setAttribute('aria-haspopup', 'menu'); more.onclick = function (e) { e.stopPropagation(); tabMenu(more, hid); }; box.append(more);
+    }
+  }
+  function tabMenu(anchor, hid) {
+    var old = document.querySelector('.tab-menu'); if (old) { old.remove(); return; }
+    var menu = el('div', 'tab-menu'); menu.setAttribute('role', 'menu');
+    hid.forEach(function (y) { var it = el('button', 'tab-menu-item'); it.setAttribute('role', 'menuitem'); it.innerHTML = pet(petFor(y.v, y.s), y.s.state); it.append(y.s.name + (y.s.state === 'wait' ? ' · chờ bạn' : '')); it.onclick = function () { menu.remove(); tabHide.show(tabKey(y)); renderTabs(); }; menu.append(it); });
+    var all = el('button', 'tab-menu-item', 'Mở lại tất cả'); all.setAttribute('role', 'menuitem'); all.onclick = function () { menu.remove(); tabHide.showAll(); renderTabs(); }; menu.append(all);
+    var r = anchor.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(r.left, innerWidth - 240)) + 'px'; menu.style.top = r.bottom + 4 + 'px';
+    document.body.append(menu);
+    setTimeout(function () { document.addEventListener('click', function close() { menu.remove(); document.removeEventListener('click', close); }); }, 0);
   }
   var detailSignature = '';
   function renderDetail() {
@@ -308,7 +345,7 @@
     var timeline = el('ol');
     (x.s.diary || []).slice().reverse().forEach(function (e) { timeline.append(el('li', '', new Date(e.at).toLocaleString('vi-VN') + ' · ' + (labels[e.type] || e.type) + (e.detail ? ' · ' + e.detail : ''))); });
     journal.append(timeline); if (!timeline.children.length) journal.append(el('p', '', 'Chưa có sự kiện quan sát.'));
-    box.append(journal, acts); petSync();
+    box.append(journal, acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
   }
   function renderBar() {
     var x = curItem();
@@ -317,13 +354,13 @@
     $('bar-s').textContent = '[' + x.s.name + ']'; $('bar-h').textContent = x.v.user + '@' + x.v.name; $('m-title').textContent = x.s.name;
   }
   function setView(v) {
-    view = v; tokens.setView(v); $('app').classList.toggle('in-focus', v === 'focus');
+    view = v; tokens.setView(v); if (window.TW) window.TW.setView(v); $('app').classList.toggle('in-focus', v === 'focus');
     $('v-over').classList.toggle('on', v === 'over'); $('v-focus').classList.toggle('on', v === 'focus');
     ['tab-over', 'nav-over'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'over'); });
     ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'focus'); });
     render();
     if (v === 'focus') {
-      if (!curItem()) { var l = vis()[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
+      if (!curItem()) { var all = vis(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
       ensureTerm(); connectTerm(); if (panes.length) focusPane(focusedPane, true);
     }
   }
@@ -335,6 +372,12 @@
   function say(t, good, ms, floating) {
     var b = $('banner'); b.textContent = t; b.className = 'show' + (good ? ' good' : '') + (floating ? ' text-hint' : '');
     if (ms) setTimeout(function () { if (b.textContent === t) b.className = ''; }, ms);
+  }
+  // Same banner as say(), with one action button (used by "close tab").
+  function sayUndo(t, label, run, ms) {
+    var b = $('banner'); b.textContent = ''; b.append(document.createTextNode(t + ' '));
+    var btn = el('button', 'btn', label); btn.type = 'button'; btn.onclick = function () { run(); b.className = ''; }; b.append(btn); b.className = 'show good';
+    setTimeout(function () { if (b.contains(btn)) b.className = ''; }, ms || 4500);
   }
   var viewControls = window.ViewControls({ document: document, window: window, navigator: navigator,
     get storage() { return localStorage; }, app: $('app'), panes: function () { return panes; }, composing: terminalComposing,
@@ -360,6 +403,7 @@
   }
   function closePane(p) {
     clearTimeout(p.retry); p.key = '';
+    p.scroll = null; p.sendChain = null; if (p.bar) p.bar.hidden = true;
     if (p.ime) p.ime.reset();
     if (p.ws) { p.ws.onclose = null; p.ws.close(); p.ws = null; }
   }
@@ -375,6 +419,88 @@
     panes[focusedPane].cur = cur; syncPanePickers(); requestAnimationFrame(sizeTerm);
   }
   var fileViewer = window.FileViewer.create(api);
+  // ---- Text selection: Claude Code turns on mouse reporting, which makes xterm hand every drag to the app.
+  function appMouse() { try { return localStorage.getItem('termnest.appMouse') === '1'; } catch (e) { return false; } }
+  function setMouseLabel() { var b = $('mouse-mode'); if (!b) return; var on = appMouse(); b.textContent = on ? 'Chuột: ứng dụng' : 'Chọn chữ'; b.setAttribute('aria-pressed', String(!on)); b.title = on ? 'Đang gửi chuột cho ứng dụng trong phiên (giữ Option/Shift để chọn chữ). Bấm để chuyển sang chọn chữ.' : 'Kéo chuột để chọn và sao chép chữ. Bấm để trả chuột cho ứng dụng (nhấp để mở, cuộn trong ứng dụng).'; }
+  function toggleMouseMode() {
+    try { localStorage.setItem('termnest.appMouse', appMouse() ? '0' : '1'); } catch (e) { /* private mode */ }
+    setMouseLabel();
+    if (appMouse()) { panes.forEach(function (p) { if (p.cur) { closePane(p); connectPane(p); } }); say('Chuột đã trả cho ứng dụng. Giữ Option (Mac) hoặc Shift để chọn chữ.', true, 3500); }
+    else { panes.forEach(function (p) { p.term.write(window.MouseFilter ? window.MouseFilter.RESET : ''); }); say('Kéo chuột để chọn chữ, Cmd+C để sao chép.', true, 3000); }
+  }
+  function copySelection(p) {
+    var text = p && p.term.getSelection(); if (!text) { say('Chưa chọn đoạn chữ nào. Kéo chuột trên màn hình phiên để chọn.', false, 2500); return Promise.resolve(); }
+    return (window.TW_DESKTOP ? window.TW_DESKTOP.copy(text) : navigator.clipboard.writeText(text)).then(function () { say('Đã sao chép ' + text.length + ' ký tự', true, 1600); }).catch(function () { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); });
+  }
+  // ---- Scrollback: tmux owns the history, so wheel and scrollbar drive tmux copy-mode (lib/scroll.js).
+  function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
+  // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
+  function paneSend(p, d) {
+    if (p.scroll && p.scroll.inMode) {
+      p.scroll.inMode = false;
+      p.sendChain = scrollCall(p, 'bottom').catch(function () {}).then(function () { rawSend(p, d); });
+      return;
+    }
+    if (p.sendChain) { p.sendChain = p.sendChain.then(function () { rawSend(p, d); }); return; }
+    rawSend(p, d);
+  }
+  function scrollPath(p) { return '/api/servers/' + p.cur.id + '/sessions/' + encodeURIComponent(p.cur.name) + '/scroll'; }
+  function scrollCall(p, op, n) {
+    if (!p.cur) return Promise.reject(new Error('no session'));
+    return api('POST', scrollPath(p), { op: op, n: n }).then(function (st) { p.scroll = st; drawScrollbar(p); return st; });
+  }
+  function drawScrollbar(p) {
+    var st = p.scroll, bar = p.bar;
+    if (!bar) return;
+    if (!st || st.history <= 0) { bar.hidden = true; return; }
+    bar.hidden = false; // measure only after it is shown: a hidden element has no height
+    var total = st.history + st.height, track = bar.clientHeight || 1;
+    var size = Math.max(24, Math.round(track * st.height / total));
+    p.thumb.style.height = size + 'px';
+    p.thumb.style.top = Math.round((track - size) * (st.history - st.position) / st.history) + 'px';
+    bar.classList.toggle('scrolled', st.inMode && st.position > 0);
+  }
+  function scrollbar(p) {
+    p.bar = el('div', 'tscroll'); p.thumb = el('div', 'tscroll-thumb'); p.bar.append(p.thumb); p.bar.hidden = true; p.host.append(p.bar);
+    var pending = 0, busy = false, hinted = '';
+    function flush() {
+      if (busy || !pending) return;
+      var n = pending; pending = 0; busy = true;
+      scrollCall(p, n > 0 ? 'up' : 'down', Math.abs(n)).catch(function () {}).then(function () { busy = false; flush(); });
+    }
+    function lines(e) {
+      if (e.deltaMode === 1) return Math.round(e.deltaY);
+      if (e.deltaMode === 2) return Math.round(e.deltaY * p.term.rows);
+      var cell = (p.host.clientHeight / p.term.rows) || 16;
+      return Math.round(e.deltaY / cell) || Math.sign(e.deltaY);
+    }
+    // Capture on the host keeps xterm from turning the wheel into Up/Down keys for the app; Ctrl+wheel stays zoom.
+    p.host.addEventListener('wheel', function (e) {
+      if (e.ctrlKey || !p.cur || !e.deltaY) return;
+      e.preventDefault(); e.stopPropagation();
+      if (p.scroll && p.scroll.history <= 0) {
+        var key = p.cur.id + '/' + p.cur.name;
+        if (hinted !== key && p.scroll.alternate) { hinted = key; say('Ứng dụng trong phiên đang dùng màn hình thay thế nên chưa có lịch sử để cuộn. Với Codex, chạy lại bằng --no-alt-screen.', false, 6000); }
+        return;
+      }
+      pending = Math.max(-500, Math.min(500, pending - lines(e))); flush(); // wheel down (deltaY > 0) scrolls toward the newest output
+    }, { capture: true, passive: false });
+    function toPosition(y) {
+      var st = p.scroll; if (!st || st.history <= 0) return;
+      var rect = p.bar.getBoundingClientRect(), size = p.thumb.offsetHeight;
+      var ratio = Math.max(0, Math.min(1, (y - rect.top - size / 2) / Math.max(1, rect.height - size)));
+      var target = Math.round(st.history * (1 - ratio)), delta = target - st.position;
+      if (delta) { pending += delta; flush(); }
+    }
+    p.bar.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); e.stopPropagation(); p.bar.setPointerCapture(e.pointerId); toPosition(e.clientY);
+      var move = function (ev) { toPosition(ev.clientY); };
+      p.bar.addEventListener('pointermove', move);
+      p.bar.addEventListener('pointerup', function () { p.bar.removeEventListener('pointermove', move); }, { once: true });
+    });
+    // Keep the thumb honest when the pane changes on its own (new output, resize, another client).
+    p.scrollTimer = setInterval(function () { if (view === 'focus' && p.cur && p.ws && p.ws.readyState === 1 && !busy) scrollCall(p, 'state').catch(function () {}); }, 3000);
+  }
   function createPane() {
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
     p.node = el('div', 'pane'); p.node.classList.toggle('active', index === focusedPane); p.picker = el('select'); p.picker.setAttribute('aria-label', 'Phiên ô ' + (index + 1));
@@ -382,13 +508,17 @@
     p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
     p.fit = new window.FitAddon.FitAddon(); p.term.loadAddon(p.fit); p.term.open(p.host);
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
-    function send(d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
+    function send(d) { paneSend(p, d); }
+    scrollbar(p);
     p.ime = window.TerminalIME.attach(p.term, send, { onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
       if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
-        event.preventDefault(); (window.TW_DESKTOP ? window.TW_DESKTOP.copy(p.term.getSelection()) : navigator.clipboard.writeText(p.term.getSelection())).catch(function() { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); }); return false;
+        event.preventDefault(); copySelection(p);
       }
+      // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
+      var keySeq = window.TerminalKeys && window.TerminalKeys.sequence(event, /Mac/.test(navigator.platform || ''));
+      if (keySeq != null) { event.preventDefault(); send(keySeq); return false; }
       if (window.TW_DESKTOP && event.type === 'keydown' && event.key.toLowerCase() === 'v' && (event.metaKey || event.ctrlKey && event.shiftKey)) {
         event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say('Không dán được.', false, 4000); }); return false;
       }
@@ -414,7 +544,7 @@
   }
   function fitPane(p) { if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) { try { p.fit.fit(); } catch (e) { /* hidden */ } } }
   function sizeTerm() { panes.forEach(fitPane); }
-  function sendData(d) { var p = panes[focusedPane]; if (p && p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
+  function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
   function connectTerm() { if (panes.length) { panes[focusedPane].cur = cur; panes.forEach(connectPane); syncPanePickers(); } }
   function connectPane(p) {
@@ -424,8 +554,10 @@
     closePane(p); p.key = key; p.term.reset(); fitPane(p);
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
-    sock.onopen = function () { fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
-    sock.onmessage = function (e) { if (p.ws === sock) p.term.write(new Uint8Array(e.data)); };
+    sock.onopen = function () { scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
+    p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
+    // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
+    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
     function retry() { clearTimeout(p.retry); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, 2000); }
     sock.onclose = function (e) {
       if (p.ws !== sock) return; p.ws = null; p.key = '';
@@ -444,8 +576,8 @@
     paneCount = n; focusedPane = Math.min(focusedPane, n - 1); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one';
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
-  function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
-  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02' };
+  function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
+  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   function detach() { if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say('Đã rời ' + n + '. Việc vẫn chạy.', true, 2800); setView('over'); }
 
@@ -587,9 +719,25 @@
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
   var editingPet = null;
+  // Grid picker: automatic, then every registered pet, grouped. The hidden #pet-kind keeps the form code unchanged.
+  function drawPetPick() {
+    var box = $('pet-pick'); box.textContent = ''; var current = $('pet-kind').value;
+    function item(kind, label, svg) {
+      var b = el('button', 'pp'); b.type = 'button'; b.setAttribute('aria-pressed', String(current === kind)); b.title = label;
+      var v = el('span', 'pv'); v.innerHTML = svg; b.append(v, el('small', '', label));
+      b.onclick = function () { $('pet-kind').value = kind; drawPetPick(); }; return b;
+    }
+    var auto = el('div', 'pp-row'); auto.append(item('', 'Tự động', '<span class="pp-auto">✨</span>')); box.append(auto);
+    var groups = [['animals', 'Thú cưng'], ['characters', 'Nhân vật hoạt hình']];
+    groups.forEach(function (g) {
+      var list = ((art.GROUPS || {})[g[0]] || []).filter(function (k) { return PETS[k]; }); if (!list.length) return;
+      box.append(el('div', 'pp-title', g[1]));
+      var row = el('div', 'pp-row'); list.forEach(function (k) { row.append(item(k, (art.LABELS || {})[k] || k, pet(k, 'run'))); }); box.append(row);
+    });
+  }
   function editPet(x) {
     editingPet = x.v.id + '/' + x.s.name; var choice = (prefs.pets || {})[editingPet] || {};
-    $('pet-nickname').value = choice.name || ''; $('pet-kind').value = choice.kind || ''; $('pet-hat').value = choice.hat || '';
+    $('pet-nickname').value = choice.name || ''; $('pet-kind').value = choice.kind && PETS[choice.kind] ? choice.kind : ''; $('pet-hat').value = choice.hat || ''; drawPetPick();
     $('pet-error').textContent = ''; $('dlg-pet').showModal();
   }
   $('form-pet').onsubmit = function (e) {
@@ -893,6 +1041,7 @@
   function refresh(force) {
     return api('GET', '/api/state').then(function (st) {
       servers = st.servers; renderRanking(st.daily);
+      if (window.TW) window.TW.emit('state', { servers: servers, scope: scope, current: cur });
       try { notifyWaits(); } catch (e) { /* optional notification/pet logic */ }
       petSync();
       var ended = cur && srv(cur.id) && srv(cur.id).on && !curItem();
@@ -936,7 +1085,12 @@
     $('login').hidden = false; $('login-pass').value = '';
     api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
   }
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); }); }
+  (function wireSelectionButtons() {
+    var m = $('mouse-mode'), c = $('copy-sel');
+    if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
+    if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
+  })();
+  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });
