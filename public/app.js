@@ -463,6 +463,9 @@
       if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
         event.preventDefault(); (window.TW_DESKTOP ? window.TW_DESKTOP.copy(p.term.getSelection()) : navigator.clipboard.writeText(p.term.getSelection())).catch(function() { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); }); return false;
       }
+      // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
+      var keySeq = window.TerminalKeys && window.TerminalKeys.sequence(event, /Mac/.test(navigator.platform || ''));
+      if (keySeq != null) { event.preventDefault(); send(keySeq); return false; }
       if (window.TW_DESKTOP && event.type === 'keydown' && event.key.toLowerCase() === 'v' && (event.metaKey || event.ctrlKey && event.shiftKey)) {
         event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say('Không dán được.', false, 4000); }); return false;
       }
@@ -519,7 +522,7 @@
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
   function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
-  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02' };
+  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   function detach() { if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say('Đã rời ' + n + '. Việc vẫn chạy.', true, 2800); setView('over'); }
 
