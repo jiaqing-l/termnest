@@ -28,7 +28,7 @@
  }
  function detect(text){
   const found=[];
-  const re=/(?:[A-Za-z]:[\\/]|\/|\.\.?\/)?[\p{L}\p{N}_.@~+\-]+(?:[\\/][\p{L}\p{N}_.@~+\-]+)*\.(?:md|markdown|html?|txt|log|jsonl?|ya?ml|csv|xml|css|[cm]?js|tsx?|jsx|sh|py|cs|razor|sql|toml|ini|conf)(?::\d+(?::\d+)?)?/giu;
+  const re=/(?:[A-Za-z]:[\\/]|\/|\.\.?\/)?[\p{L}\p{N}_.@~+\-]+(?:[\\/][\p{L}\p{N}_.@~+\-]+)*\.(?:md|markdown|html?|txt|log|jsonl?|ya?ml|csv|xml|css|[cm]?js|tsx?|jsx|sh|py|cs|razor|sql|toml|ini|conf|png|jpe?g|gif|webp)(?::\d+(?::\d+)?)?/giu;
   let m;while((m=re.exec(text))){const start=m.index;const prefix=text.slice(0,start);if(/(?:https?:\/\/|[\w]+:\/\/)[^\s]*$/.test(prefix)||/[\w/\\]/.test(text[start-1]||''))continue;
    const file=m[0].replace(/:\d+(?::\d+)?$/,'');found.push({path:file,start,end:start+file.length});
   }return found;
@@ -102,17 +102,23 @@
   window.addEventListener('blur',resetOutside);
   copy.onclick=async()=>{if(current)try{await (window.TW_DESKTOP ? window.TW_DESKTOP.copy(current.path) : navigator.clipboard.writeText(current.path));}catch{const note=doc.createElement('p');note.textContent='Không sao chép được. Đường dẫn đầy đủ: '+current.path;body.prepend(note);}};
   download.onclick=()=>{if(!current)return;
+    if(current.kind==='image'){const name=current.path.split(/[\\/]/).pop(),bytes=Uint8Array.from(atob(current.base64),c=>c.charCodeAt(0));
+     if(doc.defaultView&&doc.defaultView.TW_DESKTOP&&doc.defaultView.TW_DESKTOP.saveBytes){Promise.resolve(doc.defaultView.TW_DESKTOP.saveBytes(name,bytes)).catch(()=>{});return;}
+     const url=URL.createObjectURL(new Blob([bytes],{type:current.mime})),a=doc.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
     // The desktop webview cannot fetch a blob: URL (connect-src 'self'), so hand the text straight to the native save dialog.
     if(doc.defaultView&&doc.defaultView.TW_DESKTOP){const label=download.textContent,name=current.path.split(/[\\/]/).pop();
       Promise.resolve(doc.defaultView.TW_DESKTOP.save(name,current.text)).then(()=>{download.textContent=label;},()=>{download.textContent='Không lưu được';setTimeout(()=>{download.textContent=label;},3000);});return;}
     const url=URL.createObjectURL(new Blob([current.text],{type:'text/plain;charset=utf-8'})),a=doc.createElement('a');a.href=url;a.download=current.path.split(/[\\/]/).pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   const setTitle=path=>{title.textContent=path.length>80?'…/'+path.split(/[\\/]/).slice(-2).join('/'):path;title.title=path;};
-  async function open(host,session,path){
+  let gallery=null;
+  async function open(host,session,path,opts){
+   if(!(opts&&opts.keepGallery))gallery=null;
    const request=++generation;cancel();location=[host,session,path];current=null;panel.hidden=false;setTitle(path);body.textContent='Đang đọc tệp…';copy.disabled=download.disabled=reload.disabled=true;
    try{
     const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path);
     const file=await api('GET','/api/file?'+query);if(request!==generation)return;
     if(file.error)throw Error(file.error);current=file;setTitle(file.path);body.textContent='';copy.disabled=download.disabled=reload.disabled=false;
+    if(file.kind==='image'){showImage(file,host,session);return;}
     if(file.kind==='html'){
      const note=doc.createElement('p');note.className='viewer-note';note.textContent='Bản HTML chạy trong khung cách ly. Ảnh, CSS và script ngoài tệp (kể cả đường dẫn tương đối) không được tải; CSS và script nội tuyến vẫn hoạt động.';body.append(note);
      const frame=htmlFrame(doc,'');frame.removeAttribute('srcdoc');frame.src='/api/file-preview?'+query;body.append(frame);
@@ -137,6 +143,31 @@
     }
    }catch(e){if(request===generation){body.textContent=e.message;reload.disabled=false;}}
   }
+  function showImage(file,host,session){
+   const bar=doc.createElement('div');bar.className='viewer-imgbar';
+   const mk=(text,title,fn,dis)=>{const b=doc.createElement('button');b.className='btn';b.type='button';b.textContent=text;b.title=title;b.disabled=!!dis;b.onclick=fn;bar.append(b);return b;};
+   const list=gallery&&gallery.list||[],index=list.indexOf(file.path)>=0?list.indexOf(file.path):list.findIndex(x=>file.path.endsWith(x.replace(/^\.?\//,'')));
+   if(gallery&&gallery.back)mk('← Quay lại báo cáo','Mở lại báo cáo HTML',()=>open(...gallery.back));
+   if(list.length>1){
+    mk('◀','Ảnh trước (←)',()=>open(host,session,list[(index+list.length-1)%list.length],{keepGallery:true}));
+    const n=doc.createElement('span');n.className='viewer-imgcount';n.textContent=(index>=0?index+1:'?')+' / '+list.length;bar.append(n);
+    mk('▶','Ảnh kế (→)',()=>open(host,session,list[(index+1)%list.length],{keepGallery:true}));
+   }
+   const img=doc.createElement('img');img.className='viewer-img fit';img.alt=file.path.split(/[\\/]/).pop();img.src='data:'+file.mime+';base64,'+file.base64;
+   const info=doc.createElement('span');info.className='viewer-imgcount';
+   img.onload=()=>{info.textContent=img.naturalWidth+' × '+img.naturalHeight+' · '+(file.size>1048576?(file.size/1048576).toFixed(1)+' MB':Math.ceil(file.size/1024)+' KB');};
+   mk('Kích thước thật','Chuyển giữa vừa khung và 100%',()=>img.classList.toggle('fit'));bar.append(info);
+   const stage=doc.createElement('div');stage.className='viewer-stage';stage.append(img);body.append(bar,stage);
+   panel.onkeydown=e=>{if(!list.length||e.target.closest&&e.target.closest('button,input,textarea'))return;if(e.key==='ArrowLeft'){e.preventDefault();bar.children[gallery&&gallery.back?1:0].click();}if(e.key==='ArrowRight'){e.preventDefault();bar.querySelectorAll('button')[(gallery&&gallery.back?1:0)+1]&&bar.querySelectorAll('button')[(gallery&&gallery.back?1:0)+1].click();}};
+   panel.tabIndex=-1;
+  }
+  // Image paths clicked inside the sandboxed HTML report arrive here; only the viewer's own frame is trusted.
+  window.addEventListener('message',e=>{
+   const d=e.data,frame=body.querySelector('iframe');
+   if(!d||d.tw!=='open-image'||!frame||e.source!==frame.contentWindow||typeof d.path!=='string'||d.path.length>4096||!Array.isArray(d.list)||!location)return;
+   const list=d.list.filter(x=>typeof x==='string'&&x.length<=4096).slice(0,500);
+   gallery={list,back:location.slice()};open(location[0],location[1],d.path,{keepGallery:true});
+  });
   reload.onclick=()=>{if(location)open(...location);};
   return {open,close:()=>close.onclick()};
  }

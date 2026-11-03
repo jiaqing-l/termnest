@@ -12,6 +12,7 @@ const daily = require('./lib/daily');
 const { TokenCache } = require('./lib/token-cache');
 const diary = require('./lib/diary');
 const { scrollScript, parseScrollState } = require('./lib/scroll');
+const { injectReportLinks } = require('./lib/report-links');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
@@ -571,7 +572,7 @@ async function api(req, res, url) {
         if(value.kind !== 'html'){fail(res,400,'Chỉ hỗ trợ bản xem trước HTML.');return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
           'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
-        res.end(value.text);return;
+        res.end(injectReportLinks(value.text));return;
       }
       send(res, value.error ? 400 : 200, value);
     } catch (e) { fail(res, 400, e.message); }

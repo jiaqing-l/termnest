@@ -620,3 +620,9 @@ body{font-size:13px}.top{padding:7px 14px;gap:10px}.brand{font-size:16px}.brand 
 #app.fs .keybar .btn{min-height:27px;padding:2px 7px;font-size:11px}
 #app.fs .tmux-bar{padding:1px 8px;font-size:11px}
 #app.fs #crew-panel{bottom:70px}
+
+/* ---- file viewer: images ---- */
+.viewer-imgbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid var(--line)}.viewer-imgbar .btn{min-height:30px;padding:3px 11px;font-size:12px}
+.viewer-imgcount{font:600 12px var(--mono);color:var(--fg-3)}
+.viewer-stage{flex:1;min-height:0;overflow:auto;padding:10px;display:flex;justify-content:center;align-items:flex-start;background:repeating-conic-gradient(var(--surface-2) 0% 25%,var(--surface) 0% 50%) 50%/18px 18px}
+.viewer-img{display:block;max-width:none;border-radius:6px;box-shadow:0 6px 20px -8px rgba(20,30,60,.5)}.viewer-img.fit{max-width:100%;height:auto}
