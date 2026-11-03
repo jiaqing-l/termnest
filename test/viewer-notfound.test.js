@@ -38,3 +38,9 @@ test('absolute paths and paths outside the folder never trigger a search', async
   const outside = await read({ cwd: dir, path: '../12-MASTER-PLAN-MVP.md' });
   assert.equal(outside.candidates, undefined);
 });
+
+test('candidates are listed newest first', async () => {
+  const old = new Date(Date.now() - 86400000); fs.utimesSync(path.join(dir, 'Implementation/Other/12-MASTER-PLAN-MVP.md'), old, old);
+  const out = await read({ cwd: dir, path: '12-MASTER-PLAN-MVP.md' });
+  assert.equal(out.candidates[0], 'Implementation/SV/Phan/12-MASTER-PLAN-MVP.md'); assert.equal(out.candidates[1], 'Implementation/Other/12-MASTER-PLAN-MVP.md');
+});
