@@ -11,6 +11,7 @@ const { LOCAL_ID, localConfig, createBackend } = require('./lib/backends');
 const daily = require('./lib/daily');
 const { TokenCache } = require('./lib/token-cache');
 const diary = require('./lib/diary');
+const { scrollScript, parseScrollState } = require('./lib/scroll');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
@@ -480,6 +481,18 @@ function dismissLost(res, r) {
   send(res, 200, { ok: true });
 }
 
+async function scrollSession(req, res, r, name) {
+  const b = await readJson(req);
+  let script;
+  try { script = scrollScript(name, b.op, b.n); }
+  catch { fail(res, 400, 'Lệnh cuộn chưa đúng.'); return; }
+  if (r.mode === 'powershell') { fail(res, 400, 'Máy này chưa hỗ trợ cuộn.'); return; }
+  if (!r.ready) { fail(res, 503, 'Máy chủ chưa kết nối.'); return; }
+  const out = await r.exec(`sh -c ${shq(script)}`);
+  try { send(res, 200, parseScrollState(out.out)); }
+  catch { fail(res, 400, 'Không đọc được vị trí cuộn.'); }
+}
+
 async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
   if (!name || name.length > 128 || typeof b.text !== 'string' || b.text.length > 1000 ||
@@ -595,7 +608,7 @@ async function api(req, res, url) {
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
-  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/sessions(?:\/([^/]+)(\/keys)?)?)?$/);
+  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
   if (sv) {
     const id = sv[1];
     const tail = sv[2] || '';
@@ -616,7 +629,8 @@ async function api(req, res, url) {
     }
     if (tail === '/restore' && m === 'POST') { await restore(req, res, r); return; }
     if (tail === '/lost' && m === 'DELETE') { dismissLost(res, r); return; }
-    if (sv[4] && m === 'POST') { await sendKeys(req, res, r, decodeURIComponent(sv[3])); return; }
+    if (sv[4] === '/keys' && m === 'POST') { await sendKeys(req, res, r, decodeURIComponent(sv[3])); return; }
+    if (sv[4] === '/scroll' && m === 'POST') { await scrollSession(req, res, r, decodeURIComponent(sv[3])); return; }
     if (tail === '/dirs' && m === 'GET') { await listDirs(res, r, url.searchParams.get('path') || ''); return; }
     if (tail === '/sessions' && m === 'POST') { await createSession(req, res, r); return; }
     if (sv[3] && !sv[4] && m === 'DELETE') { await killSession(res, r, decodeURIComponent(sv[3])); return; }

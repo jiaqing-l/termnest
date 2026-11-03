@@ -400,7 +400,9 @@ dialog{max-height:92vh;overflow:auto}dialog [hidden]{display:none!important}
 #split.two,#split.four{grid-template-columns:repeat(2,minmax(0,1fr))}#split.four{grid-template-rows:repeat(2,minmax(0,1fr))}
 .pane{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#101527;border:2px solid transparent}
 .pane.active{border-color:#2f80ed}.pane select{width:100%;min-width:0;border:0;background:var(--surface-2);padding:4px 8px;font:12px var(--mono)}
-.terminal{flex:1;min-height:0;overflow:hidden}.terminal .xterm{height:100%;padding:4px 0 0 5px}
+.terminal{flex:1;min-height:0;overflow:hidden;position:relative}.terminal .xterm{height:100%;padding:4px 12px 0 5px}
+.tscroll{position:absolute;top:2px;right:1px;bottom:2px;width:9px;border-radius:5px;background:rgba(255,255,255,.07);z-index:5;touch-action:none;cursor:pointer}.tscroll:hover,.tscroll.scrolled{background:rgba(255,255,255,.16)}
+.tscroll-thumb{position:absolute;left:1px;right:1px;border-radius:4px;background:rgba(160,180,230,.55)}.tscroll:hover .tscroll-thumb,.tscroll.scrolled .tscroll-thumb{background:rgba(160,190,255,.9)}
 .xterm .tw-ime-preview{position:absolute;z-index:6;width:max-content!important;max-width:calc(100vw - 24px);min-height:1em;height:auto!important;white-space:pre-wrap;overflow-wrap:anywhere;pointer-events:none;color:#dfe6f5;background:#101527;text-decoration:underline;text-underline-offset:3px}
 .xterm .tw-ime-preview[hidden]{display:none}
 .xterm .xterm-helper-textarea.tw-ime-marked{left:var(--tw-ime-left)!important;top:var(--tw-ime-top)!important;width:var(--tw-ime-width)!important;height:var(--tw-ime-height)!important}
