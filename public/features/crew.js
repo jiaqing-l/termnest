@@ -29,7 +29,6 @@
     var own = mine(x);
     box.textContent = ''; var tasks = ((data && data.tasks) || []).filter(function (t) { return own[t.task] || t.mentioned; }); box.hidden = !tasks.length; if (!tasks.length) return;
     box.append(el('h3', '', 'Crew đã làm trong phiên'));
-    if (data.linked === 'guess') box.append(el('p', 'crew-note', 'Nối theo hội thoại gần nhất của thư mục, có thể lẫn với phiên khác cùng thư mục.'));
     tasks.forEach(function (task) {
       var done = task.tracks.filter(function (t) { return t.state === 'merged' || t.state === 'done'; }).length, total = task.tracks.length;
       var head = el('div', 'crew-task'), bar = el('span', 'crew-bar'), fill = el('i'); fill.style.width = (total ? Math.round(done / total * 100) : 0) + '%'; bar.append(fill);

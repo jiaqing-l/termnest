@@ -44,26 +44,43 @@ test('track and task names are validated before anything reaches a shell', () =>
   for (const bad of ['', '../x', 'a b', 'a;rm', '$(x)', '-x']) assert.ok(!crew.COMPONENT.test(bad));
 });
 
-test('a task the session talked about is shown even when idle; others stay hidden', async () => {
-  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), cwd = fs.realpathSync(f.root);
-  const proj = path.join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
-  fs.writeFileSync(path.join(proj, 'other.jsonl'), JSON.stringify({ text: 'worked on 20261103-idle-pending today' }) + '\n');
-  const out = await crew.crewRuntime()({ cwd, home });
-  assert.equal(out.linked, 'guess');
-  assert.deepEqual(out.tasks.map((t) => [t.task, t.mentioned]).sort(), [['20261102-sv-perf', false], ['20261103-idle-pending', true]]);
+function project(f, home) { const cwd = fs.realpathSync(f.root), proj = path.join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true }); return { cwd, proj }; }
+const LINES = ['Pipeline #35884 hong dung mot job host_migration_link', 'Cong nay doi nhan host-migration-follows hoac link toi MR'];
+
+test('two sessions in one folder are told apart by what is on their screen', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), JSON.stringify({ text: LINES.join(' ') + ' and 20261103-idle-pending' }) + '\n');
+  fs.writeFileSync(path.join(proj, 'b.jsonl'), JSON.stringify({ text: 'something else entirely, about 20261102-sv-perf' }) + '\n');
+  const mine = await crew.crewRuntime()({ cwd, home, needles: LINES });
+  assert.equal(mine.linked, 'match');
+  assert.deepEqual(mine.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
+  const other = await crew.crewRuntime()({ cwd, home, needles: ['unrelated sentence that appears nowhere', 'another unrelated sentence here too'] });
+  assert.equal(other.linked, 'none'); assert.ok(other.tasks.every((t) => !t.mentioned));
 });
 
-test('the transcript named after the session id wins over the newest one in the folder', async () => {
-  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), cwd = fs.realpathSync(f.root);
-  const proj = path.join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
-  fs.writeFileSync(path.join(proj, 'mine-id.jsonl'), 'no tasks mentioned here\n');
-  const later = new Date(Date.now() + 5000); fs.writeFileSync(path.join(proj, 'newer.jsonl'), 'talking about 20261103-idle-pending\n'); fs.utimesSync(path.join(proj, 'newer.jsonl'), later, later);
+test('a tie between transcripts, or one weak hit, is unknown rather than a guess', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
+  for (const n of ['a', 'b']) fs.writeFileSync(path.join(proj, n + '.jsonl'), LINES.join(' ') + ' 20261103-idle-pending\n');
+  assert.equal((await crew.crewRuntime()({ cwd, home, needles: LINES })).linked, 'none');
+  fs.unlinkSync(path.join(proj, 'b.jsonl'));
+  assert.equal((await crew.crewRuntime()({ cwd, home, needles: [LINES[0]] })).linked, 'none');
+});
+
+test('the transcript named after the session id wins without needing the screen', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
+  fs.writeFileSync(path.join(proj, 'mine-id.jsonl'), 'worked on 20261103-idle-pending\n');
+  fs.writeFileSync(path.join(proj, 'newer.jsonl'), 'talking about 20261102-sv-perf\n');
   const out = await crew.crewRuntime()({ cwd, home, claudeId: 'mine-id' });
-  assert.equal(out.linked, 'exact');
-  assert.ok(out.tasks.every((t) => !t.mentioned));
+  assert.equal(out.linked, 'exact'); assert.deepEqual(out.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
 });
 
 test('without any transcript nothing is claimed as mentioned', async () => {
-  const f = fixture(), out = await crew.crewRuntime()({ cwd: f.sub, home: fs.mkdtempSync(path.join(os.tmpdir(), 'tw-nohome-')) });
+  const f = fixture(), out = await crew.crewRuntime()({ cwd: f.sub, home: fs.mkdtempSync(path.join(os.tmpdir(), 'tw-nohome-')), needles: LINES });
   assert.equal(out.linked, 'none'); assert.ok(out.tasks.every((t) => !t.mentioned));
+});
+
+test('screen lines become needles: real sentences only, never the CLI chrome', () => {
+  const backend = { snapshot: { sessions: [{ name: 's', lines: ['  Chế độ tự gộp đã đặt trên MR #170 sẽ chạy ngay khi pipeline xanh.', '✻ Sautéed for 4m 30s · done 7:21 PM · 2 shells still running', '──────────────', '  ⏵⏵ auto mode on (shift+tab to cycle)', 'short', '  ❯ ● until [ -s /tmp/claude-0/x ]   running'] }] } };
+  assert.deepEqual(crew.needlesOf(backend, 's'), ['Chế độ tự gộp đã đặt trên MR #170 sẽ chạy ngay khi pipeline xanh.']);
+  assert.deepEqual(crew.needlesOf(backend, 'nope'), []);
 });
