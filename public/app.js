@@ -279,14 +279,49 @@
     });
     if (active && active.isConnected && selection) { active.focus({ preventScroll: true }); active.setSelectionRange(selection[0], selection[1]); }
   }
+  // Tabs can be closed (hidden). The session itself is untouched: it stays in the sidebar and overview.
+  var tabHide = window.TabHide ? window.TabHide.create((function () { try { return window.localStorage; } catch (e) { return { getItem: function () { return null; }, setItem: function () {} }; } })()) : null;
+  function tabKey(x) { return x.v.id + '/' + x.s.name; }
+  function closeTab(x) {
+    if (!tabHide) return;
+    var list = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
+    var wasCurrent = cur && cur.id === x.v.id && cur.name === x.s.name, next = list[i + 1] || list[i - 1];
+    tabHide.hide(tabKey(x));
+    if (wasCurrent && next && next !== x) { cur = { id: next.v.id, name: next.s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
+    renderTabs(); renderDetail(); renderBar();
+    sayUndo('Đã đóng tab ' + x.s.name + '. Phiên vẫn chạy.', 'Hoàn tác', function () { tabHide.show(tabKey(x)); renderTabs(); }, 4500);
+  }
+  function hiddenItems() { return tabHide ? vis().filter(function (y) { return tabHide.isHidden(tabKey(y)); }) : []; }
   function renderTabs() {
     var box = $('tabs'); box.textContent = '';
-    vis().forEach(function (x) {
+    // Only forget a hidden tab once its host is loaded, online and really no longer has that session.
+    if (tabHide) tabHide.prune(function (k) { var id = k.split('/')[0], v = srv(id); return !v || !v.on || v.sessions.some(function (s) { return id + '/' + s.name === k; }); });
+    vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
       b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name); band(x.v, x.s, b);
+      if (tabHide) {
+        var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', 'Đóng tab ' + x.s.name); close.title = 'Đóng tab (phiên vẫn chạy)';
+        close.onclick = function (e) { e.stopPropagation(); closeTab(x); }; b.append(close);
+        b.onauxclick = function (e) { if (e.button === 1) { e.preventDefault(); closeTab(x); } };
+      }
       b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
     });
+    var hid = hiddenItems();
+    if (hid.length) {
+      var waits = hid.filter(function (y) { return y.s.state === 'wait'; }).length;
+      var more = el('button', 'tab tab-more' + (waits ? ' wait' : ''), '↩ Tab đã đóng (' + hid.length + ')' + (waits ? ' · ' + waits + ' chờ bạn' : ''));
+      more.setAttribute('aria-haspopup', 'menu'); more.onclick = function (e) { e.stopPropagation(); tabMenu(more, hid); }; box.append(more);
+    }
+  }
+  function tabMenu(anchor, hid) {
+    var old = document.querySelector('.tab-menu'); if (old) { old.remove(); return; }
+    var menu = el('div', 'tab-menu'); menu.setAttribute('role', 'menu');
+    hid.forEach(function (y) { var it = el('button', 'tab-menu-item'); it.setAttribute('role', 'menuitem'); it.innerHTML = pet(petFor(y.v, y.s), y.s.state); it.append(y.s.name + (y.s.state === 'wait' ? ' · chờ bạn' : '')); it.onclick = function () { menu.remove(); tabHide.show(tabKey(y)); renderTabs(); }; menu.append(it); });
+    var all = el('button', 'tab-menu-item', 'Mở lại tất cả'); all.setAttribute('role', 'menuitem'); all.onclick = function () { menu.remove(); tabHide.showAll(); renderTabs(); }; menu.append(all);
+    var r = anchor.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(r.left, innerWidth - 240)) + 'px'; menu.style.top = r.bottom + 4 + 'px';
+    document.body.append(menu);
+    setTimeout(function () { document.addEventListener('click', function close() { menu.remove(); document.removeEventListener('click', close); }); }, 0);
   }
   var detailSignature = '';
   function renderDetail() {
@@ -325,7 +360,7 @@
     ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'focus'); });
     render();
     if (v === 'focus') {
-      if (!curItem()) { var l = vis()[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
+      if (!curItem()) { var all = vis(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
       ensureTerm(); connectTerm(); if (panes.length) focusPane(focusedPane, true);
     }
   }
@@ -337,6 +372,12 @@
   function say(t, good, ms, floating) {
     var b = $('banner'); b.textContent = t; b.className = 'show' + (good ? ' good' : '') + (floating ? ' text-hint' : '');
     if (ms) setTimeout(function () { if (b.textContent === t) b.className = ''; }, ms);
+  }
+  // Same banner as say(), with one action button (used by "close tab").
+  function sayUndo(t, label, run, ms) {
+    var b = $('banner'); b.textContent = ''; b.append(document.createTextNode(t + ' '));
+    var btn = el('button', 'btn', label); btn.type = 'button'; btn.onclick = function () { run(); b.className = ''; }; b.append(btn); b.className = 'show good';
+    setTimeout(function () { if (b.contains(btn)) b.className = ''; }, ms || 4500);
   }
   var viewControls = window.ViewControls({ document: document, window: window, navigator: navigator,
     get storage() { return localStorage; }, app: $('app'), panes: function () { return panes; }, composing: terminalComposing,
@@ -535,7 +576,7 @@
     paneCount = n; focusedPane = Math.min(focusedPane, n - 1); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one';
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
-  function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
+  function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   function detach() { if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say('Đã rời ' + n + '. Việc vẫn chạy.', true, 2800); setView('over'); }
