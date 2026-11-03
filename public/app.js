@@ -159,7 +159,7 @@
   function closeCrew() { crewSelection = null; crewGeneration++; $('crew-panel').hidden = true; }
   function openCrew(v, w) {
     crewGeneration++; crewSelection = { id: v.id, task: w.task, track: w.track }; crewPaused = false; crewFollow = true;
-    $('crew-title').textContent = $('crew-title').title = w.task + ' / ' + w.track; $('crew-output').textContent = (w.lines || []).join('\n');
+    $('crew-title').title = w.task + ' / ' + w.track; $('crew-title').textContent = w.track + ' · ' + w.task; // track first: the long task name is what gets cut off $('crew-output').textContent = (w.lines || []).join('\n');
     $('crew-panel').hidden = false; $('crew-pause').textContent = 'Tạm dừng'; pollCrew();
   }
   function pollCrew() {
