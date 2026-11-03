@@ -597,13 +597,6 @@ async function api(req, res, url) {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
     res.end(tokenCache.get([...remotes.values()], mergePrefs(vault.data.prefs).aiAccounts, { zone })); return;
   }
-  // Config folders that exist on one machine (~/.claude, ~/.claude-*, ~/.codex) with the account e-mail, for the folder picker.
-  if (p === '/api/ai-folders' && m === 'GET') {
-    const r = remotes.get(url.searchParams.get('host') || '');
-    if (!r || !r.ready || r.mode === 'powershell') { send(res, 200, { folders: [] }); return; }
-    const found = await discoverUsage([r]).catch(() => []);
-    send(res, 200, { folders: found.map((f) => ({ tool: f.tool, directory: f.directory, email: f.email || '' })) }); return;
-  }
   if (p === '/api/usage' && m === 'GET') {
     const zone = url.searchParams.get('zone') || 'UTC';
     try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); validRange(url.searchParams.get('from'), url.searchParams.get('to')); }

@@ -10,7 +10,7 @@
   var servers = [], scope = 'all', view = 'over', cur = null, online = true, signature = '', pollTimer = null, tokenTimer = null, firstState = true;
   var cardRefs = {}, delTarget = null, passTarget = null, killTarget = null;
   var rebootTarget = null, rebootBusy = false;
-  var dirServer = '', dirCurrent = null, dirRequest = 0;
+  var dirServer = '', dirCurrent = null, dirRequest = 0, dirPick = null;
   var panes = [], focusedPane = 0, paneCount = 1, pendingPaneWidth = null, pendingSplit = null;
   var prefs = { limits: { cpu: 95, ram: 90, disk: 90 }, templates: [], commands: [], recentDirs: [] };
   var query = '', filter = 'all', browserOn = false, waitStates = null, restoreNotes = {};
@@ -27,7 +27,7 @@
         });
       });
   }
-  var tokens = window.TokenUI({api:api,view:setView,scope:function(){return scope;},prefs:function(){return prefs;},servers:function(){return servers;},save:savePrefs,updated:renderSessionTokens});
+  var tokens = window.TokenUI({api:api,view:setView,scope:function(){return scope;},prefs:function(){return prefs;},servers:function(){return servers;},save:savePrefs,updated:renderSessionTokens,browse:function(hostId,start,pick){browseDir(hostId,start,pick);}});
   function renderSessionTokens() {
   }
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
@@ -965,15 +965,17 @@
 
   $('n-cancel').onclick = function () { $('dlg-new').close(); };
   $('n-srv').onchange = function () { $('n-dir').value = ''; };
-  $('n-browse').onclick = function () {
-    dirServer = $('n-srv').value; $('dlg-dir').showModal(); loadDirs($('n-dir').value);
-  };
+  // The folder browser is shared: "Phiên mới" fills #n-dir, other dialogs pass a callback that receives the chosen path.
+  function browseDir(hostId, start, pick) { dirServer = hostId; dirPick = pick || null; $('dlg-dir').showModal(); loadDirs(start || ''); }
+  $('n-browse').onclick = function () { browseDir($('n-srv').value, $('n-dir').value, null); };
   $('dir-up').onclick = function () { if (dirCurrent && dirCurrent.parent !== null) loadDirs(dirCurrent.parent); };
   $('dir-cancel').onclick = function () { $('dlg-dir').close(); };
-  $('dlg-dir').onclose = function () { dirRequest++; dirCurrent = null; };
+  $('dlg-dir').onclose = function () { dirRequest++; dirCurrent = null; dirPick = null; };
   $('dir-ok').onclick = function () {
     if (!dirCurrent) return;
-    $('n-dir').value = dirCurrent.path; $('dlg-dir').close(); $('n-dir').focus();
+    var chosen = dirCurrent.path, pick = dirPick; dirPick = null; $('dlg-dir').close();
+    if (pick) { pick(chosen); return; }
+    $('n-dir').value = chosen; $('n-dir').focus();
   };
   $('s-cancel').onclick = function () { $('dlg-srv').close(); };
   $('p-cancel').onclick = function () { $('dlg-pass').close(); };

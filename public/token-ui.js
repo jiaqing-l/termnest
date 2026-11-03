@@ -134,23 +134,13 @@ window.TokenUI = function (hooks) {
       const row=node('fieldset');const values={};
       const fields=[['hostId','Máy',hooks.servers().map(v=>[v.id,v.name])],['tool','AI',[['claude','Claude'],['codex','Codex']]],['directory','Thư mục cấu hình'],['nickname','Tên gợi nhớ'],['threshold','Ngưỡng token/ngày']];
       fields.forEach(([key,label,options])=>{const l=node('label','',label),input=node(options?'select':'input');if(options)options.forEach(([value,text])=>{const o=node('option','',text);o.value=value;input.append(o);});input.value=a[key]??'';if(key==='threshold'){input.type='number';input.min='1';input.step='1';}if(key==='nickname')input.maxLength=40;if(key==='directory')input.placeholder='~/.claude-work';l.append(input);row.append(l);values[key]=input;});
-      // Folders are picked from what exists on the chosen machine; typing a path stays possible under "Khác".
-      const known=(selected&&selected.dirs)||{},dirInput=values.directory,pick=node('select'),OTHER='\u0000other';
-      dirInput.parentNode.insertBefore(pick,dirInput);
-      function fill(folders){
-        const host=values.hostId.value,tool=values.tool.value,current=dirInput.value;
-        const list=folders.filter(f=>f.tool===tool).map(f=>({dir:f.directory,text:f.directory+(f.email?'  ·  '+f.email:'')}));
-        if(known[host]&&!list.some(x=>x.dir===known[host]))list.unshift({dir:known[host],text:known[host]});
-        if(current&&!list.some(x=>x.dir===current)&&current!=='~/.'+tool)list.push({dir:current,text:current});
-        pick.textContent='';list.forEach(x=>{const o=node('option','',x.text);o.value=x.dir;pick.append(o);});
-        const other=node('option','','Khác (nhập đường dẫn)…');other.value=OTHER;pick.append(other);
-        const want=list.some(x=>x.dir===current)?current:(known[host]||(list[0]&&list[0].dir)||OTHER);
-        pick.value=want;if(want!==OTHER)dirInput.value=want;dirInput.hidden=want!==OTHER;
-      }
-      function load(){pick.disabled=true;hooks.api('GET','/api/ai-folders?host='+encodeURIComponent(values.hostId.value)).then(r=>fill(r.folders||[])).catch(()=>fill([])).finally(()=>{pick.disabled=false;});}
-      pick.onchange=()=>{if(pick.value===OTHER){dirInput.hidden=false;dirInput.focus();}else{dirInput.value=pick.value;dirInput.hidden=true;}};
-      values.hostId.onchange=()=>{dirInput.value=known[values.hostId.value]||'';load();};values.tool.onchange=()=>{dirInput.value=known[values.hostId.value]&&values.tool.value===a.tool?known[values.hostId.value]:'';load();};
-      dirInput.hidden=true;load();
+      // Same folder browser as "Phiên mới", opened on the machine picked in this row; a path can still be typed.
+      const known=(selected&&selected.dirs)||{},dirInput=values.directory,browse=node('button','btn','Chọn');browse.type='button';
+      const wrap=node('div','dir-input');dirInput.parentNode.insertBefore(wrap,dirInput);wrap.append(dirInput,browse);
+      browse.onclick=()=>hooks.browse(values.hostId.value,dirInput.value.startsWith('/')?dirInput.value:'',p=>{dirInput.value=p;});
+      // The same account can live in a different folder on each machine: switching machine shows that machine's folder.
+      values.hostId.onchange=()=>{dirInput.value=known[values.hostId.value]||'';};
+      values.tool.onchange=()=>{if(!known[values.hostId.value])dirInput.value='';};
       const remove=node('button','btn','Gỡ');remove.type='button';remove.onclick=()=>row.remove();row.append(remove);row.read=()=>({id:a.id,...Object.fromEntries(Object.entries(values).map(([k,v])=>[k,k==='threshold'?(v.value?Number(v.value):null):v.value]))});list.append(row);
     }
     configs.forEach(add);form.append(list);
