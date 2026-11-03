@@ -123,8 +123,8 @@ async function main() {
   const apiText=await evaluate("fetch('/api/tokens').then(r=>r.text())");
   assert.ok(!/SECRET-|id_token|refresh_token|access_token/.test(apiText));
   await evaluate("document.querySelector('#tab-over').click();document.querySelector('.card[role=button]').click()");
-  await until("document.querySelector('.token-detail')!==null");
-  assert.ok(await evaluate("document.querySelector('.token-detail').textContent.includes('Token phiên này')"));
+  await until("document.querySelector('.who')!==null");
+  assert.equal(await evaluate("document.querySelector('.token-detail')"), null);
   // Scope to local (zero sessions): house pets keep the yard populated.
   await evaluate("document.querySelector('#srv-sel').value='"+LOCAL_ID+"';document.querySelector('#srv-sel').dispatchEvent(new Event('change'))");
   await until("document.querySelectorAll('.yard-pet[data-key^=house]').length===3");
