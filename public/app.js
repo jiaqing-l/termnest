@@ -139,6 +139,7 @@
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
     var f = el('div', 'card-foot'); band(v,s,f);f.append(ref.foot, ref.path);
     c.append(h, ref.mini, f); fillCard(ref, s); cardRefs[v.id + '/' + s.name] = ref;
+    if (window.TW) window.TW.decorateCard(c, v, s);
     c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.onkeydown = function (e) { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openSession(v.id, s.name); } };
     addReply(c, ref, v, s);
@@ -249,6 +250,7 @@
       var sec = el('section', 'srv-sec'), h = el('div', 'srv-head');
       var t = el('div', 't'); t.append(el('b', '', v.name), el('span', 'mono', (v.local ? v.hostname + ' · không cần SSH' : v.user + '@' + v.host)));
       h.append(el('span', 'flag-d ' + (v.on ? 'on' : 'off')), t);
+      if (window.TW) window.TW.decorateServer(h, v);
 
       if (!v.local) { var rm = el('button', 'btn', 'Gỡ'); rm.setAttribute('aria-label', 'Gỡ ' + (v.local ? 'Máy này · ' + v.hostname : v.user + '@' + v.name)); rm.onclick = function () { delDlg(v); }; h.append(rm); }
       sec.append(h); addLost(sec, v);
@@ -308,7 +310,7 @@
     var timeline = el('ol');
     (x.s.diary || []).slice().reverse().forEach(function (e) { timeline.append(el('li', '', new Date(e.at).toLocaleString('vi-VN') + ' · ' + (labels[e.type] || e.type) + (e.detail ? ' · ' + e.detail : ''))); });
     journal.append(timeline); if (!timeline.children.length) journal.append(el('p', '', 'Chưa có sự kiện quan sát.'));
-    box.append(journal, acts); petSync();
+    box.append(journal, acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
   }
   function renderBar() {
     var x = curItem();
@@ -317,7 +319,7 @@
     $('bar-s').textContent = '[' + x.s.name + ']'; $('bar-h').textContent = x.v.user + '@' + x.v.name; $('m-title').textContent = x.s.name;
   }
   function setView(v) {
-    view = v; tokens.setView(v); $('app').classList.toggle('in-focus', v === 'focus');
+    view = v; tokens.setView(v); if (window.TW) window.TW.setView(v); $('app').classList.toggle('in-focus', v === 'focus');
     $('v-over').classList.toggle('on', v === 'over'); $('v-focus').classList.toggle('on', v === 'focus');
     ['tab-over', 'nav-over'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'over'); });
     ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'focus'); });
@@ -967,6 +969,7 @@
   function refresh(force) {
     return api('GET', '/api/state').then(function (st) {
       servers = st.servers; renderRanking(st.daily);
+      if (window.TW) window.TW.emit('state', { servers: servers, scope: scope, current: cur });
       try { notifyWaits(); } catch (e) { /* optional notification/pet logic */ }
       petSync();
       var ended = cur && srv(cur.id) && srv(cur.id).on && !curItem();
@@ -1010,7 +1013,7 @@
     $('login').hidden = false; $('login-pass').value = '';
     api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
   }
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); }); }
+  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load(); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });

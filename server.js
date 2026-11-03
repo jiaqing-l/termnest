@@ -14,6 +14,7 @@ const { UsageService, validRange } = require('./lib/usage');
 const diary = require('./lib/diary');
 const { scrollScript, parseScrollState } = require('./lib/scroll');
 const { injectReportLinks } = require('./lib/report-links');
+const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
@@ -74,6 +75,7 @@ const STATIC = {
   '/file-viewer.js': [path.join(PUB, 'file-viewer.js'), 'text/javascript; charset=utf-8'],
   '/token-ui.js': [path.join(PUB, 'token-ui.js'), 'text/javascript; charset=utf-8'],
   '/usage-ui.js': [path.join(PUB, 'usage-ui.js'), 'text/javascript; charset=utf-8'],
+  '/features-host.js': [path.join(PUB, 'features-host.js'), 'text/javascript; charset=utf-8'],
   '/app.js': [path.join(PUB, 'app.js'), 'text/javascript; charset=utf-8'],
   '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
   '/terminal-keys.js': [path.join(PUB, 'terminal-keys.js'), 'text/javascript; charset=utf-8'],
@@ -180,6 +182,7 @@ function onPoll(r, snap, sessionVersion = r.sessionVersion) {
   }
   saveVault();
   updateLost(r);
+  if (typeof features !== 'undefined') features.emitSnapshot(r, snap);
   if (r.cfg.local && vault.data.prefs.autoRestoreLocal && r.lost.length && !r.restoring) {
     // One attempt per boot; failures stay visible for manual retry.
     if (r.restoreBoot !== snap.bootId) {
@@ -558,6 +561,7 @@ async function api(req, res, url) {
   }
   if (p === '/api/login' && m === 'POST') { await login(req, res); return; }
   if (!authed(req)) { fail(res, 401, 'Hãy đăng nhập lại.'); return; }
+  if (features.handles(p)) { await features.handle(req, res, url); return; }
   if (p === '/api/quit' && m === 'POST') {
     res.once('finish', drain);
     send(res, 200, { ok: true }); return;
@@ -657,6 +661,12 @@ async function api(req, res, url) {
 }
 
 let activeRequests = 0;
+// Drop-in features (lib/features/*.js + public/features/*): see lib/features.js.
+const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'), publicDir: path.join(PUB, 'features'),
+  deps: { remotes: () => remotes, backendOf: (id) => { const r = remotes.get(id); return r?.ready ? r : null; }, send, fail, readJson, shq,
+    vault: () => vault, save: () => saveVault() } });
+features.load();
+
 const server = http.createServer(async (req, res) => {
   if (!hostOk(req)) { res.writeHead(403); res.end(); return; }
   const url = new URL(req.url, 'http://localhost');
@@ -675,7 +685,7 @@ const server = http.createServer(async (req, res) => {
     } finally { activeRequests--; }
     return;
   }
-  const entry = STATIC[url.pathname];
+  const entry = STATIC[url.pathname] || (req.method === 'GET' ? features.staticFile(url.pathname) : null);
   if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
   fs.readFile(entry[0], (err, buf) => {
     if (err) { res.writeHead(500); res.end(); return; }
