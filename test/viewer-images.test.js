@@ -36,8 +36,10 @@ test('the signature decides, not the extension', async () => {
 test('images outside the session directory are still refused', async () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-out-')); fs.writeFileSync(path.join(outside, 'o.png'), PNG);
   assert.match((await read({ cwd: dir, path: path.join(outside, 'o.png') })).error, /ngoài thư mục/);
-  fs.symlinkSync(path.join(outside, 'o.png'), path.join(dir, 'link.png'));
-  assert.match((await read({ cwd: dir, path: 'link.png' })).error, /ngoài thư mục/);
+  // Creating a symlink needs extra privilege on Windows; the outside-path check above still runs everywhere.
+  let linked = false;
+  try { fs.symlinkSync(path.join(outside, 'o.png'), path.join(dir, 'link.png')); linked = true; } catch { /* no symlink permission */ }
+  if (linked) assert.match((await read({ cwd: dir, path: 'link.png' })).error, /ngoài thư mục/);
 });
 
 test('terminal paths ending in an image extension become links', () => {
