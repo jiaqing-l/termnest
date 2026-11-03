@@ -29,8 +29,6 @@
   }
   var tokens = window.TokenUI({api:api,view:setView,scope:function(){return scope;},prefs:function(){return prefs;},servers:function(){return servers;},save:savePrefs,updated:renderSessionTokens});
   function renderSessionTokens() {
-    Object.keys(cardRefs).forEach(function(key){var ref=cardRefs[key], split=key.indexOf('/'), usage=tokens.session(key.slice(0,split),key.slice(split+1));if(ref.token){ref.token.textContent='Token '+tokens.fmt(usage?usage.today:null);ref.token.title=usage?usage.email:'Không đọc được: chưa ghép được log với phiên';}});
-    if(view==='focus')renderDetail();
   }
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function petOf(name) { return /claude/i.test(name) ? 'cat' : ORDER[hash(name) % ORDER.length]; }
@@ -139,7 +137,7 @@
     var h = el('div', 'card-head'); h.append(petSlot(v, s));
     var t = el('div', 't'), sub = el('span', 's', subOf(s)); t.append(el('span', 'n', s.name), sub); h.append(t, el('span', 'pill ' + s.state, LABEL[s.state]));
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
-    var f = el('div', 'card-foot'); ref.token=el('span','token-chip'); f.append(ref.token);band(v,s,f);f.append(ref.foot, ref.path);
+    var f = el('div', 'card-foot'); band(v,s,f);f.append(ref.foot, ref.path);
     c.append(h, ref.mini, f); fillCard(ref, s); cardRefs[v.id + '/' + s.name] = ref;
     c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.onkeydown = function (e) { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openSession(v.id, s.name); } };
@@ -294,7 +292,6 @@
     var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], owned(x.v,x.s).map(function(w) { return [w.task,w.track,w.owner,w.finishedAt,w.result,w.resultAt,span(w.elapsed),w.lines]; }), prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
     if (nextSignature === detailSignature) return;
     detailSignature = nextSignature; box.textContent = ''; if (!x) return;
-    var usage=tokens.session(x.v.id,x.s.name), tokenBox=el('section','token-detail');tokenBox.append(el('h3','','Token phiên này'),el('b','',tokens.fmt(usage?usage.total:null)),el('small','',usage?tokens.fmt(usage.today)+' hôm nay · '+usage.email:'Chưa ghép được log với phiên này'));box.append(tokenBox);
     renderWorkers(x.v, box, x.s);
     var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s));
     w.append(el('b', '', x.s.name), el('span', 'pill ' + x.s.state, LABEL[x.s.state]));
