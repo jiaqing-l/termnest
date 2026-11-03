@@ -197,7 +197,7 @@
 <dialog id="dlg-pet"><form id="form-pet" class="f">
   <div class="dlg-h"><h2>Thú cưng của phiên</h2><button type="button" class="btn" data-close>Đóng</button></div>
   <label>Tên thú cưng<input id="pet-nickname" maxlength="40" placeholder="Dùng tên phiên"></label>
-  <label>Chọn thú<select id="pet-kind"><option value="">Tự động</option value="cat">Mèo</option><option value="fox">Cáo</option><option value="bunny">Thỏ</option><option value="owl">Cú</option><option value="penguin">Cánh cụt</option><option value="frog">Ếch</option></select></label>
+  <div class="lab-s">Chọn thú</div><input type="hidden" id="pet-kind" value=""><div id="pet-pick" class="pet-pick" role="group" aria-label="Chọn thú cưng"></div>
   <label>Mũ theo mùa<select id="pet-hat"><option value="">Không mũ</option><option value="flower">Hoa xuân</option><option value="summer">Mũ hè</option><option value="pumpkin">Bí ngô</option><option value="winter">Mũ đông</option></select></label>
   <p id="pet-error" role="status"></p><button class="btn primary">Lưu</button>
 </form></dialog>

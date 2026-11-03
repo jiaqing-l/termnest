@@ -97,7 +97,7 @@
       const art = s.state + '/' + action + '/' + prop + '/' + offline + '/' + choice.kind + '/' + choice.hat;
       if (node.dataset.art !== art) {
         node.dataset.art = art;
-        node.firstChild.innerHTML = window.PetArt.pet(window.PetArt.ORDER.includes(choice.kind) ? choice.kind : kind(s.name), ['soccer', 'fish', 'walk'].includes(action) ? 'run' : s.state);
+        node.firstChild.innerHTML = window.PetArt.pet((window.PetArt.PETS ? window.PetArt.PETS[choice.kind] : window.PetArt.ORDER.includes(choice.kind)) ? choice.kind : kind(s.name), ['soccer', 'fish', 'walk'].includes(action) ? 'run' : s.state);
         node.firstChild.append(element('span', 'pet-prop', action === 'hatch' ? '🥚' : prop));
         if (choice.hat) node.firstChild.append(element('span', 'seasonal-hat', { flower: '🌸', summer: '👒', pumpkin: '🎃', winter: '🎅' }[choice.hat] || ''));
         if (action === 'finish') node.firstChild.append(element('span', 'confetti', '✦ · ✧ · ✦'));

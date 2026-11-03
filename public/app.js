@@ -32,7 +32,7 @@
   }
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
   function petOf(name) { return /claude/i.test(name) ? 'cat' : ORDER[hash(name) % ORDER.length]; }
-  function petFor(v, s) { var choice = (prefs.pets || {})[v.id + '/' + s.name]; return choice && ORDER.indexOf(choice.kind) >= 0 ? choice.kind : petOf(s.name); }
+  function petFor(v, s) { var choice = (prefs.pets || {})[v.id + '/' + s.name]; return choice && PETS[choice.kind] ? choice.kind : petOf(s.name); }
   function color(s) { return PETS[petOf(s.name)].c; }
   function srv(id) { return servers.filter(function (v) { return v.id === id; })[0]; }
   function subOf(s) { return s.state === 'wait' ? 'Chờ bạn' : s.state === 'idle' ? 'Đang nghỉ' : 'Đang chạy ' + s.cmd; }
@@ -719,9 +719,25 @@
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
   var editingPet = null;
+  // Grid picker: automatic, then every registered pet, grouped. The hidden #pet-kind keeps the form code unchanged.
+  function drawPetPick() {
+    var box = $('pet-pick'); box.textContent = ''; var current = $('pet-kind').value;
+    function item(kind, label, svg) {
+      var b = el('button', 'pp'); b.type = 'button'; b.setAttribute('aria-pressed', String(current === kind)); b.title = label;
+      var v = el('span', 'pv'); v.innerHTML = svg; b.append(v, el('small', '', label));
+      b.onclick = function () { $('pet-kind').value = kind; drawPetPick(); }; return b;
+    }
+    var auto = el('div', 'pp-row'); auto.append(item('', 'Tự động', '<span class="pp-auto">✨</span>')); box.append(auto);
+    var groups = [['animals', 'Thú cưng'], ['characters', 'Nhân vật hoạt hình']];
+    groups.forEach(function (g) {
+      var list = ((art.GROUPS || {})[g[0]] || []).filter(function (k) { return PETS[k]; }); if (!list.length) return;
+      box.append(el('div', 'pp-title', g[1]));
+      var row = el('div', 'pp-row'); list.forEach(function (k) { row.append(item(k, (art.LABELS || {})[k] || k, pet(k, 'run'))); }); box.append(row);
+    });
+  }
   function editPet(x) {
     editingPet = x.v.id + '/' + x.s.name; var choice = (prefs.pets || {})[editingPet] || {};
-    $('pet-nickname').value = choice.name || ''; $('pet-kind').value = choice.kind || ''; $('pet-hat').value = choice.hat || '';
+    $('pet-nickname').value = choice.name || ''; $('pet-kind').value = choice.kind && PETS[choice.kind] ? choice.kind : ''; $('pet-hat').value = choice.hat || ''; drawPetPick();
     $('pet-error').textContent = ''; $('dlg-pet').showModal();
   }
   $('form-pet').onsubmit = function (e) {
@@ -1074,7 +1090,7 @@
     if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
     if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
   })();
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load(); } }); }
+  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });
