@@ -708,3 +708,9 @@ body{font-size:13px}.top{padding:7px 14px;gap:10px}.brand{font-size:16px}.brand 
 .pp small{font-size:10.5px;color:var(--fg-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .token-config [hidden]{display:none}
 .viewer-candidates{display:flex;flex-direction:column;gap:6px;padding:10px 16px;min-width:0}.viewer-candidates .btn{justify-content:flex-start;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.viewer-path{display:flex;gap:8px;padding:10px 16px;min-width:0;flex-wrap:wrap}.viewer-browser{display:flex;flex-direction:column;gap:6px;padding:10px 16px;min-width:0}.viewer-entry{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;min-width:0;max-width:100%}.viewer-entry-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.viewer-entry small{flex:none;color:var(--fg-3)}
+/* Session cards in one overview grid share one height; the log/body grows and the footer (and reply form) stays at the bottom. */
+#v-over .grid{align-items:stretch;grid-auto-rows:1fr}
+#v-over .grid>.card{display:flex;flex-direction:column;min-height:224px}
+#v-over .grid>.card .mini{flex:1 1 112px;height:auto;min-height:112px}
+#v-over .grid>.card .card-foot{margin-top:auto}
+#app.compact #v-over .grid{grid-auto-rows:auto}#app.compact #v-over .grid>.card{min-height:0}
