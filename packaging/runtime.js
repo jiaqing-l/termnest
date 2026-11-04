@@ -51,14 +51,15 @@ function extractArchive(file, destination, platform = process.platform, env = pr
 async function main() {
   const destination = path.resolve(process.argv[2]);
   const platform = process.argv[3] || process.platform;
-  if (!['darwin', 'win32'].includes(platform)) throw new Error('Unsupported runtime platform');
+  if (!['darwin', 'win32', 'linux'].includes(platform)) throw new Error('Unsupported runtime platform');
   fs.mkdirSync(destination, { recursive: true });
   const temp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'tmux-node-'));
   try {
     const response = await fetch(`https://nodejs.org/dist/v${VERSION}/SHASUMS256.txt`);
     if (!response.ok) throw new Error('Could not download Node checksums');
     const sums = await response.text();
-    for (const arch of platform === 'win32' ? ['x64'] : ['arm64', 'x64']) {
+    // Linux ships x64 only: the .deb targets Ubuntu desktop on Intel/AMD.
+    for (const arch of platform === 'darwin' ? ['arm64', 'x64'] : ['x64']) {
       const base = `node-v${VERSION}-${platform === 'win32' ? 'win' : platform}-${arch}`;
       const file = await download(base + (platform === 'win32' ? '.zip' : '.tar.gz'), temp, sums);
       extractArchive(file, temp);
