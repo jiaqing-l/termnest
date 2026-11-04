@@ -9,8 +9,7 @@ const { spawn } = require('node:child_process');
 function dataDir(platform = process.platform, env = process.env, home = os.homedir(), io = fs) {
   if (env.TW_DATA) return path.resolve(env.TW_DATA);
   const parent = platform === 'win32' ? env.APPDATA || path.join(home, 'AppData', 'Roaming')
-    : platform === 'darwin' ? path.join(home, 'Library', 'Application Support')
-    : platform === 'linux' ? env.XDG_DATA_HOME || path.join(home, '.local', 'share') : null;
+    : platform === 'darwin' ? path.join(home, 'Library', 'Application Support') : null;
   if (!parent) return path.join(home, '.tmux-web');
   const target = path.join(parent, 'Termnest');
   const legacy = path.join(parent, 'Tmux Dev');

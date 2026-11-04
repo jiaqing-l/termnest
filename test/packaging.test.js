@@ -75,8 +75,6 @@ test('launcher uses per-user platform paths and honors an explicit data override
   assert.equal(dataDir('win32', {}, '/fixture/user'), path.join('/fixture/user', 'AppData', 'Roaming', 'Termnest'));
   assert.equal(dataDir('darwin', {}, '/fixture/user'), path.join('/fixture/user', 'Library', 'Application Support', 'Termnest'));
   assert.equal(dataDir('darwin', { TW_DATA: '/custom' }, '/fixture/user'), path.resolve('/custom'));
-  assert.equal(dataDir('linux', {}, '/fixture/user'), path.join('/fixture/user', '.local', 'share', 'Termnest'));
-  assert.equal(dataDir('linux', { XDG_DATA_HOME: '/xdg' }, '/fixture/user'), path.join('/xdg', 'Termnest'));
 });
 test('assembly prunes development/native build files but preserves runtime assets and helpers', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'tmux-payload-test-'));
