@@ -12,7 +12,7 @@ function checkPayload(stage, artifact) {
   }
   walk(stage);
   if (artifact) {
-    const limits = { 'Termnest-Setup.exe': 60, 'Termnest-arm64.dmg': 110, 'Termnest-x64.dmg': 110 };
+    const limits = { 'Termnest-Setup.exe': 60, 'Termnest-arm64.dmg': 110, 'Termnest-x64.dmg': 110, 'Termnest-amd64.deb': 110 };
     const limit = limits[path.basename(artifact)];
     if (!limit) throw new Error('Unknown artifact');
     const bytes = fs.statSync(artifact).size;
