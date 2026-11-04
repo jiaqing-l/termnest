@@ -142,20 +142,37 @@
      if(preview.length<file.text.length){const note=doc.createElement('p');note.textContent='Bản xem trước văn bản tối đa 200.000 ký tự / 2.000 dòng. Tải xuống để xem toàn bộ tệp (tối đa 5 MB).';body.append(note);}
      content.textContent=preview;body.append(content);
     }
-   }catch(e){if(request===generation){body.textContent=e.message;reload.disabled=false;pathForm(host,session,path);}}
+   }catch(e){if(request===generation){body.textContent=e.message;reload.disabled=false;pathForm(host,session);}}
   }
   // Not found in the session's folder: list same-named files found below it and let the path be edited.
-  // Editable path so a wrong or partial path can be fixed and opened again without going back to the terminal.
-  function pathForm(host,session,path){
-   const form=doc.createElement('form');form.className='viewer-path';const input=doc.createElement('input');input.value=path;input.setAttribute('aria-label','Đường dẫn tệp');
-   const go=doc.createElement('button');go.type='submit';go.className='btn primary';go.textContent='Mở đường dẫn này';form.append(input,go);
-   form.onsubmit=e=>{e.preventDefault();if(input.value.trim())open(host,session,input.value.trim());};body.append(form);
+  // No typed paths: a button opens a browser over the session's own folder (the only place the viewer can read from).
+  function pathForm(host,session){
+   const row=doc.createElement('div');row.className='viewer-path';
+   const go=doc.createElement('button');go.type='button';go.className='btn primary';go.textContent='Chọn tệp khác…';go.onclick=()=>showBrowser(host,session,'');
+   row.append(go);body.append(row);
+  }
+  function size(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
+  async function showBrowser(host,session,dir){
+   body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent='Đang đọc thư mục…';body.append(note);
+   try{
+    const q='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+(dir?'&path='+encodeURIComponent(dir):'');
+    const out=await api('GET','/api/features/browse/list?'+q);
+    body.textContent='';const head=doc.createElement('p');head.className='viewer-note';head.textContent='Chọn tệp để mở · thư mục của phiên'+(out.rel?'/'+out.rel:'');body.append(head);
+    const list=doc.createElement('div');list.className='viewer-browser';
+    const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);};
+    if(out.parent!==null)item('⬆','Lên một cấp','',()=>showBrowser(host,session,out.parent));
+    out.dirs.forEach(name=>item('📁',name,'',()=>showBrowser(host,session,out.path+sep+name)));
+    out.files.forEach(f=>item('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name)));
+    if(!out.dirs.length&&!out.files.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent='Thư mục này không có tệp xem được.';list.append(empty);}
+    if(out.truncated){const more=doc.createElement('p');more.className='viewer-note';more.textContent='Chỉ hiển thị 500 mục đầu tiên.';list.append(more);}
+    body.append(list);
+   }catch(e){body.textContent=e.message;pathForm(host,session);}
   }
   function showCandidates(file,host,session,path){
    body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent=file.error;body.append(note);
    const list=doc.createElement('div');list.className='viewer-candidates';
    file.candidates.forEach(c=>{const b=doc.createElement('button');b.type='button';b.className='btn';b.textContent=c;b.title=c;b.onclick=()=>open(host,session,c);list.append(b);});
-   body.append(list);pathForm(host,session,path);
+   body.append(list);pathForm(host,session);
   }
   function showImage(file,host,session){
    const bar=doc.createElement('div');bar.className='viewer-imgbar';
