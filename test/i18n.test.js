@@ -68,7 +68,7 @@ test('the language runtime picks the stored language in a browser and applies da
 
 test('the desktop splash words are generated from the language files and are up to date', () => {
   const { build } = require('../scripts/build-splash-locales');
-  assert.equal(fs.readFileSync(path.join(__dirname, '../desktop/ui/locales.js'), 'utf8'), build(), 'run: npm run build:splash');
+  assert.equal(fs.readFileSync(path.join(__dirname, '../desktop/ui/locales.js'), 'utf8').replace(/\r\n/g, '\n'), build(), 'run: npm run build:splash');   // a Windows checkout turns LF into CRLF
   const splash = fs.readFileSync(path.join(__dirname, '../desktop/ui/index.html'), 'utf8');
   for (const k of ['splash.opening', 'splash.first_run', 'html.tagline']) assert.match(splash, new RegExp('data-i18n="' + k.replace('.', '\\.') + '"'));
   assert.doesNotMatch(splash, /Every session|Đang mở/, 'no words hard-coded in the splash');
