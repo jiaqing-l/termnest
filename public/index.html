@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="vi">
+<html lang="vi" class="i18n-wait">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-<title>Termnest</title>
+<title>TERMNEST</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#13294b">
 <link rel="apple-touch-icon" href="/icon-180.png">
@@ -16,52 +16,53 @@
 <div id="stage"><div id="app">
   <div id="login">
     <div class="login-art">
-      <img class="login-lockup" src="/termnest-logo-oncolor.svg" alt="Termnest · by JIAQING">
-      <h1>Every session has a home.</h1>
-      <p>Quản lý phiên trên máy cá nhân và máy chủ SSH.</p>
+      <img class="login-lockup" src="/termnest-logo-oncolor.svg" alt="TERMNEST · by JIAQING">
+      <h1 data-i18n="html.tagline"></h1>
+      <p><span data-i18n="html.quan_ly_phien_tren_may"></span></p>
     </div>
     <div class="login-side">
-      <h2>Đăng nhập</h2>
+      <div class="login-lang lang-pick" data-lang-picker></div>
+      <h2><span data-i18n="html.dang_nhap"></span></h2>
       <form id="form-login" class="f" novalidate>
-        <label for="login-pass">Mật khẩu Termnest<input id="login-pass" type="password" autocomplete="current-password"></label>
+        <label for="login-pass"><span data-i18n="html.mat_khau_termnest"></span><input id="login-pass" type="password" autocomplete="current-password"></label>
         <div class="err" id="login-err"></div>
-        <button class="btn primary" type="submit">Đăng nhập</button>
+        <button class="btn primary" type="submit" data-i18n="html.dang_nhap"></button>
       </form>
       <div id="login-setup" hidden>
-        <div id="setup-hint"><p>Chưa có mật khẩu. Mở terminal trên máy chủ và chạy:</p>
+        <div id="setup-hint"><p><span data-i18n="html.chua_co_mat_khau_mo"></span></p>
         <pre class="cmd">cd termnest &amp;&amp; npm run set-password</pre>
-        <p class="hint">Xong rồi tải lại trang này.</p></div>
+        <p class="hint" data-i18n="html.xong_roi_tai_lai_trang"></p></div>
         <form id="form-setup" class="f" hidden>
-          <label for="setup-pass">Tạo mật khẩu (ít nhất 10 ký tự)<input id="setup-pass" type="password" minlength="10" required autocomplete="new-password"></label>
-          <label for="setup-confirm">Nhập lại mật khẩu<input id="setup-confirm" type="password" required autocomplete="new-password"></label>
+          <label for="setup-pass"><span data-i18n="html.tao_mat_khau_it_nhat"></span><input id="setup-pass" type="password" minlength="10" required autocomplete="new-password"></label>
+          <label for="setup-confirm"><span data-i18n="html.nhap_lai_mat_khau"></span><input id="setup-confirm" type="password" required autocomplete="new-password"></label>
           <div class="err" id="setup-err" role="status"></div>
-          <button class="btn primary" type="submit">Tạo mật khẩu</button>
+          <button class="btn primary" type="submit" data-i18n="html.tao_mat_khau"></button>
         </form>
       </div>
     </div>
   </div>
 
   <header class="top">
-    <div class="brand" id="brand" aria-label="Termnest · by JIAQING"><img class="brand-lockup brand-light" src="/termnest-logo.svg" alt=""><img class="brand-lockup brand-dark" src="/termnest-logo-dark.svg" alt=""><img class="brand-mark" src="/termnest-mark.svg" alt=""></div>
-    <select class="host" id="srv-sel" aria-label="Chọn máy chủ"></select>
+    <div class="brand" id="brand" aria-label="TERMNEST · by JIAQING"><img class="brand-lockup brand-light" src="/termnest-logo.svg" alt=""><img class="brand-lockup brand-dark" src="/termnest-logo-dark.svg" alt=""><img class="brand-mark" src="/termnest-mark.svg" alt=""></div>
+    <select class="host" id="srv-sel" data-i18n-attrs="aria-label:html.chon_may_chu"></select>
     <div class="right">
-      <button class="btn icon-btn" id="bell" aria-label="Cảnh báo" title="Cảnh báo"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg><span class="bell-n" id="bell-n" hidden></span></button>
-      <button class="btn icon-btn" id="set" aria-label="Cài đặt" title="Cài đặt"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
-      <button class="btn icon-btn" id="theme" aria-label="Đổi giao diện sáng tối" title="Đổi giao diện sáng tối"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
-      <button class="btn primary" id="btn-new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="lb">Phiên mới</span></button>
-      <button class="btn icon-btn" id="logout" aria-label="Đăng xuất" title="Đăng xuất"><svg class="i" viewBox="0 0 24 24"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/></svg></button>
+      <button class="btn icon-btn" id="bell" data-i18n-attrs="aria-label:html.canh_bao;title:html.canh_bao"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg><span class="bell-n" id="bell-n" hidden></span></button>
+      <button class="btn icon-btn" id="set" data-i18n-attrs="aria-label:html.cai_dat;title:html.cai_dat"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+      <button class="btn icon-btn" id="theme" data-i18n-attrs="aria-label:html.doi_giao_dien_sang_toi;title:html.doi_giao_dien_sang_toi"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
+      <button class="btn primary" id="btn-new"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="lb" data-i18n="app.phien_moi"></span></button>
+      <button class="btn icon-btn" id="logout" data-i18n-attrs="aria-label:html.dang_xuat;title:html.dang_xuat"><svg class="i" viewBox="0 0 24 24"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/></svg></button>
     </div>
   </header>
-  <button class="btn" id="fullscreen-exit" hidden title="Thoát toàn màn hình">Thoát toàn màn hình</button>
+  <button class="btn" id="fullscreen-exit" hidden data-i18n-attrs="title:viewcontrols.thoat_toan_man_hinh" data-i18n="viewcontrols.thoat_toan_man_hinh"></button>
   <div id="banner" role="status"></div>
   <div class="body">
-    <aside class="side" aria-label="Danh sách phiên">
+    <aside class="side" data-i18n-attrs="aria-label:html.danh_sach_phien">
       <div class="side-scroll" id="side"></div>
-      <div class="health" id="health" aria-label="Tài nguyên máy chủ"></div>
+      <div class="health" id="health" data-i18n-attrs="aria-label:html.tai_nguyen_may_chu"></div>
     </aside>
     <main class="main">
-      <div class="main-top"><label class="pet-toggle"><input id="pets-enabled" type="checkbox" checked> Thú cưng</label><div class="seg" role="group" aria-label="Chế độ xem">
-        <button id="tab-over" aria-pressed="true">Tổng quan</button>
+      <div class="main-top"><label class="pet-toggle"><input id="pets-enabled" type="checkbox" checked> <span data-i18n="app.thu_cung"></span></label><div class="seg" role="group" data-i18n-attrs="aria-label:html.che_do_xem">
+        <button id="tab-over" aria-pressed="true" data-i18n="html.tong_quan"></button>
         <button id="tab-focus" aria-pressed="false">Terminal</button>
       </div></div>
 
@@ -69,46 +70,46 @@
         <div class="hero">
           <div class="hero-copy">
             <h1 id="hero-t"></h1>
-            <p>Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt.</p>
+            <p><span data-i18n="html.tat_may_van_chay_chi"></span></p>
             <div class="chips" id="chips"></div>
           </div>
           <div class="scene" aria-hidden="true"><span id="pet-weather"></span>
-            <div class="laptop"><svg viewBox="0 0 58 48" fill="none"><rect x="9" y="5" width="40" height="28" rx="4" fill="#fff"/><rect x="13" y="9" width="32" height="20" rx="2" fill="#2b3a67"/><path d="m18 15 4 4-4 4M26 24h8" stroke="#7ff0c9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 37h52l-4 6H7z" fill="#fff"/></svg>Máy bạn</div>
+            <div class="laptop"><svg viewBox="0 0 58 48" fill="none"><rect x="9" y="5" width="40" height="28" rx="4" fill="#fff"/><rect x="13" y="9" width="32" height="20" rx="2" fill="#2b3a67"/><path d="m18 15 4 4-4 4M26 24h8" stroke="#7ff0c9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 37h52l-4 6H7z" fill="#fff"/></svg><span data-i18n="html.may_ban"></span></div>
             <div class="wire"><i></i><i></i><i></i></div>
-            <div class="house"><div class="shelf" id="shelf"></div>Trên máy chủ</div>
+            <div class="house"><div class="shelf" id="shelf"></div><span data-i18n="html.tren_may_chu"></span></div>
           </div>
         </div>
 
 
         <div id="fleet"></div>
-        <div id="tools"><input id="q" placeholder="Tìm phiên theo tên, thư mục, nội dung màn hình" aria-label="Tìm phiên" autocomplete="off"><div id="f" role="group" aria-label="Lọc phiên"><button type="button" data-f="all" aria-pressed="true">Tất cả</button><button type="button" data-f="wait" aria-pressed="false">Chờ bạn</button><button type="button" data-f="run" aria-pressed="false">Đang chạy</button><button type="button" data-f="idle" aria-pressed="false">Đang nghỉ</button></div></div>
-<section class="playground"><b>Sân chơi</b><div id="pet-yard" aria-hidden="true"></div><div id="pet-yard2" class="yd" aria-label="Sân chơi thú cưng"></div></section>
+        <div id="tools"><input id="q" autocomplete="off" data-i18n-attrs="placeholder:html.tim_phien_theo_ten_thu;aria-label:html.tim_phien"><div id="f" role="group" data-i18n-attrs="aria-label:html.loc_phien"><button type="button" data-f="all" aria-pressed="true" data-i18n="usageui.tat_ca"></button><button type="button" data-f="wait" aria-pressed="false" data-i18n="app.cho_ban"></button><button type="button" data-f="run" aria-pressed="false" data-i18n="app.dang_chay"></button><button type="button" data-f="idle" aria-pressed="false" data-i18n="app.dang_nghi"></button></div></div>
+<section class="playground"><b><span data-i18n="html.san_choi"></span></b><div id="pet-yard" aria-hidden="true"></div><div id="pet-yard2" class="yd" data-i18n-attrs="aria-label:html.san_choi_thu_cung"></div></section>
         <div id="grid"></div>
       </section>
 
       <section class="view" id="v-focus">
-        <div class="m-head"><b id="m-title"></b><button class="btn head-show" id="h-info" aria-label="Chi tiết phiên: ngữ cảnh, token, crew">ⓘ Chi tiết</button><button class="btn head-show" id="h-detach">Rời</button><button class="btn danger head-show" id="h-kill">Dừng</button></div>
-        <div class="tabs" id="tabs" role="tablist" aria-label="Phiên đang mở"></div>
+        <div class="m-head"><b id="m-title"></b><button class="btn head-show" id="h-info" data-i18n-attrs="aria-label:html.chi_tiet_phien_ngu_canh" data-i18n="html.chi_tiet"></button><button class="btn head-show" id="h-detach" data-i18n="html.roi"></button><button class="btn danger head-show" id="h-kill" data-i18n="app.dung"></button></div>
+        <div class="tabs" id="tabs" role="tablist" data-i18n-attrs="aria-label:html.phien_dang_mo"></div>
         <div class="focus-body">
           <div class="term-wrap" id="term-wrap">
             <div id="split" class="one"></div>
-            <div id="cmds" aria-label="Lệnh mẫu và chia màn"><div id="command-list"></div><div class="text-controls" role="group" aria-label="Cỡ chữ và toàn màn hình">
-              <button class="btn" id="mouse-mode" aria-pressed="true">Chọn chữ</button><button class="btn" id="copy-sel" title="Sao chép đoạn chữ đang chọn">Sao chép</button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" aria-label="Toàn màn hình" title="Toàn màn hình">⛶</button>
+            <div id="cmds" data-i18n-attrs="aria-label:html.lenh_mau_va_chia_man"><div id="command-list"></div><div class="text-controls" role="group" data-i18n-attrs="aria-label:html.co_chu_va_toan_man">
+              <button class="btn" id="mouse-mode" aria-pressed="true" data-i18n="app.chon_chu"></button><button class="btn" id="copy-sel" data-i18n-attrs="title:html.sao_chep_doan_chu_dang" data-i18n="html.sao_chep"></button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" data-i18n-attrs="aria-label:viewcontrols.toan_man_hinh;title:viewcontrols.toan_man_hinh">⛶</button>
             </div></div>
-            <div class="terminal-copy-help">Kéo chuột để chọn chữ, sao chép bằng ⌘C (Ctrl+Shift+C) hoặc nút “Sao chép”. Nút “Chuột cho ứng dụng” trả chuột cho ứng dụng trong phiên (khi đó giữ Option/Shift để chọn chữ).</div>
+            <div class="terminal-copy-help" data-i18n="html.keo_chuot_de_chon_chu"></div>
             <div class="tmux-bar"><span id="bar-s"></span><span id="bar-h"></span></div>
-            <div class="keybar" aria-label="Phím nhanh">
-              <button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" title="Bật/tắt bàn phím trên màn hình">⌨ Bàn phím</button><button class="btn" id="open-file" data-k="file" title="Mở file trong thư mục của phiên">📂 Mở file</button><button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" title="Xuống dòng trong ô soạn mà không gửi (Shift+Enter)">⏎ Dòng mới</button>
+            <div class="keybar" data-i18n-attrs="aria-label:html.phim_nhanh">
+              <button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" data-i18n-attrs="title:html.bat_tat_ban_phim_tren" data-i18n="html.ban_phim"></button><button class="btn" id="open-file" data-k="file" data-i18n-attrs="title:html.mo_file_trong_thu_muc" data-i18n="html.mo_file"></button><button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" data-i18n-attrs="title:html.xuong_dong_trong_o_soan" data-i18n="html.dong_moi"></button>
             </div>
           </div>
-          <aside class="detail" id="detail" aria-label="Chi tiết phiên"></aside>
+          <aside class="detail" id="detail" data-i18n-attrs="aria-label:html.chi_tiet_phien"></aside>
           <div id="sheet-backdrop" hidden></div>
         </div>
       </section>
 
-        <section id="crew-panel" hidden role="region" aria-label="Log Crew"><div class="crew-controls"><b id="crew-title"></b><button class="btn" id="crew-font-minus">A−</button><button class="btn" id="crew-font-plus">A+</button><button class="btn" id="crew-pause" title="Tạm dừng hoặc tiếp tục">Tạm dừng</button><button class="btn" id="crew-min" aria-controls="crew-output" aria-expanded="true">Thu nhỏ</button><button class="btn" id="crew-close">Đóng</button></div><p id="crew-status" role="status"></p><pre id="crew-output" tabindex="0"></pre></section>
-      <nav class="bnav" aria-label="Điều hướng">
-        <button id="nav-over" aria-pressed="true"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Tổng quan</button>
+        <section id="crew-panel" hidden role="region" data-i18n-attrs="aria-label:html.log_crew"><div class="crew-controls"><b id="crew-title"></b><button class="btn" id="crew-font-minus">A−</button><button class="btn" id="crew-font-plus">A+</button><button class="btn" id="crew-pause" data-i18n-attrs="title:html.tam_dung_hoac_tiep_tuc" data-i18n="app.tam_dung"></button><button class="btn" id="crew-min" aria-controls="crew-output" aria-expanded="true" data-i18n="app.thu_nho"></button><button class="btn" id="crew-close" data-i18n="fileviewer.dong"></button></div><p id="crew-status" role="status"></p><pre id="crew-output" tabindex="0"></pre></section>
+      <nav class="bnav" data-i18n-attrs="aria-label:html.dieu_huong">
+        <button id="nav-over" aria-pressed="true"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg><span data-i18n="html.tong_quan"></span></button>
         <button id="nav-focus" aria-pressed="false"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m7 10 3 2-3 2M13 15h4"/></svg>Terminal</button>
       </nav>
     </main>
@@ -117,109 +118,116 @@
 
 <dialog id="dlg-new"><form id="form-new" class="f" novalidate>
   <div class="dlg-pet" id="n-pet"></div>
-  <h2>Phiên mới</h2>
-  <label for="n-srv">Máy chủ<select id="n-srv"></select></label>
-  <label for="n-name">Tên<input id="n-name" maxlength="32" placeholder="vd: build-api" autocomplete="off"></label>
-  <div><label for="n-dir">Thư mục</label><div class="dir-input"><input id="n-dir" placeholder="Để trống dùng thư mục mặc định" autocomplete="off"><button type="button" class="btn" id="n-browse">Chọn</button></div></div>
-  <label for="n-run">Mở bằng<select id="n-run"><option value="shell">Terminal</option><option value="claude">Claude</option><option value="codex">Codex</option></select></label>
-  <div id="templates-block"><div class="lab-s">Mẫu phiên</div><div id="templates" class="chips-f"></div></div>
-  <div id="recent-block"><div class="lab-s">Thư mục gần đây</div><div id="recent" class="chips-f"></div></div>
-  <button type="button" class="btn" id="n-save">Lưu làm mẫu</button>
+  <h2><span data-i18n="app.phien_moi"></span></h2>
+  <label for="n-srv"><span data-i18n="app.may_chu_2"></span><select id="n-srv"></select></label>
+  <label for="n-name"><span data-i18n="html.ten"></span><input id="n-name" maxlength="32" data-i18n-attrs="placeholder:html.ph_session_name" autocomplete="off"></label>
+  <div><label for="n-dir" data-i18n="app.thu_muc"></label><div class="dir-input"><input id="n-dir" autocomplete="off" data-i18n-attrs="placeholder:html.de_trong_dung_thu_muc"><button type="button" class="btn" id="n-browse" data-i18n="tokenui.chon"></button></div></div>
+  <label for="n-run"><span data-i18n="html.mo_bang"></span><select id="n-run"><option value="shell">Terminal</option><option value="claude">Claude</option><option value="codex">Codex</option></select></label>
+  <div id="templates-block"><div class="lab-s" data-i18n="html.mau_phien"></div><div id="templates" class="chips-f"></div></div>
+  <div id="recent-block"><div class="lab-s" data-i18n="html.thu_muc_gan_day"></div><div id="recent" class="chips-f"></div></div>
+  <button type="button" class="btn" id="n-save" data-i18n="html.luu_lam_mau"></button>
   <div class="err" id="n-err"></div>
-  <div class="dlg-actions"><button type="button" class="btn" id="n-cancel">Hủy</button><button class="btn primary" type="submit">Tạo</button></div>
+  <div class="dlg-actions"><button type="button" class="btn" id="n-cancel" data-i18n="tokenui.huy"></button><button class="btn primary" type="submit" data-i18n="html.tao"></button></div>
 </form></dialog>
 
 <dialog id="dlg-dir" aria-labelledby="dir-title"><div class="f">
-  <h2 id="dir-title">Chọn thư mục</h2>
+  <h2 id="dir-title" data-i18n="html.chon_thu_muc"></h2>
   <div id="dir-path" aria-live="polite"></div>
-  <button type="button" class="btn" id="dir-up" disabled>Lên một cấp</button>
-  <div id="dir-list" aria-label="Thư mục con" aria-busy="false"></div>
+  <button type="button" class="btn" id="dir-up" disabled data-i18n="fileviewer.len_mot_cap"></button>
+  <div id="dir-list" aria-busy="false" data-i18n-attrs="aria-label:html.thu_muc_con"></div>
   <p class="hint" id="dir-note" role="status"></p>
   <div class="err" id="dir-err" role="alert"></div>
-  <div class="dlg-actions"><button type="button" class="btn" id="dir-cancel">Hủy</button><button type="button" class="btn primary" id="dir-ok" disabled>Chọn thư mục này</button></div>
+  <div class="dlg-actions"><button type="button" class="btn" id="dir-cancel" data-i18n="tokenui.huy"></button><button type="button" class="btn primary" id="dir-ok" disabled data-i18n="html.chon_thu_muc_nay"></button></div>
 </div></dialog>
 
 <dialog id="dlg-srv"><form id="form-srv" class="f" novalidate>
-  <h2>Thêm máy chủ</h2>
-  <div class="two"><label for="s-host">Địa chỉ máy chủ<input id="s-host" placeholder="vd: 192.0.2.10" autocomplete="off"></label><label for="s-port">Cổng<input id="s-port" value="22" inputmode="numeric"></label></div>
-  <label for="s-user">Tài khoản<input id="s-user" placeholder="vd: root" autocomplete="off"></label>
-  <label for="s-auth">Cách đăng nhập<select id="s-auth"><option value="password">Mật khẩu</option><option value="key">Khóa SSH</option></select></label>
-  <label for="s-pass" id="s-pl">Mật khẩu<input id="s-pass" type="password" autocomplete="off"></label>
-  <label for="s-key" id="s-kl" hidden>File khóa SSH riêng tư<input id="s-key" type="file"></label>
-  <label for="s-phrase" id="s-ppl" hidden>Mật khẩu của khóa (nếu có)<input id="s-phrase" type="password" autocomplete="off"></label>
-  <p class="hint" id="s-hint">Không lưu mật khẩu. Web khởi động lại thì phải nhập lại.</p>
+  <h2><span data-i18n="app.them_may_chu_2"></span></h2>
+  <div class="two"><label for="s-host"><span data-i18n="html.dia_chi_may_chu"></span><input id="s-host" data-i18n-attrs="placeholder:html.ph_host" autocomplete="off"></label><label for="s-port"><span data-i18n="html.cong"></span><input id="s-port" value="22" inputmode="numeric"></label></div>
+  <label for="s-user"><span data-i18n="tokenui.tai_khoan"></span><input id="s-user" data-i18n-attrs="placeholder:html.ph_user" autocomplete="off"></label>
+  <label for="s-auth"><span data-i18n="html.cach_dang_nhap"></span><select id="s-auth"><option value="password" data-i18n="html.mat_khau"></option><option value="key" data-i18n="html.khoa_ssh"></option></select></label>
+  <label for="s-pass" id="s-pl"><span data-i18n="html.mat_khau"></span><input id="s-pass" type="password" autocomplete="off"></label>
+  <label for="s-key" id="s-kl" hidden><span data-i18n="html.file_khoa_ssh_rieng_tu"></span><input id="s-key" type="file"></label>
+  <label for="s-phrase" id="s-ppl" hidden><span data-i18n="html.mat_khau_cua_khoa_neu"></span><input id="s-phrase" type="password" autocomplete="off"></label>
+  <p class="hint" id="s-hint" data-i18n="app.khong_luu_mat_khau_web"></p>
   <div class="err" id="s-err"></div>
-  <div class="dlg-actions"><button type="button" class="btn" id="s-cancel">Hủy</button><button class="btn primary" type="submit" id="s-ok">Thêm</button></div>
+  <div class="dlg-actions"><button type="button" class="btn" id="s-cancel" data-i18n="tokenui.huy"></button><button class="btn primary" type="submit" id="s-ok" data-i18n="html.them"></button></div>
 </form></dialog>
 
 <dialog id="dlg-pass"><form id="form-pass" class="f" novalidate>
   <h2 id="p-title"></h2>
-  <label for="p-pass">Mật khẩu<input id="p-pass" type="password" autocomplete="off"></label>
+  <label for="p-pass"><span data-i18n="html.mat_khau"></span><input id="p-pass" type="password" autocomplete="off"></label>
   <div class="err" id="p-err"></div>
-  <div class="dlg-actions"><button type="button" class="btn" id="p-cancel">Hủy</button><button class="btn primary" type="submit">Kết nối</button></div>
+  <div class="dlg-actions"><button type="button" class="btn" id="p-cancel" data-i18n="tokenui.huy"></button><button class="btn primary" type="submit" data-i18n="app.ket_noi"></button></div>
 </form></dialog>
 
 <dialog id="dlg-kill">
   <h2 id="k-title"></h2>
-  <p>Việc đang chạy sẽ dừng. Muốn giữ lại thì chọn Rời.</p>
+  <p><span data-i18n="html.viec_dang_chay_se_dung"></span></p>
   <div class="err" id="k-err"></div>
-  <div class="dlg-actions"><button class="btn" id="k-cancel">Hủy</button><button class="btn danger-solid" id="k-ok">Dừng</button></div>
+  <div class="dlg-actions"><button class="btn" id="k-cancel" data-i18n="tokenui.huy"></button><button class="btn danger-solid" id="k-ok" data-i18n="app.dung"></button></div>
 </dialog>
 
 <dialog id="dlg-del">
   <h2 id="d-title"></h2>
-  <p>Chỉ gỡ khỏi danh sách. Việc trên máy chủ vẫn chạy.</p>
-  <div class="dlg-actions"><button class="btn" id="d-cancel">Hủy</button><button class="btn danger-solid" id="d-ok">Gỡ</button></div>
+  <p><span data-i18n="html.chi_go_khoi_danh_sach"></span></p>
+  <div class="dlg-actions"><button class="btn" id="d-cancel" data-i18n="tokenui.huy"></button><button class="btn danger-solid" id="d-ok" data-i18n="app.go"></button></div>
 </dialog>
 
 <dialog id="dlg-reboot" aria-labelledby="reboot-title"><form id="form-reboot" class="f">
-  <h2 id="reboot-title">Khởi động lại máy chủ</h2>
+  <h2 id="reboot-title" data-i18n="html.khoi_dong_lai_may_chu"></h2>
   <p id="reboot-warning"></p>
-  <label for="reboot-name">Nhập chính xác tên máy chủ<input id="reboot-name" autocomplete="off" required></label>
+  <label for="reboot-name"><span data-i18n="html.nhap_chinh_xac_ten_may"></span><input id="reboot-name" autocomplete="off" required></label>
   <p id="reboot-error" role="alert"></p>
-  <div class="dlg-actions"><button type="button" class="btn" data-close>Hủy</button><button id="reboot-ok" class="btn danger-solid" disabled>Khởi động lại</button></div>
+  <div class="dlg-actions"><button type="button" class="btn" data-close data-i18n="tokenui.huy"></button><button id="reboot-ok" class="btn danger-solid" disabled data-i18n="app.khoi_dong_lai"></button></div>
 </form></dialog>
 
-<dialog id="dlg-alerts"><div class="dlg-h"><h2>Cảnh báo</h2><button type="button" class="btn" data-close>Đóng</button></div><div id="al-list"></div></dialog>
+<dialog id="dlg-alerts"><div class="dlg-h"><h2><span data-i18n="html.canh_bao"></span></h2><button type="button" class="btn" id="al-read" data-i18n-attrs="title:html.bo_so_do_tren_chuong" data-i18n="html.danh_dau_da_doc_tat"></button><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div><div id="al-list"></div></dialog>
 
 <dialog id="dlg-detail" class="wide">
-  <div class="dlg-h"><h2 id="dt-title"></h2><div class="seg2" id="dt-range"><button type="button" data-r="1h">1 giờ</button><button type="button" data-r="6h">6 giờ</button><button type="button" data-r="24h">24 giờ</button></div></div>
+  <div class="dlg-h"><h2 id="dt-title"></h2><div class="seg2" id="dt-range"><button type="button" data-r="1h" data-i18n="notes.1_gio"></button><button type="button" data-r="6h" data-i18n="html.6_gio"></button><button type="button" data-r="24h" data-i18n="html.24_gio"></button></div></div>
   <div id="dt-chart"></div>
   <div class="legend"><span><i style="--c:#ff5c7a"></i>CPU</span><span><i style="--c:#8c6dff"></i>RAM</span><span><i style="--c:#0fb5ae"></i>Disk</span></div>
   <div class="two-col">
-    <div><h3>Ổ đĩa</h3><div id="dt-disks"></div></div>
-    <div><h3>Tiến trình nặng nhất</h3><div id="dt-top"></div></div>
-    <div><h3>Tình trạng hệ thống</h3><div id="dt-sys"></div></div>
+    <div><h3><span data-i18n="html.o_dia"></span></h3><div id="dt-disks"></div></div>
+    <div><h3><span data-i18n="html.tien_trinh_nang_nhat"></span></h3><div id="dt-top"></div></div>
+    <div><h3><span data-i18n="html.tinh_trang_he_thong"></span></h3><div id="dt-sys"></div></div>
   </div>
-  <div class="dlg-actions" style="margin-top:14px"><button type="button" class="btn" id="dt-see">Xem phiên của máy này</button><button type="button" class="btn primary" data-close>Đóng</button></div>
+  <div class="dlg-actions" style="margin-top:14px"><button type="button" class="btn" id="dt-see" data-i18n="html.xem_phien_cua_may_nay"></button><button type="button" class="btn primary" data-close data-i18n="fileviewer.dong"></button></div>
 </dialog>
 
 <dialog id="dlg-pet"><form id="form-pet" class="f">
-  <div class="dlg-h"><h2>Thú cưng của phiên</h2><button type="button" class="btn" data-close>Đóng</button></div>
-  <label>Tên thú cưng<input id="pet-nickname" maxlength="40" placeholder="Dùng tên phiên"></label>
-  <div class="lab-s">Chọn thú</div><input type="hidden" id="pet-kind" value=""><div id="pet-pick" class="pet-pick" role="group" aria-label="Chọn thú cưng"></div>
-  <label>Mũ theo mùa<select id="pet-hat"><option value="">Không mũ</option><option value="flower">Hoa xuân</option><option value="summer">Mũ hè</option><option value="pumpkin">Bí ngô</option><option value="winter">Mũ đông</option></select></label>
-  <p id="pet-error" role="status"></p><button class="btn primary">Lưu</button>
+  <div class="dlg-h"><h2><span data-i18n="html.thu_cung_cua_phien"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
+  <label><span data-i18n="html.ten_thu_cung"></span><input id="pet-nickname" maxlength="40" data-i18n-attrs="placeholder:html.dung_ten_phien"></label>
+  <div class="lab-s" data-i18n="html.chon_thu"></div><input type="hidden" id="pet-kind" value=""><div id="pet-pick" class="pet-pick" role="group" data-i18n-attrs="aria-label:html.chon_thu_cung"></div>
+  <label><span data-i18n="html.mu_theo_mua"></span><select id="pet-hat"><option value="" data-i18n="html.khong_mu"></option><option value="flower" data-i18n="html.hoa_xuan"></option><option value="summer" data-i18n="html.mu_he"></option><option value="pumpkin" data-i18n="html.bi_ngo"></option><option value="winter" data-i18n="html.mu_dong"></option></select></label>
+  <p id="pet-error" role="status"></p><button class="btn primary" data-i18n="tokenui.luu"></button>
 </form></dialog>
 <dialog id="dlg-set" class="wide">
-  <div class="dlg-h"><h2>Cài đặt</h2><button type="button" class="btn" data-close>Đóng</button></div>
-  <section class="st"><h3>Thông báo</h3>
-    <label class="sw">Tự khôi phục phiên Máy này sau khi khởi động lại<input type="checkbox" id="set-auto-restore"></label>
-    <label class="sw">Tiếng meo khi bắt đầu chờ<input type="checkbox" id="set-sound"></label>
-    <label class="sw">Báo trên trình duyệt khi có phiên chờ bạn<input type="checkbox" id="set-browser"></label>
+  <div class="dlg-h"><h2><span data-i18n="html.cai_dat"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
+  <section class="st"><h3><span data-i18n="settings.language"></span></h3>
+    <label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label>
   </section>
-  <section class="st"><h3>Ngưỡng cảnh báo</h3><p>Vượt ngưỡng thì thẻ máy chủ viền đỏ và chuông báo.</p>
-    <div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" aria-label="Ngưỡng CPU"><b id="lim-cpu-v"></b></div>
-    <div class="rng"><span>RAM</span><input type="range" id="lim-ram" min="50" max="100" aria-label="Ngưỡng RAM"><b id="lim-ram-v"></b></div>
-    <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" aria-label="Ngưỡng Disk"><b id="lim-disk-v"></b></div>
+  <section class="st"><h3><span data-i18n="html.thong_bao"></span></h3>
+    <label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label>
+    <label class="sw"><span data-i18n="html.tieng_meo_khi_bat_dau"></span><input type="checkbox" id="set-sound"></label>
+    <label class="sw"><span data-i18n="html.bao_tren_trinh_duyet_khi"></span><input type="checkbox" id="set-browser"></label>
   </section>
-  <section class="st"><h3>Lệnh mẫu</h3><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" aria-label="Lệnh mới" placeholder="vd: git status" required><button class="btn" type="submit">Thêm</button></form></section>
-  <button type="button" class="btn" id="set-quit" hidden>Thoát ứng dụng</button>
+  <section class="st"><h3><span data-i18n="settings.alerts_title"></span></h3><p><span data-i18n="settings.alerts_hint"></span></p><div id="set-alert-cats"></div></section>
+  <section class="st"><h3><span data-i18n="html.nguong_canh_bao"></span></h3><p><span data-i18n="html.vuot_nguong_thi_the_may"></span></p>
+    <div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_cpu"><b id="lim-cpu-v"></b></div>
+    <div class="rng"><span>RAM</span><input type="range" id="lim-ram" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_ram"><b id="lim-ram-v"></b></div>
+    <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div>
+  </section>
+  <section class="st"><h3><span data-i18n="html.lenh_mau"></span></h3><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" required data-i18n-attrs="aria-label:html.lenh_moi;placeholder:html.ph_command"><button class="btn" type="submit" data-i18n="html.them"></button></form></section>
+  <button type="button" class="btn" id="set-quit" hidden data-i18n="html.thoat_ung_dung"></button>
   <p id="set-note" role="status"></p>
-  <section class="st"><h3>Cài như app</h3><p>Thêm biểu tượng ra màn hình chính điện thoại. Khi truy cập từ xa, hãy dùng SSH tunnel.</p><div><button type="button" class="btn" id="set-pwa">Cài lên máy này</button></div></section>
+  <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p></section>
+  <section class="st" id="pwa-sec" hidden><h3><span data-i18n="settings.pwa_title"></span></h3><p class="hint" id="pwa-desc"></p><div><button type="button" class="btn primary" id="set-pwa" data-i18n="settings.pwa_button" hidden></button></div></section>
 </dialog>
 
 
+<script src="/locales.js"></script>
+<script src="/i18n.js"></script>
 <script src="/vendor/xterm.js"></script>
 <script src="/vendor/addon-fit.js"></script>
 <script src="/pets.js"></script>

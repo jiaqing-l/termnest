@@ -57,10 +57,10 @@
   }
   // "Today" / "Tomorrow" / "Every day" caption for a reminder row.
   function whenText(rem, now) {
-    if (rem.daily) return 'Mỗi ngày';
+    if (rem.daily) return i18n('notescore.moi_ngay');
     var n = firstOccurrence(rem);
-    if (!rem.on) return 'Đã nhắc';
-    return dayStamp(n) === dayStamp(now) ? 'Hôm nay' : 'Ngày mai';
+    if (!rem.on) return i18n('notescore.da_nhac');
+    return dayStamp(n) === dayStamp(now) ? i18n('usageui.hom_nay') : i18n('notescore.ngay_mai');
   }
   function quiet(now, from, to) { // "22:00".."07:00" may wrap midnight
     var m = now.getHours() * 60 + now.getMinutes(), a = Number(from.slice(0, 2)) * 60 + Number(from.slice(3)), b = Number(to.slice(0, 2)) * 60 + Number(to.slice(3));

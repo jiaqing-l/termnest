@@ -19,9 +19,9 @@
     var again = menu && menu.dataset.for === host + '/' + name; closeMenu(); if (again) return;
     menu = el('div', 'ho-menu'); menu.setAttribute('role', 'menu'); menu.dataset.for = host + '/' + name;
     function item(title, hint, fn) { var b = el('button', 'ho-item'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.append(el('b', '', title)); if (hint) b.append(el('small', '', hint)); b.onclick = function (e) { e.stopPropagation(); closeMenu(); fn(); }; menu.append(b); }
-    item('Làm mới tại chỗ (/clear)', 'Giữ tên, tab, thú. Không hoàn tác được; cần snapshot.', function () { TW.handoffOpen(host, name, 'clear'); });
-    item('Nén (/compact)', 'Tóm tắt do model viết, có thể mất chi tiết.', function () { TW.handoffOpen(host, name, 'compact'); });
-    item('Nhắc sau 4 giờ', '', function () { TW.ctxSnooze(host, name); });
+    item(i18n('handoff.lam_moi_tai_cho_clear'), i18n('handoff.giu_ten_tab_thu_khong'), function () { TW.handoffOpen(host, name, 'clear'); });
+    item(i18n('handoff.nen_compact'), i18n('handoff.tom_tat_do_model_viet'), function () { TW.handoffOpen(host, name, 'compact'); });
+    item(i18n('handoff.nhac_sau_4_gio'), '', function () { TW.ctxSnooze(host, name); });
     document.body.append(menu);
     var r = btn.getBoundingClientRect(), w = menu.offsetWidth, left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w));
     menu.style.left = left + 'px'; menu.style.top = Math.min(window.innerHeight - menu.offsetHeight - 8, r.bottom + 6) + 'px';
@@ -42,51 +42,51 @@
   function tokens(host, name, baseline) {
     var i = TW.ctxInfo && TW.ctxInfo(host, name); if (!i || !(i.ctx > 0)) return null;
     var box = el('div', 'ho-cost'), a = el('div'), b = el('div');
-    a.append(el('small', '', 'Phiên cũ đọc lại mỗi lượt'), el('b', '', '≈ ' + fmt(i.ctx) + ' token'));
-    b.append(el('small', '', 'Phiên mới bắt đầu ở'), el('b', '', baseline ? '≈ ' + fmt(baseline) + ' token' : 'chưa đo được'), el('small', '', baseline ? 'đo từ các phiên gần đây của thư mục này' : ''));
+    a.append(el('small', '', i18n('handoff.phien_cu_doc_lai_moi')), el('b', '', '≈ ' + fmt(i.ctx) + ' token'));
+    b.append(el('small', '', i18n('handoff.phien_moi_bat_dau_o')), el('b', '', baseline ? '≈ ' + fmt(baseline) + ' token' : i18n('handoff.chua_do_duoc')), el('small', '', baseline ? i18n('handoff.do_tu_cac_phien_gan') : ''));
     box.append(a, b); return box;
   }
 
   TW.handoffOpen = function (host, name, mode) {
     closeMenu();
     var d = build(), st = { host: host, name: name, mode: mode || 'new', check: null, override: false };
-    d.setAttribute('aria-label', 'Mở phiên mới');
+    d.setAttribute('aria-label', i18n('handoff.mo_phien_moi'));
     function shell(title, lead) { d.textContent = ''; var f = el('div', 'ho-body'); f.append(el('h2', '', title)); if (lead) f.append(el('p', 'ho-lead', lead)); d.append(f); return f; }
-    function steps(f, n) { var s = el('div', 'ho-steps'); ['1 Kiểm tra', '2 Gói bàn giao', '3 Mở'].forEach(function (t, k) { s.append(el('span', k === n ? 'on' : '', t)); }); f.append(s); }
+    function steps(f, n) { var s = el('div', 'ho-steps'); [i18n('handoff.1_kiem_tra'), i18n('handoff.2_goi_ban_giao'), i18n('handoff.3_mo')].forEach(function (t, k) { s.append(el('span', k === n ? 'on' : '', t)); }); f.append(s); }
     function fail(f, e) { f.append(el('p', 'ho-err', e && e.message ? e.message : String(e))); }
-    var title = { new: 'Mở phiên mới từ ', clear: 'Làm mới tại chỗ: ', compact: 'Nén phiên: ' }[st.mode] + name;
+    var title = { new: i18n('handoff.mo_phien_moi_tu'), clear: i18n('handoff.lam_moi_tai_cho'), compact: i18n('handoff.nen_phien') }[st.mode] + name;
 
     // /compact needs no hand-over: one confirmed command.
     if (st.mode === 'compact') {
-      var f0 = shell(title, 'Gửi /compact vào phiên. Model tự viết bản tóm tắt cho cả ngữ cảnh hiện tại, nên chi tiết có thể mất và tốn một lượt trên toàn bộ ngữ cảnh. Cách này không đáng tin bằng mở phiên mới từ snapshot.');
-      var a0 = el('div', 'ho-actions'); a0.append(btn('Huỷ', 'ghost', function () { d.close(); }), btn('Gửi /compact', 'primary', function () { keys(host, name, '/compact', true).then(function () { TW.app().say('Đã gửi /compact.', true, 3000); d.close(); }).catch(function (e) { fail(f0, e); }); }));
+      var f0 = shell(title, i18n('handoff.gui_compact_vao_phien_model'));
+      var a0 = el('div', 'ho-actions'); a0.append(btn(i18n('handoff.huy'), 'ghost', function () { d.close(); }), btn(i18n('handoff.gui_compact'), 'primary', function () { keys(host, name, '/compact', true).then(function () { TW.app().say(i18n('handoff.da_gui_compact'), true, 3000); d.close(); }).catch(function (e) { fail(f0, e); }); }));
       f0.append(a0); d.showModal(); return;
     }
 
     function load() {
-      var f = shell(title, 'Phiên cũ giữ nguyên để đối chiếu. Phiên mới đọc file trạng thái, không nạp lại cả ngữ cảnh.'); steps(f, 0); f.append(el('p', 'ho-lead', 'Đang kiểm tra file trạng thái, git và crew…'));
-      TW.api('GET', '/api/features/handoff/check?server=' + encodeURIComponent(host) + '&session=' + encodeURIComponent(name)).then(function (c) { st.check = c; review(); }).catch(function (e) { shell(title); fail(d.firstChild, e); var a = el('div', 'ho-actions'); a.append(btn('Đóng', 'ghost', function () { d.close(); })); d.firstChild.append(a); });
+      var f = shell(title, i18n('handoff.phien_cu_giu_nguyen_de')); steps(f, 0); f.append(el('p', 'ho-lead', i18n('handoff.dang_kiem_tra_file_trang')));
+      TW.api('GET', '/api/features/handoff/check?server=' + encodeURIComponent(host) + '&session=' + encodeURIComponent(name)).then(function (c) { st.check = c; review(); }).catch(function (e) { shell(title); fail(d.firstChild, e); var a = el('div', 'ho-actions'); a.append(btn(i18n('fileviewer.dong'), 'ghost', function () { d.close(); })); d.firstChild.append(a); });
     }
     function review() {
-      var c = st.check, f = shell(title, 'Kiểm tra bằng code, không dùng AI. Chỉ mở khi snapshot còn mới.'); steps(f, 0);
+      var c = st.check, f = shell(title, i18n('handoff.kiem_tra_bang_code_khong')); steps(f, 0);
       c.checks.forEach(function (k) { f.append(row(k.level, k.title, k.detail)); });
       var cost = tokens(host, name, c.baseline); if (cost) f.append(cost);
       var acts = el('div', 'ho-actions'), note = el('p', 'ho-lead'); f.append(note);
-      acts.append(btn('Huỷ', 'ghost', function () { d.close(); }));
+      acts.append(btn(i18n('handoff.huy'), 'ghost', function () { d.close(); }));
       if (c.needsSnapshot) {
-        var ask = btn('Nhờ phiên cũ ghi snapshot', '', function () { snapshotStep(f); }), recheck = btn('Kiểm tra lại', '', load);
-        var lab = el('label', 'ho-override'), cb = el('input'); cb.type = 'checkbox'; lab.append(cb, document.createTextNode(' Vẫn mở dù snapshot chưa mới (không khuyến nghị)'));
-        var next = btn('Tiếp: gói bàn giao', 'primary', handoff); next.disabled = true; cb.onchange = function () { st.override = cb.checked; next.disabled = !cb.checked; };
+        var ask = btn(i18n('handoff.nho_phien_cu_ghi_snapshot'), '', function () { snapshotStep(f); }), recheck = btn(i18n('handoff.kiem_tra_lai'), '', load);
+        var lab = el('label', 'ho-override'), cb = el('input'); cb.type = 'checkbox'; lab.append(cb, document.createTextNode(i18n('handoff.van_mo_du_snapshot_chua')));
+        var next = btn(i18n('handoff.tiep_goi_ban_giao'), 'primary', handoff); next.disabled = true; cb.onchange = function () { st.override = cb.checked; next.disabled = !cb.checked; };
         f.append(lab); acts.append(recheck, ask, next);
-      } else acts.append(btn('Tiếp: gói bàn giao', 'primary', handoff));
+      } else acts.append(btn(i18n('handoff.tiep_goi_ban_giao'), 'primary', handoff));
       f.append(acts);
     }
     function snapshotStep(f) {
-      var c = st.check; f.textContent = ''; f.append(el('h2', '', 'Nhờ phiên cũ ghi snapshot'), el('p', 'ho-lead', 'Gửi đúng một câu lệnh cố định vào phiên cũ (một lượt, tốn token ở ngữ cảnh hiện tại). Bạn xem được trước:'));
+      var c = st.check; f.textContent = ''; f.append(el('h2', '', i18n('handoff.nho_phien_cu_ghi_snapshot')), el('p', 'ho-lead', i18n('handoff.gui_dung_mot_cau_lenh')));
       var pre = el('pre', 'ho-pre', c.snapshotPrompt); f.append(pre);
       var a = el('div', 'ho-actions'), msg = el('p', 'ho-lead');
-      a.append(btn('Quay lại', 'ghost', review), btn('Gửi vào phiên cũ', 'primary', function () {
-        keys(host, name, c.snapshotPrompt, true).then(function () { msg.textContent = 'Đã gửi. Chờ phiên cũ ghi xong rồi bấm "Kiểm tra lại".'; a.textContent = ''; a.append(btn('Đóng', 'ghost', function () { d.close(); }), btn('Kiểm tra lại', 'primary', load)); }).catch(function (e) { fail(f, e); });
+      a.append(btn(i18n('handoff.quay_lai'), 'ghost', review), btn(i18n('handoff.gui_vao_phien_cu'), 'primary', function () {
+        keys(host, name, c.snapshotPrompt, true).then(function () { msg.textContent = i18n('handoff.da_gui_cho_phien_cu'); a.textContent = ''; a.append(btn(i18n('fileviewer.dong'), 'ghost', function () { d.close(); }), btn(i18n('handoff.kiem_tra_lai'), 'primary', load)); }).catch(function (e) { fail(f, e); });
       }));
       f.append(msg, a);
     }
@@ -95,30 +95,30 @@
       for (var n = 2; n < 50; n++) { var c = name + '-' + n; if (!taken[c]) return c; } return name + '-new';
     }
     function handoff() {
-      var c = st.check, inPlace = st.mode === 'clear', f = shell(inPlace ? 'Làm mới tại chỗ' : 'Gói bàn giao', 'Dựng bằng code từ file và git. Sửa được trước khi mở. Lời nhắc gõ sẵn, không tự Enter.'); steps(f, 1);
-      var ta = el('textarea', 'ho-ta'); ta.value = c.prompt; ta.rows = 7; ta.setAttribute('aria-label', 'Lời nhắc bàn giao'); var count = el('small', 'ho-count');
-      function recount() { count.textContent = ta.value.replace(/\s+/g, ' ').trim().length + ' / ' + MAX + ' ký tự'; count.classList.toggle('bad', ta.value.replace(/\s+/g, ' ').trim().length > MAX); } ta.oninput = recount; recount();
+      var c = st.check, inPlace = st.mode === 'clear', f = shell(inPlace ? i18n('handoff.lam_moi_tai_cho_2') : i18n('handoff.goi_ban_giao'), i18n('handoff.dung_bang_code_tu_file')); steps(f, 1);
+      var ta = el('textarea', 'ho-ta'); ta.value = c.prompt; ta.rows = 7; ta.setAttribute('aria-label', i18n('handoff.loi_nhac_ban_giao')); var count = el('small', 'ho-count');
+      function recount() { count.textContent = i18n('handoff.ky_tu', [ta.value.replace(/\s+/g, ' ').trim().length, MAX]); count.classList.toggle('bad', ta.value.replace(/\s+/g, ' ').trim().length > MAX); } ta.oninput = recount; recount();
       f.append(ta, count);
-      var tool = el('select'), nm = el('input'); [['claude', 'Claude'], ['codex', 'Codex']].forEach(function (o) { var op = el('option', '', o[1]); op.value = o[0]; tool.append(op); }); tool.value = c.tool; nm.value = uniqueName(); nm.maxLength = 64; nm.setAttribute('aria-label', 'Tên phiên mới');
-      if (!inPlace) { var g = el('div', 'ho-grid'), l1 = el('label'), l2 = el('label'); l1.append(el('span', '', 'Loại phiên'), tool); l2.append(el('span', '', 'Tên phiên mới'), nm); g.append(l1, l2); f.append(g); }
-      else f.append(el('p', 'ho-lead', (c.shells ? '⚠ Phiên có ' + c.shells + ' shell nền; /clear có thể ảnh hưởng chúng. ' : '') + '/clear không hoàn tác được: lịch sử hội thoại hiện tại sẽ mất (file và git không đổi).'));
+      var tool = el('select'), nm = el('input'); [['claude', 'Claude'], ['codex', 'Codex']].forEach(function (o) { var op = el('option', '', o[1]); op.value = o[0]; tool.append(op); }); tool.value = c.tool; nm.value = uniqueName(); nm.maxLength = 64; nm.setAttribute('aria-label', i18n('handoff.ten_phien_moi'));
+      if (!inPlace) { var g = el('div', 'ho-grid'), l1 = el('label'), l2 = el('label'); l1.append(el('span', '', i18n('handoff.loai_phien')), tool); l2.append(el('span', '', i18n('handoff.ten_phien_moi')), nm); g.append(l1, l2); f.append(g); }
+      else f.append(el('p', 'ho-lead', i18n('handoff.clear_khong_hoan_tac_duoc', [(c.shells ? i18n('handoff.phien_co_shell_nen_clear', [c.shells]) : '')])));
       var err = el('p', 'ho-err'), a = el('div', 'ho-actions'); f.append(err);
-      var go = btn(inPlace ? 'Làm mới tại chỗ và gõ sẵn lời nhắc' : 'Mở phiên mới và gõ sẵn lời nhắc', 'primary', function () {
+      var go = btn(inPlace ? i18n('handoff.lam_moi_tai_cho_va') : i18n('handoff.mo_phien_moi_va_go'), 'primary', function () {
         var prompt = ta.value.replace(/[\x00-\x1f\x7f-\x9f]+/g, ' ').replace(/\s+/g, ' ').trim();
-        if (!prompt || prompt.length > MAX) { err.textContent = 'Lời nhắc phải có nội dung và không quá ' + MAX + ' ký tự.'; return; }
-        if (!inPlace && !/^[A-Za-z0-9_-]{1,64}$/.test(nm.value)) { err.textContent = 'Tên chỉ dùng chữ không dấu, số, - hoặc _.'; return; }
-        if (!inPlace && ((sessionOf(host, name).v || {}).sessions || []).some(function (s) { return s.name === nm.value; })) { err.textContent = 'Tên này đã có phiên.'; return; }
+        if (!prompt || prompt.length > MAX) { err.textContent = i18n('handoff.loi_nhac_phai_co_noi', [MAX]); return; }
+        if (!inPlace && !/^[A-Za-z0-9_-]{1,64}$/.test(nm.value)) { err.textContent = i18n('app.ten_chi_dung_chu_khong_2'); return; }
+        if (!inPlace && ((sessionOf(host, name).v || {}).sessions || []).some(function (s) { return s.name === nm.value; })) { err.textContent = i18n('handoff.ten_nay_da_co_phien'); return; }
         go.disabled = true; run(prompt, tool.value, nm.value, inPlace);
       });
-      a.append(btn('Quay lại', 'ghost', review), go); f.append(a);
+      a.append(btn(i18n('handoff.quay_lai'), 'ghost', review), go); f.append(a);
     }
     function run(prompt, toolName, newName, inPlace) {
-      var f = shell(inPlace ? 'Đang làm mới…' : 'Đang mở phiên mới…'); steps(f, 2); var status = el('p', 'ho-lead', ''); f.append(status);
+      var f = shell(inPlace ? i18n('handoff.dang_lam_moi') : i18n('handoff.dang_mo_phien_moi')); steps(f, 2); var status = el('p', 'ho-lead', ''); f.append(status);
       function say(t) { status.textContent = t; }
       (inPlace ? Promise.resolve() : TW.api('POST', '/api/servers/' + host + '/sessions', { name: newName, dir: st.check.cwd, run: toolName }))
         .then(function () { var target = inPlace ? name : newName; return inPlace ? keys(host, name, '/clear', true).then(function () { return sleep(2500); }).then(function () { return target; }) : target; })
         .then(function (target) {
-          say(inPlace ? 'Đã gửi /clear, chờ phiên sẵn sàng…' : 'Phiên đã tạo, chờ ' + (toolName === 'codex' ? 'Codex' : 'Claude') + ' sẵn sàng…');
+          say(inPlace ? i18n('handoff.da_gui_clear_cho_phien') : i18n('handoff.phien_da_tao_cho_san', [(toolName === 'codex' ? 'Codex' : 'Claude')]));
           var tries = 0;
           return (function wait() {
             var s = sessionOf(host, target).s; if (s && READY.test((s.lines || []).join('\n'))) return target;
@@ -129,23 +129,23 @@
           if (!target) { done(f, inPlace ? name : newName, prompt, false, inPlace); return; }
           return keys(host, target, prompt, false).then(function () { done(f, target, prompt, true, inPlace); });
         })
-        .catch(function (e) { fail(f, e); var a = el('div', 'ho-actions'); a.append(btn('Quay lại', 'ghost', handoff), btn('Đóng', '', function () { d.close(); })); f.append(a); });
+        .catch(function (e) { fail(f, e); var a = el('div', 'ho-actions'); a.append(btn(i18n('handoff.quay_lai'), 'ghost', handoff), btn(i18n('fileviewer.dong'), '', function () { d.close(); })); f.append(a); });
     }
     function done(f, target, prompt, typed, inPlace) {
-      f.textContent = ''; f.append(el('h2', '', inPlace ? 'Đã làm mới phiên' : 'Đã mở phiên mới'));
-      f.append(el('p', 'ho-lead', typed ? 'Lời nhắc đã được gõ sẵn trong phiên (chưa Enter). Đọc lại rồi bấm Enter ở phiên đó.' : 'Phiên đã mở nhưng chưa thấy dấu hiệu sẵn sàng nên chưa gõ lời nhắc. Sao chép lời nhắc dưới đây dán vào phiên.'));
+      f.textContent = ''; f.append(el('h2', '', inPlace ? i18n('handoff.da_lam_moi_phien') : i18n('handoff.da_mo_phien_moi')));
+      f.append(el('p', 'ho-lead', typed ? i18n('handoff.loi_nhac_da_duoc_go') : i18n('handoff.phien_da_mo_nhung_chua')));
       if (!typed) { var pre = el('pre', 'ho-pre', prompt); f.append(pre); }
       try { app().openSession(host, target); } catch (e) { /* the user can open it from the list */ }
       var a = el('div', 'ho-actions');
-      if (!typed) a.append(btn('Sao chép lời nhắc', '', function () { (window.TW_DESKTOP && window.TW_DESKTOP.copy ? window.TW_DESKTOP.copy(prompt) : navigator.clipboard.writeText(prompt)).then(function () { TW.app().say('Đã sao chép.', true, 2000); }).catch(function () { TW.app().say('Không sao chép được.', false, 3000); }); }));
+      if (!typed) a.append(btn(i18n('handoff.sao_chep_loi_nhac'), '', function () { (window.TW_DESKTOP && window.TW_DESKTOP.copy ? window.TW_DESKTOP.copy(prompt) : navigator.clipboard.writeText(prompt)).then(function () { TW.app().say(i18n('handoff.da_sao_chep'), true, 2000); }).catch(function () { TW.app().say(i18n('handoff.khong_sao_chep_duoc'), false, 3000); }); }));
       if (!inPlace) {
-        f.append(el('p', 'ho-lead', 'Phiên cũ ' + name + ' vẫn chạy để đối chiếu. Khi phiên mới trả lời đúng trạng thái, dừng phiên cũ.'));
-        var stop = btn('Phiên mới đúng, dừng phiên cũ…', '', function () {
-          if (!stop.dataset.armed) { stop.dataset.armed = '1'; stop.textContent = 'Bấm lần nữa để dừng ' + name; stop.classList.add('primary'); setTimeout(function () { delete stop.dataset.armed; stop.textContent = 'Phiên mới đúng, dừng phiên cũ…'; stop.classList.remove('primary'); }, 4000); return; }
-          TW.api('DELETE', '/api/servers/' + host + '/sessions/' + encodeURIComponent(name)).then(function () { TW.app().say('Đã dừng phiên ' + name + '.', true, 3000); d.close(); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
+        f.append(el('p', 'ho-lead', i18n('handoff.phien_cu_van_chay_de', [name])));
+        var stop = btn(i18n('handoff.phien_moi_dung_dung_phien'), '', function () {
+          if (!stop.dataset.armed) { stop.dataset.armed = '1'; stop.textContent = i18n('handoff.bam_lan_nua_de_dung', [name]); stop.classList.add('primary'); setTimeout(function () { delete stop.dataset.armed; stop.textContent = i18n('handoff.phien_moi_dung_dung_phien'); stop.classList.remove('primary'); }, 4000); return; }
+          TW.api('DELETE', '/api/servers/' + host + '/sessions/' + encodeURIComponent(name)).then(function () { TW.app().say(i18n('handoff.da_dung_phien', [name]), true, 3000); d.close(); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
         });
-        a.append(btn('Giữ cả hai', 'ghost', function () { d.close(); }), stop);
-      } else a.append(btn('Đóng', 'primary', function () { d.close(); }));
+        a.append(btn(i18n('handoff.giu_ca_hai'), 'ghost', function () { d.close(); }), stop);
+      } else a.append(btn(i18n('fileviewer.dong'), 'primary', function () { d.close(); }));
       f.append(a);
     }
     d.showModal(); load();

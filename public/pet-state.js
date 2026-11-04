@@ -1,7 +1,7 @@
 'use strict';
 (function (root) {
   const LIMITS = Object.freeze({ wait: 120000, knock: 8000, effect: 7000, day: 86400, week: 604800,
-    match: 6000, idleMin: 11000, idleMax: 23000, problemsThunder: 3 });
+    match: 6000, idleMin: 11000, idleMax: 23000, problemsThunder: 2 });
   const COMMANDS = [
     [/^(?:\S*\/)?git\s+push(?:\s|$)/, 'box'],
     [/^(?:(?:\S*\/)?(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test|(?:\S*\/)?(?:pytest|jest|vitest)(?:\s|$)|(?:\S*\/)?(?:dotnet|cargo|go)\s+test|(?:\S*\/)?node\s+--test)(?:\s|$)/, 'test'],

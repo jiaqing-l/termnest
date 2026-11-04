@@ -1,4 +1,5 @@
 'use strict';
+const { tr, langOf, setLang } = require('./lib/i18n-server');
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
@@ -70,6 +71,19 @@ let lockedUntil = 0;
 
 const NM = path.resolve(path.dirname(require('module').createRequire(path.join(__dirname, 'server.js')).resolve('@xterm/xterm')), '../../..');
 const PUB = path.join(__dirname, 'public');
+// Every public/locales/<lang>.json becomes one language of window.TW_LOCALES, so a new file is a new language.
+let localesCache = { stamp: '', script: '' };
+function localesScript() {
+  const dir = path.join(PUB, 'locales');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
+  const stamp = files.map((f) => f + fs.statSync(path.join(dir, f)).mtimeMs).join('|');
+  if (stamp !== localesCache.stamp) {
+    const all = {};
+    for (const f of files) { try { all[f.slice(0, -5)] = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { /* a broken file never takes the others down */ } }
+    localesCache = { stamp, script: 'window.TW_LOCALES=' + JSON.stringify(all).replace(/</g, '\\u003c') + ';' };
+  }
+  return localesCache.script;
+}
 const STATIC = {
   '/': [path.join(PUB, 'index.html'), 'text/html; charset=utf-8'],
   '/markdown-worker.js': [path.join(PUB, 'markdown-worker.js'), 'text/javascript; charset=utf-8'],
@@ -89,6 +103,7 @@ const STATIC = {
   '/pet-state.js': [path.join(PUB, 'pet-state.js'), 'text/javascript; charset=utf-8'],
   '/pet-scene.js': [path.join(PUB, 'pet-scene.js'), 'text/javascript; charset=utf-8'],
   '/pet-yard.js': [path.join(PUB, 'pet-yard.js'), 'text/javascript; charset=utf-8'],
+  '/i18n.js': [path.join(PUB, 'i18n.js'), 'text/javascript; charset=utf-8'],
   '/pets.js': [path.join(PUB, 'pets.js'), 'text/javascript; charset=utf-8'],
   '/manifest.webmanifest': [path.join(PUB, 'manifest.webmanifest'), 'application/manifest+json'],
   '/sw.js': [path.join(PUB, 'sw.js'), 'text/javascript; charset=utf-8'],
@@ -242,16 +257,16 @@ function setCookie(res, token) {
 
 async function login(req, res) {
   const { password } = await readJson(req);
-  if (!vault.exists()) { fail(res, 409, 'Chưa đặt mật khẩu cho Termnest.'); return; }
+  if (!vault.exists()) { fail(res, 409, tr('srv.server.chua_dat_mat_khau_cho')); return; }
   const now = Date.now();
   if (now < lockedUntil) {
-    fail(res, 429, `Sai quá nhiều lần. Thử lại sau ${Math.ceil((lockedUntil - now) / 1000)} giây.`);
+    fail(res, 429, tr('srv.server.sai_qua_nhieu_lan_thu', [Math.ceil((lockedUntil - now) / 1000)]));
     return;
   }
   if (typeof password !== 'string' || !password || !vault.unlock(password)) {
     failures += 1;
     if (failures >= LOGIN_LIMIT) { failures = 0; lockedUntil = now + LOGIN_LOCK_MS; }
-    fail(res, 401, 'Sai mật khẩu.');
+    fail(res, 401, tr('srv.server.sai_mat_khau'));
     return;
   }
   failures = 0;
@@ -276,16 +291,16 @@ async function addServer(req, res) {
   const user = String(b.user || '').trim();
   const port = Number(b.port || 22);
   const auth = b.auth === 'key' ? 'key' : 'password';
-  if (!validHost(host)) { fail(res, 400, 'Địa chỉ máy chủ chưa đúng.'); return; }
-  if (!validUser(user)) { fail(res, 400, 'Tài khoản chưa đúng.'); return; }
-  if (!Number.isInteger(port) || port < 1 || port > 65535) { fail(res, 400, 'Cổng chưa đúng.'); return; }
-  if (auth === 'password' && (typeof b.password !== 'string' || !b.password)) { fail(res, 400, 'Nhập mật khẩu.'); return; }
+  if (!validHost(host)) { fail(res, 400, tr('srv.server.dia_chi_may_chu_chua')); return; }
+  if (!validUser(user)) { fail(res, 400, tr('srv.server.tai_khoan_chua_dung')); return; }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) { fail(res, 400, tr('srv.server.cong_chua_dung')); return; }
+  if (auth === 'password' && (typeof b.password !== 'string' || !b.password)) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
   if (auth === 'key' && (typeof b.key !== 'string' || !b.key.includes('PRIVATE KEY'))) {
-    fail(res, 400, 'Chọn file khóa SSH riêng tư (private key).');
+    fail(res, 400, tr('srv.server.chon_file_khoa_ssh_rieng'));
     return;
   }
   if (vault.data.servers.some((s) => s.host === host && s.port === port && s.user === user)) {
-    fail(res, 409, 'Tài khoản này đã có trong danh sách.');
+    fail(res, 409, tr('srv.server.tai_khoan_nay_da_co'));
     return;
   }
   const cfg = { id: crypto.randomUUID(), host, port, user, auth, name: '', fingerprint: '' };
@@ -311,9 +326,9 @@ async function addServer(req, res) {
 }
 
 function removeServer(res, id) {
-  if (id === LOCAL_ID) { fail(res, 400, 'Không thể gỡ Máy này.'); return; }
+  if (id === LOCAL_ID) { fail(res, 400, tr('srv.server.khong_the_go_may_nay')); return; }
   const r = remotes.get(id);
-  if (!r) { fail(res, 404, 'Không thấy máy chủ này.'); return; }
+  if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
   r.close();
   remotes.delete(id);
   vault.data.servers = vault.data.servers.filter((s) => s.id !== id);
@@ -326,10 +341,10 @@ function removeServer(res, id) {
 
 async function reconnect(req, res, id) {
   const r = remotes.get(id);
-  if (!r) { fail(res, 404, 'Không thấy máy chủ này.'); return; }
+  if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
   const b = await readJson(req);
   if (r.ready) { send(res, 200, { ok: true }); return; }
-  if (r.cfg.auth === 'password' && !r.password && !b.password) { fail(res, 400, 'Nhập mật khẩu.'); return; }
+  if (r.cfg.auth === 'password' && !r.password && !b.password) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
   try {
     await r.connect(r.cfg.auth === 'password' ? (b.password || r.password) : undefined);
     await r.poll();
@@ -347,7 +362,7 @@ function sessionDir(dir, r) {
 
 async function listDirs(res, r, dir) {
   dir = dir.trim();
-  if (!validDir(dir) || (r.mode !== 'powershell' && dir && !dir.startsWith('/'))) { fail(res, 400, 'Thư mục chưa đúng.'); return; }
+  if (!validDir(dir) || (r.mode !== 'powershell' && dir && !dir.startsWith('/'))) { fail(res, 400, tr('srv.server.thu_muc_chua_dung')); return; }
   if (r.mode === 'powershell') { send(res, 200, await r.listPlainDirs(dir)); return; }
   const script = [
     sessionDir(dir, r),
@@ -358,7 +373,7 @@ async function listDirs(res, r, dir) {
     `exit 0`,
   ].join('\n');
   const out = await r.exec(`sh -c ${shq(script)}`);
-  if (out.code !== 0) { fail(res, 400, 'Không mở được thư mục này.'); return; }
+  if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_mo_duoc_thu_muc')); return; }
   send(res, 200, parseDirs(out.out));
 }
 
@@ -384,9 +399,9 @@ async function startSession(r, options) {
 }
 
 async function executeStartSession(r, { name, dir, run, restoring = false }) {
-  if (!validName(name)) throw new Error('Tên chỉ dùng chữ không dấu, số, - hoặc _.');
-  if (!validDir(dir)) throw new Error('Thư mục chưa đúng.');
-  if (!['shell', 'claude', 'codex'].includes(run)) throw new Error('Lệnh chưa đúng.');
+  if (!validName(name)) throw new Error(tr('srv.server.ten_chi_dung_chu_khong'));
+  if (!validDir(dir)) throw new Error(tr('srv.server.thu_muc_chua_dung'));
+  if (!['shell', 'claude', 'codex'].includes(run)) throw new Error(tr('srv.server.lenh_chua_dung'));
   dir = dir.trim();
   let resolvedDir;
   if (r.mode === 'powershell') {
@@ -401,12 +416,12 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
       // Without a UTF-8 locale bash drops Vietnamese input. -e needs tmux 3.2, so older ones fall back.
       `tmux -u new-session -d -s ${shq(name)} -c "$d" -e "LANG=\${LANG:-C.UTF-8}" 2>/dev/null || tmux -u new-session -d -s ${shq(name)} -c "$d"`,
     ].join('\n'))}`);
-    if (out.code === 3) throw new Error('Không thấy thư mục này.');
-    if (out.code === 4) { const err = new Error('Tên này đã có.'); err.status = 409; throw err; }
-    if (out.code !== 0) throw new Error('Không tạo được phiên.');
+    if (out.code === 3) throw new Error(tr('srv.server.khong_thay_thu_muc_nay'));
+    if (out.code === 4) { const err = new Error(tr('srv.server.ten_nay_da_co')); err.status = 409; throw err; }
+    if (out.code !== 0) throw new Error(tr('srv.server.khong_tao_duoc_phien'));
     const records = out.out.split('\0');
     const record = records.indexOf('TW_DIR');
-    if (record < 0 || !records[record + 1]?.endsWith('\n')) throw new Error('Không đọc được thư mục của phiên.');
+    if (record < 0 || !records[record + 1]?.endsWith('\n')) throw new Error(tr('srv.server.khong_doc_duoc_thu_muc'));
     resolvedDir = records[record + 1].slice(0, -1);
     if (run === 'claude') {
       const id = claudeSessionId(resolvedDir, name);
@@ -423,7 +438,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
       catch { launched = { code: 1 }; }
       if (launched.code !== 0) {
         await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`).catch(() => {});
-        throw new Error('Không chạy được Claude.');
+        throw new Error(tr('srv.server.khong_chay_duoc_claude'));
       }
     }
     if (run === 'codex') {
@@ -431,7 +446,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
       const launched = await r.exec(`tmux send-keys -t ${shq(`=${name}:`)} ${shq(cmd)} Enter`).catch(() => ({ code: 1 }));
       if (launched.code !== 0) {
         await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`).catch(() => {});
-        throw new Error('Không chạy được Codex.');
+        throw new Error(tr('srv.server.khong_chay_duoc_codex'));
       }
     }
   }
@@ -447,7 +462,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
 }
 
 async function killSession(res, r, name) {
-  if (typeof name !== 'string' || !name || name.length > 128) { fail(res, 400, 'Tên phiên chưa đúng.'); return; }
+  if (typeof name !== 'string' || !name || name.length > 128) { fail(res, 400, tr('srv.server.ten_phien_chua_dung')); return; }
   const stopped = await withSessionChange(r, async () => {
     const out = r.mode === 'powershell' ? { code: r.killPlain(name) ? 0 : 1 } : await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`);
     if (out.code !== 0) return false;
@@ -460,7 +475,7 @@ async function killSession(res, r, name) {
     }
     return true;
   });
-  if (!stopped) { fail(res, 400, 'Không dừng được phiên này.'); return; }
+  if (!stopped) { fail(res, 400, tr('srv.server.khong_dung_duoc_phien_nay')); return; }
   await r.poll();
   send(res, 200, { ok: true });
 }
@@ -468,13 +483,13 @@ async function killSession(res, r, name) {
 async function restore(req, res, r) {
   const b = await readJson(req);
   if (b.names !== undefined && (!Array.isArray(b.names) || b.names.some((n) => !validName(n)))) {
-    fail(res, 400, 'Danh sách phiên chưa đúng.'); return;
+    fail(res, 400, tr('srv.server.danh_sach_phien_chua_dung')); return;
   }
   const names = b.names === undefined ? r.lost.map((s) => s.name) : [...new Set(b.names)];
   const result = { restored: [], failed: [] };
   for (const name of names) {
     const session = r.lost.find((s) => s.name === name);
-    if (!session) { result.failed.push({ name, error: 'Không thấy phiên cần khôi phục.' }); continue; }
+    if (!session) { result.failed.push({ name, error: tr('srv.server.khong_thay_phien_can_khoi') }); continue; }
     try {
       await startSession(r, { ...session, restoring: true });
       result.restored.push(name);
@@ -500,19 +515,19 @@ async function scrollSession(req, res, r, name) {
   const b = await readJson(req);
   let script;
   try { script = scrollScript(name, b.op, b.n); }
-  catch { fail(res, 400, 'Lệnh cuộn chưa đúng.'); return; }
-  if (r.mode === 'powershell') { fail(res, 400, 'Máy này chưa hỗ trợ cuộn.'); return; }
-  if (!r.ready) { fail(res, 503, 'Máy chủ chưa kết nối.'); return; }
+  catch { fail(res, 400, tr('srv.server.lenh_cuon_chua_dung')); return; }
+  if (r.mode === 'powershell') { fail(res, 400, tr('srv.server.may_nay_chua_ho_tro')); return; }
+  if (!r.ready) { fail(res, 503, tr('srv.server.may_chu_chua_ket_noi')); return; }
   const out = await r.exec(`sh -c ${shq(script)}`);
   try { send(res, 200, parseScrollState(out.out)); }
-  catch { fail(res, 400, 'Không đọc được vị trí cuộn.'); }
+  catch { fail(res, 400, tr('srv.server.khong_doc_duoc_vi_tri')); }
 }
 
 async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
   if (!name || name.length > 128 || typeof b.text !== 'string' || b.text.length > 1000 ||
       /[\x00-\x1f\x7f-\x9f]/.test(b.text) || (b.enter !== undefined && typeof b.enter !== 'boolean')) {
-    fail(res, 400, 'Nội dung chưa đúng.'); return;
+    fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return;
   }
   const target = shq(`=${name}:`);
   const replySession = r.snapshot?.sessions?.find((s) => s.name === name);
@@ -521,11 +536,11 @@ async function sendKeys(req, res, r, name) {
   } else {
     if (b.text) {
       const out = await r.exec(`tmux send-keys -l -t ${target} -- ${shq(b.text)}`);
-      if (out.code !== 0) { fail(res, 400, 'Không gửi được nội dung.'); return; }
+      if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_noi_dung')); return; }
     }
     if (b.enter !== false) {
       const out = await r.exec(`tmux send-keys -t ${target} Enter`);
-      if (out.code !== 0) { fail(res, 400, 'Không gửi được Enter.'); return; }
+      if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_enter')); return; }
     }
   }
   if (b.text && b.enter !== false) {
@@ -554,10 +569,10 @@ async function api(req, res, url) {
     const digest = (value) => crypto.createHash('sha256').update(value).digest();
     if (typeof body.setupToken !== 'string' ||
         !crypto.timingSafeEqual(digest(body.setupToken), digest(process.env.TW_SETUP_TOKEN))) {
-      fail(res, 403, 'Mã thiết lập không hợp lệ.'); return;
+      fail(res, 403, tr('srv.server.ma_thiet_lap_khong_hop')); return;
     }
     if (typeof body.password !== 'string' || body.password.length < 10) {
-      fail(res, 400, 'Mật khẩu cần ít nhất 10 ký tự.'); return;
+      fail(res, 400, tr('srv.server.mat_khau_can_it_nhat')); return;
     }
     vault.create(body.password, { servers: [] });
     delete process.env.TW_SETUP_TOKEN;
@@ -567,7 +582,7 @@ async function api(req, res, url) {
     fail(res, 404, 'Not found'); return;
   }
   if (p === '/api/login' && m === 'POST') { await login(req, res); return; }
-  if (!authed(req)) { fail(res, 401, 'Hãy đăng nhập lại.'); return; }
+  if (!authed(req)) { fail(res, 401, tr('srv.server.hay_dang_nhap_lai')); return; }
   if (features.handles(p)) { await features.handle(req, res, url); return; }
   if (p === '/api/quit' && m === 'POST') {
     res.once('finish', drain);
@@ -584,7 +599,7 @@ async function api(req, res, url) {
     try {
       const value = await require('./lib/file-viewer').readSessionFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('session'), url.searchParams.get('path'));
       if(p === '/api/file-preview' && !value.error){
-        if(value.kind !== 'html'){fail(res,400,'Chỉ hỗ trợ bản xem trước HTML.');return;}
+        if(value.kind !== 'html'){fail(res,400,tr('srv.server.chi_ho_tro_ban_xem'));return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
           'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
         let page = value.text;
@@ -608,7 +623,7 @@ async function api(req, res, url) {
   if (p === '/api/usage' && m === 'GET') {
     const zone = url.searchParams.get('zone') || 'UTC';
     try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); validRange(url.searchParams.get('from'), url.searchParams.get('to')); }
-    catch { send(res, 400, { error: 'Khoảng ngày hoặc múi giờ chưa đúng.' }); return; }
+    catch { send(res, 400, { error: tr('srv.server.khoang_ngay_hoac_mui_gio') }); return; }
     // Declared accounts plus the default config folders found on each host, so the report matches the token cards.
     const found = await discoverUsage([...remotes.values()].filter((r) => r.ready && r.mode !== 'powershell')).catch(() => []);
     const merged = mergeUsageAccounts(mergePrefs(vault.data.prefs).aiAccounts, found), accounts = merged.accounts;
@@ -617,7 +632,7 @@ async function api(req, res, url) {
     try { for (const a of JSON.parse(tokenCache.get([...remotes.values()], accounts, { zone })).accounts || []) if (a.email) emails.set(a.id, a.email); } catch { /* names fall back to nickname or directory */ }
     const backendOf = (id) => { const r = remotes.get(id); return r?.ready ? r : null; };
     try { const report = await usage.get(backendOf, accounts, { from: url.searchParams.get('from'), to: url.searchParams.get('to'), zone, refresh: url.searchParams.get('refresh') === '1', emails }); send(res, 200, { ...report, accounts: mergeIdentity(report.accounts, emails) }); }
-    catch { send(res, 500, { error: 'Không đọc được báo cáo sử dụng.' }); }
+    catch { send(res, 500, { error: tr('srv.server.khong_doc_duoc_bao_cao') }); }
     return;
   }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
@@ -625,7 +640,7 @@ async function api(req, res, url) {
     const input = await readJson(req);
     let prefs;
     try { prefs = cleanPrefs(input, vault.data.prefs); }
-    catch { fail(res, 400, 'Cài đặt chưa đúng.'); return; }
+    catch { fail(res, 400, tr('srv.server.cai_dat_chua_dung')); return; }
     vault.data.prefs = prefs;
     saveVault();
     send(res, 200, prefs);
@@ -638,10 +653,10 @@ async function api(req, res, url) {
     const task = url.searchParams.get('task'), track = url.searchParams.get('track');
     const { trackDir } = require('./lib/crew');
     try { trackDir({ cwd: '/', task, track }); }
-    catch { fail(res, 400, 'Tên task hoặc track chưa đúng.'); return; }
+    catch { fail(res, 400, tr('srv.server.ten_task_hoac_track_chua')); return; }
     const w = r?.snapshot?.workers.find((w) => w.task === task && w.track === track);
-    if (!w) { fail(res, 404, 'Không thấy worker.'); return; }
-    if (!r.ready) { fail(res, 503, 'Máy chủ chưa kết nối.'); return; }
+    if (!w) { fail(res, 404, tr('srv.server.khong_thay_worker')); return; }
+    if (!r.ready) { fail(res, 503, tr('srv.server.may_chu_chua_ket_noi')); return; }
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
@@ -652,7 +667,7 @@ async function api(req, res, url) {
     if (!tail && m === 'DELETE') { removeServer(res, id); return; }
     if (tail === '/connect' && m === 'POST') { await reconnect(req, res, id); return; }
     const r = remotes.get(id);
-    if (!r) { fail(res, 404, 'Không thấy máy chủ này.'); return; }
+    if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
     if (tail === '/reboot' && m === 'POST') {
       const body = await readJson(req);
       try { send(res, 200, await require('./lib/reboot').rebootServer(r, body.name)); }
@@ -661,7 +676,7 @@ async function api(req, res, url) {
     }
     if (tail === '/history' && m === 'GET') {
       const hours = url.searchParams.get('hours');
-      if (!['1', '6', '24'].includes(hours)) { fail(res, 400, 'Khoảng thời gian chưa đúng.'); return; }
+      if (!['1', '6', '24'].includes(hours)) { fail(res, 400, tr('srv.server.khoang_thoi_gian_chua_dung')); return; }
       send(res, 200, { points: historyPoints(r.longHistory, Date.now() - Number(hours) * 3600000) }); return;
     }
     if (tail === '/restore' && m === 'POST') { await restore(req, res, r); return; }
@@ -672,7 +687,7 @@ async function api(req, res, url) {
     if (tail === '/sessions' && m === 'POST') { await createSession(req, res, r); return; }
     if (sv[3] && !sv[4] && m === 'DELETE') { await killSession(res, r, decodeURIComponent(sv[3])); return; }
   }
-  fail(res, 404, 'Không tìm thấy.');
+  fail(res, 404, tr('srv.server.khong_tim_thay'));
 }
 
 let activeRequests = 0;
@@ -683,23 +698,25 @@ const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'
 features.load();
 
 const server = http.createServer(async (req, res) => {
+  setLang(langOf(req));   // the page sends X-TW-Lang; every message this request produces follows it
   if (!hostOk(req)) { res.writeHead(403); res.end(); return; }
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname === '/__app' && req.method === 'GET') {
     // Legacy wire identity lets desktop releases reuse an existing source server.
     send(res, 200, { app: 'tmux-dev', active_work: activeWork() ? 1 : 0 }); return;
   }
-  if (draining && req.method !== 'GET') { fail(res, 503, 'Ứng dụng đang đóng.'); return; }
+  if (draining && req.method !== 'GET') { fail(res, 503, tr('srv.server.ung_dung_dang_dong')); return; }
   if (url.pathname.startsWith('/api/')) {
-    if (req.method !== 'GET' && !originOk(req)) { fail(res, 403, 'Yêu cầu không hợp lệ.'); return; }
+    if (req.method !== 'GET' && !originOk(req)) { fail(res, 403, tr('srv.server.yeu_cau_khong_hop_le')); return; }
     activeRequests++;
     try {
       await api(req, res, url);
     } catch (err) {
-      if (!res.headersSent) fail(res, err.message === 'bad json' ? 400 : 500, err.message === 'bad json' ? 'Dữ liệu không hợp lệ.' : (err.message || 'Có lỗi xảy ra.'));
+      if (!res.headersSent) fail(res, err.message === 'bad json' ? 400 : 500, err.message === 'bad json' ? tr('srv.server.du_lieu_khong_hop_le') : (err.message || tr('srv.server.co_loi_xay_ra')));
     } finally { activeRequests--; }
     return;
   }
+  if (url.pathname === '/locales.js' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', ...HEADERS }); res.end(localesScript()); return; }
   const entry = STATIC[url.pathname] || (req.method === 'GET' ? features.staticFile(url.pathname) : null);
   if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
   fs.readFile(entry[0], (err, buf) => {

@@ -797,14 +797,13 @@ html,body{overscroll-behavior:none}
 .yp:hover{filter:brightness(1.1)}
 .yp.joy svg{animation:yd-joy .55s ease}@keyframes yd-joy{0%,100%{transform:none}35%{transform:translateY(-12px) rotate(-8deg) scale(1.1)}65%{transform:translateY(-3px) rotate(6deg)}}
 .yw.sleep{animation:none!important}.yw.sleep .yp,.yw.sleep .yp svg,.yw.wait .yp svg,.yw.offline .yp svg{animation:none!important}
-.yw.wait,.yw.offline{animation-duration:calc(var(--t)*3)}
+.yw.wait,.yw.offline{animation-play-state:paused}
 .yw.offline{filter:grayscale(1);opacity:.7}
 .yz{position:absolute;left:70%;top:-18px;font:900 15px system-ui;color:#7aa2ff;animation:yd-zz 2s ease-in-out infinite;white-space:nowrap;pointer-events:none}@keyframes yd-zz{50%{transform:translateY(-4px);opacity:.6}}
 .ym{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:15px;font-style:normal;animation:yd-bob 1.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}@keyframes yd-bob{50%{transform:translate(-50%,-3px)}}
 .yh{position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-size:calc(var(--s)*.4);pointer-events:none}
 .yw.hot .yp svg{animation:yd-pant .35s ease-in-out infinite}@keyframes yd-pant{50%{transform:scale(1.07,.93)}}
-.yw.carry{animation-duration:calc(var(--t)*.55)}
-.yw.alarmed{animation-duration:3s}.yw.alarmed .yp svg{animation:yd-hop .4s ease-in-out infinite}@keyframes yd-hop{0%,60%,100%{transform:none}30%{transform:translateY(-6px) rotate(-4deg)}}
+.yw.alarmed .yp svg{animation:yd-hop .4s ease-in-out infinite}@keyframes yd-hop{0%,60%,100%{transform:none}30%{transform:translateY(-6px) rotate(-4deg)}}
 .yw.hungry .yp svg{transform:scaleY(.72) translateY(5px);animation:none}
 .yw.held{cursor:grabbing;z-index:6}.yw.held .yp svg{transform:scale(1.2) rotate(-8deg)}
 .yw.huddle .yp svg{transform:rotate(var(--tilt,0deg))}
@@ -855,3 +854,34 @@ html,body{overscroll-behavior:none}
 .wx-bolt{position:absolute;right:26%;top:14px;width:44px;height:120px;display:none;filter:drop-shadow(0 0 10px #fff3a0);opacity:0;animation:wx-bolt 6s infinite}
 .hero[data-w=storm] .wx-bolt{display:block}@keyframes wx-bolt{0%,100%{opacity:0}3%{opacity:1}6%{opacity:0}7%{opacity:1}11%{opacity:0}}
 .hero[data-w=storm] .shelf .pet-slot{animation:wx-shake .35s ease-in-out infinite}@keyframes wx-shake{25%{transform:translateX(-1.5px)}75%{transform:translateX(1.5px)}}
+
+.al.read{opacity:.55}.al.read b{font-weight:600}
+#dlg-alerts .dlg-h{gap:8px;flex-wrap:wrap}#dlg-alerts .dlg-h h2{margin-right:auto}
+
+.tab-menu-item:disabled{opacity:.45;cursor:default}.tab-menu-item:disabled:hover{background:transparent}
+
+
+/* Language picker: one button per language file, with its flag */
+.lang-pick{display:inline-flex;gap:6px;flex-wrap:wrap}
+.lang-opt{display:inline-flex;align-items:center;gap:7px;padding:4px 11px 4px 8px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--fg);cursor:pointer;font:600 12.5px var(--sans)}
+.lang-opt:hover{background:var(--surface-2,var(--surface))}
+.lang-opt[aria-pressed="true"]{border-color:var(--primary,#ff5d7a);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary,#ff5d7a) 22%,transparent)}
+.lang-opt .flag{display:inline-flex}.lang-opt .flag svg{width:22px;height:15px;border-radius:2px;display:block;box-shadow:0 0 0 1px rgba(0,0,0,.14)}
+#login .login-side{position:relative}.login-lang{position:absolute;top:18px;right:18px}
+
+/* First paint on a phone: the compact login layout is also set by the width alone, not only by the .compact class that JS adds later. */
+@media(max-width:759.98px){
+  #login{flex-direction:column;overflow:auto}
+  .login-art{flex:none;padding:18px 20px;gap:6px}.login-art h1{font-size:23px;max-width:none}.login-art p{font-size:13px}.login-art .login-lockup{width:260px}
+  .login-side{width:100%;justify-content:flex-start;padding:18px 20px;overflow:visible}
+  .login-lang{position:static;align-self:stretch;display:flex;justify-content:flex-end;margin-bottom:6px}
+}
+/* The labels are filled in by i18n.js; until then the page is hidden, with a CSS failsafe so a failed script never leaves it blank. */
+html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
+@keyframes i18n-reveal{to{visibility:visible}}
+@media(max-width:759.98px){
+  #login,.login-side{max-width:100vw;box-sizing:border-box;min-width:0}
+  .login-side pre,.login-side code{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;box-sizing:border-box}
+  .login-lang{max-width:100%}
+  .login-lang .lang-opt{padding:4px 9px 4px 7px}
+}

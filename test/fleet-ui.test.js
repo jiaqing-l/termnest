@@ -19,8 +19,8 @@ test('Chrome: fleet labels, integer rings, equal heights, compact brand and rebo
   const index = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
   const header = index.match(/<header class="top">[\s\S]*?<\/header>/)[0].replace(/\/termnest-[^\"']+\.svg/g, src => 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(__dirname, '../public', path.basename(src))).toString('base64'));
   const dialog = index.match(/<dialog id="dlg-reboot"[\s\S]*?<\/dialog>/)[0];
-  const fixture = `<style>${fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8')}</style><div id="app">${header}<div id="fleet"></div></div>${dialog}<pre id="result"></pre><script>
-  var $=id=>document.getElementById(id),el=(tag,cls,txt)=>{var e=document.createElement(tag);e.className=cls||'';if(txt!=null)e.textContent=txt;return e;};
+  const fixture = `<style>${fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8')}</style><div id="app">${header}<div id="fleet"></div></div>${dialog}<pre id="result"></pre><script>window.TW_LOCALES={vi:${JSON.stringify(require('../public/locales/vi.json'))}};</script><script>${fs.readFileSync(path.join(__dirname, '../public/i18n.js'), 'utf8')}</script><script>
+  TW_I18N.apply();var $=id=>document.getElementById(id),el=(tag,cls,txt)=>{var e=document.createElement(tag);e.className=cls||'';if(txt!=null)e.textContent=txt;return e;};
   var HP={cpu:['CPU','#ff5c7a'],ram:['RAM','#8c6dff'],disk:['Disk','#0fb5ae']},prefs={limits:{cpu:95,ram:90,disk:90}},rebootTarget=null,rebootBusy=false;
   var sample={id:'fake',name:'demo-server',on:true,cpu:13.23,ram:100,disk:64.35,sessions:[{state:'run'},{state:'wait'}],workers:[],sys:{ramUsedGb:1.16,ramTotalGb:31.34,disks:[{mount:'/',usedGb:62.25,totalGb:96.73}],rebootRequired:true,net:[]}};
   var list=[sample,{...sample,id:'fake2',name:'long-server-name',sys:{...sample.sys,rebootRequired:false}}];

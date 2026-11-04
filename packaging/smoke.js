@@ -70,7 +70,7 @@ async function smoke(root, node) {
     assert.equal(status.status, 200);
     assert.deepEqual(await status.json(), { setup: false, authed: false, webSetup: true, packaged: true });
     const home = await app.request('/');
-    assert.equal(home.status, 200); assert.match(await home.text(), /Termnest/);
+    assert.equal(home.status, 200); assert.match(await home.text(), /TERMNEST/);
     for (const asset of ['/vendor/xterm.js', '/vendor/xterm.css', '/vendor/addon-fit.js', '/vendor/markdown-it.js']) assert.equal((await app.request(asset)).status, 200, asset);
     const password = crypto.randomBytes(24).toString('hex');
     assert.equal((await app.request('/api/setup', { password, setupToken: token })).status, 200);

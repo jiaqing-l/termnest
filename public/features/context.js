@@ -9,7 +9,7 @@
   // A window comes from Claude Code's own model catalog (or the Codex log); when the model is not in it there is no percentage.
   function known(i) { return i && i.window > 0; }
   function pct(i) { return Math.min(100, Math.round(i.ctx / i.window * 100)); }
-  var WHY = { catalog: 'theo danh mục model của Claude Code', log: 'theo log Codex' };
+  var WHY = { catalog: i18n('context.theo_danh_muc_model_cua'), log: 'theo log Codex' };
   // "Nhắc sau": hide the nudge for this session for 4 hours (the ring stays). Per browser, best effort.
   var SNOOZE_KEY = 'termnest.ctxSnooze', SNOOZE_MS = 4 * 3600 * 1000;
   function snoozed(key) { try { var m = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'); return (m[key] || 0) > Date.now(); } catch (e) { return false; } }
@@ -17,7 +17,7 @@
   // "Mở phiên mới…" (feature handoff) and the "⋯" menu: /clear in place, /compact, snooze. The handoff module may be absent.
   function actions(key) {
     var at = key.indexOf('/'), host = key.slice(0, at), name = key.slice(at + 1), box = el('span', 'ctx-actions');
-    var open = el('button', 'ctx-open', 'Mở phiên mới…'), more = el('button', 'ctx-more', '⋯'); open.type = more.type = 'button'; more.title = 'Thêm lựa chọn'; more.setAttribute('aria-haspopup', 'menu');
+    var open = el('button', 'ctx-open', i18n('context.mo_phien_moi')), more = el('button', 'ctx-more', '⋯'); open.type = more.type = 'button'; more.title = i18n('context.them_lua_chon'); more.setAttribute('aria-haspopup', 'menu');
     open.onclick = function (e) { e.stopPropagation(); if (TW.handoffOpen) TW.handoffOpen(host, name, 'new'); };
     more.onclick = function (e) { e.stopPropagation(); if (TW.handoffMenu) TW.handoffMenu(more, host, name); };
     box.append(open, more); return box;
@@ -28,17 +28,17 @@
     node.textContent = ''; node.hidden = !i; if (!i) return;
     if (!known(i)) {
       node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip';
-      node.title = 'Đang dùng ' + fmt(i.ctx) + ' token · model ' + (i.model || '?') + ' chưa có trong danh mục của Claude Code nên chưa biết cửa sổ';
-      node.append(el('span', 'ctx-t', fmt(i.ctx) + ' token · chưa rõ cửa sổ')); return;
+      node.title = i18n('context.dang_dung_token_model_chua', [fmt(i.ctx), (i.model || '?')]);
+      node.append(el('span', 'ctx-t', i18n('context.token_chua_ro_cua_so', [fmt(i.ctx)]))); return;
     }
-    var p = pct(i); node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip ' + level(p); node.title = 'Ngữ cảnh ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token' + (i.model ? ' · ' + i.model : '') + (WHY[i.by] ? ' · cửa sổ ' + WHY[i.by] : '');
+    var p = pct(i); node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip ' + level(p); node.title = i18n('context.ngu_canh_token', [fmt(i.ctx), fmt(i.window), (i.model ? ' · ' + i.model : ''), (WHY[i.by] ? i18n('context.cua_so', [WHY[i.by]]) : '')]);
     var ring = el('span', 'ctx-ring'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%')); node.append(ring);
     // Mockup 14: from 70% the card says it is time for a fresh session, with a way to dismiss it.
     if (p >= 70 && !snoozed(key)) {
       var t = el('span', 'ctx-t ctx-nudge');
-      t.append(el('b', '', p >= 90 ? 'Gần đầy · nên mở phiên mới' : 'Nên mở phiên mới'), el('small', '', '≈ ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'));
+      t.append(el('b', '', p >= 90 ? i18n('context.gan_day_nen_mo_phien') : i18n('context.nen_mo_phien_moi')), el('small', '', '≈ ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'));
       node.append(t, actions(key));
-    } else node.append(el('span', 'ctx-t', 'ngữ cảnh'));
+    } else node.append(el('span', 'ctx-t', i18n('context.ngu_canh')));
   }
   TW.addCardDecorator(function (card, v, s) {
     var chip = el('div', 'ctx-row'), key = v.id + '/' + s.name; chips[key] = chip; fill(chip, info(v.id, s.name), key);
@@ -49,11 +49,11 @@
   });
   function draw(box, i, key) {
     box.textContent = ''; box.hidden = !i; if (!i) return;
-    box.append(el('h3', '', 'Ngữ cảnh phiên'));
-    if (!known(i)) { box.append(el('p', 'ctx-unknown', 'Đang dùng ' + fmt(i.ctx) + ' token. Model ' + (i.model || '?') + ' chưa có trong danh mục của Claude Code trên máy này nên chưa biết cửa sổ, chưa tính được %.')); return; }
+    box.append(el('h3', '', i18n('context.ngu_canh_phien')));
+    if (!known(i)) { box.append(el('p', 'ctx-unknown', i18n('context.dang_dung_token_model_chua_2', [fmt(i.ctx), (i.model || '?')]))); return; }
     var p = pct(i);
     var row = el('div', 'ctx-line ' + level(p)), ring = el('span', 'ctx-ring big'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%'));
-    var t = el('div', 'ctx-txt'); t.append(el('b', '', fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'), el('small', '', p >= 90 ? 'Gần đầy: nên mở phiên mới từ file trạng thái.' : p >= 70 ? 'Nên mở phiên mới sớm để đỡ tốn token mỗi lượt.' : 'Còn rộng.'));
+    var t = el('div', 'ctx-txt'); t.append(el('b', '', fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'), el('small', '', p >= 90 ? i18n('context.gan_day_nen_mo_phien_2') : p >= 70 ? i18n('context.nen_mo_phien_moi_som') : i18n('context.con_rong')));
     row.append(ring, t); box.append(row); if (p >= 70 && key) box.append(actions(key));
   }
   function refresh() {

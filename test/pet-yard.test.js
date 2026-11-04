@@ -44,7 +44,7 @@ function harness({ hour = 12, limits = { cpu: 90, ram: 90, disk: 90 } } = {}) {
   doc.createElement = (t) => new Node(t); doc.createElementNS = (n, t) => new Node(t); doc.querySelectorAll = () => [];
   const RealDate = Date;
   const context = {
-    window: { PetState: require('../public/pet-state'), PetArt: { ORDER: ['cat', 'fox'], PETS: { cat: {}, fox: {} }, pet: (k, s) => '<svg data-k="' + k + '" data-s="' + s + '"/>' }, matchMedia: () => ({ matches: false, addEventListener() {} }) },
+    window: { PetState: require('../public/pet-state'), PetArt: { ORDER: ['cat', 'fox'], PETS: { cat: {}, fox: {} }, pet: (k, s) => '<svg data-k="' + k + '" data-s="' + s + '"/>' }, matchMedia: () => ({ matches: false, addEventListener() {} }), addEventListener() {} },
     document: doc, localStorage: { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
     Date: class extends RealDate { constructor(...a) { if (a.length) super(...a); else super(2026, 10, 4, hour, 30); } static now() { return new RealDate(2026, 10, 4, hour, 30).getTime(); } },
     MutationObserver: class { observe() {} }, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, performance: { now: () => 0 },
@@ -75,7 +75,7 @@ test('pets follow their sessions: removed ones leave, new ones arrive', () => {
   assert.equal(h.root.querySelector('yd-empty').hidden, false);
 });
 
-test('sky follows the hour, and everyone not waiting sleeps from 23h to 6h', () => {
+test('sky follows the hour; from 23h to 6h only the resting pets sleep', () => {
   const day = harness({ hour: 12 }); day.sync(many(3));
   assert.ok(day.root.classList.contains('day'));
   const dusk = harness({ hour: 18 }); dusk.sync(many(1)); assert.ok(dusk.root.classList.contains('dusk'));
@@ -116,4 +116,26 @@ test('the header offers a football button and shows how many pets are in the yar
   const h = harness(); h.sync(many(3));
   assert.match(h.headB.textContent, /Đá bóng/);
   assert.match(h.headB.textContent, /3 bạn đang ở sân/);
+});
+
+test('at night a pet that is working stays awake and can still play; only resting ones sleep', () => {
+  const h = harness({ hour: 1 });
+  h.sync([{ name: 'rest' }, { name: 'work', state: 'run' }, { name: 'work2', state: 'run' }, { name: 'ask', state: 'wait' }]);
+  const by = Object.fromEntries(h.walkers().map((w) => [w.dataset.key.split('/')[1], w]));
+  assert.equal(by.rest.dataset.mode, 'sleep');
+  assert.equal(by.work.dataset.mode, 'ok'); assert.equal(by.work2.dataset.mode, 'ok'); assert.equal(by.ask.dataset.mode, 'wait');
+  assert.match(h.headB.textContent, /3 bạn vẫn đang thức/);
+  assert.match(by.work.attrs.title || by.work.title, /work/);
+  const all = harness({ hour: 1 }); all.sync([{ name: 'a' }, { name: 'b' }]);
+  assert.match(all.headB.textContent, /các bạn đang ngủ/);
+});
+
+test('sessions that are all waiting for you still play together, as many as are free', () => {
+  const h = harness({ hour: 14 }); h.sync(Array.from({ length: 10 }, (_, i) => ({ name: 'w' + i, state: 'wait' })));
+  h.root.querySelector('yd-more');
+  const free = h.walkers().filter((w) => (w.dataset.mode === 'ok' || w.dataset.mode === 'wait') && !w.classList.contains('held'));
+  assert.equal(free.length, 10, 'waiting pets count as free');
+  const hurt = harness({ hour: 14 }); hurt.sync([{ name: 'a', state: 'wait' }, { name: 'b', on: false }, { name: 'c', state: 'wait' }]);
+  const ok = hurt.walkers().filter((w) => w.dataset.mode === 'wait' || w.dataset.mode === 'ok');
+  assert.equal(ok.length, 2, 'a disconnected pet sits out');
 });
