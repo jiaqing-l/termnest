@@ -340,12 +340,7 @@
     var acts = el('div', 'detail-actions'), d = el('button', 'btn', 'Rời (vẫn chạy)'), k = el('button', 'btn danger', 'Dừng');
     d.onclick = detach; k.onclick = killDlg; acts.append(d, k); box.append(w, a);
     var edit = el('button', 'btn', 'Đổi thú cưng'); edit.onclick = function () { editPet(x); }; box.append(edit);
-    var journal = el('details', 'pet-diary'), journalTitle = el('summary', '', 'Nhật ký thú'); journal.append(journalTitle);
-    var labels = { observed: 'Bắt đầu quan sát phiên', waiting: 'Chờ bạn', resumed: 'Phiên hết chờ', answered: 'Đã gửi trả lời từ web', finish: 'Đã kết thúc', failure: 'Thất bại' };
-    var timeline = el('ol');
-    (x.s.diary || []).slice().reverse().slice(0, 10).forEach(function (e) { timeline.append(el('li', '', new Date(e.at).toLocaleString('vi-VN') + ' · ' + (labels[e.type] || e.type) + (e.detail ? ' · ' + e.detail : ''))); });
-    journalTitle.textContent = 'Nhật ký thú (' + timeline.children.length + ')'; journal.append(timeline); if (!timeline.children.length) journal.append(el('p', '', 'Chưa có sự kiện quan sát.'));
-    box.append(journal, acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
+    box.append(acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
   }
   function renderBar() {
     var x = curItem();
@@ -756,25 +751,6 @@
     pets[editingPet] = { name: $('pet-nickname').value.trim(), kind: $('pet-kind').value, hat: $('pet-hat').value };
     savePrefs({ pets: pets }).then(function () { $('dlg-pet').close(); render(); }).catch(function (e) { $('pet-error').textContent = e.message; });
   };
-  function renderRanking(data) {
-    if (!data) return; var box = $('daily-ranking'); box.textContent = '';
-    box.append(el('b', '', 'Xếp hạng hôm nay · ' + data.day), el('p', '', 'Thời gian quan sát được · lỗi có exit status xác nhận'));
-    function rows(leaders, target) {
-      [['run', 'Chạy lâu nhất'], ['wait', 'Chờ lâu nhất'], ['failures', 'Nhiều lỗi nhất']].forEach(function (pair) {
-        var col = el('div', 'ranking-column'); col.append(el('strong', '', pair[1]));
-        var list = leaders[pair[0]] || []; if (!list.length) col.append(el('p', '', 'Chưa có dữ liệu'));
-        list.slice(0, 1).forEach(function (r) {
-          var server = srv(r.server), session = server && server.sessions.find(function (s) { return s.name === r.name; });
-          var row = el('div', 'ranking-row'), icon = el('span', 'ranking-pet');
-          icon.innerHTML = pet(session ? petFor(server, session) : petOf(r.name), pair[0] === 'wait' ? 'wait' : 'run');
-          row.title = (server ? server.name : r.server) + ' · ' + r.name;
-          row.append(icon, el('b', '', r.name), el('span', '', pair[0] === 'failures' ? r.value + ' lỗi' : span(r.value / 1000))); col.append(row);
-        }); target.append(col);
-      });
-    }
-    var grid = el('div', 'ranking-grid'); rows(data.leaders, grid); box.append(grid);
-    if (data.summary) { var summary = el('details'); summary.append(el('summary', '', 'Tổng kết ngày ' + data.summary.day)); rows(data.summary.leaders, summary); box.append(summary); }
-  }
   var waitCalls = new Map(), deliveries = new Map();
   try { deliveries = new Map(JSON.parse(sessionStorage.getItem('tw-deliveries') || '[]')); } catch (e) { /* optional */ }
   function notifyWaits() {
@@ -1053,7 +1029,7 @@
   }
   function refresh(force) {
     return api('GET', '/api/state').then(function (st) {
-      servers = st.servers; renderRanking(st.daily);
+      servers = st.servers;
       if (window.TW) window.TW.emit('state', { servers: servers, scope: scope, current: cur });
       try { notifyWaits(); } catch (e) { /* optional notification/pet logic */ }
       petSync();
