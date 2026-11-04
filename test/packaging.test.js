@@ -89,10 +89,11 @@ test('assembly prunes development/native build files but preserves runtime asset
     '@xterm/addon-fit/lib/addon-fit.js', 'nan/index.js', 'node-addon-api/index.js', 'cpu-features/lib/index.js',
     'ssh2/lib/protocol/crypto.js', 'ssh2/lib/protocol/crypto/build/Release/sshcrypto.node',
     'ws/index.js', 'ws/LICENSE', 'ws/README.md', 'ws/index.js.map',
+    'node-pty/build/Release/pty.node', 'node-pty/build/Release/obj.target/pty/src/unix/pty.o', 'node-pty/build/config.gypi', 'node-pty/build/Makefile',
   ];
   try {
     for (const file of files) { const full = path.join(source, file); fs.mkdirSync(path.dirname(full), { recursive: true }); fs.writeFileSync(full, 'fixture'); }
-    for (const platform of ['win32', 'darwin']) {
+    for (const platform of ['win32', 'darwin', 'linux']) {
       const out = path.join(temp, platform); copyTree(source, out, platform);
       assert.equal(fs.existsSync(path.join(out, '@xterm/xterm/lib/xterm.js')), true);
       assert.equal(fs.existsSync(path.join(out, '@xterm/addon-fit/lib/addon-fit.js')), true);
@@ -104,6 +105,9 @@ test('assembly prunes development/native build files but preserves runtime asset
       assert.equal(fs.existsSync(path.join(out, 'node-pty/prebuilds/darwin-arm64')), platform === 'darwin');
       if (platform === 'darwin' && process.platform !== 'win32') assert.equal(fs.statSync(path.join(out, 'node-pty/prebuilds/darwin-x64/spawn-helper')).mode & 0o777, 0o755);
       if (platform === 'win32') for (const file of files.slice(1, 4)) assert.equal(fs.existsSync(path.join(out, file)), true);
+      // Only Linux compiles node-pty during assembly, and ships just the addon itself.
+      assert.equal(fs.existsSync(path.join(out, 'node-pty/build/Release/pty.node')), platform === 'linux');
+      for (const file of ['node-pty/build/Release/obj.target/pty/src/unix/pty.o', 'node-pty/build/config.gypi', 'node-pty/build/Makefile']) assert.equal(fs.existsSync(path.join(out, file)), false);
       checkPayload(out);
     }
     assert.equal(keep('data/vault.json', 'darwin'), false);

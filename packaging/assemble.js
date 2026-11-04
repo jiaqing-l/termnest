@@ -13,8 +13,10 @@ function keep(relative, platform) {
   const pty = parts.indexOf('node-pty');
   if (pty !== -1) {
     const tail = parts.slice(pty + 1);
-    if (['src', 'deps', 'third_party', 'binding.gyp', 'scripts', 'build'].includes(tail[0])) return false;
-    if (tail[0] === 'prebuilds' && tail[1] && !(platform === 'win32' ? ['win32-x64'] : ['darwin-arm64', 'darwin-x64']).includes(tail[1])) return false;
+    if (['src', 'deps', 'third_party', 'binding.gyp', 'scripts'].includes(tail[0])) return false;
+    // Linux has no prebuilt binaries: the addon is compiled during assembly and only build/Release/pty.node is shipped.
+    if (tail[0] === 'build') return platform === 'linux' && (tail.length === 1 || (tail[1] === 'Release' && (tail.length === 2 || (tail.length === 3 && tail[2] === 'pty.node'))));
+    if (tail[0] === 'prebuilds' && tail[1] && !({ win32: ['win32-x64'], darwin: ['darwin-arm64', 'darwin-x64'], linux: [] }[platform] || []).includes(tail[1])) return false;
   }
   if (parts.includes('@xterm') && parts.includes('src')) return false;
   if (parts.includes('ssh2') && (parts.includes('build') || parts.includes('sshcrypto.node'))) return false;
@@ -36,7 +38,7 @@ function copyTree(source, target, platform) {
   permissions(target);
 }
 function assemble(destination, platform = process.platform) {
-  if (!['win32', 'darwin'].includes(platform)) throw new Error('Target must be win32 or darwin');
+  if (!['win32', 'darwin', 'linux'].includes(platform)) throw new Error('Target must be win32, darwin or linux');
   const root = path.resolve(__dirname, '..');
   const out = path.resolve(destination);
   if (out === root || root.startsWith(out + path.sep)) throw new Error('Unsafe staging path');
@@ -47,6 +49,12 @@ function assemble(destination, platform = process.platform) {
     const npm = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
     if (!fs.existsSync(npm)) throw new Error('Run assembly with npm run prepare:desktop');
     execFileSync(process.execPath, [npm, 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: temp, stdio: 'inherit', encoding: 'utf8' });
+    // node-pty ships no Linux prebuilds, so compile it here with the same Node that the bundle runs.
+    if (platform === 'linux') {
+      if (process.platform !== 'linux') throw new Error('The Linux payload must be assembled on Linux');
+      execFileSync(process.execPath, [npm, 'rebuild', 'node-pty', '--foreground-scripts', '--no-audit', '--no-fund'], { cwd: temp, stdio: 'inherit', encoding: 'utf8' });
+      if (!fs.existsSync(path.join(temp, 'node_modules/node-pty/build/Release/pty.node'))) throw new Error('node-pty did not build');
+    }
     fs.rmSync(out, { recursive: true, force: true });
     fs.mkdirSync(out, { recursive: true });
     for (const name of ['server.js', 'package.json', 'LICENSE', 'THIRD-PARTY-NOTICES.md']) fs.copyFileSync(path.join(root, name), path.join(out, name));
