@@ -14,6 +14,16 @@
   var SNOOZE_KEY = 'termnest.ctxSnooze', SNOOZE_MS = 4 * 3600 * 1000;
   function snoozed(key) { try { var m = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'); return (m[key] || 0) > Date.now(); } catch (e) { return false; } }
   function snooze(key) { try { var m = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'), now = Date.now(); Object.keys(m).forEach(function (k) { if (m[k] < now) delete m[k]; }); m[key] = now + SNOOZE_MS; localStorage.setItem(SNOOZE_KEY, JSON.stringify(m)); } catch (e) { /* optional */ } }
+  // "Mở phiên mới…" (feature handoff) and the "⋯" menu: /clear in place, /compact, snooze. The handoff module may be absent.
+  function actions(key) {
+    var at = key.indexOf('/'), host = key.slice(0, at), name = key.slice(at + 1), box = el('span', 'ctx-actions');
+    var open = el('button', 'ctx-open', 'Mở phiên mới…'), more = el('button', 'ctx-more', '⋯'); open.type = more.type = 'button'; more.title = 'Thêm lựa chọn'; more.setAttribute('aria-haspopup', 'menu');
+    open.onclick = function (e) { e.stopPropagation(); if (TW.handoffOpen) TW.handoffOpen(host, name, 'new'); };
+    more.onclick = function (e) { e.stopPropagation(); if (TW.handoffMenu) TW.handoffMenu(more, host, name); };
+    box.append(open, more); return box;
+  }
+  TW.ctxInfo = function (host, name) { return info(host, name); };
+  TW.ctxSnooze = function (host, name) { var key = host + '/' + name; snooze(key); if (chips[key] && chips[key].isConnected) fill(chips[key], info(host, name), key); };
   function fill(node, i, key) {
     node.textContent = ''; node.hidden = !i; if (!i) return;
     if (!known(i)) {
@@ -25,10 +35,9 @@
     var ring = el('span', 'ctx-ring'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%')); node.append(ring);
     // Mockup 14: from 70% the card says it is time for a fresh session, with a way to dismiss it.
     if (p >= 70 && !snoozed(key)) {
-      var t = el('span', 'ctx-t ctx-nudge'), btn = el('button', 'ctx-later', 'Nhắc sau'); btn.type = 'button';
+      var t = el('span', 'ctx-t ctx-nudge');
       t.append(el('b', '', p >= 90 ? 'Gần đầy · nên mở phiên mới' : 'Nên mở phiên mới'), el('small', '', '≈ ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'));
-      btn.onclick = function (e) { e.stopPropagation(); snooze(key); fill(node, i, key); };
-      node.append(t, btn);
+      node.append(t, actions(key));
     } else node.append(el('span', 'ctx-t', 'ngữ cảnh'));
   }
   TW.addCardDecorator(function (card, v, s) {
@@ -36,22 +45,22 @@
     var foot = card.querySelector('.card-foot'); if (foot) foot.before(chip); else card.append(chip);
   });
   TW.addDetailSection(function (x) {
-    var key = x.v.id + '/' + x.s.name, box = el('section', 'ctx-detail'); details[key] = box; draw(box, info(x.v.id, x.s.name)); return box;
+    var key = x.v.id + '/' + x.s.name, box = el('section', 'ctx-detail'); details[key] = box; draw(box, info(x.v.id, x.s.name), key); return box;
   });
-  function draw(box, i) {
+  function draw(box, i, key) {
     box.textContent = ''; box.hidden = !i; if (!i) return;
     box.append(el('h3', '', 'Ngữ cảnh phiên'));
     if (!known(i)) { box.append(el('p', 'ctx-unknown', 'Đang dùng ' + fmt(i.ctx) + ' token. Model ' + (i.model || '?') + ' chưa có trong danh mục của Claude Code trên máy này nên chưa biết cửa sổ, chưa tính được %.')); return; }
     var p = pct(i);
     var row = el('div', 'ctx-line ' + level(p)), ring = el('span', 'ctx-ring big'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%'));
     var t = el('div', 'ctx-txt'); t.append(el('b', '', fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'), el('small', '', p >= 90 ? 'Gần đầy: nên mở phiên mới từ file trạng thái.' : p >= 70 ? 'Nên mở phiên mới sớm để đỡ tốn token mỗi lượt.' : 'Còn rộng.'));
-    row.append(ring, t); box.append(row);
+    row.append(ring, t); box.append(row); if (p >= 70 && key) box.append(actions(key));
   }
   function refresh() {
     TW.api('GET', '/api/features/context/data').then(function (r) {
       data = r.servers || {};
       Object.keys(chips).forEach(function (k) { var p = k.split('/'); if (chips[k].isConnected) fill(chips[k], info(p[0], p.slice(1).join('/')), k); else delete chips[k]; });
-      Object.keys(details).forEach(function (k) { var p = k.split('/'); if (details[k].isConnected) draw(details[k], info(p[0], p.slice(1).join('/'))); else delete details[k]; });
+      Object.keys(details).forEach(function (k) { var p = k.split('/'); if (details[k].isConnected) draw(details[k], info(p[0], p.slice(1).join('/')), k); else delete details[k]; });
     }).catch(function () { /* optional */ });
   }
   refresh(); setInterval(refresh, 20000); TW.on('state', function () { /* chips are refilled on the next poll */ });

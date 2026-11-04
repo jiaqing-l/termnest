@@ -106,3 +106,13 @@ test('merely reading about a task is not working on it', async () => {
   const out = await crew.crewRuntime()({ cwd, home, claudeId: 'a' });
   assert.equal(out.linked, 'exact'); assert.ok(out.tasks.every((t) => !t.mentioned));
 });
+
+test('state files the session worked with are returned: only existing snapshot/tracker/index paths below the root, newest first', async () => {
+  const f = fixture(), home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crew-home-')), { cwd, proj } = project(f, home);
+  const put = (rel, age = 0) => { const full = path.join(f.root, rel); fs.mkdirSync(path.dirname(full), { recursive: true }); fs.writeFileSync(full, '# x'); const t = new Date(Date.now() - age); fs.utimesSync(full, t, t); };
+  put('docs/Implementation/SV/16-IMPLEMENTATION-TRACKING.md', 1000); put('docs/Implementation/SV/00-INDEX.md', 5000); put('docs/Implementation/SV/notes.md');
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), JSON.stringify({ text: 'updated Implementation/SV/16-IMPLEMENTATION-TRACKING.md and docs/Implementation/SV/00-INDEX.md and Implementation/SV/16-IMPLEMENTATION-TRACKING.md and Implementation/SV/notes.md and /etc/passwd-STATUS.md and ../../x/00-INDEX.md and Implementation/SV/missing-SNAPSHOT.md' }) + '\n');
+  const out = await crew.crewRuntime()({ cwd, home, claudeId: 'a' });
+  assert.deepEqual(out.stateFiles.map((x) => x.path), ['docs/Implementation/SV/16-IMPLEMENTATION-TRACKING.md', 'docs/Implementation/SV/00-INDEX.md']);
+  assert.ok(out.stateFiles[0].at > out.stateFiles[1].at); assert.equal(out.stateFiles[0].mentions, 2);
+});
