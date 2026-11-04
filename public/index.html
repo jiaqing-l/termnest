@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <title>Termnest</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#13294b">
@@ -87,7 +87,7 @@
       </section>
 
       <section class="view" id="v-focus">
-        <div class="m-head"><b id="m-title"></b><button class="btn head-show" id="h-detach">Rời</button><button class="btn danger head-show" id="h-kill">Dừng</button></div>
+        <div class="m-head"><b id="m-title"></b><button class="btn head-show" id="h-info" aria-label="Chi tiết phiên: ngữ cảnh, token, crew">ⓘ Chi tiết</button><button class="btn head-show" id="h-detach">Rời</button><button class="btn danger head-show" id="h-kill">Dừng</button></div>
         <div class="tabs" id="tabs" role="tablist" aria-label="Phiên đang mở"></div>
         <div class="focus-body">
           <div class="term-wrap" id="term-wrap">
@@ -98,10 +98,11 @@
             <div class="terminal-copy-help">Kéo chuột để chọn chữ, sao chép bằng ⌘C (Ctrl+Shift+C) hoặc nút “Sao chép”. Nút “Chuột cho ứng dụng” trả chuột cho ứng dụng trong phiên (khi đó giữ Option/Shift để chọn chữ).</div>
             <div class="tmux-bar"><span id="bar-s"></span><span id="bar-h"></span></div>
             <div class="keybar" aria-label="Phím nhanh">
-              <button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" title="Xuống dòng trong ô soạn mà không gửi (Shift+Enter)">⏎ Dòng mới</button>
+              <button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" title="Bật/tắt bàn phím trên màn hình">⌨ Bàn phím</button><button class="btn" id="open-file" data-k="file" title="Mở file trong thư mục của phiên">📂 Mở file</button><button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" title="Xuống dòng trong ô soạn mà không gửi (Shift+Enter)">⏎ Dòng mới</button>
             </div>
           </div>
           <aside class="detail" id="detail" aria-label="Chi tiết phiên"></aside>
+          <div id="sheet-backdrop" hidden></div>
         </div>
       </section>
 
@@ -234,6 +235,7 @@
 <script src="/tab-hide.js"></script>
 <script src="/mouse-filter.js"></script>
 <script src="/terminal-keys.js"></script>
+<script src="/touch-scroll.js"></script>
 <script src="/view-controls.js"></script>
 <script src="/app.js"></script>
 </body>

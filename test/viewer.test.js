@@ -82,3 +82,15 @@ test('xterm provider maps wide characters and does not open a selected link',()=
  let opens=0,links;const term={cols:cells.length,getSelection:()=> 'selected',buffer:{active:{length:1,getLine:()=>({isWrapped:false,getCell:i=>cells[i]})}}};
  ui.provider(term,()=>opens++).provideLinks(1,v=>links=v);assert.equal(links[0].range.start.x,4);links[0].activate({preventDefault:()=>{}});assert.equal(opens,0);
 });
+
+test('an absolute path with spaces in its name is one link, not just its last word', () => {
+  const text = 'saved /Users/admin/Documents/Screenshots/Screenshot 2026-11-04 at 21.20.47.png ok';
+  assert.deepEqual(ui.detect(text).map((x) => x.path), ['/Users/admin/Documents/Screenshots/Screenshot 2026-11-04 at 21.20.47.png']);
+  const found = ui.detect(text)[0];
+  assert.equal(text.slice(found.start, found.end), found.path);
+});
+
+test('spaced paths do not swallow ordinary sentences or break plain paths', () => {
+  assert.deepEqual(ui.detect('see Implementation/Foo/13-BAR.md:12 and /tmp/a.txt').map((x) => x.path), ['Implementation/Foo/13-BAR.md', '/tmp/a.txt']);
+  assert.deepEqual(ui.detect('open /tmp/a.txt then check b.png now').map((x) => x.path), ['/tmp/a.txt', 'b.png']);
+});

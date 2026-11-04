@@ -40,6 +40,18 @@
     host.addEventListener('paste', function (e) { var f = files(e.clipboardData); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
     return true;
   }
+  // A phone has no drag and drop: a button in the key bar opens the gallery / camera / file picker and sends through the same upload.
+  function pickButton() {
+    var bar = document.querySelector('.keybar'); if (!bar) return false;
+    if (document.getElementById('drop-pick')) return true;
+    var input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.hidden = true; input.id = 'drop-input';
+    input.accept = 'image/*,.txt,.md,.log,.json,.csv,.pdf';
+    input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 5).forEach(send); input.value = ''; });
+    var b = el('button', 'btn', '📎 Gửi ảnh'); b.type = 'button'; b.id = 'drop-pick'; b.title = 'Gửi ảnh hoặc file vào phiên đang mở';
+    b.addEventListener('click', function () { input.click(); });
+    var kbd = document.getElementById('kbd-toggle'); bar.insertBefore(b, kbd ? kbd.nextSibling : bar.firstChild); document.body.append(input);
+    return true;
+  }
   // The terminal host is created by app.js after login; bind once it exists.
-  var tries = 0, t = setInterval(function () { if (bind() || ++tries > 60) clearInterval(t); }, 1000);
+  var tries = 0, t = setInterval(function () { var host = bind(), btn = pickButton(); if ((host && btn) || ++tries > 60) clearInterval(t); }, 1000);
 })();
