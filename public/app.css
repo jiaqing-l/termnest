@@ -400,7 +400,9 @@ dialog{max-height:92vh;overflow:auto}dialog [hidden]{display:none!important}
 #split.two,#split.four{grid-template-columns:repeat(2,minmax(0,1fr))}#split.four{grid-template-rows:repeat(2,minmax(0,1fr))}
 .pane{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#101527;border:2px solid transparent}
 .pane.active{border-color:#2f80ed}.pane select{width:100%;min-width:0;border:0;background:var(--surface-2);padding:4px 8px;font:12px var(--mono)}
-.terminal{flex:1;min-height:0;overflow:hidden;position:relative}.terminal .xterm{height:100%;padding:4px 12px 0 5px}
+.terminal{flex:1;min-height:0;overflow:hidden;position:relative;touch-action:none}
+/* xterm's viewport is its own scroll container, which ends the touch-action chain: repeat it so a swipe reaches our handler, not the browser. */
+.terminal .xterm,.terminal .xterm-viewport,.terminal .xterm-screen,.terminal canvas{touch-action:none}.terminal .xterm{height:100%;padding:4px 12px 0 5px}
 .tscroll{position:absolute;top:2px;right:1px;bottom:2px;width:9px;border-radius:5px;background:rgba(255,255,255,.07);z-index:5;touch-action:none;cursor:pointer}.tscroll:hover,.tscroll.scrolled{background:rgba(255,255,255,.16)}
 .tscroll-thumb{position:absolute;left:1px;right:1px;border-radius:4px;background:rgba(160,180,230,.55)}.tscroll:hover .tscroll-thumb,.tscroll.scrolled .tscroll-thumb{background:rgba(160,190,255,.9)}
 .xterm .tw-ime-preview{position:absolute;z-index:6;width:max-content!important;max-width:calc(100vw - 24px);min-height:1em;height:auto!important;white-space:pre-wrap;overflow-wrap:anywhere;pointer-events:none;color:#dfe6f5;background:#101527;text-decoration:underline;text-underline-offset:3px}
@@ -543,9 +545,9 @@ body{font-size:13px}.top{padding:7px 14px;gap:10px}.brand{font-size:16px}.brand 
 .file-viewer header strong { flex-basis:100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; user-select:text; font-size:13px; color:var(--fg-2); }
 .viewer-resize { position:absolute; left:-5px; top:0; bottom:0; width:10px; cursor:ew-resize; touch-action:none; z-index:1; }
 .viewer-resize:hover,.viewer-resize:focus-visible { background:var(--line-strong); }
-.file-content { flex:1; min-height:0; min-width:0; overflow:auto; overflow-x:hidden; padding:24px; }
+.file-content { flex:1; min-height:0; min-width:0; overflow:auto; overflow-x:hidden; padding:24px clamp(16px,3vw,48px); }
 .file-content>pre { white-space:pre-wrap; overflow-wrap:anywhere; }
-.document { max-width:760px; margin:0 auto; overflow-wrap:anywhere; line-height:1.75; font-size:15px; }
+.document { max-width:min(100%,1600px); margin:0 auto; overflow-wrap:anywhere; line-height:1.75; font-size:15px; }
 .document-chunk { content-visibility:auto; contain-intrinsic-size:auto 600px; }
 .document h1,.document h2,.document h3,.document h4,.document h5,.document h6 { line-height:1.3; margin:1.4em 0 .65em; font-weight:750; }
 .document h1 { font-size:2em; margin-top:0; padding-bottom:.4em; border-bottom:1px solid var(--line); }
@@ -714,3 +716,55 @@ body{font-size:13px}.top{padding:7px 14px;gap:10px}.brand{font-size:16px}.brand 
 #v-over .grid>.card .mini{flex:1 1 112px;height:auto;min-height:112px}
 #v-over .grid>.card .card-foot{margin-top:auto}
 #app.compact #v-over .grid{grid-auto-rows:auto}#app.compact #v-over .grid>.card{min-height:0}
+#kbd-toggle{display:none}@media(pointer:coarse){#kbd-toggle{display:inline-block}}#kbd-toggle[aria-pressed="true"]{background:var(--brand,#1f7a4a);color:#fff}
+
+/* ---- Phone ergonomics: bigger targets, no double-tap zoom, no pull-to-refresh, one-tap return to newest output. */
+html,body{overscroll-behavior:none}
+.tbottom{position:absolute;right:14px;bottom:12px;z-index:6;border:0;border-radius:99px;padding:8px 14px;font:700 13px var(--sans);background:var(--brand,#1f7a4a);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.tbottom[hidden]{display:none}
+#app.compact.in-focus.fs .m-head,#app.fs.compact .m-head{display:none}
+@media(pointer:coarse){
+  .btn,.keybar .btn,select{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .keybar{gap:8px;padding:8px 10px}
+  .keybar .btn{min-height:44px;padding:6px 14px;font-size:14px}
+  #app.fs .keybar .btn{min-height:40px;padding:4px 12px;font-size:13px}
+  #fullscreen-exit{min-height:26px;padding:2px 10px;font-size:11px;opacity:.85;top:calc(4px + env(safe-area-inset-top))}
+  .terminal{-webkit-tap-highlight-color:transparent}
+}
+
+/* Phone: the session details (context window, tokens, Crew) open as a bottom sheet over the terminal. */
+#sheet-backdrop{position:fixed;inset:0;background:rgba(8,12,24,.55);z-index:29}
+#sheet-backdrop[hidden]{display:none}
+#app.compact .detail.sheet{display:flex;position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:78vh;z-index:30;border-left:0;border-radius:20px 20px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.4);padding-bottom:calc(18px + env(safe-area-inset-bottom));overscroll-behavior:contain}
+#app.compact .detail.sheet::before{content:"";flex:none;align-self:center;width:44px;height:5px;border-radius:3px;background:var(--line);margin:-6px 0 4px}
+#app.compact.in-focus #h-info{display:inline-flex}
+#h-info{display:none}
+
+/* Phone terminal mode: the terminal gets the whole screen. The header (logo, server, view tabs), the session tabs and the bottom
+   navigation step aside (session tabs stay); "Rời" returns to the overview where they live. */
+@supports (height:100dvh){html,body{height:100dvh}}
+#app.compact.in-focus:not(.fs) .top,#app.compact.in-focus:not(.fs) .bnav{display:none}
+/* The session tabs stay (that is how you switch sessions), only slimmer and swipeable sideways. */
+#app.compact.in-focus .tabs{flex:none;overflow-x:auto;overflow-y:hidden;gap:6px;padding:4px 8px;scrollbar-width:none;overscroll-behavior-x:contain}
+#app.compact.in-focus .tabs::-webkit-scrollbar{display:none}
+#app.compact.in-focus .tab{flex:none;min-height:38px;padding:4px 10px;font-size:13px}
+#app.compact.in-focus .tab svg{width:20px;height:20px}
+#app.compact.in-focus .m-head{padding:6px 10px;gap:6px;border-bottom:1px solid var(--line)}
+#app.compact.in-focus .m-head b{font-size:15px}
+#app.compact.in-focus .m-head .btn{min-height:36px;padding:4px 12px;font-size:13px}
+#app.compact.in-focus .main,#app.compact.in-focus #v-focus,#app.compact.in-focus .focus-body,#app.compact.in-focus .term-wrap,#app.compact.in-focus #split,#app.compact.in-focus .pane{min-height:0}
+/* The terminal fills what is left of the screen and shrinks with it. The narrow-screen rule gave it a content-sized height
+   (flex:none), so a refit made while it was tall (fullscreen) kept it tall after leaving fullscreen. */
+#app.compact.in-focus .main-top{display:none}
+#app.compact.in-focus .focus-body{flex-wrap:nowrap;overflow:hidden}
+#app.compact.in-focus .term-wrap{flex:1 1 0;min-height:0;width:100%}
+#app.compact.in-focus .detail:not(.sheet){display:none}
+#app.compact.in-focus #cmds{padding:4px 8px;gap:6px}
+
+/* Phone: the desktop copy hint has no place on a small screen; with the keyboard open only the terminal and the key bar remain. */
+#app.compact.in-focus .terminal-copy-help{display:none}
+#app.compact.in-focus.kbd-open .tabs,#app.compact.in-focus.kbd-open .tmux-bar,#app.compact.in-focus.kbd-open #cmds,#app.compact.in-focus.kbd-open .pane select{display:none}
+#app.compact.in-focus.kbd-open .m-head{padding:3px 8px}
+#app.compact.in-focus.kbd-open .m-head .btn{min-height:32px;padding:2px 10px}
+#app.compact.in-focus.kbd-open .keybar{padding:4px 8px;gap:6px}
+#app.compact.in-focus.kbd-open .keybar .btn{min-height:38px}

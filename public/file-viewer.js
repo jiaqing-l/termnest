@@ -28,10 +28,23 @@
  }
  function detect(text){
   const found=[];
-  const re=/(?:[A-Za-z]:[\\/]|\/|\.\.?\/)?[\p{L}\p{N}_.@~+\-]+(?:[\\/][\p{L}\p{N}_.@~+\-]+)*\.(?:md|markdown|html?|txt|log|jsonl?|ya?ml|csv|xml|css|[cm]?js|tsx?|jsx|sh|py|cs|razor|sql|toml|ini|conf|png|jpe?g|gif|webp)(?::\d+(?::\d+)?)?/giu;
+  const ext='md|markdown|html?|txt|log|jsonl?|ya?ml|csv|xml|css|[cm]?js|tsx?|jsx|sh|py|cs|razor|sql|toml|ini|conf|png|jpe?g|gif|webp';
+  const re=new RegExp('(?:[A-Za-z]:[\\\\/]|\\/|\\.\\.?\\/)?[\\p{L}\\p{N}_.@~+\\-]+(?:[\\\\/][\\p{L}\\p{N}_.@~+\\-]+)*\\.(?:'+ext+')(?::\\d+(?::\\d+)?)?','giu');
   let m;while((m=re.exec(text))){const start=m.index;const prefix=text.slice(0,start);if(/(?:https?:\/\/|[\w]+:\/\/)[^\s]*$/.test(prefix)||/[\w/\\]/.test(text[start-1]||''))continue;
    const file=m[0].replace(/:\d+(?::\d+)?$/,'');found.push({path:file,start,end:start+file.length});
-  }return found;
+  }
+  // Absolute paths may contain single spaces inside a name ("Screenshot 2026-11-04 at 21.20.47.png"): the pass above would
+  // only keep the last word. Take the longest absolute path, with spaces, and let it replace the pieces it covers.
+  const word='[\\p{L}\\p{N}_.@~+\\-()\\[\\]]+',name=word+'(?: '+word+')*';
+  const spaced=new RegExp('(?:[A-Za-z]:[\\\\/]|~?\\/)(?:'+name+'[\\\\/])*'+name+'\\.(?:'+ext+')(?![\\p{L}\\p{N}_])','giu');
+  while((m=spaced.exec(text))){const start=m.index;if(/[\w/\\]/.test(text[start-1]||''))continue;
+   const file=m[0];if(!file.includes(' '))continue;
+   // A word inside the name that is itself a file ("a.txt then check b.png") means two paths in a sentence, not one name.
+   const words=file.split(' ');if(words.length>8||words.slice(0,-1).some(w=>new RegExp('\\.(?:'+ext+')$','i').test(w))||words.slice(1).some(w=>/^(?:\.{1,2}[\\/]|[\\/]|~[\\/]|[A-Za-z]:[\\/])/.test(w)))continue;
+   for(let i=found.length-1;i>=0;i--)if(found[i].start>=start&&found[i].end<=start+file.length)found.splice(i,1);
+   found.push({path:file,start,end:start+file.length});
+  }
+  return found.sort((x,y)=>x.start-y.start);
  }
  function provider(term,open){return {provideLinks:function(y,callback){
   const buffer=term.buffer.active;let first=y-1,last=first;
@@ -117,6 +130,8 @@
    try{
     const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path);
     const file=await api('GET','/api/file?'+query);if(request!==generation)return;
+    // One file with that name below the session folder: it is the one meant (the path shown was relative to another folder), open it.
+    if(file.candidates&&file.candidates.length===1&&!(opts&&opts.auto)){return open(host,session,file.candidates[0],Object.assign({},opts,{auto:true}));}
     if(file.candidates&&file.candidates.length){showCandidates(file,host,session,path);return;}
     if(file.error)throw Error(file.error);current=file;setTitle(file.path);body.textContent='';copy.disabled=download.disabled=reload.disabled=false;
     if(file.kind==='image'){showImage(file,host,session);return;}
@@ -200,7 +215,9 @@
    gallery={list,back:location.slice()};open(location[0],location[1],d.path,{keepGallery:true});
   });
   reload.onclick=()=>{if(location)open(...location);};
-  return {open,close:()=>close.onclick()};
+  // Open the viewer straight on the session's folder, without needing a path link in the terminal (phones have no easy link tap).
+ function browse(host,session){generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle('Thư mục của phiên');copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
+ return {open,browse,close:()=>close.onclick()};
  }
  return {detect,provider,markdown,htmlFrame,create};
 });

@@ -201,7 +201,7 @@
   function band(v, s, node) { var count = owned(v, s).length; if (count) node.append(el('span', 'crew-band', '🎽 ' + count)); }
   function renderWorkers(v, sec, session) {
     var list = session ? owned(v, session) : v.workers.filter(function (w) { return !w.owner || !v.sessions.some(function (s) { return w.owner.name === s.name && w.owner.created === s.created; }); });
-    if (!list.length) { if (session) sec.append(el('p', '', 'Crew đang chạy · 0')); return; }
+    if (!list.length) return;
     var box = el('div', 'crew');
     box.append(el('div', 'crew-t', (session ? 'Crew đang chạy · ' : 'Tổng quan Crew · ') + list.length));
     if (session) {
@@ -349,6 +349,7 @@
     $('bar-s').textContent = '[' + x.s.name + ']'; $('bar-h').textContent = x.v.user + '@' + x.v.name; $('m-title').textContent = x.s.name;
   }
   function setView(v) {
+    if (v !== 'focus') toggleSheet(false);
     view = v; tokens.setView(v); if (window.TW) window.TW.setView(v); $('app').classList.toggle('in-focus', v === 'focus');
     $('v-over').classList.toggle('on', v === 'over'); $('v-focus').classList.toggle('on', v === 'focus');
     ['tab-over', 'nav-over'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'over'); });
@@ -428,6 +429,16 @@
     return (window.TW_DESKTOP ? window.TW_DESKTOP.copy(text) : navigator.clipboard.writeText(text)).then(function () { say('Đã sao chép ' + text.length + ' ký tự', true, 1600); }).catch(function () { say('Không sao chép được. Hãy dùng menu Sao chép của trình duyệt.', false, 4000); });
   }
   // ---- Scrollback: tmux owns the history, so wheel and scrollbar drive tmux copy-mode (lib/scroll.js).
+  // On a touch screen a tap must not pop the keyboard up over the terminal: it opens only from the keyboard button.
+  var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches, softKeyboard = false;
+  function applySoftKeyboard(p) { if (coarse && p.term.textarea) p.term.textarea.setAttribute('inputmode', softKeyboard ? 'text' : 'none'); }
+  function toggleSoftKeyboard() {
+    softKeyboard = !softKeyboard;
+    panes.forEach(applySoftKeyboard);
+    var b = document.getElementById('kbd-toggle'); if (b) b.setAttribute('aria-pressed', String(softKeyboard));
+    var p = panes[focusedPane]; if (!p) return;
+    if (softKeyboard) { p.term.textarea.blur(); focusTerminal(p); } else if (p.term.textarea) p.term.textarea.blur();
+  }
   function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
   // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
   function paneSend(p, d) {
@@ -454,9 +465,13 @@
     p.thumb.style.height = size + 'px';
     p.thumb.style.top = Math.round((track - size) * (st.history - st.position) / st.history) + 'px';
     bar.classList.toggle('scrolled', st.inMode && st.position > 0);
+    if (p.toBottom) p.toBottom.hidden = !(st.inMode && st.position > 0);
   }
   function scrollbar(p) {
     p.bar = el('div', 'tscroll'); p.thumb = el('div', 'tscroll-thumb'); p.bar.append(p.thumb); p.bar.hidden = true; p.host.append(p.bar);
+    // One tap back to the newest output after reading history: the thin scrollbar is hard to hit with a finger.
+    p.toBottom = el('button', 'tbottom'); p.toBottom.type = 'button'; p.toBottom.textContent = '↓ Mới nhất'; p.toBottom.hidden = true; p.host.append(p.toBottom);
+    p.toBottom.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); scrollCall(p, 'bottom').catch(function () {}); });
     var pending = 0, busy = false, hinted = '';
     function flush() {
       if (busy || !pending) return;
@@ -469,17 +484,16 @@
       var cell = (p.host.clientHeight / p.term.rows) || 16;
       return Math.round(e.deltaY / cell) || Math.sign(e.deltaY);
     }
-    // Capture on the host keeps xterm from turning the wheel into Up/Down keys for the app; Ctrl+wheel stays zoom.
-    p.host.addEventListener('wheel', function (e) {
-      if (e.ctrlKey || !p.cur || !e.deltaY) return;
-      e.preventDefault(); e.stopPropagation();
+    // l > 0 scrolls toward the newest output (wheel down, finger up). Shared by the wheel and by touch swipes.
+    function applyScroll(l, x, y) {
+      if (!l) return;
       if (p.scroll && p.scroll.alternate) {
-        // Fullscreen apps (Claude, Codex) keep their conversation on the alternate screen: hand the wheel to the app as
+        // Fullscreen apps (Claude, Codex) keep their conversation on the alternate screen: hand the scroll to the app as
         // mouse wheel events when it asked for the mouse, instead of showing the shell history underneath.
         var key0 = p.cur.id + '/' + p.cur.name;
         if (p.scroll.mouse) {
-          var r = p.host.getBoundingClientRect(), col = Math.max(1, Math.min(p.term.cols, Math.floor((e.clientX - r.left) / r.width * p.term.cols) + 1)), row = Math.max(1, Math.min(p.term.rows, Math.floor((e.clientY - r.top) / r.height * p.term.rows) + 1));
-          var seq = '\x1b[<' + (e.deltaY < 0 ? 64 : 65) + ';' + col + ';' + row + 'M', n = Math.min(5, Math.max(1, Math.abs(lines(e))));
+          var r = p.host.getBoundingClientRect(), col = Math.max(1, Math.min(p.term.cols, Math.floor((x - r.left) / r.width * p.term.cols) + 1)), row = Math.max(1, Math.min(p.term.rows, Math.floor((y - r.top) / r.height * p.term.rows) + 1));
+          var seq = '\x1b[<' + (l < 0 ? 64 : 65) + ';' + col + ';' + row + 'M', n = Math.min(5, Math.max(1, Math.abs(l)));
           rawSend(p, new Array(n + 1).join(seq));
         } else if (hinted !== key0) { hinted = key0; say('Ứng dụng trong phiên đang dùng màn hình thay thế và không nhận cuộn chuột. Với Codex, chạy lại bằng --no-alt-screen.', false, 6000); }
         return;
@@ -489,8 +503,15 @@
         if (hinted !== key && p.scroll.alternate) { hinted = key; say('Ứng dụng trong phiên đang dùng màn hình thay thế nên chưa có lịch sử để cuộn. Với Codex, chạy lại bằng --no-alt-screen.', false, 6000); }
         return;
       }
-      pending = Math.max(-500, Math.min(500, pending - lines(e))); flush(); // wheel down (deltaY > 0) scrolls toward the newest output
+      pending = Math.max(-500, Math.min(500, pending - l)); flush();
+    }
+    // Capture on the host keeps xterm from turning the wheel into Up/Down keys for the app; Ctrl+wheel stays zoom.
+    p.host.addEventListener('wheel', function (e) {
+      if (e.ctrlKey || !p.cur || !e.deltaY) return;
+      e.preventDefault(); e.stopPropagation();
+      applyScroll(lines(e), e.clientX, e.clientY);
     }, { capture: true, passive: false });
+    if (window.TouchScroll) window.TouchScroll.attach(p.host, { slop: 8, cell: function () { return p.host.clientHeight / p.term.rows; }, onLines: function (l, x, y) { if (p.cur) applyScroll(l, x, y); } });
     function toPosition(y) {
       var st = p.scroll; if (!st || st.history <= 0) return;
       var rect = p.bar.getBoundingClientRect(), size = p.thumb.offsetHeight;
@@ -513,6 +534,7 @@
     p.host = el('div', 'terminal'); p.node.append(p.picker, p.host); $('split').append(p.node); panes.push(p);
     p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
     p.fit = new window.FitAddon.FitAddon(); p.term.loadAddon(p.fit); p.term.open(p.host);
+    applySoftKeyboard(p);
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
     function send(d) { paneSend(p, d); }
     scrollbar(p);
@@ -584,8 +606,8 @@
   }
   function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say('Em chạy ' + span(Math.max(0, Date.now() / 1000 - s.created)) + ' rồi', true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
-  document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
-  function detach() { if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say('Đã rời ' + n + '. Việc vẫn chạy.', true, 2800); setView('over'); }
+  document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say('Chưa mở phiên nào.', false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
+  function detach() { toggleSheet(false); if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say('Đã rời ' + n + '. Việc vẫn chạy.', true, 2800); setView('over'); }
 
   /* Overview tools */
   function question(s) { return (s.lines || []).filter(function (line) { return line.trim(); }).slice(-1)[0] || 'Phiên đang chờ bạn'; }
@@ -1007,7 +1029,22 @@
   ['tab-over', 'nav-over'].forEach(function (i) { $(i).onclick = function () { setView('over'); }; });
   ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).onclick = function () { setView('focus'); }; });
   $('btn-new').onclick = newDlg;
-  $('h-detach').onclick = detach; $('h-kill').onclick = killDlg;
+  // Focusing the terminal makes the browser scroll its hidden-overflow ancestors to reveal the input, which pushes the pane out of
+  // view and cannot be undone by the user. The layout never scrolls on its own, so put it back.
+  document.addEventListener('scroll', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.scrollTop && $('app').classList.contains('compact') && (t.id === 'app' || t.id === 'v-focus' || t.classList.contains('main') || t.classList.contains('focus-body') || t.classList.contains('term-wrap'))) t.scrollTop = 0;
+  }, true);
+  // Phone: the detail column is hidden, so a button opens it as a bottom sheet (context window, tokens, Crew of this session).
+  function toggleSheet(on) {
+    var d = $('detail'), b = $('sheet-backdrop'); if (!d || !b) return;
+    on = on === undefined ? !d.classList.contains('sheet') : on;
+    d.classList.toggle('sheet', on); b.hidden = !on; if (on) renderDetail();
+  }
+  if ($('h-info')) $('h-info').onclick = function () { toggleSheet(); };
+  if ($('sheet-backdrop')) $('sheet-backdrop').onclick = function () { toggleSheet(false); };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggleSheet(false); });
+    $('h-detach').onclick = detach; $('h-kill').onclick = killDlg;
   $('srv-sel').onchange = function () { setScope(this.value); };
   $('theme').onclick = function () {
     var r = document.documentElement, dark = r.getAttribute('data-theme') !== 'dark';
@@ -1020,6 +1057,18 @@
     $('app').classList.toggle('compact', w < 760); $('app').classList.toggle('narrow', w < 1120); if (w < 760 && paneCount > 1) setSplit(1);
   }
   new ResizeObserver(function (e) { resizePanes(e[0].contentRect.width); viewControls.applyTerminalFont(); }).observe($('app'));
+  // On a phone the soft keyboard eats half the screen: flag it so the layout drops everything except the terminal and the key bar.
+  (function () {
+    var vv = window.visualViewport, base = 0, width = window.innerWidth;
+    function check() {
+      var h = (vv && vv.height) || window.innerHeight;
+      if (window.innerWidth !== width) { width = window.innerWidth; base = 0; } // rotation: measure again
+      if (h > base) base = h;
+      $('app').classList.toggle('kbd-open', base - h > 140);
+    }
+    if (vv) vv.addEventListener('resize', check);
+    window.addEventListener('resize', check); check();
+  })();
 
   /* Data */
   function sig() {
