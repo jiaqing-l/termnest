@@ -29,7 +29,7 @@ function fixture() {
 
 test('Claude context is the last real assistant message (input + cache), ignoring synthetic and broken lines', async () => {
   const f = fixture(); const out = await ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] });
-  assert.deepEqual({ ...out.a, at: 0 }, { tool: 'claude', ctx: 150010, window: 200000, model: 'opus-5-5', at: 0 });
+  assert.deepEqual({ ...out.a, at: 0 }, { tool: 'claude', ctx: 150010, window: 200000, by: 'default', model: 'opus-5-5', at: 0 });
 });
 
 test('Codex context uses the newest token_count and the model window, matched by session directory', async () => {
@@ -46,4 +46,38 @@ test('a window above 200k means the 1M variant, and stale or malformed sessions 
   assert.equal(out.a.window, 1000000); assert.equal(out.a.ctx, 400005);
   const old = new Date(Date.now() - 20 * 3600 * 1000); fs.utimesSync(file, old, old);
   assert.deepEqual(await ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] }), {});
+});
+
+function claudeSession(home, work, extra) {
+  const cdir = path.join(home, '.claude', 'projects', work.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(cdir, { recursive: true });
+  fs.writeFileSync(path.join(cdir, 's1.jsonl'), extra + line({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { input_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 40000, output_tokens: 5 } } }));
+}
+test('the window of a Claude session below 200k comes from its last /model switch, else the config folder model setting', async () => {
+  const run = (f) => ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] });
+  const base = () => { const f = fixture(); fs.rmSync(path.join(f.home, '.claude'), { recursive: true }); return f; };
+  let f = base(); claudeSession(f.home, f.work, line({ type: 'user', message: { content: 'Set model to opus[1m]' } }));
+  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [1000000, 'switch']);
+  f = base(); claudeSession(f.home, f.work, line({ message: 'Set model to opus[1m]' }) + line({ message: 'Set model to sonnet' }));
+  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [200000, 'switch']);
+  f = base(); claudeSession(f.home, f.work, ''); fs.writeFileSync(path.join(f.home, '.claude', 'settings.json'), JSON.stringify({ model: 'opus[1m]' }));
+  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [1000000, 'settings']);
+  fs.writeFileSync(path.join(f.home, '.claude', 'settings.json'), JSON.stringify({ model: 'sonnet[1m]' }));
+  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [200000, 'default'], 'a setting for another model family must not apply');
+});
+
+const cpc = require('node:child_process');
+const hasTmuxCtx = process.platform !== 'win32' && cpc.spawnSync('tmux', ['-V']).status === 0;
+test('sessions sharing one folder each get the log that matches their screen; an unmatched one gets nothing', { skip: !hasTmuxCtx }, async () => {
+  const f = fixture(); fs.rmSync(path.join(f.home, '.claude'), { recursive: true });
+  const proj = path.join(f.home, '.claude', 'projects', f.work.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
+  const A = ['Alpha session discusses the pipeline migration gate', 'Alpha also reviewed the host mapping rules again'], B = ['Beta session builds the notes reminder feature', 'Beta wrote the tests for the reminder scheduler'];
+  const log = (lines, cache) => lines.map((t) => line({ type: 'assistant', message: { model: 'claude-opus-5-5', content: t, usage: { input_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: cache } } })).join('');
+  fs.writeFileSync(path.join(proj, 'a.jsonl'), log(A, 111000)); fs.writeFileSync(path.join(proj, 'b.jsonl'), log(B, 55000));
+  const sock = 'twctx' + process.pid, say = (name, lines) => cpc.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', name, '-x', '200', '-y', '40', `printf '%s\\n' ${lines.map((l) => `'${l}'`).join(' ')}; sleep 30`]);
+  try {
+    say('sa', A); say('sb', B); say('sc', ['Nothing that any log contains, just some filler text here', 'Another unrelated line that matches no transcript at all']);
+    await new Promise((r) => setTimeout(r, 500));
+    const out = await ctx.contextRuntime()({ home: f.home, socket: sock, sessions: ['sa', 'sb', 'sc'].map((name) => ({ name, path: f.work })) });
+    assert.equal(out.sa.ctx, 111001); assert.equal(out.sb.ctx, 55001); assert.equal(out.sc, undefined);
+  } finally { cpc.spawnSync('tmux', ['-L', sock, 'kill-server']); }
 });
