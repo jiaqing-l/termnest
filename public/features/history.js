@@ -4,17 +4,17 @@
   var TW = window.TW; if (!TW) return;
   var el = TW.el;
   TW.addDetailSection(function (x) {
-    var box = el('section', 'hist-detail'), note = el('p', 'hist-note', 'Lịch sử cuộn chứa mọi thứ từng hiện trong khung này (kể cả lệnh chạy trước khi mở AI). Xoá không ảnh hưởng phiên đang chạy và phần đang hiện trên màn.');
-    var b = el('button', 'btn', 'Xoá lịch sử cuộn'), armed = false, timer = null; b.type = 'button';
-    function reset() { armed = false; b.textContent = 'Xoá lịch sử cuộn'; b.classList.remove('primary'); }
+    var box = el('section', 'hist-detail'), note = el('p', 'hist-note', i18n('history.lich_su_cuon_chua_moi'));
+    var b = el('button', 'btn', i18n('history.xoa_lich_su_cuon')), armed = false, timer = null; b.type = 'button';
+    function reset() { armed = false; b.textContent = i18n('history.xoa_lich_su_cuon'); b.classList.remove('primary'); }
     b.onclick = function () {
-      if (!armed) { armed = true; b.textContent = 'Bấm lần nữa để xoá'; b.classList.add('primary'); clearTimeout(timer); timer = setTimeout(reset, 4000); return; }
+      if (!armed) { armed = true; b.textContent = i18n('history.bam_lan_nua_de_xoa'); b.classList.add('primary'); clearTimeout(timer); timer = setTimeout(reset, 4000); return; }
       clearTimeout(timer); b.disabled = true;
       TW.api('POST', '/api/features/history/clear', { server: x.v.id, session: x.s.name })
-        .then(function () { TW.app().say('Đã xoá lịch sử cuộn.', true, 3000); })
+        .then(function () { TW.app().say(i18n('history.da_xoa_lich_su_cuon'), true, 3000); })
         .catch(function (e) { TW.app().say(e.message, false, 4000); })
         .then(function () { b.disabled = false; reset(); });
     };
-    box.append(el('h3', '', 'Lịch sử cuộn'), note, b); return box;
+    box.append(el('h3', '', i18n('history.lich_su_cuon')), note, b); return box;
   });
 })();

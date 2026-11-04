@@ -6,10 +6,10 @@ window.UsageUI = function (hooks) {
   // Accounts of one tool share a colour family, so the chart reads as Claude blues / Codex oranges.
   const SHADES = { claude: ['#3270f5', '#7b61ff', '#0fb5ae', '#c2409a'], codex: ['#ec7900', '#d8344a', '#b86e00', '#0d9b63'] };
   const TOOL = { claude: { name: 'Claude', color: '#3270f5' }, codex: { name: 'Codex', color: '#ec7900' } };
-  const WEEKDAY = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+  const WEEKDAY = [i18n('usageui.chu_nhat'), i18n('usageui.thu_hai'), i18n('usageui.thu_ba'), i18n('usageui.thu_tu'), i18n('usageui.thu_nam'), i18n('usageui.thu_sau'), i18n('usageui.thu_bay')];
   const full = (n) => Math.round(n).toLocaleString('en-US');
   const usd = (n) => '$' + n.toFixed(2);
-  const short = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + ' tỷ' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' triệu' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' nghìn' : String(Math.round(n));
+  const short = (n) => n >= 1e9 ? i18n('usageui.ty', [(n / 1e9).toFixed(2)]) : n >= 1e6 ? i18n('usageui.trieu', [(n / 1e6).toFixed(1)]) : n >= 1e3 ? i18n('usageui.nghin', [(n / 1e3).toFixed(0)]) : String(Math.round(n));
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const dayKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
   const shift = (key, days) => { const d = new Date(key + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
@@ -61,10 +61,10 @@ window.UsageUI = function (hooks) {
   function renderStatus(list) {
     const bad = (data ? data.accounts : []).filter((a) => a.error && (hooks.tool() === 'all' || a.tool === hooks.tool()));
     status.textContent = '';
-    if (loading) status.textContent = data ? 'Đang cập nhật báo cáo…' : 'Đang đọc báo cáo bằng ccusage, lần đầu có thể mất khoảng 1 phút…';
+    if (loading) status.textContent = data ? i18n('usageui.dang_cap_nhat_bao_cao') : i18n('usageui.dang_doc_bao_cao_bang');
     else if (error) status.textContent = error;
-    else if (data && !data.accounts.length) status.textContent = 'Chưa khai báo tài khoản AI. Bấm “Tài khoản” để thêm thư mục cấu hình.';
-    bad.forEach((a) => { const s = node('span', 'us-warn', '⚠ ' + a.label + ': ' + a.error + (a.stale ? ' (đang hiện số lần trước)' : '')); status.append(status.textContent ? document.createTextNode(' ') : '', s); });
+    else if (data && !data.accounts.length) status.textContent = i18n('usageui.chua_khai_bao_tai_khoan');
+    bad.forEach((a) => { const s = node('span', 'us-warn', '⚠ ' + a.label + ': ' + a.error + (a.stale ? i18n('usageui.dang_hien_so_lan_truoc') : '')); status.append(status.textContent ? document.createTextNode(' ') : '', s); });
     status.hidden = !status.textContent && !status.children.length;
   }
 
@@ -74,38 +74,38 @@ window.UsageUI = function (hooks) {
     const hit = t.tok ? Math.round(t.cr / t.tok * 100) : 0;
     const tile = (em, bg, label, value, sub) => { const c = node('div', 'us-tile'), i = node('div', 'us-em', em), b = node('div'); i.style.background = bg; b.append(node('small', '', label), node('b', '', value), node('span', 'us-sub', sub)); c.append(i, b); return c; };
     const ring = node('div', 'us-ring'); ring.style.setProperty('--p', hit); ring.append(node('span', '', hit + '%'));
-    const cache = node('div', 'us-tile'), cb = node('div'); cb.append(node('small', '', 'Đọc từ cache'), node('b', '', short(t.cr)), node('span', 'us-sub', 'càng cao càng tiết kiệm')); cache.append(ring, cb);
-    tiles.append(tile('🔢', '#dcebff', 'Tổng token', full(t.tok), '≈ ' + short(t.tok)),
-      tile('💰', 'var(--ok-soft)', 'Chi phí ước tính', usd(t.cost), t.days.size ? usd(t.cost / t.days.size) + ' / ngày' : '—'), cache,
-      tile('✍️', '#ffe8cf', 'Output (đã viết ra)', full(t.out), short(t.out) + ' token'));
+    const cache = node('div', 'us-tile'), cb = node('div'); cb.append(node('small', '', i18n('usageui.doc_tu_cache')), node('b', '', short(t.cr)), node('span', 'us-sub', i18n('usageui.cang_cao_cang_tiet_kiem'))); cache.append(ring, cb);
+    tiles.append(tile('🔢', '#dcebff', i18n('usageui.tong_token'), full(t.tok), '≈ ' + short(t.tok)),
+      tile('💰', 'var(--ok-soft)', i18n('usageui.chi_phi_uoc_tinh'), usd(t.cost), t.days.size ? i18n('usageui.ngay', [usd(t.cost / t.days.size)]) : '—'), cache,
+      tile('✍️', '#ffe8cf', i18n('usageui.output_da_viet_ra'), full(t.out), short(t.out) + ' token'));
     hooks.summary(t.days.size ? short(t.tok) + ' token · ' + usd(t.cost) : '');
   }
 
   function renderControls(list) {
     controls.textContent = '';
     const r1 = node('div', 'us-row'), r2 = node('div', 'us-row');
-    const all = node('button', 'us-acc', 'Tất cả'); all.type = 'button'; all.style.setProperty('--c', 'var(--hero-b)'); all.setAttribute('aria-pressed', String(st.acct === 'all')); all.onclick = () => { st.acct = 'all'; render(); };
+    const all = node('button', 'us-acc', i18n('usageui.tat_ca')); all.type = 'button'; all.style.setProperty('--c', 'var(--hero-b)'); all.setAttribute('aria-pressed', String(st.acct === 'all')); all.onclick = () => { st.acct = 'all'; render(); };
     r1.append(all);
     list.forEach((a) => {
       const b = node('button', 'us-acc'); b.type = 'button'; b.style.setProperty('--c', a.color); b.setAttribute('aria-pressed', String(st.acct === a.id));
       b.append(node('i', '', (a.label[0] || '?').toUpperCase()), document.createTextNode(a.label + ' '), node('small', '', (TOOL[a.tool] || {}).name || a.tool));
-      b.title = a.hostName ? 'Máy: ' + a.hostName : ''; b.onclick = () => { st.acct = a.id; render(); }; r1.append(b);
+      b.title = a.hostName ? i18n('usageui.may', [a.hostName]) : ''; b.onclick = () => { st.acct = a.id; render(); }; r1.append(b);
     });
     const R = ranges();
-    r2.append(chips([['today', 'Hôm nay'], ['week', '7 ngày'], ['month', 'Tháng này']], st.range, (k) => setRange(k, R[k][0], R[k][1])));
+    r2.append(chips([['today', i18n('usageui.hom_nay')], ['week', i18n('usageui.7_ngay')], ['month', i18n('usageui.thang_nay')]], st.range, (k) => setRange(k, R[k][0], R[k][1])));
     const date = (key, label) => { const l = node('label', 'us-f', label), i = node('input'); i.type = 'date'; i.value = st[key]; i.onchange = () => { st[key] = i.value; setRange('custom', st.from, st.to); }; l.append(i); return l; };
-    r2.append(date('from', 'Từ'), date('to', 'Đến'), node('span', 'us-sp'));
-    const sw = node('button', 'us-sw'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(st.model)); sw.setAttribute('aria-label', 'Theo model'); sw.onclick = () => { st.model = !st.model; render(); };
+    r2.append(date('from', i18n('usageui.tu')), date('to', i18n('usageui.den')), node('span', 'us-sp'));
+    const sw = node('button', 'us-sw'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(st.model)); sw.setAttribute('aria-label', i18n('usageui.theo_model')); sw.onclick = () => { st.model = !st.model; render(); };
     const swl = node('label', 'us-f'); swl.append(sw, document.createTextNode(' Theo model'));
-    r2.append(swl, chips([['day', '📅 Theo ngày'], ['session', '🐾 Theo phiên']], st.view, (k) => { st.view = k; render(); }));
+    r2.append(swl, chips([['day', i18n('usageui.theo_ngay')], ['session', i18n('usageui.theo_phien')]], st.view, (k) => { st.view = k; render(); }));
     controls.append(r1, r2);
   }
 
   function renderChart(list, days) {
     chartPanel.textContent = '';
     const head = node('div', 'us-row');
-    head.append(node('b', 'us-h', 'Mỗi ngày dùng bao nhiêu?'), node('span', 'us-tag', 'thang căn bậc hai'), node('span', 'us-sp'),
-      chips([['cost', '💰 Chi phí'], ['tok', '🔢 Token']], st.metric, (k) => { st.metric = k; render(); }));
+    head.append(node('b', 'us-h', i18n('usageui.moi_ngay_dung_bao_nhieu')), node('span', 'us-tag', i18n('usageui.thang_can_bac_hai')), node('span', 'us-sp'),
+      chips([['cost', i18n('usageui.chi_phi')], ['tok', '🔢 Token']], st.metric, (k) => { st.metric = k; render(); }));
     const key = (d) => st.metric === 'cost' ? d.cost : sumTokens(d.models);
     const per = days.map((day) => ({ day, seg: list.map((a) => ({ a, v: (a.days.find((d) => d.day === day) || { cost: 0, models: [] }) })).map(({ a, v }) => ({ a, v: key(v) })).filter((s) => s.v > 0) }))
       .map((p) => ({ ...p, v: p.seg.reduce((n, s) => n + s.v, 0) }));
@@ -120,7 +120,7 @@ window.UsageUI = function (hooks) {
     });
     const legend = node('div', 'us-legend');
     list.filter((a) => a.days.some((d) => inRange(d.day))).forEach((a) => { const l = node('span'), i = node('i'); i.style.background = a.color; l.append(i, document.createTextNode(a.label + ' · ' + ((TOOL[a.tool] || {}).name || a.tool))); legend.append(l); });
-    chartPanel.append(head, per.length ? chart : node('p', 'us-empty', 'Không có dữ liệu để vẽ'), labels, legend);
+    chartPanel.append(head, per.length ? chart : node('p', 'us-empty', i18n('usageui.khong_co_du_lieu_de')), labels, legend);
   }
 
   function cell(text, cls) { return node('td', cls || 'n', text); }
@@ -133,9 +133,9 @@ window.UsageUI = function (hooks) {
 
   function renderTable(list, days) {
     tablePanel.textContent = '';
-    const head = node('div', 'us-row'); head.append(node('b', 'us-h', 'Dùng theo ngày'));
+    const head = node('div', 'us-row'); head.append(node('b', 'us-h', i18n('usageui.dung_theo_ngay')));
     const wrap = node('div', 'us-tw'), table = node('table'), thead = node('thead'), hr = node('tr');
-    ['Ngày', 'Công cụ', 'Tài khoản', 'Model', 'Input', 'Output', 'Cache tạo', 'Cache đọc', 'Tổng token', 'Chi phí'].forEach((h, i) => hr.append(node('th', i < 4 ? 'l' : '', h)));
+    [i18n('usageui.ngay_2'), i18n('tokenui.cong_cu'), i18n('tokenui.tai_khoan'), 'Model', 'Input', 'Output', i18n('usageui.cache_tao'), i18n('usageui.cache_doc'), i18n('usageui.tong_token'), i18n('usageui.chi_phi_2')].forEach((h, i) => hr.append(node('th', i < 4 ? 'l' : '', h)));
     thead.append(hr); table.append(thead);
     const body = node('tbody'); const all = { input: 0, output: 0, cacheCreate: 0, cacheRead: 0, total: 0, cost: 0 };
     const rowsOf = (day) => list.map((a) => ({ a, d: a.days.find((d) => d.day === day) })).filter((x) => x.d && x.d.models.length);
@@ -158,10 +158,10 @@ window.UsageUI = function (hooks) {
         if (st.model) d.models.forEach((m) => { const mr = node('tr', 'us-model'); mr.append(node('td', 'l'), node('td', 'l'), node('td', 'l'), node('td', 'l', '└ ' + m.model)); numbers(mr, m, max, a.color); body.append(mr); });
       });
     });
-    const tot = node('tr', 'us-total'), tl = node('td', 'l', '🎉 Tổng cộng'); tl.colSpan = 4; tot.append(tl); numbers(tot, all, all.total || 1, 'var(--hero-a)');
-    if (!body.children.length) { const e = node('tr'), c = node('td', 'us-empty', loading ? 'Đang đọc…' : 'Không có dữ liệu trong khoảng này 🐾'); c.colSpan = 10; e.append(c); body.append(e); } else body.append(tot);
+    const tot = node('tr', 'us-total'), tl = node('td', 'l', i18n('usageui.tong_cong')); tl.colSpan = 4; tot.append(tl); numbers(tot, all, all.total || 1, 'var(--hero-a)');
+    if (!body.children.length) { const e = node('tr'), c = node('td', 'us-empty', loading ? i18n('tokenui.dang_doc') : i18n('usageui.khong_co_du_lieu_trong')); c.colSpan = 10; e.append(c); body.append(e); } else body.append(tot);
     table.append(body); wrap.append(table);
-    tablePanel.append(head, wrap, node('p', 'us-note', 'Chi phí là ước tính theo bảng giá của ccusage, không phải hoá đơn. Codex chỉ có chi phí theo ngày, không theo model. Bấm một dòng ngày để thu gọn.'));
+    tablePanel.append(head, wrap, node('p', 'us-note', i18n('usageui.chi_phi_la_uoc_tinh')));
   }
 
   function render() {

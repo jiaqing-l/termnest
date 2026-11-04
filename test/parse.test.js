@@ -4,11 +4,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { claudeSessionId, classify, findWorkers, parseDirs, parsePoll, shq, validDir, validHost, validName } = require('../lib/parse');
+const { claudeSessionId, classify, isAsking, isWorking, contentSignature, screenQuiet, findWorkers, parseDirs, parsePoll, shq, validDir, validHost, validName } = require('../lib/parse');
 const { Vault } = require('../lib/vault');
 const { friendlyError } = require('../lib/remote');
 
-test('public assets use the Termnest display name', () => {
+test('public assets use the TERMNEST display name', () => {
   const publicDir = path.join(__dirname, '..', 'public');
   const files = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const fullPath = path.join(dir, entry.name);
@@ -18,13 +18,14 @@ test('public assets use the Termnest display name', () => {
     assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /Tmux Web/, path.relative(publicDir, file));
   }
   const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
-  assert.match(html, /<title>Termnest<\/title>/);
-  assert.match(html, /<img class="login-lockup" src="\/termnest-logo-oncolor\.svg" alt="Termnest · by JIAQING">/);
-  assert.match(html, /<div class="brand" id="brand" aria-label="Termnest · by JIAQING"><img class="brand-lockup brand-light" src="\/termnest-logo\.svg" alt=""><img class="brand-lockup brand-dark" src="\/termnest-logo-dark\.svg" alt=""><img class="brand-mark" src="\/termnest-mark\.svg" alt=""><\/div>/);
+  assert.match(html, /<title>TERMNEST<\/title>/);
+  assert.match(html, /<img class="login-lockup" src="\/termnest-logo-oncolor\.svg" alt="TERMNEST · by JIAQING">/);
+  assert.match(html, /<div class="brand" id="brand" aria-label="TERMNEST · by JIAQING"><img class="brand-lockup brand-light" src="\/termnest-logo\.svg" alt=""><img class="brand-lockup brand-dark" src="\/termnest-logo-dark\.svg" alt=""><img class="brand-mark" src="\/termnest-mark\.svg" alt=""><\/div>/);
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(server, /'\/termnest-logo-dark\.svg': \[path\.join\(PUB, 'termnest-logo-dark\.svg'\), 'image\/svg\+xml'\]/);
-  assert.match(html, /Every session has a home\./);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(publicDir, 'manifest.webmanifest'))).name, 'Termnest');
+  assert.match(html, /data-i18n="html\.tagline"/);
+  assert.equal(require('../public/locales/en.json')['html.tagline'], 'It stays awake for you, so you can sleep soundly.');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(publicDir, 'manifest.webmanifest'))).name, 'TERMNEST');
 });
 
 test('shq keeps injected text inside one shell word', () => {
@@ -650,4 +651,56 @@ test('reboot route enforces authentication, same origin, server identity and loc
   assert.equal((await b.request('POST', '/api/servers/' + id + '/reboot', { name: 'demo-server' })).code, 200);
   assert.deepEqual(calls, ['sudo -n -l reboot >/dev/null 2>&1 || exit 1; (sleep 1; sudo -n reboot) </dev/null >/dev/null 2>&1 &']);
   assert.equal((await b.request('POST', '/api/servers/' + id + '/reboot', { name: 'demo-server' })).code, 400);
+});
+
+test('Yes/No belong only to a screen that really asks: a quiet Claude is waiting but not asking', () => {
+  assert.equal(isAsking({ cmd: 'node', lines: ['Proceed with the edit? (y/n)'] }), true);
+  assert.equal(isAsking({ cmd: 'node', lines: ['Do you want to run this command?', '❯ 1. Yes', '  2. No'] }), true);
+  assert.equal(isAsking({ cmd: 'bash', lines: ['Password:'] }), true);
+  const quiet = ['Đã xong phần sửa.', '', '▸▸ auto mode on (shift+tab to cycle)'];
+  assert.equal(classify({ cmd: 'claude', lines: quiet, activityAge: 90 }), 'wait');
+  assert.equal(isAsking({ cmd: 'claude', lines: quiet }), false);
+  assert.equal(isAsking({ cmd: 'bash', lines: ['root@x:~#'] }), false);
+});
+
+// Poll a session the way the backend does: tmux "activity" keeps refreshing, only the screen text decides.
+function pollOnce(rec, lines, activityAge, nowMs) {
+  const seen = screenQuiet(rec, lines, activityAge, nowMs);
+  return { rec: seen.rec, state: classify({ cmd: '2.1.126', lines, activityAge: seen.quiet }) };
+}
+
+test('a finished Claude whose clock and counters keep ticking settles on "waiting" and stays there', () => {
+  let rec = null, t = 0; const states = [];
+  for (let i = 0; i < 24; i++) {                               // every 5 s for two minutes
+    const lines = ['Đã xong phần sửa.', 'Cooked for ' + (50 + i) + 's · done ' + (6 + i % 5) + ':5' + (i % 10) + ' AM', '▸▸ auto mode on (shift+tab to cycle) · ' + i + 's'];
+    const r = pollOnce(rec, lines, 2, t); rec = r.rec; states.push(r.state); t += 5000;   // tmux says "active 2 s ago" every time
+  }
+  assert.ok(states.slice(0, 3).every((x) => x === 'run'), 'the first moments still count as recent activity');
+  assert.ok(states.slice(6).every((x) => x === 'wait'), 'after that it never flips back to running: ' + states.join(','));
+});
+
+test('real output makes a waiting session run again, and "esc to interrupt" keeps a working one running even in silence', () => {
+  let rec = null, t = 0;
+  for (let i = 0; i < 10; i++) { rec = pollOnce(rec, ['xong rồi'], 99, t).rec; t += 5000; }
+  assert.equal(pollOnce(rec, ['xong rồi'], 99, t).state, 'wait');
+  const busy = pollOnce(rec, ['xong rồi', 'Đang đọc file src/app.js để sửa lỗi'], 1, t);
+  assert.equal(busy.state, 'run');
+  const working = ['✻ Thinking… (95s · ↓ 1.2k tokens · esc to interrupt)'];
+  let r = null; for (let i = 0; i < 8; i++) { r = pollOnce(r && r.rec, working, 60, t); t += 5000; }
+  assert.equal(r.state, 'run'); assert.equal(isWorking(working), true); assert.equal(isWorking(['all done']), false);
+});
+
+test('screen signature ignores digits, spinners and status bars but notices new words', () => {
+  const a = ['Thinking 12s ⠋', 'build ok', '▸▸ auto mode on (shift+tab to cycle)'], b = ['Thinking 97s ⠙', 'build ok', '▸▸ auto mode on (shift+tab to cycle) 3'];
+  assert.equal(contentSignature(a), contentSignature(b));
+  assert.notEqual(contentSignature(a), contentSignature([...a, 'test failed in parse.js']));
+});
+
+test('Codex sitting at its prompt is waiting, not running (it runs as plain node)', () => {
+  const idle = ['Đã tạo xong bộ plan.', '', '› Ask Codex to do anything', '', 'GPT-6.1-Sol medium · ~/work', '← for agents · ? for shortcuts'];
+  assert.equal(classify({ cmd: 'node', lines: idle, activityAge: 90 }), 'wait');
+  assert.equal(classify({ cmd: 'codex', lines: idle, activityAge: 90 }), 'wait');
+  assert.equal(classify({ cmd: 'node', lines: idle, activityAge: 3 }), 'run', 'just printed something');
+  assert.equal(classify({ cmd: 'node', lines: ['server listening on 3000'], activityAge: 900 }), 'run', 'an ordinary node program is not an agent');
+  assert.equal(isAsking({ cmd: 'node', lines: idle }), false);
 });

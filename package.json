@@ -7,8 +7,9 @@
     "start": "node server.js",
     "prepare:desktop": "node packaging/prepare-desktop.js",
     "set-password": "node scripts/set-password.js",
-    "test": "node --test test/*.test.js",
-    "postinstall": "node scripts/prepare-pty.js"
+    "test": "node --require ./test/helpers/i18n-setup.js --test test/*.test.js",
+    "postinstall": "node scripts/prepare-pty.js",
+    "build:splash": "node scripts/build-splash-locales.js"
   },
   "engines": {
     "node": ">=18"

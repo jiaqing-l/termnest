@@ -8,23 +8,23 @@
     if (tray) return;
     host.style.position = host.style.position || 'relative';
     tray = el('div', 'drop-tray'); tray.setAttribute('role', 'status');
-    zone = el('div', 'drop-zone'); zone.hidden = true; zone.append(el('div', 'drop-ico', '🖼️'), el('div', '', 'Thả file vào đây để gửi cho phiên'), el('small', '', 'ảnh, txt, md, log, json, csv, pdf · tối đa 10 MB · lưu tạm trên máy xa, tự xoá sau 1 ngày'));
+    zone = el('div', 'drop-zone'); zone.hidden = true; zone.append(el('div', 'drop-ico', '🖼️'), el('div', '', i18n('drop.tha_file_vao_day_de')), el('small', '', i18n('drop.anh_txt_md_log_json')));
     host.append(zone, tray);
   }
   function chip(file) {
-    var c = el('div', 'drop-chip'), name = el('span', 'drop-name', file.name), st = el('small', '', 'đang tải…');
+    var c = el('div', 'drop-chip'), name = el('span', 'drop-name', file.name), st = el('small', '', i18n('drop.dang_tai'));
     c.append(name, st); tray.append(c);
     if (/^image\//.test(file.type)) { var r = new FileReader(); r.onload = function () { var i = el('img', 'drop-thumb'); i.alt = ''; i.src = r.result; c.prepend(i); }; r.readAsDataURL(file); }
-    return { ok: function (path) { st.textContent = 'đã gửi'; c.classList.add('ok'); setTimeout(function () { c.remove(); }, 6000); }, fail: function (m) { st.textContent = m; c.classList.add('bad'); c.title = m; setTimeout(function () { c.remove(); }, 9000); } };
+    return { ok: function (path) { st.textContent = i18n('drop.da_gui'); c.classList.add('ok'); setTimeout(function () { c.remove(); }, 6000); }, fail: function (m) { st.textContent = m; c.classList.add('bad'); c.title = m; setTimeout(function () { c.remove(); }, 9000); } };
   }
   function send(file) {
-    var a = app(), cur = a && a.current && a.current(); if (!cur) { if (a && a.say) a.say('Chưa mở phiên nào để nhận file.', false, 3000); return; }
+    var a = app(), cur = a && a.current && a.current(); if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
     var ui = chip(file);
-    if (file.size > MAX) { ui.fail('quá 10 MB'); return; }
-    if (!OK.test(file.name)) { ui.fail('loại file chưa hỗ trợ'); return; }
+    if (file.size > MAX) { ui.fail(i18n('drop.qua_10_mb')); return; }
+    if (!OK.test(file.name)) { ui.fail(i18n('drop.loai_file_chua_ho_tro')); return; }
     fetch('/api/features/drop/upload?server=' + encodeURIComponent(cur.id) + '&session=' + encodeURIComponent(cur.name) + '&name=' + encodeURIComponent(file.name),
       { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' } })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || 'Không tải được.'); return j; }); })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || i18n('drop.khong_tai_duoc')); return j; }); })
       .then(function (j) { ui.ok(j.path); a.typeText(j.path + ' '); })
       .catch(function (e) { ui.fail(e.message); });
   }
@@ -47,7 +47,7 @@
     var input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.hidden = true; input.id = 'drop-input';
     input.accept = 'image/*,.txt,.md,.log,.json,.csv,.pdf';
     input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 5).forEach(send); input.value = ''; });
-    var b = el('button', 'btn', '📎 Gửi ảnh'); b.type = 'button'; b.id = 'drop-pick'; b.title = 'Gửi ảnh hoặc file vào phiên đang mở';
+    var b = el('button', 'btn', i18n('drop.gui_anh')); b.type = 'button'; b.id = 'drop-pick'; b.title = i18n('drop.gui_anh_hoac_file_vao');
     b.addEventListener('click', function () { input.click(); });
     var kbd = document.getElementById('kbd-toggle'); bar.insertBefore(b, kbd ? kbd.nextSibling : bar.firstChild); document.body.append(input);
     return true;

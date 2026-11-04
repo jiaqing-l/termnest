@@ -8,25 +8,25 @@
   function worst(list) { return list.reduce(function (m, f) { return Math.max(m, SEV[f.severity] || 1); }, 0); }
   function act(id, f, action, done) {
     TW.api('POST', '/api/features/watchdog/act', { server: id, pid: f.pid, args: f.args, action: action })
-      .then(function (r) { TW.app().say(r.sent ? 'Đã gửi lệnh ' + action + ' cho tiến trình ' + f.pid + '.' : 'Tiến trình đã thay đổi hoặc đã thoát, chưa làm gì.', !!r.sent, 3500); done(); })
+      .then(function (r) { TW.app().say(r.sent ? i18n('watchdog.da_gui_lenh_cho_tien', [action, f.pid]) : i18n('watchdog.tien_trinh_da_thay_doi'), !!r.sent, 3500); done(); })
       .catch(function (e) { TW.app().say(e.message, false, 4000); done(); });
   }
   function row(id, f, redraw) {
     var r = el('div', 'wd-row ' + f.severity), t = el('div', 'wd-t'), bar = el('div', 'wd-bar');
     t.append(el('b', '', f.title), el('small', '', 'pid ' + f.pid + ' · ' + f.cpu + '% CPU · ' + f.rssMb + ' MB'), el('code', '', f.args));
-    [['freeze', 'Đóng băng'], ['resume', 'Chạy tiếp']].forEach(function (a) {
+    [['freeze', i18n('watchdog.dong_bang')], ['resume', i18n('watchdog.chay_tiep')]].forEach(function (a) {
       var b = el('button', 'btn', a[1]); b.type = 'button'; b.onclick = function () { act(id, f, a[0], redraw); }; bar.append(b);
     });
-    var stop = el('button', 'btn', 'Dừng'), armed = false; stop.type = 'button';
+    var stop = el('button', 'btn', i18n('app.dung')), armed = false; stop.type = 'button';
     stop.onclick = function () {
-      if (!armed) { armed = true; stop.textContent = 'Bấm lần nữa để dừng'; stop.classList.add('primary'); setTimeout(function () { armed = false; stop.textContent = 'Dừng'; stop.classList.remove('primary'); }, 4000); return; }
+      if (!armed) { armed = true; stop.textContent = i18n('watchdog.bam_lan_nua_de_dung'); stop.classList.add('primary'); setTimeout(function () { armed = false; stop.textContent = i18n('app.dung'); stop.classList.remove('primary'); }, 4000); return; }
       act(id, f, 'stop', redraw);
     };
     bar.append(stop); r.append(t, bar); return r;
   }
   function fill(box, id) {
     var list = found(id); box.textContent = ''; box.hidden = !list.length; if (!list.length) return;
-    var w = worst(list), btn = el('button', 'wd-chip ' + (w >= 3 ? 'urgent' : 'warn'), '🛡 ' + list.length + ' vi phạm luật'), panel = el('div', 'wd-panel'); btn.type = 'button'; panel.hidden = true;
+    var w = worst(list), btn = el('button', 'wd-chip ' + (w >= 3 ? 'urgent' : 'warn'), i18n('watchdog.vi_pham_luat', [list.length])), panel = el('div', 'wd-panel'); btn.type = 'button'; panel.hidden = true;
     btn.setAttribute('aria-expanded', 'false');
     btn.onclick = function () { panel.hidden = !panel.hidden; btn.setAttribute('aria-expanded', String(!panel.hidden)); };
     list.slice(0, 12).forEach(function (f) { panel.append(row(id, f, refresh)); }); box.append(btn, panel);
@@ -38,7 +38,7 @@
     var urgent = [];
     Object.keys(data).forEach(function (id) { found(id).forEach(function (f) { if (f.severity === 'urgent') urgent.push(f); }); });
     if (!urgent.length) { TW.banner.hide('watchdog'); return; }
-    TW.banner.show({ id: 'watchdog', level: 'urgent', title: 'Trạm gác luật: ' + urgent[0].title, detail: urgent.length > 1 ? 'và ' + (urgent.length - 1) + ' vi phạm nữa — mở chip 🛡 ở tên máy chủ để xử lý.' : 'Mở chip 🛡 ở tên máy chủ để đóng băng hoặc dừng.' });
+    TW.banner.show({ id: 'watchdog', level: 'urgent', title: i18n('watchdog.tram_gac_luat', [urgent[0].title]), detail: urgent.length > 1 ? i18n('watchdog.va_vi_pham_nua_mo', [(urgent.length - 1)]) : i18n('watchdog.mo_chip_o_ten_may') });
   }
   function refresh() {
     TW.api('GET', '/api/features/watchdog/data').then(function (r) {

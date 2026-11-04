@@ -13,7 +13,7 @@
   field.append(element('span', 'goal left'), element('span', 'goal right'));
   const ball = element('span', 'yard-ball', '⚽'), pond = element('span', 'yard-pond', '🌊');
   field.append(ball); $('pet-yard').append(field, pond);
-  const score = element('span', 'yard-score', '⚽ 0 – 0 · trò chơi thú cưng');
+  const score = element('span', 'yard-score', i18n('petscene.0_0_tro_choi_thu'));
   document.querySelector('.playground > b').append(score); // kept for the hero shelf's own match state; hidden by CSS, pet-yard.js shows the real score
   try { enabled = localStorage.getItem('tw-pets') !== 'off'; } catch { /* optional storage */ }
   function element(tag, cls, text) {
@@ -62,7 +62,7 @@
     ['cpu', 'ram', 'disk'].forEach((k) => house.classList.toggle('high-' + k, selected.some((v) => v[k] != null && v[k] >= limits[k])));
     const problems = selected.reduce((n, v) => n + ['cpu', 'ram', 'disk'].filter((k) => v[k] != null && v[k] >= limits[k]).length + (v.sys?.failed?.length || 0), servers.filter((v) => !v.on).length);
     const weather = $('pet-weather');
-    if (weather) weather.textContent = problems >= L.problemsThunder ? '⛈️ Nhiều cảnh báo' : problems ? '🌧️ Tải cao' : '☀️ Nhẹ nhàng';
+    if (weather) weather.textContent = problems >= L.problemsThunder ? i18n('petscene.nhieu_canh_bao') : problems ? i18n('petscene.tai_cao') : i18n('petscene.nhe_nhang');
     draw();
     // The playground and the weather behind the banner live in pet-yard.js; it gets everything it needs from here.
     try { if (window.PetYard) window.PetYard.sync({ records, servers, choices, connected, overview, limits, open, kindOf: kind, weather: problems >= L.problemsThunder ? 'storm' : problems ? 'rain' : 'sun' }); } catch { /* decoration */ }
@@ -72,7 +72,7 @@
     if (!enabled || document.hidden) return;
     const yard = $('pet-yard'), existing = new Map([...yard.querySelectorAll('.yard-pet')].map((n) => [n.dataset.key, n]));
     const all=new Map(records), idle=[...records.values()].filter(r=>r.v.on&&(r.s.state==='idle'||r.s.state==='wait')).length;
-    if(idle<2)for(let i=0;i<3;i++)all.set('house/'+i,{house:true,v:{id:'house',on:true},s:{name:['Mèo nhà','Cáo nhà','Thỏ nhà'][i],state:'idle',created:0}});
+    if(idle<2)for(let i=0;i<3;i++)all.set('house/'+i,{house:true,v:{id:'house',on:true},s:{name:[i18n('petscene.meo_nha'),i18n('petscene.cao_nha'),i18n('petscene.tho_nha')][i],state:'idle',created:0}});
     const night=new Date(clock).getHours()>=23 || new Date(clock).getHours()<6;
     all.forEach((r, k) => {
       const s = r.s, e = events.get(k), choice = choices[r.v.id + '/' + s.name] || {};
@@ -84,9 +84,9 @@
       if(s.state==='idle' && night)action='sleep';
       if (!action) action = P.phase(s.state, r.since, clock);
       const prop = { box: '📦', test: '🔎', hat: '⛑️', laptop: '💻' }[s.petActivity] || '';
-      const label = { jump: 'Chờ bạn!', knock: 'Chờ bạn! Cốc cốc…', chin: 'Chờ bạn! Nghỉ cằm…',
-        wave: 'Tạm biệt! 👋', leave: 'Đã dừng · 🧳', hatch: '🥚 Chào đời!', finish: '🏆 Đã kết thúc · exit 0',
-        failure: '💨 Thất bại · mở phiên', soccer: '', fish: '🎣', sleep: '💤' }[action] || prop;
+      const label = { jump: i18n('petscene.cho_ban'), knock: i18n('petscene.cho_ban_coc_coc'), chin: i18n('petscene.cho_ban_nghi_cam'),
+        wave: i18n('petscene.tam_biet'), leave: i18n('petscene.da_dung'), hatch: i18n('petscene.chao_doi'), finish: i18n('petscene.da_ket_thuc_exit_0'),
+        failure: i18n('petscene.that_bai_mo_phien'), soccer: '', fish: '🎣', sleep: '💤' }[action] || prop;
       let node = existing.get(k);
       if (!node) {
         node = element('button', 'yard-pet'); node.type = 'button'; node.dataset.key = k;
@@ -110,7 +110,7 @@
       // The yard shows idle pets, plus a waiting pet only while it is playing in the match.
       node.hidden = s.state !== 'idle' && !['wave', 'leave', 'hatch', 'soccer'].includes(action);
       node.dataset.player = action === 'soccer' ? players.indexOf(k) : '';
-      node.title = offline ? 'Mất kết nối · trạng thái cuối đã nhận' : (r.house?'Thú nhà · '+s.name:s.name);
+      node.title = offline ? i18n('petscene.mat_ket_noi_trang_thai') : (r.house?i18n('petscene.thu_nha', [s.name]):s.name);
       node.onclick = () => { if (!r.house && r.v.on && action !== 'leave') open(r.v.id, s.name); };
     });
     existing.forEach((n) => n.remove());
@@ -154,7 +154,7 @@
     field.hidden = !active || pets.length !== 2;
     if (!field.hidden) {
       matchTime += dt;
-      if (matchTime >= matchLength) { scores[(scores[0] + scores[1]) % 2]++; matchTime %= matchLength; score.textContent = '⚽ ' + scores.join(' – ') + ' · trò chơi thú cưng'; }
+      if (matchTime >= matchLength) { scores[(scores[0] + scores[1]) % 2]++; matchTime %= matchLength; score.textContent = i18n('petscene.tro_choi_thu_cung', [scores.join(' – ')]); }
       const t = matchTime / matchLength, width = field.clientWidth;
       // Approach, kick, return pass, then a shot crossing the right goal.
       const stops = [[0,.18],[.2,.34],[.45,.68],[.6,.56],[.8,.92],[1,1]];

@@ -32,7 +32,7 @@ async function main() {
   if (a !== b) { console.error('Hai lần nhập không giống nhau.'); process.exit(1); }
   const fresh = new Vault(v.file);
   fresh.create(a, data);
-  console.log('Đã đặt mật khẩu. Nếu Termnest đang chạy: systemctl restart tmux-web');
+  console.log('Đã đặt mật khẩu. Nếu TERMNEST đang chạy: systemctl restart tmux-web');
 }
 
 main();

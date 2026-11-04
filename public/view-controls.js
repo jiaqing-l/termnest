@@ -19,10 +19,10 @@
   function font() { return terminalFont === null ? defaultFont() : terminalFont; }
   function label(button, text, size) { button.title = text + (size ? ' · ' + size + ' px' : ''); button.setAttribute('aria-label', text); }
   function updateLabels() {
-    label(o.termMinus, 'Giảm cỡ chữ terminal', font()); label(o.termPlus, 'Tăng cỡ chữ terminal', font());
-    label(o.termReset, 'Cỡ chữ terminal mặc định', font());
-    label(o.crewMinus, 'Giảm cỡ chữ Crew', crewFont); label(o.crewPlus, 'Tăng cỡ chữ Crew', crewFont);
-    label(o.fullscreenButton, fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình');
+    label(o.termMinus, i18n('viewcontrols.giam_co_chu_terminal'), font()); label(o.termPlus, i18n('viewcontrols.tang_co_chu_terminal'), font());
+    label(o.termReset, i18n('viewcontrols.co_chu_terminal_mac_dinh'), font());
+    label(o.crewMinus, i18n('viewcontrols.giam_co_chu_crew'), crewFont); label(o.crewPlus, i18n('viewcontrols.tang_co_chu_crew'), crewFont);
+    label(o.fullscreenButton, fullscreen ? i18n('viewcontrols.thoat_toan_man_hinh') : i18n('viewcontrols.toan_man_hinh'));
     o.fullscreenButton.setAttribute('aria-pressed', String(fullscreen));
   }
   function applyTerminalFont() {
@@ -39,7 +39,7 @@
       terminalFont = step === 0 ? defaultFont() : clamp(font() + step, 28);
       save('tw-term-font', terminalFont); applyTerminalFont();
     }
-    updateLabels(); o.say('Cỡ chữ ' + (target === 'crew' ? crewFont : font()), true, 1600, true);
+    updateLabels(); o.say(i18n('viewcontrols.co_chu', [(target === 'crew' ? crewFont : font())]), true, 1600, true);
   }
   function crewTarget(target) { return !o.crewPanel.hidden && (o.crewPanel.contains(target) || lastCrew); }
   function remember(e) { lastCrew = !o.crewPanel.hidden && o.crewPanel.contains(e.target); }
@@ -57,7 +57,7 @@
       if (win.TW_DESKTOP) await win.TW_DESKTOP.setFullscreen(enabled);
       else if (enabled) await doc.documentElement.requestFullscreen();
       else if (doc.fullscreenElement) await doc.exitFullscreen();
-    } catch (_) { o.say('Chế độ tập trung ' + (enabled ? 'đã bật; không mở được toàn màn hình hệ thống.' : 'đã tắt; không đổi được toàn màn hình hệ thống.'), false, 2800, true); }
+    } catch (_) { o.say(i18n('viewcontrols.che_do_tap_trung', [(enabled ? i18n('viewcontrols.da_bat_khong_mo_duoc') : i18n('viewcontrols.da_tat_khong_doi_duoc'))]), false, 2800, true); }
     finally { busy = false; }
   }
   function action(e) {
