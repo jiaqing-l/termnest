@@ -69,7 +69,7 @@
     settings();
     if (!enabled || document.hidden) return;
     const yard = $('pet-yard'), existing = new Map([...yard.querySelectorAll('.yard-pet')].map((n) => [n.dataset.key, n]));
-    const all=new Map(records), idle=[...records.values()].filter(r=>r.v.on&&r.s.state==='idle').length;
+    const all=new Map(records), idle=[...records.values()].filter(r=>r.v.on&&(r.s.state==='idle'||r.s.state==='wait')).length;
     if(idle<2)for(let i=0;i<3;i++)all.set('house/'+i,{house:true,v:{id:'house',on:true},s:{name:['Mèo nhà','Cáo nhà','Thỏ nhà'][i],state:'idle',created:0}});
     const night=new Date(clock).getHours()>=23 || new Date(clock).getHours()<6;
     all.forEach((r, k) => {
@@ -77,7 +77,7 @@
       let action = e && e.until > clock && e.type !== 'stop' ? e.type : '';
       if (!action && r.hatch && clock - r.since < L.effect) action = 'hatch';
       if (!action && clock - r.outcomeAt < L.effect) action = P.outcome(s);
-      if (!action && s.state === 'idle') action = players.includes(k) && clock < playUntil ? play : (clock < playUntil && play === 'soccer' ? 'fish' : 'sleep');
+      if (!action && (s.state === 'idle' || (s.state === 'wait' && players.includes(k) && play === 'soccer' && clock < playUntil))) action = players.includes(k) && clock < playUntil ? play : (clock < playUntil && play === 'soccer' ? 'fish' : 'sleep');
       if(r.house && !players.includes(k))action=clock<playUntil?'fish':'walk';
       if(s.state==='idle' && night)action='sleep';
       if (!action) action = P.phase(s.state, r.since, clock);
@@ -132,9 +132,11 @@
     const hour=new Date(clock).getHours();
     if(hour>=23 || hour<6){playUntil=0;draw();return;}
     if (clock >= nextPlay) {
-      const idle = [...records].filter(([, r]) => r.v.on && r.s.state === 'idle').map(([k]) => k);
+      // Sessions waiting for the user have nothing to do either: they join the match (and wait pets are preferred as players).
+      const waiting = [...records].filter(([, r]) => r.v.on && r.s.state === 'wait').map(([k]) => k);
+      const idle = [...waiting, ...[...records].filter(([, r]) => r.v.on && r.s.state === 'idle').map(([k]) => k)];
       if(idle.length<2)idle.push('house/0','house/1','house/2');
-      play = ['soccer','fish','walk'][Math.floor(Math.random()*3)];
+      play = waiting.length >= 2 ? 'soccer' : ['soccer','fish','walk'][Math.floor(Math.random()*3)];
       matchTime = 0;
       players = play === 'soccer' ? idle.slice(0, 2) : idle;
       playUntil = clock + L.effect;

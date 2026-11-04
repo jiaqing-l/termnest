@@ -286,3 +286,22 @@ test('Crew ownership survives setsid through the TMUX_PANE of the dispatcher, st
   const snap = parsePoll('@@PS\n30 1 2 bash crew-dispatch.sh --task t --track W1\n@@PANEENV\n30 %3\n@@SESS\n$0|~|a|~|0|~|123|~|20|~|bash|~|/same\n@@DETAIL\n$0|~|10|~|0|~|\n@@OWNERS\n$0|~|10|~|%3\n@@END', 30);
   assert.deepEqual(snap.workers[0].owner, { name: 'a', created: 123 });
 });
+
+test('sessions waiting for the user play soccer with each other, then go back to waiting', () => {
+  const h = sceneHarness({ random: .9 }); // .9 would pick walking if the match were left to chance
+  h.sync(['a', 'b', 'c'].map(name => ({ name, created: 1, state: 'wait' })));
+  h.tick(24000);
+  const yard = h.nodes['pet-yard'];
+  assert.equal(yard.querySelectorAll('.yard-pet.act-soccer').length, 2);
+  assert.equal(yard.querySelectorAll('.yard-pet.act-sleep').length, 0);
+  h.tick(8000); h.sync(['a', 'b', 'c'].map(name => ({ name, created: 1, state: 'wait' }))); // the match lasts 7 s; the next one is 11 s+ away
+  assert.equal(yard.querySelectorAll('.yard-pet.act-soccer').length, 0);
+  assert.equal(yard.querySelectorAll('.yard-pet.act-sleep').length, 0, 'a waiting pet must never fall asleep after the match');
+});
+
+test('one waiting session does not start a match on its own and keeps waiting', () => {
+  const h = sceneHarness({ random: .1 });
+  h.sync([{ name: 'a', created: 1, state: 'wait' }]);
+  h.tick(24000);
+  assert.equal(h.nodes['pet-yard'].querySelectorAll('.yard-pet.act-sleep').length, 0);
+});

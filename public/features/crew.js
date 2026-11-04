@@ -2,7 +2,7 @@
 // "Crew của phiên này": tracks of the workspace the session lives in; a click opens the bottom-right log popup.
 (function () {
   var TW = window.TW; if (!TW) return;
-  var el = TW.el, boxes = {};
+  var el = TW.el, boxes = {}, last = {}; // last: newest answer per session, so a re-rendered panel is filled at once
   var LABEL = { merged: 'đã gộp', done: 'xong', dispatched: 'đang chạy', queued: 'xếp hàng', pending: 'chờ', failed: 'lỗi' };
   function qs(x) { return '?server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name); }
   function open(x, task, t) {
@@ -43,10 +43,15 @@
     });
   }
   function load(box, x) {
-    TW.api('GET', '/api/features/crew/data' + qs(x)).then(function (r) { draw(box, x, r); }).catch(function () { box.hidden = true; });
+    var key = x.v.id + '/' + x.s.name;
+    TW.api('GET', '/api/features/crew/data' + qs(x)).then(function (r) { last[key] = r; draw(box, x, r); })
+      .catch(function () { if (!last[key]) box.hidden = true; });
   }
   TW.addDetailSection(function (x) {
-    var key = x.v.id + '/' + x.s.name, box = el('section', 'crew-detail'); box.hidden = true; boxes[key] = { box: box, x: x }; load(box, x); return box;
+    var key = x.v.id + '/' + x.s.name, box = el('section', 'crew-detail'); boxes[key] = { box: box, x: x };
+    // The panel is rebuilt on every refresh: draw from the last answer immediately instead of flashing empty.
+    if (last[key]) draw(box, x, last[key]); else { box.append(el('p', 'crew-note', 'Đang tìm crew của phiên…')); }
+    load(box, x); return box;
   });
   setInterval(function () { Object.keys(boxes).forEach(function (k) { var b = boxes[k]; if (b.box.isConnected && !document.hidden) load(b.box, b.x); else if (!b.box.isConnected) delete boxes[k]; }); }, 15000);
 })();

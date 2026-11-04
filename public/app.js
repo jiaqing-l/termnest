@@ -201,9 +201,9 @@
   function band(v, s, node) { var count = owned(v, s).length; if (count) node.append(el('span', 'crew-band', '🎽 ' + count)); }
   function renderWorkers(v, sec, session) {
     var list = session ? owned(v, session) : v.workers.filter(function (w) { return !w.owner || !v.sessions.some(function (s) { return w.owner.name === s.name && w.owner.created === s.created; }); });
-    if (!list.length) { if (session) sec.append(el('p', '', 'Crew của phiên này · 0')); return; }
+    if (!list.length) { if (session) sec.append(el('p', '', 'Crew đang chạy · 0')); return; }
     var box = el('div', 'crew');
-    box.append(el('div', 'crew-t', (session ? 'Crew của phiên này · ' : 'Tổng quan Crew · ') + list.length));
+    box.append(el('div', 'crew-t', (session ? 'Crew đang chạy · ' : 'Tổng quan Crew · ') + list.length));
     if (session) {
       var tasks = Array.from(new Set(list.map(function (w) { return w.task; })));
       tasks.forEach(function (task) {
@@ -340,11 +340,11 @@
     var acts = el('div', 'detail-actions'), d = el('button', 'btn', 'Rời (vẫn chạy)'), k = el('button', 'btn danger', 'Dừng');
     d.onclick = detach; k.onclick = killDlg; acts.append(d, k); box.append(w, a);
     var edit = el('button', 'btn', 'Đổi thú cưng'); edit.onclick = function () { editPet(x); }; box.append(edit);
-    var journal = el('section', 'pet-diary'); journal.append(el('h3', '', 'Nhật ký thú'));
+    var journal = el('details', 'pet-diary'), journalTitle = el('summary', '', 'Nhật ký thú'); journal.append(journalTitle);
     var labels = { observed: 'Bắt đầu quan sát phiên', waiting: 'Chờ bạn', resumed: 'Phiên hết chờ', answered: 'Đã gửi trả lời từ web', finish: 'Đã kết thúc', failure: 'Thất bại' };
     var timeline = el('ol');
-    (x.s.diary || []).slice().reverse().forEach(function (e) { timeline.append(el('li', '', new Date(e.at).toLocaleString('vi-VN') + ' · ' + (labels[e.type] || e.type) + (e.detail ? ' · ' + e.detail : ''))); });
-    journal.append(timeline); if (!timeline.children.length) journal.append(el('p', '', 'Chưa có sự kiện quan sát.'));
+    (x.s.diary || []).slice().reverse().slice(0, 10).forEach(function (e) { timeline.append(el('li', '', new Date(e.at).toLocaleString('vi-VN') + ' · ' + (labels[e.type] || e.type) + (e.detail ? ' · ' + e.detail : ''))); });
+    journalTitle.textContent = 'Nhật ký thú (' + timeline.children.length + ')'; journal.append(timeline); if (!timeline.children.length) journal.append(el('p', '', 'Chưa có sự kiện quan sát.'));
     box.append(journal, acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
   }
   function renderBar() {
