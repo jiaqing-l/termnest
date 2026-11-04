@@ -63,7 +63,7 @@ test('facts read the repos of the state files, ignore the snapshot itself and co
   const out = await h.factsRuntime()({ cwd: ws, session: '', sinceMs: since, ignore: [path.join(docs, 'snap.md')], dirs: [docs], home: ws });
   assert.equal(out.git.ok, true); assert.equal(out.git.repos.length, 1);
   const g = out.git.repos[0]; assert.equal(g.root, 'docs'); assert.equal(g.branch, 'develop'); assert.equal(g.commitsAfter, 1);
-  assert.deepEqual(g.dirty.map((d) => [d.path, d.state_file]).sort(), [[path.join('docs', 'new.md'), false], [path.join('docs', 'snap.md'), true]]);
+  assert.deepEqual(g.dirty.map((d) => [d.path, d.state_file]).sort(), [['docs/new.md', false], ['docs/snap.md', true]]);
   assert.equal(g.commits.length, 3); assert.equal(h.gitSummary(out.git).dirtyTotal, 2);
 });
 
