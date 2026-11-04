@@ -6,7 +6,8 @@ const path = require('node:path');
 const test = require('node:test');
 const browse = require('../lib/features/browse');
 
-const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tw-browse-')));
+// native realpath: Windows temp folders have 8.3 aliases (RUNNER~1) that the runtime's fs.promises.realpath expands
+const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tw-browse-')));
 const put = (rel, text = 'x') => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
 put('docs/Implementation/SV/40-DE-XUAT.md', '# doc'); put('docs/readme.md'); put('docs/binary.exe'); put('docs/.hidden.md'); put('node_modules/x/index.js');
 put('top.txt'); put('README'); put('data.bin');
@@ -24,7 +25,7 @@ test('lists folders and viewable files of the session folder, hiding dotfiles, n
 test('absolute folders inside the session folder work; anything outside is refused', async () => {
   const deep = await run({ cwd: root, dir: path.join(root, 'docs', 'Implementation', 'SV') });
   assert.equal(deep.rel, 'docs/Implementation/SV'); assert.deepEqual(deep.files.map((f) => f.name), ['40-DE-XUAT.md']);
-  for (const dir of ['..', '../..', path.dirname(root), '/etc']) assert.match((await run({ cwd: root, dir })).error, /thư mục của phiên/);
+  for (const dir of ['..', '../..', path.dirname(root), ...(process.platform === 'win32' ? [] : ['/etc'])]) assert.match((await run({ cwd: root, dir })).error, /thư mục của phiên/);
   assert.match((await run({ cwd: root, dir: 'missing' })).error, /Không mở được/);
 });
 
