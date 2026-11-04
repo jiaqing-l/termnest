@@ -13,7 +13,7 @@
 <p align="center">
   <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/jiaqing-l/termnest?color=1f7a4a"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-13294b"></a>
-  <img alt="macOS | Windows | Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-e3b341">
+  <img alt="macOS | Windows | Linux" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Ubuntu-e3b341">
   <a href="../../stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/jiaqing-l/termnest?style=social"></a>
 </p>
 
@@ -43,11 +43,12 @@ Tải bản mới nhất ở **[Releases](../../releases/latest)**:
 - macOS Apple Silicon: `Termnest-arm64.dmg`
 - macOS Intel: `Termnest-x64.dmg`
 - Windows 10/11: `Termnest-Setup.exe`
+- Ubuntu desktop (Intel/AMD 64-bit): `Termnest-amd64.deb`
 
-Cài thêm tmux để phiên được giữ lại: `brew install tmux` trên macOS, hoặc `sudo apt install tmux` trong WSL trên Windows.
+Cài thêm tmux để phiên được giữ lại: `brew install tmux` trên macOS, `sudo apt install tmux` trên Ubuntu, hoặc `sudo apt install tmux` trong WSL trên Windows.
 
 > [!NOTE]
-> Bản cài chưa được ký. Nếu macOS báo ứng dụng “bị hỏng”, chạy `xattr -cr /Applications/Termnest.app`. Nếu Windows hiện SmartScreen, chọn **More info → Run anyway**.
+> Bản cài chưa được ký. Nếu macOS báo ứng dụng “bị hỏng”, chạy `xattr -cr /Applications/Termnest.app`. Nếu Windows hiện SmartScreen, chọn **More info → Run anyway**. Trên Ubuntu, cài bằng `sudo apt install ./Termnest-amd64.deb` (apt tự kéo các thư viện cần thêm), rồi mở **Termnest** từ menu ứng dụng; không cần bước nào khác.
 
 ## Chạy từ mã nguồn
 
