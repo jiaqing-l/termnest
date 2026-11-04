@@ -6,14 +6,22 @@
   function fmt(n) { return n >= 1e6 ? (n / 1e6).toFixed(1).replace('.0', '') + 'M' : Math.round(n / 1000) + 'k'; }
   function info(hostId, name) { var s = data[hostId]; return s && s[name]; }
   function level(p) { return p >= 90 ? 'bad' : p >= 70 ? 'warn' : 'ok'; }
+  // A window comes from Claude Code's own model catalog (or the Codex log); when the model is not in it there is no percentage.
+  function known(i) { return i && i.window > 0; }
   function pct(i) { return Math.min(100, Math.round(i.ctx / i.window * 100)); }
+  var WHY = { catalog: 'theo danh mục model của Claude Code', log: 'theo log Codex' };
   // "Nhắc sau": hide the nudge for this session for 4 hours (the ring stays). Per browser, best effort.
   var SNOOZE_KEY = 'termnest.ctxSnooze', SNOOZE_MS = 4 * 3600 * 1000;
   function snoozed(key) { try { var m = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'); return (m[key] || 0) > Date.now(); } catch (e) { return false; } }
   function snooze(key) { try { var m = JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'), now = Date.now(); Object.keys(m).forEach(function (k) { if (m[k] < now) delete m[k]; }); m[key] = now + SNOOZE_MS; localStorage.setItem(SNOOZE_KEY, JSON.stringify(m)); } catch (e) { /* optional */ } }
   function fill(node, i, key) {
     node.textContent = ''; node.hidden = !i; if (!i) return;
-    var p = pct(i); node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip ' + level(p); node.title = 'Ngữ cảnh ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token' + (i.model ? ' · ' + i.model : '') + (i.by === 'default' ? ' · cửa sổ 200k theo mặc định, chưa thấy dấu hiệu bản 1M' : '');
+    if (!known(i)) {
+      node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip';
+      node.title = 'Đang dùng ' + fmt(i.ctx) + ' token · model ' + (i.model || '?') + ' chưa có trong danh mục của Claude Code nên chưa biết cửa sổ';
+      node.append(el('span', 'ctx-t', fmt(i.ctx) + ' token · chưa rõ cửa sổ')); return;
+    }
+    var p = pct(i); node.className = (node.classList.contains('ctx-row') ? 'ctx-row ' : '') + 'ctx-chip ' + level(p); node.title = 'Ngữ cảnh ' + fmt(i.ctx) + ' / ' + fmt(i.window) + ' token' + (i.model ? ' · ' + i.model : '') + (WHY[i.by] ? ' · cửa sổ ' + WHY[i.by] : '');
     var ring = el('span', 'ctx-ring'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%')); node.append(ring);
     // Mockup 14: from 70% the card says it is time for a fresh session, with a way to dismiss it.
     if (p >= 70 && !snoozed(key)) {
@@ -31,8 +39,10 @@
     var key = x.v.id + '/' + x.s.name, box = el('section', 'ctx-detail'); details[key] = box; draw(box, info(x.v.id, x.s.name)); return box;
   });
   function draw(box, i) {
-    box.textContent = ''; box.hidden = !i; if (!i) return; var p = pct(i);
+    box.textContent = ''; box.hidden = !i; if (!i) return;
     box.append(el('h3', '', 'Ngữ cảnh phiên'));
+    if (!known(i)) { box.append(el('p', 'ctx-unknown', 'Đang dùng ' + fmt(i.ctx) + ' token. Model ' + (i.model || '?') + ' chưa có trong danh mục của Claude Code trên máy này nên chưa biết cửa sổ, chưa tính được %.')); return; }
+    var p = pct(i);
     var row = el('div', 'ctx-line ' + level(p)), ring = el('span', 'ctx-ring big'); ring.style.setProperty('--p', p); ring.append(el('b', '', p + '%'));
     var t = el('div', 'ctx-txt'); t.append(el('b', '', fmt(i.ctx) + ' / ' + fmt(i.window) + ' token'), el('small', '', p >= 90 ? 'Gần đầy: nên mở phiên mới từ file trạng thái.' : p >= 70 ? 'Nên mở phiên mới sớm để đỡ tốn token mỗi lượt.' : 'Còn rộng.'));
     row.append(ring, t); box.append(row);

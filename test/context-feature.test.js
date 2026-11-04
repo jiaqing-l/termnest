@@ -7,6 +7,11 @@ const test = require('node:test');
 const ctx = require('../lib/features/context');
 
 const line = (o) => JSON.stringify(o) + '\n';
+// Claude Code's own model catalog: config.models[].runtime.max_input_tokens, per config folder.
+function catalog(dir, windows) {
+  const d = path.join(dir, 'cache', 'model-catalog'); fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, 'abc-cc.json'), JSON.stringify({ version: 2, catalog: { config: { models: Object.entries(windows).map(([id, w]) => ({ id, name: id, runtime: { max_input_tokens: w } })) } } }));
+}
 function fixture() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-ctx-'));
   const work = path.join(home, 'work', 'proj'); fs.mkdirSync(work, { recursive: true });
@@ -16,6 +21,7 @@ function fixture() {
     line({ type: 'user', message: { role: 'user' } }) +
     line({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { input_tokens: 10, cache_creation_input_tokens: 1000, cache_read_input_tokens: 149000, output_tokens: 50 } } }) +
     line({ type: 'assistant', message: { model: '<synthetic>', usage: { input_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } } }) + '{not json\n');
+  catalog(path.join(home, '.claude'), { 'claude-opus-5-5': 1000000, 'claude-haiku-4-5-20251001': 200000 });
   // Codex: first line is session_meta with cwd; later token_count events
   const d = new Date(), cdx = path.join(home, '.codex', 'sessions', String(d.getFullYear()), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0'));
   fs.mkdirSync(cdx, { recursive: true });
@@ -29,7 +35,7 @@ function fixture() {
 
 test('Claude context is the last real assistant message (input + cache), ignoring synthetic and broken lines', async () => {
   const f = fixture(); const out = await ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] });
-  assert.deepEqual({ ...out.a, at: 0 }, { tool: 'claude', ctx: 150010, window: 200000, by: 'default', model: 'opus-5-5', at: 0 });
+  assert.deepEqual({ ...out.a, at: 0 }, { tool: 'claude', ctx: 150010, window: 1000000, by: 'catalog', model: 'opus-5-5', at: 0 });
 });
 
 test('Codex context uses the newest token_count and the model window, matched by session directory', async () => {
@@ -39,7 +45,7 @@ test('Codex context uses the newest token_count and the model window, matched by
   assert.equal(out.none, undefined);
 });
 
-test('a window above 200k means the 1M variant, and stale or malformed sessions are skipped', async () => {
+test('stale or malformed sessions are skipped and the window comes from the catalog, not from the amount used', async () => {
   const f = fixture(); const file = path.join(f.home, '.claude', 'projects', f.work.replace(/[^A-Za-z0-9]/g, '-'), 's1.jsonl');
   fs.appendFileSync(file, line({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { input_tokens: 5, cache_read_input_tokens: 400000 } } }));
   const out = await ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }, { name: 5, path: 1 }, null] });
@@ -48,21 +54,20 @@ test('a window above 200k means the 1M variant, and stale or malformed sessions 
   assert.deepEqual(await ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] }), {});
 });
 
-function claudeSession(home, work, extra) {
-  const cdir = path.join(home, '.claude', 'projects', work.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(cdir, { recursive: true });
-  fs.writeFileSync(path.join(cdir, 's1.jsonl'), extra + line({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { input_tokens: 10, cache_creation_input_tokens: 0, cache_read_input_tokens: 40000, output_tokens: 5 } } }));
-}
-test('the window of a Claude session below 200k comes from its last /model switch, else the config folder model setting', async () => {
-  const run = (f) => ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] });
-  const base = () => { const f = fixture(); fs.rmSync(path.join(f.home, '.claude'), { recursive: true }); return f; };
-  let f = base(); claudeSession(f.home, f.work, line({ type: 'user', message: { content: 'Set model to opus[1m]' } }));
-  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [1000000, 'switch']);
-  f = base(); claudeSession(f.home, f.work, line({ message: 'Set model to opus[1m]' }) + line({ message: 'Set model to sonnet' }));
-  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [200000, 'switch']);
-  f = base(); claudeSession(f.home, f.work, ''); fs.writeFileSync(path.join(f.home, '.claude', 'settings.json'), JSON.stringify({ model: 'opus[1m]' }));
-  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [1000000, 'settings']);
-  fs.writeFileSync(path.join(f.home, '.claude', 'settings.json'), JSON.stringify({ model: 'sonnet[1m]' }));
-  assert.deepEqual([(await run(f)).a.window, (await run(f)).a.by], [200000, 'default'], 'a setting for another model family must not apply');
+test('the window is the catalog value of the session model; a model missing from the catalog has no window at all', async () => {
+  const f = fixture(), dir = path.join(f.home, '.claude'), proj = path.join(dir, 'projects', f.work.replace(/[^A-Za-z0-9]/g, '-'));
+  const run = () => ctx.contextRuntime()({ home: f.home, sessions: [{ name: 'a', path: f.work }] });
+  const write = (model, cache) => fs.writeFileSync(path.join(proj, 's1.jsonl'), line({ type: 'assistant', message: { model, usage: { input_tokens: 1, cache_read_input_tokens: cache } } }));
+  write('claude-haiku-4-5-20251001', 90000);
+  assert.deepEqual([(await run()).a.window, (await run()).a.by], [200000, 'catalog']);
+  write('claude-opus-5-5-20261201', 90000); // a dated id resolves to its catalog family
+  assert.deepEqual([(await run()).a.window, (await run()).a.by], [1000000, 'catalog']);
+  write('claude-brand-new-9', 90000);
+  const unknown = (await run()).a;
+  assert.equal(unknown.window, null); assert.equal(unknown.by, 'unknown'); assert.equal(unknown.ctx, 90001);
+  fs.rmSync(path.join(dir, 'cache'), { recursive: true });
+  write('claude-opus-5-5', 90000);
+  assert.equal((await run()).a.window, null, 'no catalog on the host means unknown, never a default');
 });
 
 const cpc = require('node:child_process');
