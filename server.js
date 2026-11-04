@@ -88,6 +88,7 @@ const STATIC = {
   '/ime-input.js': [path.join(PUB, 'ime-input.js'), 'text/javascript; charset=utf-8'],
   '/pet-state.js': [path.join(PUB, 'pet-state.js'), 'text/javascript; charset=utf-8'],
   '/pet-scene.js': [path.join(PUB, 'pet-scene.js'), 'text/javascript; charset=utf-8'],
+  '/pet-yard.js': [path.join(PUB, 'pet-yard.js'), 'text/javascript; charset=utf-8'],
   '/pets.js': [path.join(PUB, 'pets.js'), 'text/javascript; charset=utf-8'],
   '/manifest.webmanifest': [path.join(PUB, 'manifest.webmanifest'), 'application/manifest+json'],
   '/sw.js': [path.join(PUB, 'sw.js'), 'text/javascript; charset=utf-8'],
@@ -586,7 +587,12 @@ async function api(req, res, url) {
         if(value.kind !== 'html'){fail(res,400,'Chỉ hỗ trợ bản xem trước HTML.');return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
           'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
-        res.end(injectReportLinks(value.text));return;
+        let page = value.text;
+        try {
+          const backend = remotes.get(url.searchParams.get('server')), session = url.searchParams.get('session'), reader = require('./lib/file-viewer').readSessionFile;
+          page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs));
+        } catch { /* the report still opens, just without its pictures */ }
+        res.end(injectReportLinks(page));return;
       }
       // Candidates are an answer, not a failure: send them with 200 so the viewer can list them.
       send(res, value.error && !value.candidates ? 400 : 200, value);

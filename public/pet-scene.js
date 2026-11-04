@@ -14,7 +14,7 @@
   const ball = element('span', 'yard-ball', '⚽'), pond = element('span', 'yard-pond', '🌊');
   field.append(ball); $('pet-yard').append(field, pond);
   const score = element('span', 'yard-score', '⚽ 0 – 0 · trò chơi thú cưng');
-  document.querySelector('.playground > b').append(score);
+  document.querySelector('.playground > b').append(score); // kept for the hero shelf's own match state; hidden by CSS, pet-yard.js shows the real score
   try { enabled = localStorage.getItem('tw-pets') !== 'off'; } catch { /* optional storage */ }
   function element(tag, cls, text) {
     const n = document.createElement(tag); n.className = cls || '';
@@ -64,6 +64,8 @@
     const weather = $('pet-weather');
     if (weather) weather.textContent = problems >= L.problemsThunder ? '⛈️ Nhiều cảnh báo' : problems ? '🌧️ Tải cao' : '☀️ Nhẹ nhàng';
     draw();
+    // The playground and the weather behind the banner live in pet-yard.js; it gets everything it needs from here.
+    try { if (window.PetYard) window.PetYard.sync({ records, servers, choices, connected, overview, limits, open, kindOf: kind, weather: problems >= L.problemsThunder ? 'storm' : problems ? 'rain' : 'sun' }); } catch { /* decoration */ }
   }
   function draw() {
     settings();
