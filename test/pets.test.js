@@ -294,6 +294,7 @@ test('sessions waiting for the user play soccer with each other, then go back to
   const yard = h.nodes['pet-yard'];
   assert.equal(yard.querySelectorAll('.yard-pet.act-soccer').length, 2);
   assert.equal(yard.querySelectorAll('.yard-pet.act-sleep').length, 0);
+  assert.ok(yard.querySelectorAll('.yard-pet.act-soccer').every(n => !n.hidden), 'the players must be visible in the yard');
   h.tick(8000); h.sync(['a', 'b', 'c'].map(name => ({ name, created: 1, state: 'wait' }))); // the match lasts 7 s; the next one is 11 s+ away
   assert.equal(yard.querySelectorAll('.yard-pet.act-soccer').length, 0);
   assert.equal(yard.querySelectorAll('.yard-pet.act-sleep').length, 0, 'a waiting pet must never fall asleep after the match');

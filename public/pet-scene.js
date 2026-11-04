@@ -105,7 +105,8 @@
       }
       node.children[1].textContent = label;
       node.children[2].textContent = (choice.name || s.name) + ' ' + P.badge(s.created, Date.now() / 1000);
-      node.hidden = s.state !== 'idle' && !['wave', 'leave', 'hatch'].includes(action);
+      // The yard shows idle pets, plus a waiting pet only while it is playing in the match.
+      node.hidden = s.state !== 'idle' && !['wave', 'leave', 'hatch', 'soccer'].includes(action);
       node.dataset.player = action === 'soccer' ? players.indexOf(k) : '';
       node.title = offline ? 'Mất kết nối · trạng thái cuối đã nhận' : (r.house?'Thú nhà · '+s.name:s.name);
       node.onclick = () => { if (!r.house && r.v.on && action !== 'leave') open(r.v.id, s.name); };
