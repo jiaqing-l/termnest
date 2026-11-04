@@ -136,7 +136,7 @@
     if(file.error)throw Error(file.error);current=file;setTitle(file.path);body.textContent='';copy.disabled=download.disabled=reload.disabled=false;
     if(file.kind==='image'){showImage(file,host,session);return;}
     if(file.kind==='html'){
-     const note=doc.createElement('p');note.className='viewer-note';note.textContent='Bản HTML chạy trong khung cách ly. Ảnh, CSS và script ngoài tệp (kể cả đường dẫn tương đối) không được tải; CSS và script nội tuyến vẫn hoạt động.';body.append(note);
+     const note=doc.createElement('p');note.className='viewer-note';note.textContent='Bản HTML chạy trong khung cách ly. Ảnh và CSS nằm trong thư mục của phiên được nhúng sẵn; script ngoài tệp và tài nguyên từ mạng không được tải; CSS và script nội tuyến vẫn hoạt động.';body.append(note);
      const frame=htmlFrame(doc,'');frame.removeAttribute('srcdoc');frame.src='/api/file-preview?'+query;body.append(frame);
     }else if(file.kind==='markdown'){
      const content=doc.createElement('article');content.className='document';body.append(content);

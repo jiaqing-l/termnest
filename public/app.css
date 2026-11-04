@@ -768,3 +768,90 @@ html,body{overscroll-behavior:none}
 #app.compact.in-focus.kbd-open .m-head .btn{min-height:32px;padding:2px 10px}
 #app.compact.in-focus.kbd-open .keybar{padding:4px 8px;gap:6px}
 #app.compact.in-focus.kbd-open .keybar .btn{min-height:38px}
+
+/* ---- Sân chơi (pet-yard.js): day/night yard, one pet per session. The old #pet-yard only feeds the hero shelf. ---- */
+.playground #pet-yard{display:none!important}
+.playground{height:auto!important;min-height:0!important}
+.playground>b{flex-wrap:wrap}
+.playground>b .yard-score{display:none}
+.yd-score{margin-left:auto;font-size:12px;font-weight:600;color:var(--fg-2)}
+.yd-kick{min-height:26px;padding:2px 10px;font-size:12px}
+.yd{position:relative;height:104px;overflow:hidden;margin:0;transition:background .6s;user-select:none;touch-action:pan-y;--s:46px}
+.yd.day{background:linear-gradient(180deg,#5aa6f0,#7fc0f4 62%,#a8dcb2)}
+.yd.dusk{background:linear-gradient(180deg,#5b3a6e,#a1507a 55%,#e09a6a)}
+.yd.night,.yd.midnight{background:linear-gradient(180deg,#0a0f22,#0f1730 70%,#142241)}
+.yd::after{content:"";position:absolute;left:0;right:0;bottom:9px;border-top:1px dashed rgba(255,255,255,.35);pointer-events:none}
+.yd.alarm{box-shadow:0 0 0 2px #ff6b6b inset}
+.yd-more{position:absolute;left:10px;top:7px;z-index:5;font-size:13px;font-weight:700;background:rgba(10,15,34,.62);color:#fff;border-radius:10px;padding:2px 9px}
+.yd-more[hidden],.yd-empty[hidden],.yz[hidden]{display:none}
+.yd-empty{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:13px;opacity:.85;text-align:center;padding:0 16px}
+.yd-sky{position:absolute;right:16px;top:6px;font-size:26px;z-index:1}
+.yd-st{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;opacity:.85;animation:yd-tw 2.2s infinite}.yd.day .yd-st,.yd.dusk .yd-st{display:none}
+@keyframes yd-tw{50%{opacity:.2}}
+.yw{position:absolute;bottom:10px;left:0;width:var(--s);height:var(--s);z-index:3;overflow:visible;touch-action:none;animation:yd-walk var(--t) linear infinite alternate;animation-delay:var(--d)}
+@keyframes yd-walk{from{left:var(--a,6%)}to{left:var(--b,84%)}}
+.yp{display:block;width:100%;height:100%;cursor:pointer;position:relative;animation:yd-face var(--t) steps(1) infinite alternate;animation-delay:var(--d)}
+@keyframes yd-face{0%,50%{transform:scaleX(1)}51%,100%{transform:scaleX(-1)}}
+.yp svg{width:100%;height:100%;display:block;animation:yd-step .45s ease-in-out infinite}
+@keyframes yd-step{50%{transform:translateY(-3px)}}
+.yp:hover{filter:brightness(1.1)}
+.yp.joy svg{animation:yd-joy .55s ease}@keyframes yd-joy{0%,100%{transform:none}35%{transform:translateY(-12px) rotate(-8deg) scale(1.1)}65%{transform:translateY(-3px) rotate(6deg)}}
+.yw.sleep{animation:none!important}.yw.sleep .yp,.yw.sleep .yp svg,.yw.wait .yp svg,.yw.offline .yp svg{animation:none!important}
+.yw.wait,.yw.offline{animation-duration:calc(var(--t)*3)}
+.yw.offline{filter:grayscale(1);opacity:.7}
+.yz{position:absolute;left:70%;top:-18px;font:900 15px system-ui;color:#7aa2ff;animation:yd-zz 2s ease-in-out infinite;white-space:nowrap;pointer-events:none}@keyframes yd-zz{50%{transform:translateY(-4px);opacity:.6}}
+.ym{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:15px;font-style:normal;animation:yd-bob 1.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}@keyframes yd-bob{50%{transform:translate(-50%,-3px)}}
+.yh{position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-size:calc(var(--s)*.4);pointer-events:none}
+.yw.hot .yp svg{animation:yd-pant .35s ease-in-out infinite}@keyframes yd-pant{50%{transform:scale(1.07,.93)}}
+.yw.carry{animation-duration:calc(var(--t)*.55)}
+.yw.alarmed{animation-duration:3s}.yw.alarmed .yp svg{animation:yd-hop .4s ease-in-out infinite}@keyframes yd-hop{0%,60%,100%{transform:none}30%{transform:translateY(-6px) rotate(-4deg)}}
+.yw.hungry .yp svg{transform:scaleY(.72) translateY(5px);animation:none}
+.yw.held{cursor:grabbing;z-index:6}.yw.held .yp svg{transform:scale(1.2) rotate(-8deg)}
+.yw.huddle .yp svg{transform:rotate(var(--tilt,0deg))}
+.yd-goal{position:absolute;bottom:9px;width:8px;height:34px;border:3px solid rgba(255,255,255,.85);display:none;z-index:2}
+.yd-goal-l{left:0;border-left:0}.yd-goal-r{right:0;border-right:0}.yd.playing .yd-goal{display:block}.yd.playing .yd-sky{opacity:.6}
+.yd-ball{position:absolute;bottom:10px;left:50%;font-size:17px;z-index:4;display:none;pointer-events:none}.yd.playing .yd-ball{display:block}
+.yw.running .yp svg{animation:yd-run .22s ease-in-out infinite}@keyframes yd-run{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px) rotate(4deg)}}
+.yw.kicking .yp svg{animation:none!important;transform:rotate(22deg) translateX(5px) translateY(-3px);transition:transform .07s}
+.yw.kicking::after{content:"💥";position:absolute;right:-12px;bottom:2px;font-size:14px;filter:drop-shadow(0 0 4px #ff9a2e)}
+.yw.ta::before,.yw.tb::before{content:"";position:absolute;left:50%;bottom:-5px;width:14px;height:4px;margin-left:-7px;border-radius:3px;display:none}
+.yd.playing .yw.in-match.ta::before{display:block;background:#4aa3ff}.yd.playing .yw.in-match.tb::before{display:block;background:#ff6b6b}
+.yw.it .yp svg{filter:drop-shadow(0 0 7px #ff9a2e)}
+.yw.dancing .yp svg{animation:yd-dance .5s ease-in-out infinite;animation-delay:var(--dd,0s)}@keyframes yd-dance{0%,100%{transform:translateY(0) rotate(-7deg)}50%{transform:translateY(-13px) rotate(7deg)}}
+.yw.eating .yp svg{animation:yd-munch .35s ease-in-out infinite}@keyframes yd-munch{50%{transform:scale(1.1,.9)}}
+.yd-pond{position:absolute;right:0;bottom:9px;width:76px;height:16px;background:linear-gradient(#58b0ff,#2a6fd6);border-radius:10px 0 0 0;display:none;z-index:1;opacity:.92}
+.yd-pond::before{content:"🌊";position:absolute;right:8px;top:-17px;font-size:14px}.yd.act-fish .yd-pond{display:block}
+.yw.fishing::after{content:"🎣";position:absolute;right:-20px;top:-8px;font-size:17px}
+.yd-bubble{position:fixed;z-index:60;max-width:min(240px,calc(100vw - 20px));padding:7px 11px;border-radius:12px;background:var(--surface);color:var(--fg);border:1px solid var(--line);font-size:13px;box-shadow:0 10px 26px #0005;overflow-wrap:anywhere}
+.yd-acts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.yd-feed{padding:4px 11px;border-radius:9px;border:1px solid var(--line-strong,var(--line));background:var(--surface-2,var(--surface));color:var(--fg);font:700 12px var(--sans,inherit);cursor:pointer}
+.yd-p{position:fixed;z-index:60;font-style:normal;pointer-events:none}
+.yd-food{font-size:18px;animation:yd-food .55s ease-in forwards}@keyframes yd-food{from{transform:translateY(-34px);opacity:.3}to{transform:none;opacity:1}}
+.yd-hrt{font-size:14px;animation:yd-hrt 1.1s ease-out forwards}@keyframes yd-hrt{to{transform:translateY(-44px) scale(1.3);opacity:0}}
+.yd-cf{width:6px;height:9px;border-radius:2px;animation:yd-cf 1.3s cubic-bezier(.2,.7,.4,1) forwards}@keyframes yd-cf{0%{transform:none;opacity:1}55%{transform:translate(var(--x),var(--y)) rotate(320deg);opacity:1}100%{transform:translate(calc(var(--x)*1.25),calc(var(--y) + 180px)) rotate(620deg);opacity:0}}
+.pets-still .yd *,.pets-still .wx *{animation:none!important;transition:none!important}
+.pets-off .wx{display:none}
+@media(prefers-reduced-motion:reduce){.yd *,.wx *{animation:none!important}}
+@media(max-width:760px){.yd{height:92px}.yd-score{font-size:11px}}
+
+/* ---- Weather behind the hero banner: sun, rain, thunder (pet-yard.js sets data-w from the server load) ---- */
+.wx{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.hero>*:not(.wx){position:relative;z-index:1}
+.hero{transition:background .6s}
+.hero[data-w=rain]{background:linear-gradient(135deg,#3b5f95,#4a6fa5 55%,#55608f)}
+.hero[data-w=storm]{background:linear-gradient(135deg,#1f2a45,#2b3556 55%,#3b2f55)}
+.wx-sun{position:absolute;right:46px;top:20px;width:54px;height:54px;border-radius:50%;background:radial-gradient(#fff6b0,#ffd54a 62%,rgba(255,213,74,0) 70%);box-shadow:0 0 40px 14px rgba(255,214,90,.5);animation:wx-pulse 4s ease-in-out infinite;display:none}
+.hero[data-w=sun] .wx-sun{display:block}@keyframes wx-pulse{50%{transform:scale(1.07)}}
+.wx-cloud{position:absolute;display:none;width:150px;height:46px;border-radius:50px;background:#aab6cf;opacity:.92;animation:wx-drift 22s linear infinite}
+.wx-cloud::before,.wx-cloud::after{content:"";position:absolute;background:inherit;border-radius:50%}.wx-cloud::before{width:62px;height:62px;left:22px;top:-30px}.wx-cloud::after{width:78px;height:78px;left:62px;top:-40px}
+.wx-cloud.c1{top:34px;left:-170px}.wx-cloud.c2{top:70px;left:-170px;animation-duration:30s;animation-delay:-12s;transform:scale(.75)}.wx-cloud.c3{top:48px;left:-170px;animation-duration:26s;animation-delay:-6s;transform:scale(.9)}
+.hero[data-w=rain] .wx-cloud,.hero[data-w=storm] .wx-cloud{display:block}.hero[data-w=storm] .wx-cloud{background:#4a5373;opacity:.97}
+@keyframes wx-drift{to{left:calc(100% + 40px)}}
+.wx-rain{position:absolute;inset:0;display:none;overflow:hidden}.hero[data-w=rain] .wx-rain,.hero[data-w=storm] .wx-rain{display:block}
+.wx-rain i{position:absolute;top:-30px;width:2px;height:16px;border-radius:2px;background:linear-gradient(transparent,rgba(210,230,255,.9));animation:wx-fall .9s linear infinite}
+.hero[data-w=storm] .wx-rain i{animation-duration:.55s;height:22px}@keyframes wx-fall{to{transform:translate(-14px,230px)}}
+.wx-flash{position:absolute;inset:0;background:#fff;opacity:0;display:none}.hero[data-w=storm] .wx-flash{display:block;animation:wx-flash 6s infinite}
+@keyframes wx-flash{0%,100%{opacity:0}3%{opacity:.7}5%{opacity:.05}7%{opacity:.55}12%{opacity:0}58%{opacity:0}60%{opacity:.45}63%{opacity:0}}
+.wx-bolt{position:absolute;right:26%;top:14px;width:44px;height:120px;display:none;filter:drop-shadow(0 0 10px #fff3a0);opacity:0;animation:wx-bolt 6s infinite}
+.hero[data-w=storm] .wx-bolt{display:block}@keyframes wx-bolt{0%,100%{opacity:0}3%{opacity:1}6%{opacity:0}7%{opacity:1}11%{opacity:0}}
+.hero[data-w=storm] .shelf .pet-slot{animation:wx-shake .35s ease-in-out infinite}@keyframes wx-shake{25%{transform:translateX(-1.5px)}75%{transform:translateX(1.5px)}}
