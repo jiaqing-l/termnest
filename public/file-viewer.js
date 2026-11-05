@@ -73,10 +73,10 @@
   handle.onpointerup=e=>{handle.releasePointerCapture(e.pointerId);saveWidth();};
   handle.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();resize(width+(e.key==='ArrowLeft'?40:-40));saveWidth();}};
   const head=doc.createElement('header'),title=doc.createElement('strong'),body=doc.createElement('div');body.className='file-content';
-  const copy=doc.createElement('button'),download=doc.createElement('button'),close=doc.createElement('button'),reload=doc.createElement('button');
-  [copy,download,close,reload].forEach(b=>{b.className='btn';b.type='button';});
-  copy.textContent=i18n('fileviewer.sao_chep_duong_dan');download.textContent=i18n('fileviewer.tai_xuong');close.textContent=i18n('fileviewer.dong');reload.textContent=i18n('fileviewer.tai_lai');
-  head.append(title,copy,download,close,reload);panel.append(handle,head,body);doc.body.append(panel);
+  const copy=doc.createElement('button'),download=doc.createElement('button'),close=doc.createElement('button'),reload=doc.createElement('button'),back=doc.createElement('button');
+  [copy,download,close,reload,back].forEach(b=>{b.className='btn';b.type='button';});
+  copy.textContent=i18n('fileviewer.sao_chep_duong_dan');download.textContent=i18n('fileviewer.tai_xuong');close.textContent=i18n('fileviewer.dong');reload.textContent=i18n('fileviewer.tai_lai');back.textContent=i18n('fileviewer.quay_lai');back.hidden=true;back.className='btn viewer-back';
+  head.append(title,copy,download,close,reload,back);panel.append(handle,head,body);doc.body.append(panel);
   let generation=0,current=null,worker=null,location=null;
   const cancel=()=>{if(worker){worker.terminate();worker=null;}};
   close.onclick=()=>{generation++;cancel();panel.hidden=true;body.textContent='';current=null;};
@@ -123,9 +123,12 @@
       Promise.resolve(doc.defaultView.TW_DESKTOP.save(name,current.text)).then(()=>{download.textContent=label;},()=>{download.textContent=i18n('fileviewer.khong_luu_duoc');setTimeout(()=>{download.textContent=label;},3000);});return;}
     const url=URL.createObjectURL(new Blob([current.text],{type:'text/plain;charset=utf-8'})),a=doc.createElement('a');a.href=url;a.download=current.path.split(/[\\/]/).pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   const setTitle=path=>{title.textContent=path.length>80?'…/'+path.split(/[\\/]/).slice(-2).join('/'):path;title.title=path;};
-  let gallery=null;
+  let gallery=null,browserState=null,backState=null;
   async function open(host,session,path,opts){
    if(!(opts&&opts.keepGallery))gallery=null;
+   // Opened from the file browser (or its search): remember where to come back to. Opened any other way: nothing to go back to.
+   if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
+   back.hidden=!backState;
    const request=++generation;cancel();location=[host,session,path];current=null;panel.hidden=false;setTitle(path);body.textContent=i18n('fileviewer.dang_doc_tep');copy.disabled=download.disabled=reload.disabled=true;
    try{
     const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path);
@@ -167,7 +170,8 @@
    row.append(go);body.append(row);
   }
   function size(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
-  async function showBrowser(host,session,dir){
+  async function showBrowser(host,session,dir,query){
+   browserState={host,session,dir:dir||'',query:query||''};back.hidden=true;backState=null;
    body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(note);
    try{
     const q='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+(dir?'&path='+encodeURIComponent(dir):'');
@@ -180,14 +184,14 @@
     const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);};
     if(out.parent!==null)item('⬆',i18n('fileviewer.len_mot_cap'),'',()=>showBrowser(host,session,out.parent));
     out.dirs.forEach(name=>item('📁',name,'',()=>showBrowser(host,session,out.path+sep+name)));
-    out.files.forEach(f=>item('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name)));
+    out.files.forEach(f=>item('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name,{fromBrowser:true})));
     if(!out.dirs.length&&!out.files.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thu_muc_nay_khong_co');list.append(empty);}
     if(out.truncated){const more=doc.createElement('p');more.className='viewer-note';more.textContent=i18n('fileviewer.chi_hien_thi_500_muc');list.append(more);}
     body.append(list);
     const results=doc.createElement('div');results.className='viewer-browser';results.hidden=true;body.append(results);
     let timer=null,seq=0;
     find.oninput=()=>{
-     clearTimeout(timer);const text=find.value.trim();
+     clearTimeout(timer);const text=find.value.trim();browserState.query=find.value;
      if(text.length<2){seq++;results.hidden=true;list.hidden=false;head.hidden=false;return;}
      timer=setTimeout(async()=>{
       const mine=++seq;results.hidden=false;list.hidden=true;head.hidden=true;results.textContent='';
@@ -195,12 +199,13 @@
       try{
        const r=await api('GET','/api/features/browse/search?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&q='+encodeURIComponent(text));
        if(mine!==seq)return;results.textContent='';
-       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);const e=doc.createElement('small');e.textContent=size(f.size);b.append(e);b.onclick=()=>open(host,session,r.root+sep+f.rel.split('/').join(sep));results.append(b);});
+       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);const e=doc.createElement('small');e.textContent=size(f.size);b.append(e);b.onclick=()=>open(host,session,r.root+sep+f.rel.split('/').join(sep),{fromBrowser:true});results.append(b);});
        if(!r.files.length){const n=doc.createElement('p');n.className='viewer-note';n.textContent=i18n('fileviewer.khong_khop');results.append(n);}
        if(r.more){const m=doc.createElement('p');m.className='viewer-note';m.textContent=i18n('fileviewer.chi_50_moi_nhat');results.append(m);}
       }catch(err){if(mine===seq){results.textContent='';const n=doc.createElement('p');n.className='viewer-note';n.textContent=err.message;results.append(n);}}
      },250);
     };
+    if(query){find.value=query;find.oninput();}
     find.focus();
    }catch(e){body.textContent=e.message;pathForm(host,session);}
   }
@@ -236,6 +241,7 @@
    gallery={list,back:location.slice()};open(location[0],location[1],d.path,{keepGallery:true});
   });
   reload.onclick=()=>{if(location)open(...location);};
+  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;showBrowser(b.host,b.session,b.dir,b.query);};
   // Open the viewer straight on the session's folder, without needing a path link in the terminal (phones have no easy link tap).
  function browse(host,session){generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
  return {open,browse,close:()=>close.onclick()};

@@ -1011,5 +1011,6 @@
   "fileviewer.tim_ten": "Tìm tệp theo tên…",
   "fileviewer.dang_tim": "Đang tìm…",
   "fileviewer.khong_khop": "Không có tệp nào khớp.",
-  "fileviewer.chi_50_moi_nhat": "Chỉ hiện 50 kết quả mới nhất. Gõ thêm để thu hẹp."
+  "fileviewer.chi_50_moi_nhat": "Chỉ hiện 50 kết quả mới nhất. Gõ thêm để thu hẹp.",
+  "fileviewer.quay_lai": "← Danh sách"
 }
