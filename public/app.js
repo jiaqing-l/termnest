@@ -24,7 +24,7 @@
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) { var e = new Error(j.error || i18n('app.co_loi_xay_ra')); e.status = r.status; throw e; }
+          if (!r.ok) { var e = new Error(j.error || i18n('app.co_loi_xay_ra')); e.status = r.status; e.code = j.code; e.os = j.os; throw e; }
           return /^\/api\/(tokens|usage)/.test(path) ? localHostNames(j) : j;
         });
       });
@@ -674,6 +674,8 @@
     var lines = (s.lines || []).filter(function (line) { return line.trim() && !CHROME.test(line); }).map(plain).filter(Boolean);
     return lines.slice(-1)[0] || i18n('app.phien_dang_cho_ban_co');
   }
+  // Animal names come from the language files; a character registered with its own label keeps that label.
+  function petName(k, art) { var key = 'pet.name_' + k, t = i18n(key); return t !== key ? t : ((art.LABELS || {})[k] || k); }
   function sendKeys(id, name, text) { return api('POST', '/api/servers/' + id + '/sessions/' + encodeURIComponent(name) + '/keys', { text: text, enter: true }); }
   function addReply(card, ref, v, s) {
     if (s.state !== 'wait') return;
@@ -845,7 +847,7 @@
     groups.forEach(function (g) {
       var list = ((art.GROUPS || {})[g[0]] || []).filter(function (k) { return PETS[k]; }); if (!list.length) return;
       box.append(el('div', 'pp-title', g[1]));
-      var row = el('div', 'pp-row'); list.forEach(function (k) { row.append(item(k, (art.LABELS || {})[k] || k, pet(k, 'run'))); }); box.append(row);
+      var row = el('div', 'pp-row'); list.forEach(function (k) { row.append(item(k, petName(k, art), pet(k, 'run'))); }); box.append(row);
     });
   }
   function editPet(x) {

@@ -169,7 +169,7 @@ function send(res, code, body) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
   res.end(JSON.stringify(body));
 }
-function fail(res, code, error) { send(res, code, { error }); }
+function fail(res, code, error, extra) { send(res, code, { error, ...(extra || {}) }); }
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -622,7 +622,7 @@ async function api(req, res, url) {
       }
       // Candidates are an answer, not a failure: send them with 200 so the viewer can list them.
       send(res, value.error && !value.candidates ? 400 : 200, value);
-    } catch (e) { fail(res, 400, e.message); }
+    } catch (e) { fail(res, 400, e.message, require('./lib/file-viewer').hostErrorExtra(e, remotes.get(url.searchParams.get('server')))); }
     return;
   }
   if (p === '/api/tokens' && m === 'GET') {

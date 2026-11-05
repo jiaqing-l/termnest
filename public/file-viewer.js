@@ -164,7 +164,34 @@
      if(preview.length<file.text.length){const note=doc.createElement('p');note.textContent=i18n('fileviewer.ban_xem_truoc_van_ban');body.append(note);}
      content.textContent=preview;body.append(content);
     }
-   }catch(e){if(request===generation){body.textContent=e.message;reload.disabled=false;pathForm(host,session);}}
+   }catch(e){if(request===generation){reload.disabled=false;if(e.code==='no-node'){nodeHelp(body,e.os,()=>open(host,session,path,opts));return;}body.textContent=e.message;pathForm(host,session);}}
+  }
+  // The machine has no Node.js (the reader runs there): say so in plain words and give the command for its system, to copy or to type
+  // into the session's own terminal (which is on that same machine). Nothing runs until the user presses Enter.
+  const NODE_CMDS=[['debian',/ubuntu|debian|mint|pop[!_ ]?os|raspbian|kali/i,'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs'],['rhel',/fedora|rhel|red hat|centos|rocky|alma|amazon/i,'sudo dnf install -y nodejs'],['alpine',/alpine/i,'sudo apk add nodejs'],['arch',/arch|manjaro|endeavour/i,'sudo pacman -S --noconfirm nodejs'],['suse',/suse|sles/i,'sudo zypper install -y nodejs'],['mac',/darwin|mac/i,'brew install node']];
+  function nodeHelp(target,os,retry){
+   target.textContent='';
+   const box=doc.createElement('div');box.className='viewer-nodehelp';
+   const title=doc.createElement('strong');title.textContent=i18n('nodehelp.title');
+   const intro=doc.createElement('p');intro.textContent=i18n('nodehelp.intro');
+   const found=NODE_CMDS.find(c=>c[1].test(os||''));
+   const cmdBox=(id,cmd)=>{
+    const wrap=doc.createElement('div');wrap.className='viewer-cmd';const label=doc.createElement('small');label.textContent=i18n('nodehelp.os.'+id);
+    const pre=doc.createElement('pre');pre.textContent=cmd;const row=doc.createElement('div');row.className='viewer-actions';
+    const copyBtn=doc.createElement('button');copyBtn.type='button';copyBtn.className='btn';copyBtn.textContent=i18n('nodehelp.copy');
+    copyBtn.onclick=async()=>{try{await (window.TW_DESKTOP?window.TW_DESKTOP.copy(cmd):navigator.clipboard.writeText(cmd));copyBtn.textContent=i18n('nodehelp.copied');setTimeout(()=>{copyBtn.textContent=i18n('nodehelp.copy');},1500);}catch{/* the text is selectable */}};
+    const typeBtn=doc.createElement('button');typeBtn.type='button';typeBtn.className='btn';typeBtn.textContent=i18n('nodehelp.type');const note=doc.createElement('small');
+    typeBtn.onclick=()=>{const app=window.TW&&window.TW.app&&window.TW.app();if(app&&app.typeText){app.typeText(cmd);note.textContent=i18n('nodehelp.typed');}};
+    row.append(copyBtn,typeBtn,note);wrap.append(label,pre,row);return wrap;
+   };
+   box.append(title,intro);
+   if(os){const d=doc.createElement('small');d.className='viewer-os';d.textContent=i18n('nodehelp.detected',[os]);box.append(d);}
+   const main=found||NODE_CMDS[0];box.append(cmdBox(main[0],main[2]));
+   const more=doc.createElement('details');const sum=doc.createElement('summary');sum.textContent=i18n('nodehelp.other');more.append(sum);
+   NODE_CMDS.filter(c=>c!==main).forEach(c=>more.append(cmdBox(c[0],c[2])));box.append(more);
+   const hint=doc.createElement('small');hint.textContent=i18n('nodehelp.note');box.append(hint);
+   const again=doc.createElement('button');again.type='button';again.className='btn primary';again.textContent=i18n('nodehelp.retry');again.onclick=retry;box.append(again);
+   target.append(box);
   }
   // Not found in the session's folder: list same-named files found below it and let the path be edited.
   // No typed paths: a button opens a browser over the session's own folder (the only place the viewer can read from).
@@ -281,7 +308,7 @@
     };
     if(query){find.value=query;find.oninput();}
     find.focus();
-   }catch(e){body.textContent=e.message;pathForm(host,session);}
+   }catch(e){if(e.code==='no-node'){nodeHelp(body,e.os,()=>showBrowser(host,session,dir,query));return;}body.textContent=e.message;pathForm(host,session);}
   }
   function showCandidates(file,host,session,path){
    body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent=file.error;body.append(note);

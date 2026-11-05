@@ -96,7 +96,7 @@ window.UsageUI = function (hooks) {
     const date = (key, label) => { const l = node('label', 'us-f', label), i = node('input'); i.type = 'date'; i.value = st[key]; i.onchange = () => { st[key] = i.value; setRange('custom', st.from, st.to); }; l.append(i); return l; };
     r2.append(date('from', i18n('usageui.tu')), date('to', i18n('usageui.den')), node('span', 'us-sp'));
     const sw = node('button', 'us-sw'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(st.model)); sw.setAttribute('aria-label', i18n('usageui.theo_model')); sw.onclick = () => { st.model = !st.model; render(); };
-    const swl = node('label', 'us-f'); swl.append(sw, document.createTextNode(' Theo model'));
+    const swl = node('label', 'us-f'); swl.append(sw, document.createTextNode(' ' + i18n('usageui.theo_model')));
     r2.append(swl, chips([['day', i18n('usageui.theo_ngay')], ['session', i18n('usageui.theo_phien')]], st.view, (k) => { st.view = k; render(); }));
     controls.append(r1, r2);
   }

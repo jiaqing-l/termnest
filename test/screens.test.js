@@ -175,3 +175,24 @@ test('rename and trash stay inside the session folder, never overwrite, and the 
     }
   } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
 });
+
+test('a host without Node.js is reported with a code and its system, and file errors follow the chosen language', async () => {
+  const { runOnHost, hostErrorExtra, localizeFileError, fileRuntime } = require('../lib/file-viewer');
+  const { setLang } = require('../lib/i18n-server');
+  const remote = (result) => ({ cfg: { local: false }, snapshot: { sys: { os: 'Ubuntu 22.04.5 LTS' } }, exec: async () => result });
+  setLang('en');
+  try {
+    let caught = null; try { await runOnHost(remote({ code: 127, out: '', err: 'sh: 1: node: not found\n' }), fileRuntime, { cwd: '/', path: 'a' }); } catch (e) { caught = e; }
+    assert.equal(caught.code, 'no-node'); assert.match(caught.message, /no Node\.js/);
+    assert.deepEqual(hostErrorExtra(caught, remote({})), { code: 'no-node', os: 'Ubuntu 22.04.5 LTS' });
+    caught = null; try { await runOnHost(remote({ code: 1, out: '', err: 'permission denied' }), fileRuntime, { cwd: '/', path: 'a' }); } catch (e) { caught = e; }
+    assert.equal(caught.code, 'host'); assert.equal(hostErrorExtra(caught, remote({})), undefined);   // an ordinary failure has no install hint
+    caught = null; try { await runOnHost(remote({ code: 0, out: 'not json', err: '' }), fileRuntime, { cwd: '/', path: 'a' }); } catch (e) { caught = e; }
+    assert.equal(caught.code, 'host');
+    assert.equal(localizeFileError('Không được mở tệp ngoài thư mục của phiên.'), 'Files outside the session folder cannot be opened.');
+    assert.equal(localizeFileError('Không thấy tệp ở thư mục của phiên, nhưng có 3 tệp trùng tên.'), 'The file is not in the session folder, but 3 files with that name were found.');
+    assert.equal(localizeFileError('something else'), 'something else');
+    setLang('vi');
+    assert.equal(localizeFileError('Tệp quá lớn (tối đa 5 MB).'), 'Tệp quá lớn (tối đa 5 MB).');
+  } finally { setLang('vi'); }
+});
