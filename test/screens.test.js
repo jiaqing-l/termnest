@@ -101,7 +101,7 @@ test('the file browser lists folders that start with a dot, but not .git or dot-
 test('creating a folder or file stays inside the session folder, never overwrites, and checks every parent', async () => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
   const { createRuntime } = require('../lib/features/browse');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-create-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-outside-'));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-create-'))), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-outside-'));
   try {
     const run = createRuntime(); const make = (o) => run({ cwd: root, dir: '', ...o });
     let r = await make({ name: 'docs', kind: 'folder' }); assert.equal(r.path, fs.realpathSync(root) + path.sep + 'docs'); assert.ok(fs.statSync(r.path).isDirectory());
@@ -125,7 +125,7 @@ test('creating a folder or file stays inside the session folder, never overwrite
 test('rename and trash stay inside the session folder, never overwrite, and the trash can restore', async () => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
   const { fsopRuntime, browseRuntime } = require('../lib/features/browse');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsop-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsout-'));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsop-'))), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsout-'));
   const real = fs.realpathSync(root);
   try {
     fs.mkdirSync(path.join(root, 'docs', 'sub'), { recursive: true });
