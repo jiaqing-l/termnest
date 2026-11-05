@@ -1085,3 +1085,27 @@ dialog.drop-remote .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
 @media(max-width:700px){.drop-menu{left:12px!important;right:12px;bottom:12px!important;max-width:none;padding:8px}.drop-menu-item{padding:15px 14px;font-size:16px}}
 .file-viewer header [hidden]{display:none!important}
 dialog.drop-remote{display:none}
+
+/* ---------- Looks (Settings → Giao diện): override the same variables the default look uses; light and dark where it makes sense ---------- */
+:root[data-style="toigian"]{--bg:#f5f6f8;--surface:#fff;--surface-2:#f1f3f6;--surface-3:#e6e9ef;--line:#dde1e8;--line-strong:#c4cad6;--fg:#111827;--fg-2:#4b5563;--fg-3:#6b7280;--primary:#2563eb;--on-primary:#fff;--hero-a:#334155;--hero-b:#1e293b;--ok:#047857;--ok-soft:#d1fae5;--wait:#b45309;--wait-soft:#fef3c7;--wait-line:#f59e0b;--idle:#6b7280;--shadow:0 6px 18px -14px rgba(15,23,42,.35)}
+:root[data-style="toigian"][data-theme="dark"]{--bg:#0f1115;--surface:#171a21;--surface-2:#1e222b;--surface-3:#282d38;--line:#2a2f3a;--line-strong:#3b4252;--fg:#e5e7eb;--fg-2:#a1a8b8;--fg-3:#7a8296;--primary:#60a5fa;--on-primary:#0b1220;--hero-a:#1f2937;--hero-b:#111827;--ok:#34d399;--wait:#fbbf24;--term:#0a0c10;--shadow:0 10px 24px -16px rgba(0,0,0,.8)}
+:root[data-style="toigian"] .btn,:root[data-style="toigian"] .seg,:root[data-style="toigian"] .seg button,:root[data-style="toigian"] .tab,:root[data-style="toigian"] dialog{border-radius:8px}
+:root[data-style="terminal"],:root[data-style="terminal"][data-theme="dark"]{color-scheme:dark;--bg:#050805;--surface:#0a120a;--surface-2:#0f1c0f;--surface-3:#152615;--line:#1b3a1b;--line-strong:#2a5a2a;--fg:#b8ffb8;--fg-2:#7fd67f;--fg-3:#4f9a4f;--primary:#39d353;--on-primary:#031003;--hero-a:#0a2a0a;--hero-b:#124a12;--on-hero:#caffca;--ok:#39d353;--ok-soft:rgba(57,211,83,.14);--wait:#f0c000;--wait-soft:rgba(240,192,0,.13);--wait-line:#8a6d00;--bad:#ff6b6b;--bad-soft:rgba(255,107,107,.14);--idle:#5a7a5a;--term:#030603;--term-fg:#9dff9d;--term-dim:#4f9a4f;--term-line:#1b3a1b;--shadow:none;--sans:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--round:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root[data-style="terminal"] *{border-radius:3px!important}
+:root[data-style="bien"]{--bg:#e8f5f8;--surface:#fff;--surface-2:#eaf4f7;--surface-3:#d6eaf0;--line:#cfe3ea;--line-strong:#a9cdd9;--fg:#0b2a35;--fg-2:#3f6573;--fg-3:#6a8f9c;--primary:#0097a7;--on-primary:#fff;--hero-a:#00b8c4;--hero-b:#006d87}
+:root[data-style="bien"][data-theme="dark"]{--bg:#06202b;--surface:#0c3445;--surface-2:#11475d;--surface-3:#175a73;--line:#175a73;--line-strong:#2a7a96;--fg:#e6fbff;--fg-2:#9fd6e6;--fg-3:#68a9bf;--primary:#00c2d1;--on-primary:#032028;--hero-a:#007f8c;--hero-b:#0b5775;--ok:#3ddc97;--wait:#ffc857;--term:#041820;--term-line:#175a73}
+:root[data-style="tuongphan"],:root[data-style="tuongphan"][data-theme="dark"]{color-scheme:dark;--bg:#000;--surface:#0b0b0b;--surface-2:#161616;--surface-3:#222;--line:#8a8a8a;--line-strong:#fff;--fg:#fff;--fg-2:#f0f0f0;--fg-3:#d0d0d0;--primary:#ffd400;--on-primary:#000;--hero-a:#000;--hero-b:#1a1a1a;--on-hero:#fff;--ok:#4dff9d;--ok-soft:rgba(77,255,157,.16);--wait:#ffd400;--wait-soft:rgba(255,212,0,.16);--wait-line:#ffd400;--bad:#ff6b6b;--bad-soft:rgba(255,107,107,.18);--idle:#c8c8c8;--term:#000;--term-fg:#fff;--term-dim:#c8c8c8;--term-line:#8a8a8a;--shadow:none}
+:root[data-style="tuongphan"] body{font-size:15.5px}
+:root[data-style="tuongphan"] .btn,:root[data-style="tuongphan"] .tile,:root[data-style="tuongphan"] .w-tile{border-width:2px}
+/* density: more sessions on screen */
+:root[data-density="compact"] .w-body{font-size:10.5px}
+:root[data-density="compact"] .btn{min-height:32px;padding:4px 10px}
+:root[data-density="compact"] .w-grid{gap:6px}
+:root[data-density="compact"] .side-scroll{padding:8px 8px}
+/* the picker */
+.style-sec{display:grid;gap:8px;margin:10px 0}.style-sec .hint{margin:0}
+.style-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.style-card{display:flex;flex-direction:column;gap:6px;text-align:left;padding:9px;border-radius:12px;border:2px solid var(--line);background:var(--surface-2);color:var(--fg);cursor:pointer}
+.style-card[aria-checked=true]{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 22%,transparent)}
+.style-card .sw-colors{display:flex;height:30px;border-radius:8px;overflow:hidden}.style-card .sw-colors i{flex:1}
+.style-card b{font-size:13px}.style-card small{color:var(--fg-3);font-size:11.5px;line-height:1.35}

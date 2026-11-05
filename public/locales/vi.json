@@ -1118,5 +1118,18 @@
   "drop.tu_may_nay": "Từ máy này",
   "drop.tu_may_chu_khac_menu": "Từ máy chủ khác",
   "drop.chon_may_nguon": "Lấy từ máy chủ nào?",
-  "drop.thu_muc_hien_tai": "Thư mục của phiên gần nhất"
+  "drop.thu_muc_hien_tai": "Thư mục của phiên gần nhất",
+  "settings.style_label": "Giao diện",
+  "settings.style_hint": "Chọn một giao diện. Đổi ngay và được nhớ trên thiết bị này; nút mặt trời vẫn đổi sáng/tối.",
+  "settings.density_compact": "Gọn (nhiều phiên hơn trên màn hình)",
+  "style.vui": "Vui tươi",
+  "style.vui_d": "Có thú cưng, màu tươi, bo tròn. Giao diện mặc định.",
+  "style.toigian": "Tối giản",
+  "style.toigian_d": "Không thú cưng, xám xanh trung tính, góc gọn. Hợp làm việc nghiêm túc.",
+  "style.terminal": "Terminal cổ điển",
+  "style.terminal_d": "Chữ xanh lá trên nền đen, chữ đơn cách, góc vuông. Không thú cưng.",
+  "style.bien": "Biển xanh",
+  "style.bien_d": "Xanh ngọc dịu mắt, vẫn có thú cưng.",
+  "style.tuongphan": "Tương phản cao",
+  "style.tuongphan_d": "Đen trắng vàng, chữ lớn hơn, dễ đọc nhất. Không thú cưng."
 }

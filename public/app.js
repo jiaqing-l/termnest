@@ -931,7 +931,29 @@
     [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
+  // ---- Looks: Settings → Giao diện. A look is a set of colour variables (app.css) chosen with data-style; the pets follow the look
+  // (the cheerful and ocean looks keep them, the others switch them off) but the Pets checkbox still has the last word.
+  var STYLES = [['vui', true, ['#eef3fb', '#ffffff', '#ff5c7a', '#0fb5ae']], ['toigian', false, ['#f5f6f8', '#ffffff', '#2563eb', '#334155']], ['terminal', false, ['#050805', '#0f1c0f', '#39d353', '#f0c000']], ['bien', true, ['#e8f5f8', '#0c3445', '#0097a7', '#00b8c4']], ['tuongphan', false, ['#000000', '#161616', '#ffd400', '#ffffff']]];
+  function applyStyle(id, setPets) {
+    var known = STYLES.filter(function (x) { return x[0] === id; })[0] || STYLES[0], r = document.documentElement;
+    if (known[0] === 'vui') r.removeAttribute('data-style'); else r.setAttribute('data-style', known[0]);
+    try { localStorage.setItem('tw-style', known[0]); } catch (e) { /* optional */ }
+    if (setPets) { var box = $('pets-enabled'); if (box && box.checked !== known[1]) { box.checked = known[1]; box.dispatchEvent(new Event('change')); } }
+    renderStylePicker();
+  }
+  function renderStylePicker() {
+    var box = $('set-style'); if (!box) return; box.textContent = '';
+    var now = document.documentElement.getAttribute('data-style') || 'vui';
+    STYLES.forEach(function (x) {
+      var c = el('button', 'style-card'); c.type = 'button'; c.setAttribute('role', 'radio'); c.setAttribute('aria-checked', String(x[0] === now));
+      var sw = el('span', 'sw-colors'); x[2].forEach(function (col) { var i = el('i'); i.style.background = col; sw.append(i); });
+      c.append(sw, el('b', '', i18n('style.' + x[0])), el('small', '', i18n('style.' + x[0] + '_d'))); c.onclick = function () { applyStyle(x[0], true); }; box.append(c);
+    });
+    var d = $('set-density'); if (d) { d.checked = document.documentElement.getAttribute('data-density') === 'compact'; d.onchange = function () { if (d.checked) document.documentElement.setAttribute('data-density', 'compact'); else document.documentElement.removeAttribute('data-density'); try { localStorage.setItem('tw-density', d.checked ? 'compact' : ''); } catch (e) { /* optional */ } }; }
+  }
+  try { var savedStyle = localStorage.getItem('tw-style'); if (savedStyle && savedStyle !== 'vui') document.documentElement.setAttribute('data-style', savedStyle); if (localStorage.getItem('tw-density') === 'compact') document.documentElement.setAttribute('data-density', 'compact'); } catch (e) { /* optional */ }
   function renderSettings() {
+    renderStylePicker();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;

@@ -1135,5 +1135,18 @@
   "drop.tu_may_nay": "From this computer",
   "drop.tu_may_chu_khac_menu": "From another server",
   "drop.chon_may_nguon": "Which server?",
-  "drop.thu_muc_hien_tai": "Folder of the latest session"
+  "drop.thu_muc_hien_tai": "Folder of the latest session",
+  "settings.style_label": "Look",
+  "settings.style_hint": "Pick a look. Changes apply at once and are remembered on this device; the sun button still switches light and dark.",
+  "settings.density_compact": "Compact (more sessions on screen)",
+  "style.vui": "Cheerful",
+  "style.vui_d": "With pets, bright colours, rounded. The default look.",
+  "style.toigian": "Minimal",
+  "style.toigian_d": "No pets, neutral blue-grey, tidy corners. For serious work.",
+  "style.terminal": "Classic terminal",
+  "style.terminal_d": "Green on black, monospaced, square corners. No pets.",
+  "style.bien": "Ocean",
+  "style.bien_d": "Calm teal, pets stay.",
+  "style.tuongphan": "High contrast",
+  "style.tuongphan_d": "Black, white and yellow with larger text: the easiest to read. No pets."
 }

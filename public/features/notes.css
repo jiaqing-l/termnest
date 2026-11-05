@@ -1,6 +1,6 @@
 /* Notes screen. Everything is min-width:0 / wrapping so long titles, paths and reminders never overflow. */
 .nt-page{padding:0;max-width:none}
-.nt-wrap{display:grid;grid-template-columns:240px minmax(0,1fr);gap:14px;padding:14px;align-items:start;max-width:1180px}
+.nt-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;padding:14px;align-items:stretch;max-width:none;width:100%;box-sizing:border-box;min-height:calc(100vh - 210px)}
 @media(max-width:900px){.nt-wrap{grid-template-columns:1fr}}
 .nt-side{display:flex;flex-direction:column;gap:8px;min-width:0}.nt-side-h{display:flex;align-items:center;gap:8px}.nt-side-h b{flex:1;font-size:15px}.nt-side-h .btn{min-height:32px;padding:4px 12px}
 .nt-list{display:flex;flex-direction:column;gap:7px}
@@ -52,3 +52,9 @@
 .nt-pp{display:flex;flex-direction:column;align-items:center;gap:1px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:5px 3px;cursor:pointer;min-width:0}
 .nt-pp[aria-pressed="true"]{border-color:var(--hero-b);box-shadow:0 0 0 3px color-mix(in srgb,var(--hero-b) 18%,transparent)}
 .nt-pp .nt-pv{width:44px;height:44px}.nt-pp small{font-size:10.5px;color:var(--fg-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* the editor uses the full width and height: the text area grows instead of leaving an empty band under the card */
+.nt-pane:not([hidden]){flex:1 1 auto;min-height:0}
+.nt-pane:not([hidden]) .nt-text{flex:1 1 auto;min-height:280px;resize:vertical}
+.nt-side{align-self:start;position:sticky;top:0}
+@media(max-width:900px){.nt-wrap{min-height:0}.nt-side{position:static}}
