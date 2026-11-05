@@ -16,6 +16,8 @@ const { createDiscovery, merge: mergeUsageAccounts, mergeIdentity } = require('.
 const discoverUsage = createDiscovery();
 const diary = require('./lib/diary');
 const { scrollScript, parseScrollState } = require('./lib/scroll');
+const { screensScript, parseScreens } = require('./lib/screens');
+const { keysScript, BAD: BAD_KEYS } = require('./lib/keys');
 const { injectReportLinks } = require('./lib/report-links');
 const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
@@ -104,6 +106,11 @@ const STATIC = {
   '/pet-scene.js': [path.join(PUB, 'pet-scene.js'), 'text/javascript; charset=utf-8'],
   '/pet-yard.js': [path.join(PUB, 'pet-yard.js'), 'text/javascript; charset=utf-8'],
   '/i18n.js': [path.join(PUB, 'i18n.js'), 'text/javascript; charset=utf-8'],
+  '/wall.js': [path.join(PUB, 'wall.js'), 'text/javascript; charset=utf-8'],
+  '/guide': [path.join(PUB, 'guide.html'), 'text/html; charset=utf-8'],
+  '/guide.js': [path.join(PUB, 'guide.js'), 'text/javascript; charset=utf-8'],
+  '/guide.css': [path.join(PUB, 'guide.css'), 'text/css; charset=utf-8'],
+  '/guide-page.css': [path.join(PUB, 'guide-page.css'), 'text/css; charset=utf-8'],
   '/pets.js': [path.join(PUB, 'pets.js'), 'text/javascript; charset=utf-8'],
   '/manifest.webmanifest': [path.join(PUB, 'manifest.webmanifest'), 'application/manifest+json'],
   '/sw.js': [path.join(PUB, 'sw.js'), 'text/javascript; charset=utf-8'],
@@ -523,25 +530,29 @@ async function scrollSession(req, res, r, name) {
   catch { fail(res, 400, tr('srv.server.khong_doc_duoc_vi_tri')); }
 }
 
+async function screens(req, res, r) {
+  const b = await readJson(req);
+  let script;
+  try { script = screensScript(b.names, b.lines); }
+  catch { fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return; }
+  if (r.mode === 'powershell') { fail(res, 400, tr('srv.server.may_nay_chua_ho_tro')); return; }
+  if (!r.ready) { fail(res, 503, tr('srv.server.may_chu_chua_ket_noi')); return; }
+  const out = await r.exec(`sh -c ${shq(script)}`);
+  send(res, 200, { screens: parseScreens(out.out, b.names) });
+}
+
 async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
   if (!name || name.length > 128 || typeof b.text !== 'string' || b.text.length > 1000 ||
-      /[\x00-\x1f\x7f-\x9f]/.test(b.text) || (b.enter !== undefined && typeof b.enter !== 'boolean')) {
+      BAD_KEYS.test(b.text) || (b.enter !== undefined && typeof b.enter !== 'boolean')) {
     fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return;
   }
-  const target = shq(`=${name}:`);
   const replySession = r.snapshot?.sessions?.find((s) => s.name === name);
   if (r.mode === 'powershell') {
-    r.keysPlain(name, b.text, b.enter !== false);
+    r.keysPlain(name, b.text.replace(/\n/g, ' '), b.enter !== false);
   } else {
-    if (b.text) {
-      const out = await r.exec(`tmux send-keys -l -t ${target} -- ${shq(b.text)}`);
-      if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_noi_dung')); return; }
-    }
-    if (b.enter !== false) {
-      const out = await r.exec(`tmux send-keys -t ${target} Enter`);
-      if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_enter')); return; }
-    }
+    const out = (b.text || b.enter !== false) ? await r.exec(keysScript(`=${name}:`, b.text, b.enter !== false)) : { code: 0 };
+    if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_noi_dung')); return; }
   }
   if (b.text && b.enter !== false) {
     diary.answered(vault.data.diary, r.cfg.id, replySession, Date.now());
@@ -660,7 +671,7 @@ async function api(req, res, url) {
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
-  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
+  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
   if (sv) {
     const id = sv[1];
     const tail = sv[2] || '';
@@ -683,6 +694,7 @@ async function api(req, res, url) {
     if (tail === '/lost' && m === 'DELETE') { dismissLost(res, r); return; }
     if (sv[4] === '/keys' && m === 'POST') { await sendKeys(req, res, r, decodeURIComponent(sv[3])); return; }
     if (sv[4] === '/scroll' && m === 'POST') { await scrollSession(req, res, r, decodeURIComponent(sv[3])); return; }
+    if (tail === '/screens' && m === 'POST') { await screens(req, res, r); return; }
     if (tail === '/dirs' && m === 'GET') { await listDirs(res, r, url.searchParams.get('path') || ''); return; }
     if (tail === '/sessions' && m === 'POST') { await createSession(req, res, r); return; }
     if (sv[3] && !sv[4] && m === 'DELETE') { await killSession(res, r, decodeURIComponent(sv[3])); return; }

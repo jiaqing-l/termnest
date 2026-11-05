@@ -11,6 +11,7 @@
   var cardRefs = {}, delTarget = null, passTarget = null, killTarget = null;
   var rebootTarget = null, rebootBusy = false;
   var dirServer = '', dirCurrent = null, dirRequest = 0, dirPick = null;
+  var wallOn = false, wall = null;
   var panes = [], focusedPane = 0, paneCount = 1, pendingPaneWidth = null, pendingSplit = null;
   var prefs = { limits: { cpu: 95, ram: 90, disk: 90 }, templates: [], commands: [], recentDirs: [] };
   var query = '', filter = 'all', browserOn = false, waitStates = null, restoreNotes = {};
@@ -293,12 +294,22 @@
   // Tabs can be closed (hidden). The session itself is untouched: it stays in the sidebar and overview.
   var tabHide = window.TabHide ? window.TabHide.create((function () { try { return window.localStorage; } catch (e) { return { getItem: function () { return null; }, setItem: function () {} }; } })()) : null;
   function tabKey(x) { return x.v.id + '/' + x.s.name; }
+  // "Closed tabs" is only an undo for what was closed a moment ago: it shows for a few seconds and lists just those tabs.
+  // Older closed sessions are not lost: the All tab lists every session.
+  var recentClosed = { keys: [], until: 0, timer: null }, RECENT_MS = 3000;
+  function noteClosed(keys) {
+    var live = recentClosed.until > Date.now() ? recentClosed.keys : [];
+    recentClosed.keys = live.concat(keys.filter(function (k) { return live.indexOf(k) < 0; }));
+    recentClosed.until = Date.now() + RECENT_MS; clearTimeout(recentClosed.timer);
+    recentClosed.timer = setTimeout(function () { recentClosed.keys = []; renderTabs(); }, RECENT_MS + 50);
+  }
   function closeTab(x) {
     if (!tabHide) return;
     var list = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
     var wasCurrent = cur && cur.id === x.v.id && cur.name === x.s.name, next = list[i + 1] || list[i - 1];
-    tabHide.hide(tabKey(x));
+    tabHide.hide(tabKey(x)); noteClosed([tabKey(x)]);
     if (wasCurrent && next && next !== x) { cur = { id: next.v.id, name: next.s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
+    else if (wasCurrent) { cur = null; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } setWall(true); }   // the last tab: show the All tab
     renderTabs(); renderDetail(); renderBar();
     sayUndo(i18n('app.da_dong_tab_phien_van', [x.s.name]), i18n('app.hoan_tac'), function () { tabHide.show(tabKey(x)); renderTabs(); }, 4500);
   }
@@ -306,11 +317,11 @@
   function closeMany(list, say_) {
     if (!tabHide || !list.length) return;
     var wasCurrent = cur && list.some(function (y) { return y.v.id === cur.id && y.s.name === cur.name; }), keys = list.map(tabKey);
-    keys.forEach(function (k) { tabHide.hide(k); });
+    keys.forEach(function (k) { tabHide.hide(k); }); noteClosed(keys);
     if (wasCurrent) {
       var rest = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); });
       if (rest.length) { cur = { id: rest[0].v.id, name: rest[0].s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
-      else { cur = null; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } setView('over'); }
+      else { cur = null; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } setWall(true); }   // no tab left: stay in the terminal on the All tab
     }
     renderTabs(); renderDetail(); renderBar();
     sayUndo(say_, i18n('app.hoan_tac'), function () { keys.forEach(function (k) { tabHide.show(k); }); renderTabs(); }, 5000);
@@ -335,9 +346,13 @@
     var box = $('tabs'); box.textContent = '';
     // Only forget a hidden tab once its host is loaded, online and really no longer has that session.
     if (tabHide) tabHide.prune(function (k) { var id = k.split('/')[0], v = srv(id); return !v || !v.on || v.sessions.some(function (s) { return id + '/' + s.name === k; }); });
+    var allTab = el('button', 'tab tab-all'); allTab.style.setProperty('--c', '#7c6cf0'); allTab.setAttribute('role', 'tab'); allTab.setAttribute('aria-selected', String(wallOn));
+    allTab.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
+    allTab.append(i18n('wall.all') + ' ' + vis().length); allTab.onclick = function () { setWall(true); };
+    box.append(allTab);
     vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', (cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
+      b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
       b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name); band(x.v, x.s, b);
       if (tabHide) {
         var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', i18n('app.dong_tab', [x.s.name])); close.title = i18n('app.dong_tab_phien_van_chay');
@@ -347,7 +362,7 @@
       }
       b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
     });
-    var hid = hiddenItems();
+    var hid = recentClosed.until > Date.now() ? hiddenItems().filter(function (y) { return recentClosed.keys.indexOf(tabKey(y)) >= 0; }) : [];
     if (hid.length) {
       var waits = hid.filter(function (y) { return y.s.state === 'wait'; }).length;
       var more = el('button', 'tab tab-more' + (waits ? ' wait' : ''), i18n('app.tab_da_dong', [hid.length, (waits ? i18n('app.cho_ban_3', [waits]) : '')]));
@@ -358,7 +373,7 @@
     var old = document.querySelector('.tab-menu'); if (old) { old.remove(); return; }
     var menu = el('div', 'tab-menu'); menu.setAttribute('role', 'menu');
     hid.forEach(function (y) { var it = el('button', 'tab-menu-item'); it.setAttribute('role', 'menuitem'); it.innerHTML = pet(petFor(y.v, y.s), y.s.state); it.append(y.s.name + (y.s.state === 'wait' ? i18n('app.cho_ban_4') : '')); it.onclick = function () { menu.remove(); tabHide.show(tabKey(y)); renderTabs(); }; menu.append(it); });
-    var all = el('button', 'tab-menu-item', i18n('app.mo_lai_tat_ca')); all.setAttribute('role', 'menuitem'); all.onclick = function () { menu.remove(); tabHide.showAll(); renderTabs(); }; menu.append(all);
+    var all = el('button', 'tab-menu-item', i18n('app.mo_lai_tat_ca')); all.setAttribute('role', 'menuitem'); all.onclick = function () { menu.remove(); hid.forEach(function (y) { tabHide.show(tabKey(y)); }); renderTabs(); }; menu.append(all);
     var r = anchor.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(r.left, innerWidth - 240)) + 'px'; menu.style.top = r.bottom + 4 + 'px';
     document.body.append(menu);
     setTimeout(function () { document.addEventListener('click', function close() { menu.remove(); document.removeEventListener('click', close); }); }, 0);
@@ -396,13 +411,13 @@
     ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'focus'); });
     render();
     if (v === 'focus') {
-      if (!curItem()) { var all = vis(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
+      if (!curItem() && !wallOn) { var all = vis(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
       ensureTerm(); connectTerm(); if (panes.length) focusPane(focusedPane, true);
     }
   }
   function render() {
     petSync(); renderServers(); renderSide(); renderHealth(); renderFleet(); renderBell(); renderCommands(); syncPanePickers();
-    if (view === 'over') { renderHero(); renderGrid(); } else if(view==='token'){tokens.render();} else { renderTabs(); renderDetail(); renderBar(); }
+    if (view === 'over') { renderHero(); renderGrid(); } else if(view==='token'){tokens.render();} else { renderTabs(); renderDetail(); renderBar(); if (wallOn) wall.render(); }
     petSync(); deliverMessages();
   }
   function say(t, good, ms, floating) {
@@ -611,10 +626,10 @@
     if (panes.length) cur = panes[focusedPane].cur;
   }
   function fitPane(p) { if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) { try { p.fit.fit(); } catch (e) { /* hidden */ } } }
-  function sizeTerm() { panes.forEach(fitPane); }
+  function sizeTerm() { if (!wallOn) panes.forEach(fitPane); }
   function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
-  function connectTerm() { if (panes.length) { panes[focusedPane].cur = cur; panes.forEach(connectPane); syncPanePickers(); } }
+  function connectTerm() { if (panes.length && !wallOn) { panes[focusedPane].cur = cur; panes.forEach(connectPane); syncPanePickers(); } }
   function connectPane(p) {
     var x = paneItem(p); if (!x || p.ime.isComposing()) return;
     var key = x.v.id + '/' + x.s.name;
@@ -634,6 +649,7 @@
     };
   }
   function setSplit(n) {
+    if (wallOn) setWall(false);
     if (terminalComposing()) { pendingSplit = n; return; }
     if ($('app').classList.contains('compact')) n = 1;
     if (!panes.length) createPane();
@@ -644,7 +660,7 @@
     paneCount = n; focusedPane = Math.min(focusedPane, n - 1); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one';
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
-  function openSession(id, name) { var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
+  function openSession(id, name) { if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   function detach() { toggleSheet(false); if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say(i18n('app.da_roi_viec_van_chay', [n]), true, 2800); setView('over'); }
@@ -910,8 +926,8 @@
   }
   function renderCommands() {
     var box = $('command-list'); box.textContent = '';
-    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
-    prefs.commands.forEach(function (c) { var b = el('button', 'btn', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
+    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
+    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
   function renderSettings() {
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
@@ -1003,6 +1019,16 @@
     desc.textContent = installPrompt ? i18n('settings.pwa_desc') : /iPhone|iPad|iPod/.test(ua) ? i18n('settings.pwa_manual_ios') : /Android/.test(ua) ? i18n('settings.pwa_manual_android') : i18n('settings.pwa_manual_desktop');
   }
   window.addEventListener('appinstalled', function () { installPrompt = null; renderInstall(); });
+  // The guide is a medium popup. Settings steps aside while it is open (nothing shows behind it) and comes back when it closes.
+  var settingsWasOpen = false;
+  $('set-guide').onclick = function () {
+    var dlg = $('dlg-guide'), set = $('dlg-set');
+    if (window.PhoneGuide) window.PhoneGuide.mount($('guide-root'), 'tailscale');
+    settingsWasOpen = set.open; if (settingsWasOpen) set.close();
+    if (!dlg.open) dlg.showModal();
+  };
+  $('guide-close').onclick = function () { $('dlg-guide').close(); };
+  $('dlg-guide').addEventListener('close', function () { if (settingsWasOpen) { settingsWasOpen = false; $('dlg-set').showModal(); } });
   $('set-pwa').onclick = function () { if (!installPrompt) return; var prompt = installPrompt; installPrompt = null; btn_(true); Promise.resolve(prompt.prompt()).then(function () { return prompt.userChoice; }).catch(settingsError).finally(function () { renderInstall(); btn_(false); }); };
   function btn_(busy) { $('set-pwa').disabled = busy; }
   try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () { /* optional */ }); } catch (e) { /* optional */ }
@@ -1229,4 +1255,42 @@
   $('logout').onclick = function () { api('POST', '/api/logout').finally(showLogin); };
 
   api('GET', '/api/status').then(function (s) { $('set-quit').hidden = !s.packaged; if (s.authed) enter(); else showLogin(); });
+  // ---- "All" wall: every session as a light, text-only tile (public/wall.js); a click opens the real terminal.
+  wall = window.Wall.create({
+    root: $('wall'), api: api, items: vis, color: color,
+    stateLabel: function (s) { return i18n('wall.f.' + (s.state === 'wait' ? 'wait' : s.state === 'idle' ? 'idle' : 'run')); },
+    label: function (f) { return i18n('wall.f.' + f); },
+    emptyText: function () { return i18n('wall.empty'); },
+    text: function (k) { return i18n(k); }, send: sendKeys,
+    upload: function (id, name, file) { return window.TW && window.TW.upload ? window.TW.upload(id, name, file) : Promise.reject(new Error(i18n('drop.khong_tai_duoc'))); },
+    browse: function (id, name) { fileViewer.browse(id, name); },
+    fullscreen: function () { $('term-fullscreen').click(); }, fail: function (err) { say(err.message, false, 4000); },
+    open: function (id, name) { setWall(false); openSession(id, name); }
+  });
+  function setWall(on) {
+    wallOn = !!on; try { localStorage.setItem('termnest.wall', wallOn ? '1' : '0'); } catch (e) { /* optional */ }
+    $('split').hidden = wallOn; $('app').classList.toggle('wall-on', wallOn);
+    if (wallOn) { panes.forEach(closePane); wall.show(); } else { wall.hide(); connectTerm(); requestAnimationFrame(sizeTerm); }
+    renderCommands(); renderTabs();
+  }
+  try { if (localStorage.getItem('termnest.wall') === '1') setWall(true); } catch (e) { /* optional */ }
+  // The tab strip has no visible scrollbar (it covered the titles): the wheel scrolls it sideways instead.
+  (function () {
+    ['tabs', 'cmds', 'command-list'].forEach(function (id) {
+      var strip = document.getElementById(id);
+      if (strip) strip.addEventListener('wheel', function (e) { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && strip.scrollWidth > strip.clientWidth) { strip.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+    });
+  })();
+  // Every password box gets an eye button that shows or hides what was typed.
+  (function () {
+    var EYE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.2A10.5 10.5 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.5 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 4.2-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+    document.querySelectorAll('input[type=password]').forEach(function (input) {
+      var wrap = document.createElement('span'), btn = document.createElement('button');
+      wrap.className = 'pw'; btn.type = 'button'; btn.className = 'pw-eye';
+      function paint() { var shown = input.type === 'text'; btn.innerHTML = shown ? OFF : EYE; var label = i18n(shown ? 'app.hide_password' : 'app.show_password'); btn.setAttribute('aria-label', label); btn.title = label; btn.setAttribute('aria-pressed', String(shown)); }
+      btn.onclick = function (e) { e.preventDefault(); input.type = input.type === 'password' ? 'text' : 'password'; paint(); input.focus(); };
+      input.parentNode.insertBefore(wrap, input); wrap.append(input, btn); paint();
+    });
+  })();
 })();

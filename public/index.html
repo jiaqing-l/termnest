@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="/termnest-icon.svg">
 <link rel="stylesheet" href="/vendor/xterm.css">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css">
 </head>
 <body>
 <div id="stage"><div id="app">
@@ -73,7 +73,8 @@
             <p><span data-i18n="html.tat_may_van_chay_chi"></span></p>
             <div class="chips" id="chips"></div>
           </div>
-          <div class="scene" aria-hidden="true"><span id="pet-weather"></span>
+          <span id="pet-weather" class="hero-wx"></span>
+          <div class="scene" aria-hidden="true">
             <div class="laptop"><svg viewBox="0 0 58 48" fill="none"><rect x="9" y="5" width="40" height="28" rx="4" fill="#fff"/><rect x="13" y="9" width="32" height="20" rx="2" fill="#2b3a67"/><path d="m18 15 4 4-4 4M26 24h8" stroke="#7ff0c9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 37h52l-4 6H7z" fill="#fff"/></svg><span data-i18n="html.may_ban"></span></div>
             <div class="wire"><i></i><i></i><i></i></div>
             <div class="house"><div class="shelf" id="shelf"></div><span data-i18n="html.tren_may_chu"></span></div>
@@ -92,6 +93,7 @@
         <div class="tabs" id="tabs" role="tablist" data-i18n-attrs="aria-label:html.phien_dang_mo"></div>
         <div class="focus-body">
           <div class="term-wrap" id="term-wrap">
+            <div id="wall" class="wall" hidden data-i18n-attrs="aria-label:wall.aria"></div>
             <div id="split" class="one"></div>
             <div id="cmds" data-i18n-attrs="aria-label:html.lenh_mau_va_chia_man"><div id="command-list"></div><div class="text-controls" role="group" data-i18n-attrs="aria-label:html.co_chu_va_toan_man">
               <button class="btn" id="mouse-mode" aria-pressed="true" data-i18n="app.chon_chu"></button><button class="btn" id="copy-sel" data-i18n-attrs="title:html.sao_chep_doan_chu_dang" data-i18n="html.sao_chep"></button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" data-i18n-attrs="aria-label:viewcontrols.toan_man_hinh;title:viewcontrols.toan_man_hinh">⛶</button>
@@ -116,6 +118,7 @@
   </div>
 </div></div>
 
+<dialog id="dlg-guide" class="dlg-guide" aria-labelledby="guide-title"><div class="guide-head"><h2 id="guide-title" data-i18n="guide.title"></h2><button type="button" class="btn" id="guide-close" data-i18n="guide.close"></button></div><p data-i18n="guide.lead"></p><div id="guide-root" class="pg"></div></dialog>
 <dialog id="dlg-new"><form id="form-new" class="f" novalidate>
   <div class="dlg-pet" id="n-pet"></div>
   <h2><span data-i18n="app.phien_moi"></span></h2>
@@ -221,7 +224,7 @@
   <section class="st"><h3><span data-i18n="html.lenh_mau"></span></h3><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" required data-i18n-attrs="aria-label:html.lenh_moi;placeholder:html.ph_command"><button class="btn" type="submit" data-i18n="html.them"></button></form></section>
   <button type="button" class="btn" id="set-quit" hidden data-i18n="html.thoat_ung_dung"></button>
   <p id="set-note" role="status"></p>
-  <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p></section>
+  <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p><div><button type="button" class="btn primary" id="set-guide" data-i18n="settings.phone_guide"></button></div></section>
   <section class="st" id="pwa-sec" hidden><h3><span data-i18n="settings.pwa_title"></span></h3><p class="hint" id="pwa-desc"></p><div><button type="button" class="btn primary" id="set-pwa" data-i18n="settings.pwa_button" hidden></button></div></section>
 </dialog>
 
@@ -230,6 +233,8 @@
 <script src="/i18n.js"></script>
 <script src="/vendor/xterm.js"></script>
 <script src="/vendor/addon-fit.js"></script>
+<script src="/guide.js"></script>
+<script src="/wall.js"></script>
 <script src="/pets.js"></script>
 <script src="/pet-state.js"></script>
 <script src="/pet-scene.js"></script>

@@ -17,27 +17,33 @@
     if (/^image\//.test(file.type)) { var r = new FileReader(); r.onload = function () { var i = el('img', 'drop-thumb'); i.alt = ''; i.src = r.result; c.prepend(i); }; r.readAsDataURL(file); }
     return { ok: function (path) { st.textContent = i18n('drop.da_gui'); c.classList.add('ok'); setTimeout(function () { c.remove(); }, 6000); }, fail: function (m) { st.textContent = m; c.classList.add('bad'); c.title = m; setTimeout(function () { c.remove(); }, 9000); } };
   }
+  // Uploads one file to a session's host and resolves with its path (the wall's tiles use this too).
+  function upload(server, session, file) {
+    if (file.size > MAX) return Promise.reject(new Error(i18n('drop.qua_10_mb')));
+    if (!OK.test(file.name)) return Promise.reject(new Error(i18n('drop.loai_file_chua_ho_tro')));
+    return fetch('/api/features/drop/upload?server=' + encodeURIComponent(server) + '&session=' + encodeURIComponent(session) + '&name=' + encodeURIComponent(file.name),
+      { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' } })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || i18n('drop.khong_tai_duoc')); return j.path; }); });
+  }
+  TW.upload = upload;
   function send(file) {
     var a = app(), cur = a && a.current && a.current(); if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
     var ui = chip(file);
     if (file.size > MAX) { ui.fail(i18n('drop.qua_10_mb')); return; }
     if (!OK.test(file.name)) { ui.fail(i18n('drop.loai_file_chua_ho_tro')); return; }
-    fetch('/api/features/drop/upload?server=' + encodeURIComponent(cur.id) + '&session=' + encodeURIComponent(cur.name) + '&name=' + encodeURIComponent(file.name),
-      { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' } })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || i18n('drop.khong_tai_duoc')); return j; }); })
-      .then(function (j) { ui.ok(j.path); a.typeText(j.path + ' '); })
-      .catch(function (e) { ui.fail(e.message); });
+    upload(cur.id, cur.name, file).then(function (path) { ui.ok(path); a.typeText(path + ' '); }).catch(function (e) { ui.fail(e.message); });
   }
   function files(dt) { return dt && dt.files ? Array.prototype.slice.call(dt.files) : []; }
   function hasFiles(dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], 'Files') >= 0; }
   function bind() {
     var a = app(), host = a && a.dropTarget && a.dropTarget(); if (!host) return false; ensure(host);
     var depth = 0;
-    host.addEventListener('dragenter', function (e) { if (hasFiles(e.dataTransfer)) { depth++; zone.hidden = false; } });
-    host.addEventListener('dragover', function (e) { if (hasFiles(e.dataTransfer)) e.preventDefault(); });
+    var inWall = function (e) { return e.target && e.target.closest && e.target.closest('#wall'); };   // the wall's tiles take their own files
+    host.addEventListener('dragenter', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) { depth++; zone.hidden = false; } });
+    host.addEventListener('dragover', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) e.preventDefault(); });
     host.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) zone.hidden = true; });
-    host.addEventListener('drop', function (e) { depth = 0; zone.hidden = true; var f = files(e.dataTransfer); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
-    host.addEventListener('paste', function (e) { var f = files(e.clipboardData); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
+    host.addEventListener('drop', function (e) { if (inWall(e)) return; depth = 0; zone.hidden = true; var f = files(e.dataTransfer); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
+    host.addEventListener('paste', function (e) { if (inWall(e)) return; var f = files(e.clipboardData); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
     return true;
   }
   // A phone has no drag and drop: a button in the key bar opens the gallery / camera / file picker and sends through the same upload.

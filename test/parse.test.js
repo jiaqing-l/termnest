@@ -376,16 +376,19 @@ test('session keys are sent literally with separate Enter; session DELETE still 
   b.remotes.set(id, { cfg: { id }, exec: async (cmd) => { calls.push(cmd); return { code: 0 }; }, poll: async () => {} });
   const route = `/api/servers/${id}/sessions/build`;
   assert.equal((await b.request('POST', `${route}/keys`, { text: "$(id)'; echo bad" })).code, 200);
-  assert.deepEqual(calls, [`tmux send-keys -l -t ${shq('=build:')} -- ${shq("$(id)'; echo bad")}`, `tmux send-keys -t ${shq('=build:')} Enter`]);
+  assert.deepEqual(calls, [`tmux send-keys -l -t ${shq('=build:')} -- ${shq("$(id)'; echo bad")} && tmux send-keys -t ${shq('=build:')} Enter`]);
   calls.length = 0;
   await b.request('POST', `${route}/keys`, { text: '', enter: true });
   assert.equal(calls.length, 1);
   calls.length = 0;
   await b.request('POST', `${route}/keys`, { text: 'hello', enter: false });
   assert.equal(calls.length, 1);
-  for (const body of [{ text: '\n' }, { text: 'x'.repeat(1001) }, { text: 'ok', enter: 'yes' }, {}]) {
+  for (const body of [{ text: 'a\tb' }, { text: 'a\x1bb' }, { text: 'x'.repeat(1001) }, { text: 'ok', enter: 'yes' }, {}]) {
     assert.equal((await b.request('POST', `${route}/keys`, body)).code, 400);
   }
+  calls.length = 0;
+  assert.equal((await b.request('POST', `${route}/keys`, { text: 'one\ntwo', enter: false })).code, 200);
+  assert.match(calls[0], /'one' && tmux send-keys -t '=build:' C-j && tmux send-keys -l -t '=build:' -- 'two'$/);
   assert.equal((await b.request('DELETE', route)).code, 200);
   assert.match(calls.at(-1), /kill-session/);
   assert.equal((await b.request('DELETE', `${route}/keys`)).code, 404);
@@ -703,4 +706,16 @@ test('Codex sitting at its prompt is waiting, not running (it runs as plain node
   assert.equal(classify({ cmd: 'node', lines: idle, activityAge: 3 }), 'run', 'just printed something');
   assert.equal(classify({ cmd: 'node', lines: ['server listening on 3000'], activityAge: 900 }), 'run', 'an ordinary node program is not an agent');
   assert.equal(isAsking({ cmd: 'node', lines: idle }), false);
+});
+
+test('Claude footer notices (new task hint, auto-update) do not count as activity', () => {
+  const { contentSignature, screenQuiet } = require('../lib/parse');
+  const base = ['* Baked for 2m 6s · done Tuesday 11:30 PM', '─────', '❯', '─────', '▸▸ auto mode on (shift+tab to cycle) · ← 1 agent'];
+  const a = base.slice(0, 1).concat(['  new task? /clear to save 195.3k tokens · ✔ Update installed · Restart to update'], base.slice(1));
+  const b = base.slice(0, 1).concat(['  new task? /clear to save 209.3k tokens · Auto-updating…'], base.slice(1));
+  assert.equal(contentSignature(a), contentSignature(b));
+  const first = screenQuiet(null, a, 400, 1000000);
+  const second = screenQuiet(first.rec, b, 400, 1030000);
+  assert.ok(second.quiet >= 400, 'still quiet after the footer changed');
+  assert.notEqual(contentSignature(a), contentSignature(['* Baked for 2m 6s · done Tuesday 11:30 PM', 'a real new answer from the model']));
 });

@@ -182,7 +182,7 @@ function terminalFixture(f) {
   class FitAddon { fit() { this.term.resize({ cols: Math.floor(800 / this.term.options.fontSize), rows: 20 }); } }
   const window = { Terminal, FitAddon: { FitAddon }, FileViewer: { provider() {} },
     TerminalIME: { attach(term, send, options) { term.send = send; term.idle = options.onIdle; return { onData: send, isComposing: () => false }; } } };
-  const ctx = { window, viewControls: f.c, panes: f.panes, focusedPane: 0, el: () => node(), $: () => f.o.terminalHost,
+  const ctx = { window, wallOn: false, viewControls: f.c, panes: f.panes, focusedPane: 0, el: () => node(), $: () => f.o.terminalHost,
     ResizeObserver: class { observe() {} }, TextEncoder, paneInputIdle() {}, focusPane() {}, connectPane() {}, fitPane() {},
     vis: () => [], closePane() {}, fileViewer: {}, navigator: {}, say() {}, api: async () => ({}), setInterval: () => 0, clearTimeout() {}, setTimeout: () => 0, Math };
   vm.runInNewContext(appSource.slice(appSource.indexOf('  // ---- Scrollback'), appSource.indexOf('  function syncPanePickers(')), ctx);
