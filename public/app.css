@@ -1006,3 +1006,5 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 
 .viewer-find{display:block;width:100%;box-sizing:border-box;margin:0 0 10px;min-height:38px;padding:6px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface-2,var(--surface));color:var(--fg);font:inherit}
 .viewer-find:focus{outline:2px solid var(--primary);outline-offset:-1px}
+
+.viewer-browser[hidden],.viewer-note[hidden]{display:none!important}   /* the grid layout above would otherwise win over [hidden] and the listing stayed under the search results */
