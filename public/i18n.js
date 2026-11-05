@@ -41,7 +41,7 @@
     api.languages().forEach(function (l) {
       var b = d.createElement('button'), flag = d.createElement('span'), name = d.createElement('span');
       b.type = 'button'; b.className = 'lang-opt'; b.title = l.name; b.setAttribute('aria-pressed', String(l.code === lang));
-      flag.className = 'flag'; flag.innerHTML = l.flag || '🌐'; name.className = 'nm'; name.textContent = l.name;
+      flag.className = 'flag'; flag.innerHTML = l.flag || '🌐'; name.className = 'nm'; name.textContent = l.code.toUpperCase(); b.setAttribute('aria-label', l.name);   // EN / VI on the button, the full name as tooltip and for screen readers
       b.append(flag, name); b.onclick = function () { if (l.code !== lang) setLang(l.code); }; host.append(b);
     });
   }

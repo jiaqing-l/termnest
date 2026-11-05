@@ -100,3 +100,13 @@ test('first run follows the system language and falls back to English', () => {
   assert.equal(langFor('fr-FR'), 'en');
   assert.equal(langFor(''), 'en');
 });
+
+test('every title and description the phone guide asks for exists in both languages', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../public/guide.js'), 'utf8');
+  const ids = [...src.matchAll(/id: '(\w+)'/g)].map((m) => m[1]);
+  assert.ok(ids.length >= 5);
+  for (const lang of ['vi', 'en']) {
+    const table = locale(lang);
+    for (const id of ids) for (const k of ['name', 'blurb', '1.t']) assert.ok(table['guide.' + id + '.' + k], lang + ' guide.' + id + '.' + k);
+  }
+});

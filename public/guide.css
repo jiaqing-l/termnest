@@ -1,0 +1,57 @@
+.pg h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--g-mute);margin:0 0 10px}
+.pg .methods{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-bottom:22px}
+.pg .method{min-width:0;text-align:left;font:inherit;color:inherit;background:var(--g-card);border:1.5px solid var(--g-line);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,box-shadow .15s}
+.pg .method:hover{border-color:var(--accent)}
+.pg .method[aria-selected=true]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.pg .mh{display:flex;align-items:center;gap:8px;min-width:0}
+.pg .mono{flex:none;width:28px;height:28px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800}
+.pg .method b{font-size:15px;flex:1;min-width:0;overflow-wrap:anywhere}
+.pg .method .mh+em{align-self:flex-start}
+.pg .method em{width:fit-content;font-style:normal;font-size:11px;font-weight:700;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pg .method small{color:var(--g-mute);font-size:12.5px;line-height:1.4}
+.pg .panel{background:var(--g-card);border:1px solid var(--g-line);border-top:4px solid var(--accent);border-radius:16px;padding:20px 20px 8px}
+.pg .panel>h2{color:var(--accent);margin-bottom:14px}
+.pg .steps{list-style:none;margin:0;padding:0;counter-reset:s}
+.pg .step{display:flex;gap:14px;padding:0 0 18px;position:relative}
+.pg .step:not(:last-child)::before{content:"";position:absolute;left:14px;top:32px;bottom:2px;width:2px;background:var(--g-line)}
+.pg .num{flex:none;width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px;position:relative}
+.pg .body{min-width:0;flex:1}
+.pg .body h3{margin:3px 0 4px;font-size:16px}
+.pg .body p{margin:4px 0;color:var(--g-mute)}
+.pg .body .then{margin-top:10px}
+.pg .note{font-size:13.5px;background:var(--g-note);border-radius:10px;padding:8px 12px;color:var(--g-ink)!important}
+.pg .code{position:relative;margin:8px 0}
+.pg .code pre{margin:0;background:var(--g-code);color:var(--g-codeink);border-radius:10px;padding:11px 74px 11px 14px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre}
+.pg .copy{position:absolute;top:7px;right:7px;font:600 12px system-ui,sans-serif;color:var(--g-codeink);background:rgba(255,255,255,.12);border:0;border-radius:7px;padding:4px 10px;cursor:pointer}
+.pg .copy:hover{background:rgba(255,255,255,.22)}
+.pg .fields{display:grid;grid-template-columns:max-content 1fr;gap:0;margin:8px 0;border:1px solid var(--g-line);border-radius:10px;overflow:hidden}
+.pg .fields dt,.fields dd{margin:0;padding:7px 12px;border-bottom:1px solid var(--g-line)}
+.pg .fields dt{color:var(--g-mute);background:color-mix(in srgb,var(--g-line) 35%,transparent)}
+.pg .fields dd{font:600 13.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.pg .fields dt:last-of-type,.fields dd:last-of-type{border-bottom:0}
+.pg .callout{background:var(--g-warn);color:var(--g-warnink);border-radius:12px;padding:12px 14px;margin:0 0 18px;font-size:14px}
+.pg .callout p{margin:4px 0 0}
+.pg .tip{background:var(--g-warn);color:var(--g-warnink)!important;border-radius:10px;padding:9px 12px;margin:0 0 14px;font-size:14px}
+.pg .help{margin-top:26px}
+.pg details{background:var(--g-card);border:1px solid var(--g-line);border-radius:12px;margin-bottom:8px;padding:0 14px}
+.pg summary{cursor:pointer;padding:11px 0;font-weight:600}
+.pg details p{margin:0 0 12px;color:var(--g-mute)}
+@media(max-width:520px){.pg .panel{padding:16px 14px 6px}.pg .methods{grid-template-columns:repeat(2,minmax(0,1fr))}.pg .method small{display:none}.pg .fields{grid-template-columns:minmax(0,max-content) minmax(0,1fr)}.pg .fields dd{overflow-wrap:anywhere}}
+
+.pg .body{display:block;min-height:0;flex:1}
+.pg{color:var(--g-ink)}
+
+/* Inside the app (a dialog) the colours come from the app's own theme, so light and dark follow the app's switch */
+dialog .pg{--g-card:var(--surface-2,var(--surface));--g-ink:var(--fg);--g-mute:var(--fg-2);--g-line:var(--line);--g-code:#0e1622;--g-codeink:#e6edf3;--g-note:color-mix(in srgb,#2a6fdb 14%,var(--surface));--g-warn:color-mix(in srgb,#e0a030 20%,var(--surface));--g-warnink:var(--fg)}
+dialog .pg .panel{border-radius:14px}
+
+.pg .panel,.pg .body{min-width:0}
+/* In the dialog the cards stay compact: name and tag only, the panel below carries the detail */
+dialog .pg .methods{grid-template-columns:repeat(3,minmax(0,1fr))}
+dialog .pg .method small{display:none}
+@media(max-width:520px){dialog .pg .methods{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.pg .back-all{font:600 13px system-ui,sans-serif;color:var(--g-mute);background:transparent;border:0;padding:0 0 10px;cursor:pointer}
+.pg .back-all::before{content:"← "}
+.pg .back-all:hover{color:var(--g-ink)}
+.pg [hidden]{display:none!important}

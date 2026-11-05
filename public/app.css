@@ -145,7 +145,8 @@ svg.i{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .card.add:hover{background:var(--surface);color:var(--fg)}
 
 #v-focus{padding-top:0}
-.tabs{display:flex;gap:4px;padding:8px 14px 0;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.tabs{display:flex;gap:4px;padding:8px 14px 0;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.tabs::-webkit-scrollbar{display:none}
 .tab{display:flex;align-items:center;gap:6px;padding:5px 12px 6px 6px;background:transparent;border:0;border-radius:12px 12px 0 0;font:600 12.5px var(--mono);color:var(--fg-2);white-space:nowrap}
 .tab svg{width:24px;height:24px}
 .tab[aria-selected="true"]{background:color-mix(in srgb,var(--c) 18%,var(--surface));color:var(--fg);box-shadow:inset 0 -3px 0 var(--c)}
@@ -496,7 +497,7 @@ dialog{max-height:92vh;overflow:auto}dialog [hidden]{display:none!important}
 .pet-message{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:inherit;text-align:left;cursor:pointer}
 .pet-message .pet-art{width:42px;min-width:42px;height:42px}
 .pet-message>span:last-child{overflow-wrap:anywhere}
-.pets-off .pet-message{display:none!important}
+/* pets off hides the drawings, never the notices: a waiting or finished session must still be announced */
 
 .message-arrives{animation:message-arrival 1.8s ease-out}
 @keyframes message-arrival{from{transform:translateX(var(--travel))}to{transform:translateX(0)}}
@@ -828,8 +829,9 @@ html,body{overscroll-behavior:none}
 .yd-food{font-size:18px;animation:yd-food .55s ease-in forwards}@keyframes yd-food{from{transform:translateY(-34px);opacity:.3}to{transform:none;opacity:1}}
 .yd-hrt{font-size:14px;animation:yd-hrt 1.1s ease-out forwards}@keyframes yd-hrt{to{transform:translateY(-44px) scale(1.3);opacity:0}}
 .yd-cf{width:6px;height:9px;border-radius:2px;animation:yd-cf 1.3s cubic-bezier(.2,.7,.4,1) forwards}@keyframes yd-cf{0%{transform:none;opacity:1}55%{transform:translate(var(--x),var(--y)) rotate(320deg);opacity:1}100%{transform:translate(calc(var(--x)*1.25),calc(var(--y) + 180px)) rotate(620deg);opacity:0}}
-.pets-still .yd *,.pets-still .wx *{animation:none!important;transition:none!important}
-.pets-off .wx{display:none}
+.pets-still .yd *{animation:none!important;transition:none!important}
+/* the weather is part of the banner, not of the pets: it keeps running when pets are switched off */
+.pets-still:not(.pets-off) .wx *{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){.yd *,.wx *{animation:none!important}}
 @media(max-width:760px){.yd{height:92px}.yd-score{font-size:11px}}
 
@@ -885,3 +887,116 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
   .login-lang{max-width:100%}
   .login-lang .lang-opt{padding:4px 9px 4px 7px}
 }
+
+/* ---- Scrollbars, one calm style everywhere ----
+   Panels get a thin, rounded bar that stays out of the way. Horizontal strips of buttons and tabs (tabs, quick commands, keys) hide the bar
+   altogether: it used to sit on top of their labels, and the mouse wheel scrolls them sideways instead (see app.js). */
+*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--fg-2,#8a94a6) 38%,transparent) transparent}
+#cmds,#command-list,.keybar{scrollbar-width:none;overscroll-behavior-x:contain}
+#cmds::-webkit-scrollbar,#command-list::-webkit-scrollbar,.keybar::-webkit-scrollbar{display:none}
+.us-chart,.document-table,.cmd,.code pre{padding-bottom:max(var(--sb-pad,0px),8px)}
+
+/* Phone guide: a dialog sized to its content, like the file viewer, never full screen */
+#dlg-guide{width:min(94vw,860px);max-height:86vh;padding:22px 26px 24px}
+#dlg-guide::backdrop{background:rgba(8,12,28,.78);backdrop-filter:blur(3px)}
+#dlg-guide .guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#dlg-guide .guide-head h2{flex:1;min-width:0}
+#dlg-guide>p{margin:0 0 14px}
+
+/* Password box with an eye button inside its right edge */
+.pw{position:relative;display:block}
+.pw input{padding-right:44px!important;margin-top:5px}
+.pw-eye{position:absolute;right:4px;top:5px;bottom:0;width:38px;display:grid;place-items:center;border:0;background:transparent;color:var(--fg-2);cursor:pointer;border-radius:10px}
+.pw-eye:hover{color:var(--fg)}
+.pw-eye:focus-visible{outline:2px solid var(--brand,#2a6fdb);outline-offset:-2px}
+
+/* The load caption ("Gentle", "High load"...) belongs to the banner, so it stays when the pets are switched off */
+.hero #pet-weather{position:absolute;top:12px;right:16px;z-index:2;padding:3px 11px;border-radius:99px;background:rgba(0,0,0,.24);color:#fff;font:700 12px var(--sans,inherit)}
+
+/* ---- "All" wall: tiles with the last lines of every session, scrolled like a page ---- */
+#split[hidden],#wall[hidden]{display:none}
+.wall{flex:1;min-height:0;overflow:auto;padding:10px 12px 16px;background:var(--term)}
+.w-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;position:sticky;top:-10px;z-index:2;padding:6px 0;background:var(--term)}
+.w-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:10px}
+.w-tile{--c:var(--line);display:flex;flex-direction:column;min-width:0;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;overflow:hidden;cursor:pointer;content-visibility:auto;contain-intrinsic-size:auto 340px}
+.w-tile:hover,.w-tile:focus-visible{border-color:var(--c);outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 35%,transparent)}
+.w-tile[data-state=wait]{box-shadow:0 0 0 1px #e8a62c inset}
+.w-tile header{display:flex;align-items:center;gap:8px;padding:7px 11px;border-bottom:1px solid var(--line);font:600 12.5px var(--mono)}
+.w-dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--c)}
+.w-tile b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.w-srv{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-3);font-weight:500}
+.w-tile em{flex:none;font-style:normal;font-size:11px;font-weight:700;color:var(--fg-2)}
+.w-body{margin:0;overflow:hidden;background:var(--term);color:var(--term-fg);font-family:var(--mono);line-height:1.45;white-space:pre}
+.w-empty{margin:30px 0;text-align:center;color:var(--fg-3)}
+#app.compact.in-focus #wall{min-height:0}
+
+/* Wall polish: the tiles read as small terminals (dark header and body), the last lines always fit, the filter chips are compact */
+.w-tile{background:var(--term);color:var(--term-fg);border:1px solid var(--term-line,rgba(255,255,255,.14));border-top:3px solid var(--c)}
+.w-tile header{background:color-mix(in srgb,var(--term) 86%,#fff);border-bottom:1px solid var(--term-line,rgba(255,255,255,.12));color:var(--term-fg)}
+.w-srv{color:color-mix(in srgb,var(--term-fg) 60%,transparent)}
+.w-tile em{color:var(--c);filter:brightness(1.25)}
+.w-body{height:calc(14 * 1.45 * var(--w-font,11.5px) + 18px);padding:9px 11px;box-sizing:border-box;font-size:var(--w-font,11.5px)}
+.w-bar .btn{min-height:0;padding:5px 13px;font-size:12.5px;border-radius:99px}
+.w-bar .btn[aria-pressed=true]{background:var(--primary,#ff5d7a);border-color:transparent;color:#fff}
+
+.tab-all{gap:7px;padding:5px 14px 6px 10px;font-weight:700;color:var(--fg)}
+.tab-all svg{width:18px;height:18px;flex:none}
+
+/* In the wall nothing is "the current session", so everything that acts on one stays out of the way and the tiles use the full width */
+#app.wall-on .detail,#app.wall-on .terminal-copy-help,#app.wall-on .keybar,#app.wall-on #cmds{display:none!important}   /* the wall has its own bar (columns, text size, full screen) */
+
+/* Wall tiles: the header opens the terminal, the reply box under the screen answers in place */
+.w-tile{cursor:default}
+.w-tile header{cursor:pointer}
+.w-tile header:hover{background:color-mix(in srgb,var(--term) 78%,#fff)}
+.w-open{flex:none;width:24px;height:24px;border:0;border-radius:7px;background:transparent;color:var(--term-fg);font-size:15px;line-height:1;cursor:pointer;opacity:.75}
+.w-open:hover{opacity:1;background:rgba(255,255,255,.14)}
+.w-body{user-select:text;cursor:text}
+.w-reply{display:flex;gap:6px;padding:7px 9px;border-top:1px solid var(--term-line,rgba(255,255,255,.12));background:color-mix(in srgb,var(--term) 90%,#fff)}
+.w-reply input{flex:1;min-width:0;min-height:32px;padding:4px 10px;border-radius:9px;border:1px solid var(--term-line,rgba(255,255,255,.2));background:var(--term);color:var(--term-fg);font:12.5px var(--mono)}
+.w-reply input:focus{outline:2px solid var(--primary,#ff5d7a);outline-offset:-1px}
+.w-reply .btn{min-height:32px;padding:3px 13px;font-size:12.5px}
+.w-reply .btn{background:var(--primary,#ff5d7a);border-color:transparent;color:#fff;font-weight:700}
+.w-reply .btn:disabled{opacity:.55}
+
+.w-tool{flex:none;width:32px;height:32px;border:1px solid var(--term-line,rgba(255,255,255,.2));border-radius:9px;background:var(--term);color:var(--term-fg);font-size:15px;line-height:1;cursor:pointer}
+.w-tool:hover{background:rgba(255,255,255,.12)}
+.w-tile.drop{box-shadow:0 0 0 2px var(--primary,#ff5d7a)}
+#app.wall-on .pane-opt{display:none!important}   /* no split to choose in the wall: a tab leaves it */
+
+/* Wall bar: state filters (coloured like the tiles) on the left, columns / text size / full screen on the right */
+.w-bar{justify-content:space-between;align-items:center}
+.w-filters,.w-tools,.w-cols{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.w-tools{margin-left:auto}
+.w-lbl{font-size:12px;color:var(--term-fg);opacity:.7;margin-right:2px}
+.w-f{display:inline-flex;align-items:center;gap:7px;--c:var(--primary,#ff5d7a)}
+.w-f .w-dot{width:8px;height:8px}
+.w-f[data-f=all]{--c:var(--primary,#ff5d7a)}
+.w-bar .w-f[aria-pressed=true]{background:var(--c);border-color:transparent;color:#fff}
+.w-bar .w-f[aria-pressed=true] .w-dot{background:#fff}
+.w-bar .w-f:not([aria-pressed=true]){border:1.5px solid color-mix(in srgb,var(--c) 70%,transparent)}
+.w-t{min-width:34px;padding:5px 10px}
+.w-t[aria-pressed=true]{background:var(--primary,#ff5d7a);border-color:transparent;color:#fff}
+.w-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr))}
+.wall:not([data-cols=auto]) .w-grid{grid-template-columns:repeat(var(--w-cols),minmax(0,1fr))}
+@media(max-width:760px){.wall .w-grid{grid-template-columns:minmax(0,1fr)!important}.w-lbl{display:none}}
+.w-tile[data-state=wait]{background:color-mix(in srgb,var(--c) 9%,var(--term))}
+.w-tile[data-state=idle]{opacity:.82}
+
+/* Colour for the All tab (like any session tab) and a softer wall: tiles are tinted by their state instead of one flat black */
+.tab-all{color:color-mix(in srgb,var(--c) 70%,var(--fg))}
+.tab-all[aria-selected=true]{color:var(--fg)}
+.wall{background:linear-gradient(160deg,color-mix(in srgb,var(--term) 90%,#5b6cff),color-mix(in srgb,var(--term) 94%,#c04a9a))}
+.w-bar{background:transparent}
+.w-tile{background:color-mix(in srgb,var(--c) 7%,var(--term))}
+.w-tile header{background:color-mix(in srgb,var(--c) 22%,var(--term))}
+.w-tile header:hover{background:color-mix(in srgb,var(--c) 32%,var(--term))}
+.w-body{background:transparent}
+.w-reply{background:color-mix(in srgb,var(--c) 12%,var(--term))}
+.w-reply input,.w-tool{background:color-mix(in srgb,var(--c) 6%,var(--term))}
+.w-tile[data-state=wait]{background:color-mix(in srgb,var(--c) 12%,var(--term))}
+
+.w-reply{align-items:flex-end}
+.w-reply textarea{flex:1;min-width:0;min-height:32px;max-height:110px;padding:6px 10px;border-radius:9px;border:1px solid var(--term-line,rgba(255,255,255,.2));background:color-mix(in srgb,var(--c) 6%,var(--term));color:var(--term-fg);font:12.5px/1.4 var(--mono);resize:none;overflow-y:auto;box-sizing:border-box}
+.w-reply textarea:focus{outline:2px solid var(--primary,#ff5d7a);outline-offset:-1px}
+.w-reply textarea::placeholder{color:color-mix(in srgb,var(--term-fg) 45%,transparent)}

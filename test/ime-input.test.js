@@ -282,7 +282,7 @@ test('poll-driven picker sync, automatic focus, fitting, and responsive split ca
 
 test('split removal is deferred and queued resize, split, reconnect and fitting resume only when all panes are idle', () => {
   let busy = true; const calls = [];
-  const ctx = { panes: [{ ime: { isComposing: () => busy } }], pendingPaneWidth: 700, pendingSplit: null,
+  const ctx = { wallOn: false, panes: [{ ime: { isComposing: () => busy } }], pendingPaneWidth: 700, pendingSplit: null,
     resizePanes: w => calls.push(['resize', w]), syncPanePickers: () => calls.push('pickers'),
     connectPane: () => calls.push('connect'), sizeTerm: () => calls.push('fit') };
   vm.runInNewContext(functionsBetween('terminalComposing', 'paneItem') + functionsBetween('setSplit', 'openSession'), ctx);
