@@ -1157,5 +1157,17 @@
   "style.he": "Bubbles",
   "style.he_d": "Bubbles rising from the bottom.",
   "style.dem": "Stars",
-  "style.dem_d": "Twinkling stars."
+  "style.dem_d": "Twinkling stars.",
+  "style.mua": "Rain",
+  "style.mua_d": "Light rain streaks.",
+  "style.noel": "Christmas",
+  "style.noel_d": "Snow with baubles and gifts.",
+  "style.trungthu": "Mid-Autumn lanterns",
+  "style.trungthu_d": "Red lanterns floating up.",
+  "style.halloween": "Halloween",
+  "style.halloween_d": "Pumpkins and bats.",
+  "style.buom": "Butterflies",
+  "style.buom_d": "Butterflies fluttering about.",
+  "style.phaohoa": "Fireworks",
+  "style.phaohoa_d": "Colourful bursts."
 }

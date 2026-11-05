@@ -931,24 +931,17 @@
     [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
-  // ---- Effects: Settings → Hiệu ứng. The usual look stays; a light layer of falling particles is added over it (nothing is changed in the layout).
-  var EFFECTS = [['none', ['#eef3fb', '#ffffff', '#ff5c7a', '#0fb5ae']], ['anhdao', ['#ffb7d1', '#fff5f8', '#f48fb1', '#ec5b8f']], ['mai', ['#ffd23f', '#fff2d6', '#c46a00', '#d71920']], ['thu', ['#e8641e', '#ffb24a', '#7a3a12', '#fff6ec']], ['dong', ['#ffffff', '#d7e6f5', '#7cc4f2', '#3b82f6']], ['he', ['#ffffff', '#cdeef7', '#19c3e6', '#0a84c6']], ['dem', ['#fff6c9', '#151b40', '#3b2f8f', '#070a1c']]];
-  var FX = { anhdao: ['petal', 22, 'fall', 12], mai: ['mai', 18, 'fall', 14], thu: ['leaf', 18, 'fall', 13], dong: ['snow', 34, 'fall', 9], he: ['bubble', 14, 'rise', 14], dem: ['star', 38, 'twinkle', 3] };
+  // ---- Effects: Settings → Hiệu ứng. The usual look stays; public/fx.js adds a light layer of particles over it.
+  var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["anhdao", ["#ffb7d1", "#fff5f8", "#f48fb1", "#ec5b8f"]], ["mai", ["#ffd23f", "#fff2d6", "#c46a00", "#d71920"]], ["thu", ["#e8641e", "#ffb24a", "#7a3a12", "#fff6ec"]], ["dong", ["#ffffff", "#d7e6f5", "#7cc4f2", "#3b82f6"]], ["he", ["#ffffff", "#cdeef7", "#19c3e6", "#0a84c6"]], ["dem", ["#fff6c9", "#151b40", "#3b2f8f", "#070a1c"]], ["mua", ["#5fa0e6", "#cfe3f7", "#8fb8e8", "#2f5f9a"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["trungthu", ["#ff5a36", "#ffd166", "#7a3a12", "#fff2d6"]], ["halloween", ["#f28c1a", "#2b1a3f", "#3a1d00", "#4a7a1e"]], ["buom", ["#7aa6ff", "#ffd6e8", "#3a5fc0", "#a8e6a1"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]]
   var AMOUNT = { few: 0.5, normal: 1, many: 1.8 };
   var fxLayer = null;
-  function fxKind() { try { var k = localStorage.getItem('tw-fx-kind'); return FX[k] ? k : 'none'; } catch (e) { return 'none'; } }
+  function fxKind() { try { var k = localStorage.getItem('tw-fx-kind'); return window.TwFx && window.TwFx.KINDS[k] ? k : 'none'; } catch (e) { return 'none'; } }
   function fxAmount() { try { var a = localStorage.getItem('tw-fx-amount'); return AMOUNT[a] ? a : 'normal'; } catch (e) { return 'normal'; } }
   function renderFx() {
-    var cfg = FX[fxKind()];
+    if (!window.TwFx) return;
     if (!fxLayer) { fxLayer = document.createElement('div'); fxLayer.id = 'fx'; fxLayer.setAttribute('aria-hidden', 'true'); $('app').after(fxLayer); }
-    fxLayer.textContent = ''; fxLayer.className = '';
-    if (!cfg || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-    var n = Math.max(4, Math.round(cfg[1] * AMOUNT[fxAmount()] * (innerWidth < 760 ? 0.5 : 1))); fxLayer.className = cfg[2];
-    for (var k = 0; k < n; k++) {
-      var p = document.createElement('i'), size = cfg[2] === 'twinkle' ? 6 + Math.random() * 12 : 12 + Math.random() * 14;
-      p.style.cssText = '--img:var(--img-' + cfg[0] + ');--x:' + (Math.random() * 100).toFixed(1) + '%;--y:' + (Math.random() * 100).toFixed(1) + '%;--s:' + size.toFixed(0) + 'px;--o:' + (0.55 + Math.random() * 0.4).toFixed(2) + ';--d:' + (cfg[3] * (0.7 + Math.random() * 0.8)).toFixed(1) + 's;--dl:-' + (Math.random() * cfg[3]).toFixed(1) + 's;--dx:' + ((Math.random() - 0.5) * 180).toFixed(0) + 'px;--rot:' + (180 + Math.random() * 540).toFixed(0) + 'deg';
-      fxLayer.append(p);
-    }
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { fxLayer.textContent = ''; fxLayer.className = ''; return; }
+    window.TwFx.render(fxLayer, fxKind(), AMOUNT[fxAmount()], innerWidth < 760);
   }
   document.addEventListener('visibilitychange', function () { if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
   function renderStylePicker() {
