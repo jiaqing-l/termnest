@@ -196,3 +196,11 @@ test('a host without Node.js is reported with a code and its system, and file er
     assert.equal(localizeFileError('Tệp quá lớn (tối đa 5 MB).'), 'Tệp quá lớn (tối đa 5 MB).');
   } finally { setLang('vi'); }
 });
+
+test('the Node.js guide lists a Windows command and picks it for a Windows host', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '../public/file-viewer.js'), 'utf8');
+  assert.match(src, /\['win',[^\]]*winget install OpenJS\.NodeJS\.LTS'\]/);
+  const { runOnHost } = require('../lib/file-viewer');
+  const win = { cfg: { local: false }, exec: async () => ({ code: 1, out: '', err: "'node' is not recognized as an internal or external command" }) };
+  return runOnHost(win, () => async () => ({}), {}).then(() => assert.fail('should throw'), (e) => assert.equal(e.code, 'no-node'));
+});

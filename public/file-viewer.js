@@ -168,13 +168,13 @@
   }
   // The machine has no Node.js (the reader runs there): say so in plain words and give the command for its system, to copy or to type
   // into the session's own terminal (which is on that same machine). Nothing runs until the user presses Enter.
-  const NODE_CMDS=[['debian',/ubuntu|debian|mint|pop[!_ ]?os|raspbian|kali/i,'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs'],['rhel',/fedora|rhel|red hat|centos|rocky|alma|amazon/i,'sudo dnf install -y nodejs'],['alpine',/alpine/i,'sudo apk add nodejs'],['arch',/arch|manjaro|endeavour/i,'sudo pacman -S --noconfirm nodejs'],['suse',/suse|sles/i,'sudo zypper install -y nodejs'],['mac',/darwin|mac/i,'brew install node']];
+  const NODE_CMDS=[['debian',/ubuntu|debian|mint|pop[!_ ]?os|raspbian|kali/i,'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs'],['rhel',/fedora|rhel|red hat|centos|rocky|alma|amazon/i,'sudo dnf install -y nodejs'],['alpine',/alpine/i,'sudo apk add nodejs'],['arch',/arch|manjaro|endeavour/i,'sudo pacman -S --noconfirm nodejs'],['suse',/suse|sles/i,'sudo zypper install -y nodejs'],['mac',/darwin|mac/i,'brew install node'],['win',/windows|win32|mingw|msys|cygwin/i,'winget install OpenJS.NodeJS.LTS']];
   function nodeHelp(target,os,retry){
    target.textContent='';
    const box=doc.createElement('div');box.className='viewer-nodehelp';
    const title=doc.createElement('strong');title.textContent=i18n('nodehelp.title');
    const intro=doc.createElement('p');intro.textContent=i18n('nodehelp.intro');
-   const found=NODE_CMDS.find(c=>c[1].test(os||''));
+   const found=NODE_CMDS.slice().sort((a,b)=>(a[0]==='win'?-1:0)-(b[0]==='win'?-1:0)).find(c=>c[1].test(os||''));
    const cmdBox=(id,cmd)=>{
     const wrap=doc.createElement('div');wrap.className='viewer-cmd';const label=doc.createElement('small');label.textContent=i18n('nodehelp.os.'+id);
     const pre=doc.createElement('pre');pre.textContent=cmd;const row=doc.createElement('div');row.className='viewer-actions';

@@ -1100,12 +1100,13 @@
   "nodehelp.typed": "Typed in the terminal. Press Enter there to run it.",
   "nodehelp.other": "Other systems",
   "nodehelp.retry": "I installed it, try again",
-  "nodehelp.note": "Node.js 18 or newer is recommended.",
+  "nodehelp.note": "Node.js 18 or newer is recommended. On Windows, open a new terminal window after installing so the command is found.",
   "nodehelp.os.debian": "Ubuntu · Debian · Linux Mint",
   "nodehelp.os.rhel": "Fedora · RHEL · CentOS · Rocky · Alma · Amazon Linux",
   "nodehelp.os.alpine": "Alpine",
   "nodehelp.os.arch": "Arch · Manjaro",
   "nodehelp.os.suse": "openSUSE · SLES",
   "nodehelp.os.mac": "macOS (Homebrew)",
-  "drop.qua_25_mb": "over 25 MB"
+  "drop.qua_25_mb": "over 25 MB",
+  "nodehelp.os.win": "Windows (PowerShell or Command Prompt)"
 }
