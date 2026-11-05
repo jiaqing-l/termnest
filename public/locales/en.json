@@ -1127,5 +1127,13 @@
   "drop.khong_co_may_khac": "No other connected server.",
   "drop.dang_chep": "copying…",
   "drop.chon_tep_de_lay": "Click a file to take it to the open session",
-  "drop.dong": "Cancel"
+  "drop.dong": "Cancel",
+  "fileviewer.thao_tac": "More",
+  "fileviewer.thu_muc_moi_ngan": "Folder",
+  "fileviewer.tep_moi_ngan": "File",
+  "fileviewer.thung_rac_ngan": "Trash",
+  "drop.tu_may_nay": "From this computer",
+  "drop.tu_may_chu_khac_menu": "From another server",
+  "drop.chon_may_nguon": "Which server?",
+  "drop.thu_muc_hien_tai": "Folder of the latest session"
 }

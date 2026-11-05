@@ -1110,5 +1110,13 @@
   "drop.khong_co_may_khac": "Chưa có máy chủ nào khác đang kết nối.",
   "drop.dang_chep": "đang chép…",
   "drop.chon_tep_de_lay": "Bấm vào một tệp để lấy sang phiên đang mở",
-  "drop.dong": "Hủy"
+  "drop.dong": "Hủy",
+  "fileviewer.thao_tac": "Thêm",
+  "fileviewer.thu_muc_moi_ngan": "Thư mục",
+  "fileviewer.tep_moi_ngan": "Tệp",
+  "fileviewer.thung_rac_ngan": "Thùng rác",
+  "drop.tu_may_nay": "Từ máy này",
+  "drop.tu_may_chu_khac_menu": "Từ máy chủ khác",
+  "drop.chon_may_nguon": "Lấy từ máy chủ nào?",
+  "drop.thu_muc_hien_tai": "Thư mục của phiên gần nhất"
 }

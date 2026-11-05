@@ -1052,3 +1052,36 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 dialog.drop-remote{width:min(92vw,460px)}
 dialog.drop-remote .f{display:grid;gap:10px}
 dialog.drop-remote .dlg-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* ---- File viewer: compact header and rows (one menu instead of many buttons; works on a narrow panel and on a phone) ---- */
+.file-viewer header{position:relative;flex-wrap:wrap;align-items:center;gap:6px}
+.file-viewer header strong{order:-3;flex:1 1 100%}
+.file-viewer header .viewer-back{order:-2}
+.file-viewer header .btn{padding:6px 12px;font-size:13px}
+.file-viewer header .viewer-more{margin-left:auto;order:5}
+.file-viewer header>button:not(.viewer-back):not(.viewer-more){order:4}
+.viewer-headmenu{position:absolute;right:12px;top:100%;z-index:6;display:flex;flex-direction:column;min-width:190px;padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:0 14px 36px -12px rgba(0,0,0,.55)}
+.viewer-headmenu[hidden]{display:none!important}
+.viewer-menu{position:absolute;right:6px;top:calc(100% - 4px);z-index:7;display:flex;flex-direction:column;min-width:200px;padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:0 14px 36px -12px rgba(0,0,0,.55)}
+.viewer-menu-item{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--fg);font:inherit;font-size:14px;padding:9px 12px;border-radius:8px;cursor:pointer}
+.viewer-menu-item:hover,.viewer-menu-item:focus-visible{background:var(--surface-2,rgba(128,128,128,.15));outline:none}
+.viewer-menu-item.danger{color:#e5484d}
+.viewer-headmenu .btn.viewer-menu-item{border-radius:8px}
+.viewer-row{position:relative;flex-wrap:nowrap}
+.viewer-row .viewer-entry{flex:1 1 0;min-width:0}
+.viewer-mini{opacity:1;width:36px;min-height:36px;font-size:18px;letter-spacing:1px}
+.viewer-row .viewer-inline,.viewer-row .viewer-ask{flex:1 1 0;min-width:0}
+.viewer-row:has(.viewer-inline),.viewer-row:has(.viewer-ask){flex-wrap:wrap}
+.viewer-actions{flex-wrap:nowrap}
+.viewer-tool{flex:1 1 0;min-width:0;padding:7px 8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viewer-find{margin-bottom:8px}
+@media(max-width:700px){.viewer-menu,.viewer-headmenu{position:fixed;left:12px;right:12px;bottom:12px;top:auto;min-width:0;padding:8px}.viewer-menu-item{padding:14px 14px;font-size:16px}.viewer-mini{width:44px;min-height:44px}}
+
+/* Send-file menu (this computer / another server) */
+.drop-menu{position:fixed;z-index:90;display:flex;flex-direction:column;min-width:240px;max-width:min(92vw,330px);padding:6px;border-radius:14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);box-shadow:0 18px 44px -14px rgba(0,0,0,.6)}
+.drop-menu-title{padding:6px 12px 4px;font-size:12px;font-weight:700;color:var(--fg-3);text-transform:uppercase;letter-spacing:.04em}
+.drop-menu-item{display:block;width:100%;text-align:left;border:0;background:transparent;color:inherit;font:inherit;font-size:14.5px;padding:11px 12px;border-radius:9px;cursor:pointer}
+.drop-menu-item:hover,.drop-menu-item:focus-visible{background:var(--surface-2,rgba(128,128,128,.16));outline:none}
+@media(max-width:700px){.drop-menu{left:12px!important;right:12px;bottom:12px!important;max-width:none;padding:8px}.drop-menu-item{padding:15px 14px;font-size:16px}}
+.file-viewer header [hidden]{display:none!important}
+dialog.drop-remote{display:none}

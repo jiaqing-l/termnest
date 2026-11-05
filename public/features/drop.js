@@ -71,39 +71,40 @@
     var input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.hidden = true; input.id = 'drop-input';
     input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 5).forEach(send); input.value = ''; });
     var b = el('button', 'btn', i18n('drop.gui_anh')); b.type = 'button'; b.id = 'drop-pick'; b.title = i18n('drop.gui_anh_hoac_file_vao');
-    b.addEventListener('click', function () { input.click(); });
+    b.addEventListener('click', function () { chooseFile(b, input); });
     var kbd = document.getElementById('kbd-toggle'); bar.insertBefore(b, kbd ? kbd.nextSibling : bar.firstChild); document.body.append(input);
     return true;
   }
-  // "From another server…": pick a machine and one of its sessions, choose a file in that session's folder, and it is copied to the machine
-  // of the open session (the path is typed in the chat). The bytes travel through TERMNEST, so the two machines need not see each other.
-  function remoteButton() {
-    var bar = document.querySelector('.keybar'); if (!bar) return false;
-    if (document.getElementById('drop-remote')) return true;
-    var b = el('button', 'btn', '📂 ' + i18n('drop.tu_may_khac')); b.type = 'button'; b.id = 'drop-remote'; b.title = i18n('drop.tu_may_khac_tieu_de');
-    b.addEventListener('click', openRemoteDialog);
-    var pick = document.getElementById('drop-pick'); bar.insertBefore(b, pick ? pick.nextSibling : bar.firstChild);
-    return true;
+  // "Send file" opens a small menu when there is another connected server: from this computer, or from another server. From another
+  // server: pick the machine (skipped when there is only one), then a file in that machine's session folder; it is copied to the machine of
+  // the open session and the path is typed in the chat. The bytes travel through TERMNEST, so the two machines need not see each other.
+  function popup(anchor, title, entries) {
+    var old = document.querySelector('.drop-menu'); if (old) old.remove();
+    var m = el('div', 'drop-menu'); m.setAttribute('role', 'menu'); if (title) m.append(el('div', 'drop-menu-title', title));
+    entries.forEach(function (e) { var it = el('button', 'drop-menu-item', e[0]); it.type = 'button'; it.setAttribute('role', 'menuitem'); it.onclick = function () { m.remove(); e[1](); }; m.append(it); });
+    document.body.append(m);
+    var r = anchor.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - 270)) + 'px'; m.style.bottom = (innerHeight - r.top + 6) + 'px';
+    setTimeout(function () { document.addEventListener('pointerdown', function off(ev) { if (!m.contains(ev.target)) { m.remove(); document.removeEventListener('pointerdown', off, true); } }, true); }, 0);
+    var first = m.querySelector('button'); if (first) first.focus();
   }
-  function openRemoteDialog() {
+  function otherServers() {
+    var a = app(), cur = a && a.current && target(a.current());
+    return !cur ? [] : ((a.servers && a.servers()) || []).filter(function (v) { return v.on && v.id !== cur.id && v.sessions && v.sessions.length; });
+  }
+  function takeFrom(v, cur) {
+    // The browser needs a folder to start from: the machine's most recently active session.
+    var a = app(), sess = v.sessions.slice().sort(function (x, y) { return (y.activity || 0) - (x.activity || 0); })[0];
+    a.pickFile(v.id, sess.name, function (host, name, path) { transfer({ server: host, session: name, path: path }, cur); });
+  }
+  function chooseFile(anchor, input) {
     var a = app(), cur = a && a.current && target(a.current());
     if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
-    var servers = ((a.servers && a.servers()) || []).filter(function (v) { return v.on && v.id !== cur.id && v.sessions && v.sessions.length; });
-    var dlg = el('dialog', 'drop-remote'), form = el('div', 'f');
-    form.append(el('h2', '', i18n('drop.tu_may_khac_tieu_de')), el('p', '', i18n('drop.tu_may_khac_mo_ta')));
-    if (!servers.length) { form.append(el('p', 'err', i18n('drop.khong_co_may_khac'))); }
-    var machine = el('select'), session = el('select'), ml = el('label', '', i18n('drop.may_nguon')), sl = el('label', '', i18n('drop.phien_nguon'));
-    servers.forEach(function (v) { var o = el('option', '', v.name); o.value = v.id; machine.append(o); });
-    function fill() { session.textContent = ''; var v = servers.filter(function (x) { return x.id === machine.value; })[0]; ((v && v.sessions) || []).forEach(function (s) { var o = el('option', '', s.name); o.value = s.name; session.append(o); }); }
-    machine.onchange = fill; fill(); ml.append(machine); sl.append(session);
-    var go = el('button', 'btn primary', i18n('drop.chon_tep_nguon')), cancel = el('button', 'btn', i18n('drop.dong')), row = el('div', 'dlg-actions');
-    go.type = cancel.type = 'button'; go.disabled = !servers.length; cancel.onclick = function () { dlg.close(); };
-    go.onclick = function () {
-      var from = { server: machine.value, session: session.value }; dlg.close();
-      a.pickFile(from.server, from.session, function (host, sess, path) { transfer({ server: host, session: sess, path: path }, cur); });
-    };
-    row.append(cancel, go); if (servers.length) form.append(ml, sl); form.append(row); dlg.append(form); document.body.append(dlg);
-    dlg.addEventListener('close', function () { dlg.remove(); }); dlg.showModal();
+    var others = otherServers();
+    if (!others.length) { input.click(); return; }
+    popup(anchor, '', [['💻 ' + i18n('drop.tu_may_nay'), function () { input.click(); }], ['🖥 ' + i18n('drop.tu_may_chu_khac_menu') + (others.length > 1 ? '…' : ' · ' + others[0].name), function () {
+      if (others.length === 1) { takeFrom(others[0], cur); return; }
+      popup(anchor, i18n('drop.chon_may_nguon'), others.map(function (v) { return ['🖥 ' + v.name, function () { takeFrom(v, cur); }]; }));
+    }]]);
   }
   function transfer(from, to) {
     var a = app(); ensure(a.dropTarget()); var ui = chip({ name: from.path.split(/[\\/]/).pop(), type: '' });
@@ -113,5 +114,5 @@
       .catch(function (e) { ui.fail(e.message); });
   }
   // The terminal host is created by app.js after login; bind once it exists.
-  var tries = 0, t = setInterval(function () { var host = bind(), btn = pickButton(), rb = btn && remoteButton(); if ((host && btn && rb) || ++tries > 60) clearInterval(t); }, 1000);
+  var tries = 0, t = setInterval(function () { var host = bind(), btn = pickButton(); if ((host && btn) || ++tries > 60) clearInterval(t); }, 1000);
 })();
