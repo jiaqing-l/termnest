@@ -520,7 +520,7 @@ fn main() {
             let nav_app = app.handle().clone();
             let popup_app = app.handle().clone();
             let local_origin = origin.clone();
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+            let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("Termnest")
                 .inner_size(1180.0, 800.0)
                 .min_inner_size(720.0, 500.0)
@@ -548,8 +548,12 @@ fn main() {
                         let _ = external(&popup_app, url.as_str());
                     }
                     tauri::webview::NewWindowResponse::Deny
-                })
-                .build()?;
+                });
+            // On Windows (WebView2) Tauri's own drag-drop handler swallows the page's HTML5 drag and drop: dropping a picture on a session
+            // and dragging a file out of the viewer would never reach the page. The app has no native drop handling, so turn it off there.
+            #[cfg(windows)]
+            let builder = builder.disable_drag_drop_handler();
+            builder.build()?;
             diagnostic("webview created");
             // Keep the standard edit shortcuts in WKWebView and a single Quit item.
             // No custom navigation, debug, help or window menus.

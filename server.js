@@ -107,6 +107,7 @@ const STATIC = {
   '/pet-yard.js': [path.join(PUB, 'pet-yard.js'), 'text/javascript; charset=utf-8'],
   '/i18n.js': [path.join(PUB, 'i18n.js'), 'text/javascript; charset=utf-8'],
   '/wall.js': [path.join(PUB, 'wall.js'), 'text/javascript; charset=utf-8'],
+  '/fx.js': [path.join(PUB, 'fx.js'), 'text/javascript; charset=utf-8'],
   '/guide': [path.join(PUB, 'guide.html'), 'text/html; charset=utf-8'],
   '/guide.js': [path.join(PUB, 'guide.js'), 'text/javascript; charset=utf-8'],
   '/guide.css': [path.join(PUB, 'guide.css'), 'text/css; charset=utf-8'],
@@ -169,7 +170,7 @@ function send(res, code, body) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
   res.end(JSON.stringify(body));
 }
-function fail(res, code, error) { send(res, code, { error }); }
+function fail(res, code, error, extra) { send(res, code, { error, ...(extra || {}) }); }
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -622,7 +623,7 @@ async function api(req, res, url) {
       }
       // Candidates are an answer, not a failure: send them with 200 so the viewer can list them.
       send(res, value.error && !value.candidates ? 400 : 200, value);
-    } catch (e) { fail(res, 400, e.message); }
+    } catch (e) { fail(res, 400, e.message, require('./lib/file-viewer').hostErrorExtra(e, remotes.get(url.searchParams.get('server')))); }
     return;
   }
   if (p === '/api/tokens' && m === 'GET') {

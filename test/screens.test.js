@@ -63,23 +63,145 @@ test('a file buried in a wide workspace is still offered by name (find, not a ca
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the file browser finds files by part of their name at any depth, newest first, skipping heavy folders', async () => {
+test('the file index and filter find files by part of the name or path, newest first, skipping heavy folders', async () => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
-  const { searchRuntime } = require('../lib/features/browse');
+  const { indexRuntime, filterIndex } = require('../lib/features/browse');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-search-'));
   try {
     const put = (rel, body, age) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, body); const t = new Date(Date.now() - age * 1000); fs.utimesSync(f, t, t); };
-    put('docs/a/b/c/Manifest-Bien-The.csv', 'x', 100); put('docs/new/manifest-v2.csv', 'x', 5); put('node_modules/pkg/manifest.csv', 'x', 1); put('src/notes.md', 'x', 1); put('src/manifest.bin', 'x', 1);
-    const run = searchRuntime();
-    const hit = await run({ cwd: root, q: 'MANIFEST' });
-    assert.deepEqual(hit.files.map((f) => f.rel), ['docs/new/manifest-v2.csv', 'docs/a/b/c/Manifest-Bien-The.csv']);   // newest first; no node_modules, no .bin
-    assert.equal(hit.more, false);
-    assert.deepEqual((await run({ cwd: root, q: 'zzz-nothing' })).files, []);
-    assert.deepEqual((await run({ cwd: root, q: 'bien-the' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);
-    assert.deepEqual((await run({ cwd: root, q: 'c/manifest-bien' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);   // a path typed as folder/name
-    assert.deepEqual((await run({ cwd: root, q: 'new/manifest' })).files.map((f) => f.rel), ['docs/new/manifest-v2.csv']);
-    assert.ok((await run({ cwd: root, q: '' })).error); assert.ok((await run({ cwd: root, q: 'a\nb' })).error);
-    assert.equal((await run({ cwd: root, q: '*' })).files.length, 0);   // glob characters are literal, never a wildcard
-    assert.equal((await run({ cwd: root, q: '[' })).files.length, 0);
+    put('docs/a/b/c/Manifest-Bien-The.csv', 'x', 100); put('docs/new/manifest-v2.csv', 'x', 5); put('node_modules/pkg/manifest.csv', 'x', 1); put('src/notes.md', 'x', 1); put('src/manifest.bin', 'x', 1); put('.mobile/plan/manifest-mobile.md', 'x', 50);
+    const index = await indexRuntime()({ cwd: root });
+    assert.ok(index.rows.length >= 4 && !index.error);
+    const names = (q) => filterIndex(index.rows, q).files.map((f) => f.rel);
+    assert.deepEqual(names('MANIFEST'), ['docs/new/manifest-v2.csv', '.mobile/plan/manifest-mobile.md', 'docs/a/b/c/Manifest-Bien-The.csv']);   // newest first; no node_modules, no .bin; dot folders are searched
+    assert.deepEqual(names('bien-the'), ['docs/a/b/c/Manifest-Bien-The.csv']);
+    assert.deepEqual(names('c/manifest-bien'), ['docs/a/b/c/Manifest-Bien-The.csv']);   // a path typed as folder/name
+    assert.deepEqual(names('./new/manifest'), ['docs/new/manifest-v2.csv']);
+    assert.deepEqual(names('zzz-nothing'), []); assert.deepEqual(names('*'), []); assert.deepEqual(names('['), []);
+    assert.equal(filterIndex(index.rows, '').bad, true); assert.equal(filterIndex(index.rows, 'a\nb').bad, true);
+    const many = Array.from({ length: 80 }, (_, i) => ({ rel: 'x/file' + i + '.md', at: i }));
+    const page = filterIndex(many, 'file'); assert.equal(page.files.length, 50); assert.equal(page.more, true); assert.equal(page.files[0].rel, 'x/file79.md');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the file browser lists folders that start with a dot, but not .git or dot-files', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { browseRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-browse-'));
+  try {
+    for (const d of ['.mobile', '.github', '.git', 'docs', 'node_modules']) fs.mkdirSync(path.join(root, d));
+    fs.writeFileSync(path.join(root, 'README.md'), 'x'); fs.writeFileSync(path.join(root, '.env'), 'x'); fs.writeFileSync(path.join(root, 'a.md'), 'xx');
+    const out = await browseRuntime()({ cwd: root, dir: '' });
+    assert.deepEqual(out.dirs, ['.github', '.mobile', 'docs']);
+    assert.deepEqual(out.files.map((f) => f.name), ['a.md', 'README.md']);
+    assert.equal(out.files.find((f) => f.name === 'a.md').size, 2);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('creating a folder or file stays inside the session folder, never overwrites, and checks every parent', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { createRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-create-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-outside-'));
+  try {
+    const run = createRuntime(); const make = (o) => run({ cwd: root, dir: '', ...o });
+    let r = await make({ name: 'docs', kind: 'folder' }); assert.equal(r.path, fs.realpathSync(root) + path.sep + 'docs'); assert.ok(fs.statSync(r.path).isDirectory());
+    r = await make({ name: 'docs/ghi-chu.md', kind: 'file', content: '# Xin chào\n' }); assert.equal(fs.readFileSync(r.path, 'utf8'), '# Xin chào\n');
+    r = await make({ name: 'a/b/c/moi.txt', kind: 'file' }); assert.equal(fs.readFileSync(r.path, 'utf8'), '');   // missing parents are created
+    r = await run({ cwd: root, dir: path.join(root, 'docs'), name: 'phu.md', kind: 'file' }); assert.ok(r.path.endsWith(path.join('docs', 'phu.md')));   // created in the folder being shown
+    assert.deepEqual(await make({ name: 'docs/ghi-chu.md', kind: 'file', content: 'ghi đè?' }), { code: 'exists' });
+    assert.equal(fs.readFileSync(path.join(root, 'docs', 'ghi-chu.md'), 'utf8'), '# Xin chào\n');   // the first content is intact
+    assert.deepEqual(await make({ name: 'docs', kind: 'folder' }), { code: 'exists' });
+    for (const bad of ['..', '../x', 'a/../../x', '/etc/x', 'a\\b', 'x:y', 'bad|name', '', ' ', 'a/./b', 'x'.repeat(256), 'n\x00ul']) assert.equal((await make({ name: bad, kind: 'file' })).code, 'invalid', JSON.stringify(bad));
+    assert.equal((await make({ name: 'x', kind: 'socket' })).code, 'invalid'); assert.equal((await make({ name: 'x', kind: 'file', content: 'a\0b' })).code, 'invalid');
+    assert.equal((await run({ cwd: root, dir: outside, name: 'x', kind: 'file' })).code, 'outside');   // a folder outside the session
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(outside, path.join(root, 'link'));
+      assert.equal((await make({ name: 'link/escape.txt', kind: 'file' })).code, 'invalid');   // a symlinked parent must not lead out
+      assert.deepEqual(fs.readdirSync(outside), []);
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+});
+
+test('rename and trash stay inside the session folder, never overwrite, and the trash can restore', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { fsopRuntime, browseRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsop-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsout-'));
+  const real = fs.realpathSync(root);
+  try {
+    fs.mkdirSync(path.join(root, 'docs', 'sub'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'docs', 'a.md'), 'A'); fs.writeFileSync(path.join(root, 'docs', 'b.md'), 'B'); fs.writeFileSync(path.join(root, 'docs', 'sub', 'c.md'), 'C');
+    const run = fsopRuntime(), op = (o) => run({ cwd: root, ...o });
+    // rename
+    let r = await op({ op: 'rename', path: path.join(root, 'docs', 'a.md'), name: 'moi.md' });
+    assert.equal(r.path, path.join(real, 'docs', 'moi.md')); assert.equal(fs.readFileSync(r.path, 'utf8'), 'A'); assert.ok(!fs.existsSync(path.join(root, 'docs', 'a.md')));
+    assert.deepEqual(await op({ op: 'rename', path: path.join(root, 'docs', 'moi.md'), name: 'b.md' }), { code: 'exists' });   // never overwrites
+    assert.equal(fs.readFileSync(path.join(root, 'docs', 'b.md'), 'utf8'), 'B');
+    for (const bad of ['', ' ', '.', '..', 'x/y', '../x', 'a\\b', 'n\x00ul', 'x'.repeat(256)]) assert.equal((await op({ op: 'rename', path: path.join(root, 'docs', 'moi.md'), name: bad })).code, 'invalid', JSON.stringify(bad));
+    assert.equal((await op({ op: 'rename', path: path.join(root, 'docs', 'nothing.md'), name: 'x' })).code, 'notfound');
+    assert.equal((await op({ op: 'rename', path: root, name: 'x' })).code, 'root');
+    assert.equal((await op({ op: 'rename', path: path.join(outside, 'f'), name: 'x' })).code, 'outside');
+    assert.equal((await op({ op: 'rename', path: '../x', name: 'y' })).code, 'outside');
+    r = await op({ op: 'rename', path: path.join(root, 'docs', 'moi.md'), name: 'MOI.md' }); assert.ok(r.path.endsWith('MOI.md'));   // letter case only
+    r = await op({ op: 'rename', path: path.join(root, 'docs', 'sub'), name: 'thu-muc-con' }); assert.ok(fs.statSync(r.path).isDirectory());   // folders too
+    // trash
+    const gone = await op({ op: 'trash', path: path.join(root, 'docs', 'thu-muc-con') });
+    assert.ok(gone.id && gone.name === 'thu-muc-con'); assert.ok(!fs.existsSync(path.join(root, 'docs', 'thu-muc-con')));
+    assert.equal(fs.readFileSync(path.join(root, '.termnest-trash', '.gitignore'), 'utf8'), '*\n');
+    assert.equal(fs.readFileSync(path.join(root, '.termnest-trash', gone.id, 'data', 'thu-muc-con', 'c.md'), 'utf8'), 'C');   // the whole folder is kept
+    await new Promise((r) => setTimeout(r, 5));   // the list is ordered by the millisecond the item went in
+    const second = await op({ op: 'trash', path: path.join(root, 'docs', 'b.md') });
+    assert.deepEqual((await op({ op: 'list' })).items.map((i) => [i.name, i.rel, i.kind]), [['b.md', 'docs/b.md', 'file'], ['thu-muc-con', 'docs/thu-muc-con', 'folder']]);   // newest first
+    assert.equal((await op({ op: 'trash', path: root })).code, 'root');
+    assert.equal((await op({ op: 'trash', path: path.join(root, '.termnest-trash') })).code, 'invalid');   // the trash itself cannot be trashed or renamed
+    assert.equal((await op({ op: 'rename', path: path.join(root, '.termnest-trash'), name: 'x' })).code, 'invalid');
+    // the browser hides the trash
+    assert.ok(!(await browseRuntime()({ cwd: root, dir: '' })).dirs.includes('.termnest-trash'));
+    // restore
+    r = await op({ op: 'restore', id: second.id }); assert.equal(fs.readFileSync(r.path, 'utf8'), 'B');
+    fs.writeFileSync(path.join(root, 'docs', 'thu-muc-con'), 'a file with the old name');
+    assert.deepEqual(await op({ op: 'restore', id: gone.id }), { code: 'exists' });   // the old place is taken: nothing is overwritten
+    fs.rmSync(path.join(root, 'docs', 'thu-muc-con'));
+    fs.rmSync(path.join(root, 'docs'), { recursive: true });   // even if the parent folder is gone, the restore recreates it
+    r = await op({ op: 'restore', id: gone.id }); assert.equal(fs.readFileSync(path.join(r.path, 'c.md'), 'utf8'), 'C');
+    assert.deepEqual((await op({ op: 'list' })).items, []);
+    assert.equal((await op({ op: 'restore', id: 'zzzzzzzz' })).code, 'notfound'); assert.equal((await op({ op: 'restore', id: '../../x' })).code, 'invalid');
+    // a tampered record cannot point outside
+    const bad = path.join(root, '.termnest-trash', 'abcdef12'); fs.mkdirSync(path.join(bad, 'data'), { recursive: true }); fs.writeFileSync(path.join(bad, 'data', 'x'), 'x');
+    fs.writeFileSync(path.join(bad, 'info.json'), JSON.stringify({ name: 'x', rel: '../escape', at: 1, kind: 'file' }));
+    assert.equal((await op({ op: 'restore', id: 'abcdef12' })).code, 'outside'); assert.deepEqual(fs.readdirSync(outside), []);
+    if (process.platform !== 'win32') {   // a symlinked parent must not lead out
+      fs.symlinkSync(outside, path.join(root, 'link')); fs.writeFileSync(path.join(outside, 'secret.txt'), 's');
+      assert.equal((await op({ op: 'trash', path: path.join(root, 'link', 'secret.txt') })).code, 'outside');
+      assert.ok(fs.existsSync(path.join(outside, 'secret.txt')));
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+});
+
+test('a host without Node.js is reported with a code and its system, and file errors follow the chosen language', async () => {
+  const { runOnHost, hostErrorExtra, localizeFileError, fileRuntime } = require('../lib/file-viewer');
+  const { setLang } = require('../lib/i18n-server');
+  const remote = (result) => ({ cfg: { local: false }, snapshot: { sys: { os: 'Ubuntu 22.04.5 LTS' } }, exec: async () => result });
+  setLang('en');
+  try {
+    let caught = null; try { await runOnHost(remote({ code: 127, out: '', err: 'sh: 1: node: not found\n' }), fileRuntime, { cwd: '/', path: 'a' }); } catch (e) { caught = e; }
+    assert.equal(caught.code, 'no-node'); assert.match(caught.message, /no Node\.js/);
+    assert.deepEqual(hostErrorExtra(caught, remote({})), { code: 'no-node', os: 'Ubuntu 22.04.5 LTS' });
+    caught = null; try { await runOnHost(remote({ code: 1, out: '', err: 'permission denied' }), fileRuntime, { cwd: '/', path: 'a' }); } catch (e) { caught = e; }
+    assert.equal(caught.code, 'host'); assert.equal(hostErrorExtra(caught, remote({})), undefined);   // an ordinary failure has no install hint
+    caught = null; try { await runOnHost(remote({ code: 0, out: 'not json', err: '' }), fileRuntime, { cwd: '/', path: 'a' }); } catch (e) { caught = e; }
+    assert.equal(caught.code, 'host');
+    assert.equal(localizeFileError('Không được mở tệp ngoài thư mục của phiên.'), 'Files outside the session folder cannot be opened.');
+    assert.equal(localizeFileError('Không thấy tệp ở thư mục của phiên, nhưng có 3 tệp trùng tên.'), 'The file is not in the session folder, but 3 files with that name were found.');
+    assert.equal(localizeFileError('something else'), 'something else');
+    setLang('vi');
+    assert.equal(localizeFileError('Tệp quá lớn (tối đa 5 MB).'), 'Tệp quá lớn (tối đa 5 MB).');
+  } finally { setLang('vi'); }
+});
+
+test('the Node.js guide lists a Windows command and picks it for a Windows host', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '../public/file-viewer.js'), 'utf8');
+  assert.match(src, /\['win',[^\]]*winget install OpenJS\.NodeJS\.LTS'\]/);
+  const { runOnHost } = require('../lib/file-viewer');
+  const win = { cfg: { local: false }, exec: async () => ({ code: 1, out: '', err: "'node' is not recognized as an internal or external command" }) };
+  return runOnHost(win, () => async () => ({}), {}).then(() => assert.fail('should throw'), (e) => assert.equal(e.code, 'no-node'));
 });

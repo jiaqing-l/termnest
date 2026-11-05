@@ -3,7 +3,10 @@
 window.TokenUI = function (hooks) {
   const $ = id => document.getElementById(id);
   const node = (tag, cls, text) => { const n=document.createElement(tag);n.className=cls||'';if(text!=null)n.textContent=text;return n; };
-  const fmt = n => n == null ? i18n('tokenui.khong_doc_duoc') : new Intl.NumberFormat('vi-VN',{notation:'compact',maximumFractionDigits:1}).format(n);
+  // The server (token modules) sends a few reasons in Vietnamese: show them in the chosen language.
+  const REASONS={'Chưa có phiên':'tokenui.chua_co_phien','Chưa có dữ liệu tuần':'tokenui.chua_co_du_lieu_tuan','Chưa có dữ liệu':'tokenui.chua_co_du_lieu','Chưa có bản ghi usage':'tokenui.chua_co_ban_ghi_usage'};
+  const reasonText=r=>REASONS[r]?i18n(REASONS[r]):r;
+  const fmt = n => n == null ? i18n('tokenui.khong_doc_duoc') : new Intl.NumberFormat(i18n('lang.locale'),{notation:'compact',maximumFractionDigits:1}).format(n);
   let showAllSessions=false, rendered=null, completeView=false, ages=[];
   const ageText=at=>i18n('tokenui.du_lieu_da_luu_phut', [Math.max(0,Math.floor((Date.now()-at)/60000))]);
   const label=a=>a.nickname || (a.tool==='claude'?'Claude':'Codex')+(a.email?' · '+a.email.split('@')[0]:'');
@@ -15,7 +18,7 @@ window.TokenUI = function (hooks) {
   const filters=node('div','seg');
   [['days',i18n('tokenui.theo_ngay')],['weeks',i18n('tokenui.theo_tuan')]].forEach(([key,label])=>{const b=node('button','',label);b.dataset.period=key;b.onclick=()=>{period=key;render();};filters.append(b);});
   const ai=node('select');ai.setAttribute('aria-label',i18n('tokenui.loc_ai'));[['all',i18n('tokenui.tat_ca_ai')],['claude','Claude'],['codex','Codex']].forEach(([key,label])=>{const o=node('option','',label);o.value=key;ai.append(o);});ai.onchange=()=>{filter=ai.value;render();usage.render();};
-  const config=node('button','btn',i18n('tokenui.tai_khoan'));config.onclick=editAccounts;
+  const config=node('button','btn',i18n('tokenui.tai_khoan'));config.onclick=()=>editAccounts();   // not editAccounts itself: the click event would arrive as `selected` and the dialog would only offer a rename
   const refreshBtn=node('button','btn token-refresh');refreshBtn.type='button';refreshBtn.title=i18n('tokenui.doc_lai_log_va_bao');
   refreshBtn.append(node('span','token-spin'),node('span','token-refresh-ico','↻'),node('span','',i18n('tokenui.lam_moi')));
   async function refreshAll(){if(refreshBtn.classList.contains('busy'))return;refreshBtn.classList.add('busy');try{await Promise.all([poll(true),usage.reload(true)]);}finally{refreshBtn.classList.remove('busy');}}
@@ -27,18 +30,18 @@ window.TokenUI = function (hooks) {
   const noUsage={root:node('div'),render(){},reload:async()=>{},ensure(){}};
   const usage=!window.UsageUI?noUsage:window.UsageUI({api:hooks.api,tool:()=>filter,scope:()=>hooks.scope(),
     view:v=>{chart.hidden=sessions.hidden=filters.hidden=v==='day';},
-    loaded:at=>{usageAt=at;heroSub.textContent=at?i18n('tokenui.bao_cao_cap_nhat_luc', [new Date(at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})]):i18n('tokenui.chua_co_bao_cao');},
+    loaded:at=>{usageAt=at;heroSub.textContent=at?i18n('tokenui.bao_cao_cap_nhat_luc', [new Date(at).toLocaleTimeString(i18n('lang.locale'),{hour:'2-digit',minute:'2-digit',hour12:false})]):i18n('tokenui.chua_co_bao_cao');},
     summary:()=>{}});
   box.append(head,note,cards,usage.root,chart,sessions,node('p','token-help',i18n('tokenui.nguong_do_ban_tu_dat')));
   const mini=node('button','token-mini',i18n('tokenui.token_ai_dang_doc'));mini.id='token-mini';mini.onclick=()=>hooks.view('token');document.querySelector('.top .right').before(mini);
   function remaining(at) { const minutes=Math.max(0,Math.ceil((at-Date.now())/60000));return minutes>=1440?i18n('tokenui.ngay_gio', [Math.floor(minutes/1440), Math.floor(minutes%1440/60)]):i18n('app.gio_phut', [Math.floor(minutes/60), minutes%60]); }
   function ring(label,w,reason) {
     const row=node('div','token-window'), dial=node('div','token-ring',w?Math.round(w.percent)+'%':'—');
-    dial.style.setProperty('--percent',w?w.percent:0);dial.setAttribute('aria-label',label+': '+(w?w.percent+'%':reason || i18n('tokenui.chua_co_phien')));
+    dial.style.setProperty('--percent',w?w.percent:0);dial.setAttribute('aria-label',label+': '+(w?w.percent+'%':reasonText(reason) || i18n('tokenui.chua_co_phien')));
     if(w&&w.percent>=90)dial.classList.add('token-hot');
     const text=node('div','token-reset');text.append(node('b','',label));
-    if(w){text.append(node('span','',i18n('tokenui.dat_lai', [new Date(w.resetAt).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})])),node('small','',w.reset?i18n('tokenui.da_dat_lai'): i18n('tokenui.con', [remaining(w.resetAt)])));}
-    else text.append(node('small','',reason || i18n('tokenui.chua_co_du_lieu')));
+    if(w){text.append(node('span','',i18n('tokenui.dat_lai', [new Date(w.resetAt).toLocaleString(i18n('lang.locale'),{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})])),node('small','',w.reset?i18n('tokenui.da_dat_lai'): i18n('tokenui.con', [remaining(w.resetAt)])));}
+    else text.append(node('small','',reasonText(reason) || i18n('tokenui.chua_co_du_lieu')));
     row.append(dial,text);return row;
   }
   function render() {
@@ -51,11 +54,11 @@ window.TokenUI = function (hooks) {
     if(scanning&&!accounts.length&&updatedAt==null){
       note.textContent=i18n('tokenui.dang_doc_log_ai_lan');note.className='token-note';
     }else if(completeView&&updatedAt!=null){
-      note.textContent=i18n('tokenui.cap_nhat_luc', [new Date(updatedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false}), (scanning?i18n('tokenui.dang_cap_nhat'):'')]);
+      note.textContent=i18n('tokenui.cap_nhat_luc', [new Date(updatedAt).toLocaleTimeString(i18n('lang.locale'),{hour:'2-digit',minute:'2-digit',hour12:false}), (scanning?i18n('tokenui.dang_cap_nhat'):'')]);
       note.className='token-note';note.title=scanError||'';
     }else{
       note.textContent=visibleError||(actions.length?i18n('tokenui.khong_doc_duoc_quota', [actions.map(a=>label(a)).join(', ')]):'');
-      if(updatedAt!=null)note.textContent+=i18n('tokenui.cap_nhat_luc_2', [(note.textContent?' · ':''), new Date(updatedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})]);
+      if(updatedAt!=null)note.textContent+=i18n('tokenui.cap_nhat_luc_2', [(note.textContent?' · ':''), new Date(updatedAt).toLocaleTimeString(i18n('lang.locale'),{hour:'2-digit',minute:'2-digit',hour12:false})]);
       note.className='token-note'+(visibleError||actions.length?' token-action':'');
     }
     const signature=JSON.stringify([accounts,visibleHosts,filter,period,hooks.scope(),!accounts.length&&scanning,!!scanError&&!accounts.length]);
@@ -80,10 +83,10 @@ window.TokenUI = function (hooks) {
       const bar=node('div','token-meter'), fill=node('i');fill.style.width=a.threshold&&a.today!=null?Math.min(100,a.today/a.threshold*100)+'%':'0';bar.append(fill);if(a.threshold)line.append(bar);
       c.append(h,windows,line);
       if(a.stale){const at=a.observedAt||a.limits.observedAt||updatedAt,age=node('p','token-help',ageText(at));ages.push({node:age,at});c.append(age);}
-      if(a.reason)c.append(node('p','token-help',a.reason));
+      if(a.reason)c.append(node('p','token-help',reasonText(a.reason)));
       // Every card says when this refresh ran; the quota's own time is shown only when it is older, with the reason.
       // Claude's quota is asked at most once per 5 minutes, and Codex only records it while a session runs.
-      const clock=t=>new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false});
+      const clock=t=>new Date(t).toLocaleTimeString(i18n('lang.locale'),{hour:'2-digit',minute:'2-digit',hour12:false});
       if(updatedAt!=null)c.append(node('p','token-help',i18n('tokenui.da_kiem_tra_luc', [clock(updatedAt)])));
       if(a.limits.observedAt&&(updatedAt==null||updatedAt-a.limits.observedAt>120000))c.append(node('p','token-help',i18n('tokenui.quota_ghi_nhan_luc', [clock(a.limits.observedAt), (a.tool==='codex'?i18n('tokenui.codex_chi_ghi_quota_khi'):i18n('tokenui.quota_claude_chi_hoi_lai'))])));
       if(a.threshold&&a.today>=a.threshold){c.classList.add('token-hot');c.append(node('small','',i18n('tokenui.da_vuot_nguong_hom_nay')));}
@@ -110,7 +113,7 @@ window.TokenUI = function (hooks) {
     const groups=days.map(day=>({day,claude:rows.filter(a=>a.tool==='claude').reduce((n,a)=>n+(a[period].find(d=>d.day===day)?.total||0),0),codex:rows.filter(a=>a.tool==='codex').reduce((n,a)=>n+(a[period].find(d=>d.day===day)?.total||0),0)}));
     const max=Math.max(1,...groups.flatMap(d=>[d.claude,d.codex])), plot=node('div','token-chart');
     groups.forEach(d=>{const col=node('div','token-column');const stack=node('div','token-stack');
-      ['claude','codex'].forEach(k=>{if(filter!=='all'&&filter!==k)return;const b=node('button','token-bar '+k);b.style.height=(d[k]/max*130)+'px';b.title=d.day+' · '+k+': '+new Intl.NumberFormat('vi-VN').format(d[k])+' token';b.setAttribute('aria-label',b.title);b.onfocus=b.onmouseenter=()=>{hint.textContent=b.title;};stack.append(b);});
+      ['claude','codex'].forEach(k=>{if(filter!=='all'&&filter!==k)return;const b=node('button','token-bar '+k);b.style.height=(d[k]/max*130)+'px';b.title=d.day+' · '+k+': '+new Intl.NumberFormat(i18n('lang.locale')).format(d[k])+' token';b.setAttribute('aria-label',b.title);b.onfocus=b.onmouseenter=()=>{hint.textContent=b.title;};stack.append(b);});
       col.append(stack,node('small','',d.day.slice(5)));plot.append(col);});
     const hint=node('p','token-chart-hint',i18n('tokenui.di_chuot_hoac_chon_cot'));hint.setAttribute('aria-live','polite');chart.append(plot,hint);
     if(rows.some(a=>a.reason))chart.append(node('small','',i18n('tokenui.bieu_do_gom_cac_dong')));
@@ -130,6 +133,7 @@ window.TokenUI = function (hooks) {
     finally{busy=false;}
   }
   function editAccounts(selected) {
+    if(selected&&typeof selected.id!=='string')selected=null;   // an event or anything that is not an account means "add", not "rename"
     const dlg=node('dialog','token-config'),form=node('form','f');form.append(node('h2','',selected?i18n('tokenui.doi_ten_tai_khoan'):i18n('tokenui.thu_muc_tai_khoan_ai')));
     const existing=(hooks.prefs().aiAccounts||[]).map(a=>({...a}));
     if(selected&&!existing.some(a=>a.id===selected.id)) existing.push({id:selected.id,hostId:selected.hostId,tool:selected.tool,directory:selected.directory || '~/.'+selected.tool,nickname:selected.nickname||'',threshold:selected.threshold});

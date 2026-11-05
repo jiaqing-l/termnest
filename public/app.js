@@ -24,7 +24,7 @@
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
-          if (!r.ok) { var e = new Error(j.error || i18n('app.co_loi_xay_ra')); e.status = r.status; throw e; }
+          if (!r.ok) { var e = new Error(j.error || i18n('app.co_loi_xay_ra')); e.status = r.status; e.code = j.code; e.os = j.os; throw e; }
           return /^\/api\/(tokens|usage)/.test(path) ? localHostNames(j) : j;
         });
       });
@@ -674,6 +674,8 @@
     var lines = (s.lines || []).filter(function (line) { return line.trim() && !CHROME.test(line); }).map(plain).filter(Boolean);
     return lines.slice(-1)[0] || i18n('app.phien_dang_cho_ban_co');
   }
+  // Animal names come from the language files; a character registered with its own label keeps that label.
+  function petName(k, art) { var key = 'pet.name_' + k, t = i18n(key); return t !== key ? t : ((art.LABELS || {})[k] || k); }
   function sendKeys(id, name, text) { return api('POST', '/api/servers/' + id + '/sessions/' + encodeURIComponent(name) + '/keys', { text: text, enter: true }); }
   function addReply(card, ref, v, s) {
     if (s.state !== 'wait') return;
@@ -845,7 +847,7 @@
     groups.forEach(function (g) {
       var list = ((art.GROUPS || {})[g[0]] || []).filter(function (k) { return PETS[k]; }); if (!list.length) return;
       box.append(el('div', 'pp-title', g[1]));
-      var row = el('div', 'pp-row'); list.forEach(function (k) { row.append(item(k, (art.LABELS || {})[k] || k, pet(k, 'run'))); }); box.append(row);
+      var row = el('div', 'pp-row'); list.forEach(function (k) { row.append(item(k, petName(k, art), pet(k, 'run'))); }); box.append(row);
     });
   }
   function editPet(x) {
@@ -929,7 +931,34 @@
     [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
+  // ---- Effects: Settings → Hiệu ứng. The usual look stays; public/fx.js adds a light layer of particles over it.
+  var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]];
+  var AMOUNT = { few: 0.5, normal: 1, many: 1.8 };
+  var fxLayer = null;
+  function fxKind() { try { var k = localStorage.getItem('tw-fx-kind'); return window.TwFx && window.TwFx.KINDS[k] ? k : 'none'; } catch (e) { return 'none'; } }
+  function fxAmount() { try { var a = localStorage.getItem('tw-fx-amount'); return AMOUNT[a] ? a : 'normal'; } catch (e) { return 'normal'; } }
+  function renderFx() {
+    if (!window.TwFx) return;
+    if (!fxLayer) { fxLayer = document.createElement('div'); fxLayer.id = 'fx'; fxLayer.setAttribute('aria-hidden', 'true'); $('app').after(fxLayer); }
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { fxLayer.textContent = ''; fxLayer.className = ''; return; }
+    window.TwFx.render(fxLayer, fxKind(), AMOUNT[fxAmount()], innerWidth < 760);
+  }
+  document.addEventListener('visibilitychange', function () { if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
+  function renderStylePicker() {
+    var box = $('set-style'); if (!box) return; box.textContent = '';
+    EFFECTS.forEach(function (x) {
+      var c = el('button', 'style-card'); c.type = 'button'; c.setAttribute('role', 'radio'); c.setAttribute('aria-checked', String(x[0] === fxKind()));
+      var sw = el('span', 'sw-colors'); x[1].forEach(function (col) { var i = el('i'); i.style.background = col; sw.append(i); });
+      c.append(sw, el('b', '', i18n('style.' + x[0])), el('small', '', i18n('style.' + x[0] + '_d')));
+      c.onclick = function () { try { localStorage.setItem('tw-fx-kind', x[0]); } catch (e) { /* optional */ } renderStylePicker(); renderFx(); }; box.append(c);
+    });
+    var d = $('set-density'); if (d) { d.checked = document.documentElement.getAttribute('data-density') === 'compact'; d.onchange = function () { if (d.checked) document.documentElement.setAttribute('data-density', 'compact'); else document.documentElement.removeAttribute('data-density'); try { localStorage.setItem('tw-density', d.checked ? 'compact' : ''); } catch (e) { /* optional */ } }; }
+    var f = $('set-fx-amount'); if (f) { f.value = fxAmount(); f.onchange = function () { try { localStorage.setItem('tw-fx-amount', f.value); } catch (e) { /* optional */ } renderFx(); }; }
+  }
+  try { if (localStorage.getItem('tw-density') === 'compact') document.documentElement.setAttribute('data-density', 'compact'); } catch (e) { /* optional */ }
+  renderFx();
   function renderSettings() {
+    renderStylePicker();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;
@@ -1247,7 +1276,7 @@
     if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
     if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
   })();
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });

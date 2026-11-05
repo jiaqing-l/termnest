@@ -152,7 +152,7 @@ test('browser fullscreen, exit chip and external fullscreenchange stay in sync; 
 });
 
 test('F11 and platform Shift+F use the desktop bridge and OS events synchronize focus mode', async () => {
-  for (const platform of ['MacIntel', 'Win32', 'Linux x86_64']) {
+  for (const platform of ['MacIntel', 'Linux x86_64']) {
     const f = fixture({ platform, native: true });
     f.key({ key: 'F11', metaKey: false, ctrlKey: false }); await flush();
     assert.equal(f.app.classList.contains('fs'), true);
@@ -226,4 +226,14 @@ test('markup, static route, desktop permission and active-pane focus styles expo
   assert.match(appSource, /onIdle: function \(\) \{ paneInputIdle\(\); viewControls.flush\(\)/);
   assert.match(fs.readFileSync(require.resolve('../desktop/src/bridge.js'), 'utf8'), /setFullscreen: enabled => invoke\('set_fullscreen', \{enabled\}\)/);
   assert.match(fs.readFileSync(require.resolve('../desktop/permissions/bridge.toml'), 'utf8'), /commands.allow = .*"set_fullscreen"/);
+});
+
+test('on the Windows desktop app focus mode is page-only: no native full screen, and OS events cannot cancel it', async () => {
+  const f = fixture({ platform: 'Win32', native: true });
+  f.key({ key: 'F11', metaKey: false, ctrlKey: false }); await flush();
+  assert.equal(f.app.classList.contains('fs'), true); assert.deepEqual(f.calls, []);   // the bridge was never asked for the OS full screen
+  f.window.dispatch('tw-fullscreen', { detail: false }); assert.equal(f.app.classList.contains('fs'), true);   // a Resized/Focused event does not undo it
+  f.o.exitChip.onclick(); await flush(); assert.equal(f.app.classList.contains('fs'), false); assert.deepEqual(f.calls, []);
+  const browser = fixture({ platform: 'Win32', native: false });   // a browser on Windows still uses the Fullscreen API
+  browser.key({ key: 'F11', metaKey: false, ctrlKey: false }); await flush(); assert.deepEqual(browser.calls, [true]);
 });
