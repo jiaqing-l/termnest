@@ -931,15 +931,31 @@
     [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
-  // ---- Looks: Settings → Giao diện. A look is a set of colour variables (app.css) chosen with data-style; the pets follow the look
-  // (the cheerful and ocean looks keep them, the others switch them off) but the Pets checkbox still has the last word.
-  var STYLES = [['vui', true, ['#eef3fb', '#ffffff', '#ff5c7a', '#0fb5ae']], ['toigian', false, ['#f5f6f8', '#ffffff', '#2563eb', '#334155']], ['terminal', false, ['#050805', '#0f1c0f', '#39d353', '#f0c000']], ['bien', true, ['#e8f5f8', '#0c3445', '#0097a7', '#00b8c4']], ['tuongphan', false, ['#000000', '#161616', '#ffd400', '#ffffff']]];
+  // ---- Themes: Settings → Giao diện. A theme = colours (app.css, chosen by data-style) + a banner picture + optional falling particles.
+  // Themes with pets keep them; the others switch them off (the Pets checkbox still has the last word).
+  var STYLES = [["vui", true, ["#eef3fb", "#fff", "#ff5c7a", "#0fb5ae"]], ["toigian", false, ["#f5f6f8", "#fff", "#2563eb", "#334155"]], ["anhdao", true, ["#fff5f8", "#ffb3cf", "#ec5b8f", "#f0709f"]], ["mai", true, ["#fff8ec", "#e0301e", "#d71920", "#ffd23f"]], ["he", true, ["#eefbff", "#19c3e6", "#ff8a3d", "#0a84c6"]], ["thu", true, ["#fff6ec", "#f28c28", "#d9631e", "#7a3a12"]], ["dong", true, ["#eef4fb", "#7cc4f2", "#3b82f6", "#ffffff"]], ["dem", true, ["#070a1c", "#3b2f8f", "#ffd166", "#131a5a"]], ["tuongphan", false, ["#000", "#161616", "#ffd400", "#fff"]]];
+  var FX = { anhdao: ['petal', 22, 'fall', 12], mai: ['mai', 18, 'fall', 14], thu: ['leaf', 18, 'fall', 13], dong: ['snow', 34, 'fall', 9], he: ['bubble', 14, 'rise', 14], dem: ['star', 38, 'twinkle', 3] };
+  var fxLayer = null;
+  function fxOn() { try { return localStorage.getItem('tw-fx') !== 'off'; } catch (e) { return true; } }
+  function renderFx() {
+    var id = document.documentElement.getAttribute('data-style') || 'vui', cfg = FX[id];
+    if (!fxLayer) { fxLayer = document.createElement('div'); fxLayer.id = 'fx'; fxLayer.setAttribute('aria-hidden', 'true'); $('app').after(fxLayer); }
+    fxLayer.textContent = ''; fxLayer.className = '';
+    if (!cfg || !fxOn() || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    var n = innerWidth < 760 ? Math.ceil(cfg[1] / 2) : cfg[1]; fxLayer.className = cfg[2];
+    for (var k = 0; k < n; k++) {
+      var p = document.createElement('i'), size = cfg[2] === 'twinkle' ? 6 + Math.random() * 12 : 12 + Math.random() * 14;
+      p.style.cssText = '--img:var(--img-' + cfg[0] + ');--x:' + (Math.random() * 100).toFixed(1) + '%;--y:' + (Math.random() * 100).toFixed(1) + '%;--s:' + size.toFixed(0) + 'px;--o:' + (0.55 + Math.random() * 0.4).toFixed(2) + ';--d:' + (cfg[3] * (0.7 + Math.random() * 0.8)).toFixed(1) + 's;--dl:-' + (Math.random() * cfg[3]).toFixed(1) + 's;--dx:' + ((Math.random() - 0.5) * 180).toFixed(0) + 'px;--rot:' + (180 + Math.random() * 540).toFixed(0) + 'deg';
+      fxLayer.append(p);
+    }
+  }
+  document.addEventListener('visibilitychange', function () { if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
   function applyStyle(id, setPets) {
     var known = STYLES.filter(function (x) { return x[0] === id; })[0] || STYLES[0], r = document.documentElement;
     if (known[0] === 'vui') r.removeAttribute('data-style'); else r.setAttribute('data-style', known[0]);
     try { localStorage.setItem('tw-style', known[0]); } catch (e) { /* optional */ }
     if (setPets) { var box = $('pets-enabled'); if (box && box.checked !== known[1]) { box.checked = known[1]; box.dispatchEvent(new Event('change')); } }
-    renderStylePicker();
+    renderStylePicker(); renderFx();
   }
   function renderStylePicker() {
     var box = $('set-style'); if (!box) return; box.textContent = '';
@@ -950,8 +966,10 @@
       c.append(sw, el('b', '', i18n('style.' + x[0])), el('small', '', i18n('style.' + x[0] + '_d'))); c.onclick = function () { applyStyle(x[0], true); }; box.append(c);
     });
     var d = $('set-density'); if (d) { d.checked = document.documentElement.getAttribute('data-density') === 'compact'; d.onchange = function () { if (d.checked) document.documentElement.setAttribute('data-density', 'compact'); else document.documentElement.removeAttribute('data-density'); try { localStorage.setItem('tw-density', d.checked ? 'compact' : ''); } catch (e) { /* optional */ } }; }
+    var f = $('set-fx'); if (f) { f.checked = fxOn(); f.onchange = function () { try { localStorage.setItem('tw-fx', f.checked ? 'on' : 'off'); } catch (e) { /* optional */ } renderFx(); }; }
   }
-  try { var savedStyle = localStorage.getItem('tw-style'); if (savedStyle && savedStyle !== 'vui') document.documentElement.setAttribute('data-style', savedStyle); if (localStorage.getItem('tw-density') === 'compact') document.documentElement.setAttribute('data-density', 'compact'); } catch (e) { /* optional */ }
+  try { var savedStyle = localStorage.getItem('tw-style'); if (savedStyle && savedStyle !== 'vui' && STYLES.some(function (x) { return x[0] === savedStyle; })) document.documentElement.setAttribute('data-style', savedStyle); if (localStorage.getItem('tw-density') === 'compact') document.documentElement.setAttribute('data-density', 'compact'); } catch (e) { /* optional */ }
+  renderFx();
   function renderSettings() {
     renderStylePicker();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
