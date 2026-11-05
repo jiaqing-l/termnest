@@ -76,6 +76,8 @@ test('the file browser finds files by part of their name at any depth, newest fi
     assert.equal(hit.more, false);
     assert.deepEqual((await run({ cwd: root, q: 'zzz-nothing' })).files, []);
     assert.deepEqual((await run({ cwd: root, q: 'bien-the' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);
+    assert.deepEqual((await run({ cwd: root, q: 'c/manifest-bien' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);   // a path typed as folder/name
+    assert.deepEqual((await run({ cwd: root, q: 'new/manifest' })).files.map((f) => f.rel), ['docs/new/manifest-v2.csv']);
     assert.ok((await run({ cwd: root, q: '' })).error); assert.ok((await run({ cwd: root, q: 'a\nb' })).error);
     assert.equal((await run({ cwd: root, q: '*' })).files.length, 0);   // glob characters are literal, never a wildcard
     assert.equal((await run({ cwd: root, q: '[' })).files.length, 0);
