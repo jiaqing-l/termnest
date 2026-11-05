@@ -29,3 +29,12 @@ test('the stored script writes stdin to a private temp folder and prints the pat
   assert.deepEqual(fs.readFileSync(out), PNG);
   assert.equal(fs.statSync(out).mode & 0o077, 0); assert.equal(fs.statSync(path.dirname(out)).mode & 0o077, 0);
 });
+
+test('a machine that is not connected is reported as not connected, not as unsupported', async () => {
+  let handler; const fails = [];
+  drop.register({ route: (m, p, h) => { if (p === '/upload') handler = h; }, backendOf: (id) => (id === 'win' ? { mode: 'powershell' } : null), fail: (res, code, msg) => fails.push(msg) });
+  await handler({ req: {}, res: {}, url: new URL('http://x/upload?server=gone&session=s&name=a.png') });
+  await handler({ req: {}, res: {}, url: new URL('http://x/upload?server=win&session=s&name=a.png') });
+  assert.match(fails[0], /chưa kết nối/);
+  assert.match(fails[1], /chưa hỗ trợ/);
+});
