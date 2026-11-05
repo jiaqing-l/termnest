@@ -45,3 +45,20 @@ test('the wall is wired in: script tag, static route, API route and locale keys'
     for (const k of ['wall.all', 'wall.f.all', 'wall.f.wait', 'wall.f.run', 'wall.f.idle', 'wall.empty']) assert.ok(t[k], lang + ' ' + k);
   }
 });
+
+test('a file buried in a wide workspace is still offered by name (find, not a capped walk)', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { fileRuntime } = require('../lib/file-viewer');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-wide-'));
+  try {
+    for (let r = 0; r < 40; r++) { const d = path.join(root, 'repo' + r, 'src', 'deep'); fs.mkdirSync(d, { recursive: true }); for (let f = 0; f < 260; f++) fs.writeFileSync(path.join(d, 'f' + f + '.txt'), ''); }   // ~10k files first in the walk order
+    const target = path.join(root, 'zdocs', 'Implementation', 'Smart', 'phase', 'x', 'bien-the'); fs.mkdirSync(target, { recursive: true });
+    fs.mkdirSync(path.join(root, 'zdocs', 'node_modules', 'bien-the'), { recursive: true }); fs.writeFileSync(path.join(root, 'zdocs', 'node_modules', 'bien-the', 'manifest.csv'), 'skip');
+    fs.writeFileSync(path.join(target, 'manifest.csv'), 'a,b\n1,2\n');
+    const result = await fileRuntime()({ cwd: root, path: 'bien-the/manifest.csv' });
+    assert.deepEqual(result.candidates, ['zdocs/Implementation/Smart/phase/x/bien-the/manifest.csv']);
+    const none = await fileRuntime()({ cwd: root, path: 'bien-the/nothing.csv' });
+    assert.match(none.error, /Không tìm thấy tệp/);
+    assert.equal(none.candidates, undefined);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
