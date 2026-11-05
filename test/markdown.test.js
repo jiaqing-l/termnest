@@ -25,3 +25,12 @@ test('worker preserves complete structures when dividing a long document into ch
   }
  }
 });
+
+test('task lists render inside the Markdown worker, where there is no i18n',()=>{
+ const ui=require('../public/file-viewer'),saved=globalThis.i18n;
+ try{delete globalThis.i18n;
+  const html=ui.markdown('- [x] done\n- [ ] todo\n');
+  assert.match(html,/<input type="checkbox" disabled checked aria-label="Task status">/);
+  assert.match(html,/<input type="checkbox" disabled aria-label="Task status"> todo/);
+ }finally{globalThis.i18n=saved;}
+});

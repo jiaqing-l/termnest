@@ -741,7 +741,7 @@
   "alerts.cat_restart": "Máy chủ vừa khởi động lại",
   "alerts.cat_offline": "Mất kết nối máy chủ",
   "alerts.quiet_title": "{0} đã xong, chờ chỉ dẫn",
-  "html.tagline": "Máy thức thay bạn, để bạn yên giấc.",
+  "html.tagline": "Máy luôn hoạt động để bạn ngủ ngon.",
   "html.ph_session_name": "vd: build-api",
   "html.ph_host": "vd: 192.0.2.10",
   "html.ph_user": "vd: root",
