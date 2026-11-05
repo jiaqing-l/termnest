@@ -732,3 +732,25 @@ test('opening or resizing a session (reflow, truncation, older lines scrolling i
   t += 5000; const fresh = screenQuiet(rec, [...wide, 'Compiling the project and running all the tests now'], 0, t);
   assert.ok(fresh.quiet < 6, 'genuinely new words are activity');
 });
+
+test('a pane that changes size (a terminal attaches) is learned but never counted as work', () => {
+  const { screenQuiet } = require('../lib/parse');
+  const small = ['Worked for 3m 12s', '> Ask Codex to do anything', 'GPT-6.1-Sol high'];
+  const big = ['Có một phần rồi nhưng chưa đủ như file', 'Tôi đã bổ sung vào bảy file nguồn gồm rule skill template', 'Ảnh hưởng và câu hỏi cần chốt', ...small];
+  let t = 1e6; let r = screenQuiet(null, small, 0, t, '80x24');
+  t += 5000; r = screenQuiet(r.rec, big, 0, t, '200x50');          // attached: bigger window, older lines scroll into view
+  assert.ok(r.quiet >= 20, 'resize must not read as work');
+  t += 5000; r = screenQuiet(r.rec, big, 0, t, '200x50');
+  assert.ok(r.quiet >= 20);
+  t += 5000; r = screenQuiet(r.rec, [...big, 'Đang chạy kiểm thử và ghi lại kết quả mới'], 0, t, '200x50');   // same size, new output
+  assert.ok(r.quiet < 6, 'real output at a steady size is still work');
+});
+
+test('the poll reports the pane size and keeps the path intact', () => {
+  const { parsePoll, POLL_SCRIPT } = require('../lib/parse');
+  assert.match(POLL_SCRIPT, /#\{pane_width\}x#\{pane_height\}/);
+  const out = '@@SESS\n$1|~|build|~|1|~|100|~|200|~|claude|~|120x40|~|/home/a b|~|c\n$2|~|old|~|0|~|100|~|200|~|bash|~|/tmp\n@@END';
+  const sessions = parsePoll(out).sessions;
+  assert.equal(sessions[0].size, '120x40'); assert.equal(sessions[0].path, '/home/a b|~|c');
+  assert.equal(sessions[1].size, ''); assert.equal(sessions[1].path, '/tmp');
+});
