@@ -19,7 +19,9 @@
      const first=token.children?.[0],match=first?.type==='text'&&first.content.match(/^\[([ xX])\] /);
      if(!match)return;
      first.content=first.content.slice(4);
-     const check=new state.Token('html_inline','',0);check.content=i18n('fileviewer.input_type_checkbox_disabled_ari', [(match[1]!==' '?' checked':'')]);
+     const check=new state.Token('html_inline','',0);const checked=match[1]!==' '?' checked':'';
+     // This runs in the Markdown worker, which has no i18n: the label is for screen readers only, so it falls back to English there.
+     check.content=typeof i18n==='function'?i18n('fileviewer.input_type_checkbox_disabled_ari', [checked]):'<input type="checkbox" disabled'+checked+' aria-label="Task status"> ';
      token.children.unshift(check);
     });
    });
