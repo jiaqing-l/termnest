@@ -678,7 +678,7 @@ test('a finished Claude whose clock and counters keep ticking settles on "waitin
     const lines = ['Đã xong phần sửa.', 'Cooked for ' + (50 + i) + 's · done ' + (6 + i % 5) + ':5' + (i % 10) + ' AM', '▸▸ auto mode on (shift+tab to cycle) · ' + i + 's'];
     const r = pollOnce(rec, lines, 2, t); rec = r.rec; states.push(r.state); t += 5000;   // tmux says "active 2 s ago" every time
   }
-  assert.ok(states.slice(0, 3).every((x) => x === 'run'), 'the first moments still count as recent activity');
+  assert.ok(states.every((x) => x === 'wait'), 'tmux activity at the first look (a terminal just attached, a restart) must not flash running: ' + states.join(','));
   assert.ok(states.slice(6).every((x) => x === 'wait'), 'after that it never flips back to running: ' + states.join(','));
 });
 
