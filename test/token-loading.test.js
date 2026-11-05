@@ -118,3 +118,10 @@ test('retained host data shows age which advances without rebuilding the card',a
  const cards=f.section.children[0].children[2],card=cards.children[0];assert.match(card.textContent,/Dữ liệu đã lưu · 1 phút trước/);assert.equal(cards.children.length,1);
  f.advance(60000);f.ui.render();assert.match(card.textContent,/Dữ liệu đã lưu · 2 phút trước/);assert.equal(cards.children[0],card);
 });
+
+test('the Token AI account button opens the add dialog, not the rename dialog',()=>{
+ const src=fs.readFileSync(require.resolve('../public/token-ui.js'),'utf8');
+ assert.doesNotMatch(src,/config\.onclick\s*=\s*editAccounts\s*;/);   // that passed the click event as the account to rename
+ assert.match(src,/config\.onclick\s*=\s*\(\)\s*=>\s*editAccounts\(\)/);
+ assert.match(src,/if\(selected&&typeof selected\.id!=='string'\)selected=null/);
+});

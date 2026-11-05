@@ -127,7 +127,7 @@
       Promise.resolve(doc.defaultView.TW_DESKTOP.save(name,current.text)).then(()=>{download.textContent=label;},()=>{download.textContent=i18n('fileviewer.khong_luu_duoc');setTimeout(()=>{download.textContent=label;},3000);});return;}
     const url=URL.createObjectURL(new Blob([current.text],{type:'text/plain;charset=utf-8'})),a=doc.createElement('a');a.href=url;a.download=current.path.split(/[\\/]/).pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   const setTitle=path=>{title.textContent=path.length>80?'…/'+path.split(/[\\/]/).slice(-2).join('/'):path;title.title=path;};
-  let gallery=null,browserState=null,backState=null;
+  let gallery=null,browserState=null,backState=null,trashNote=null;
   async function open(host,session,path,opts){
    if(!(opts&&opts.keepGallery))gallery=null;
    // Opened from the file browser (or its search): remember where to come back to. Opened any other way: nothing to go back to.
@@ -174,6 +174,26 @@
    row.append(go);body.append(row);
   }
   function size(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
+  // The trash of the session folder: what was moved there, newest first, each with Restore. Nothing here deletes for good.
+  async function showTrash(host,session,dir,out0){
+   body.textContent='';
+   const back=doc.createElement('button');back.type='button';back.className='btn';back.textContent=i18n('fileviewer.ve_thu_muc');back.onclick=()=>showBrowser(host,session,dir);body.append(back);
+   const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
+   try{
+    const r=await api('GET','/api/features/browse/trash?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session));
+    wait.remove();
+    const list=doc.createElement('div');list.className='viewer-browser';
+    r.items.forEach(it=>{
+     const row=doc.createElement('div');row.className='viewer-row';const info=doc.createElement('div');info.className='viewer-trash-info';
+     const name=doc.createElement('b');name.textContent=(it.kind==='folder'?'📁 ':'📄 ')+it.name;const where=doc.createElement('small');where.textContent=it.rel+' · '+new Date(it.at).toLocaleString();info.append(name,where);
+     const rest=doc.createElement('button');rest.type='button';rest.className='btn primary';rest.textContent=i18n('fileviewer.khoi_phuc');const msg=doc.createElement('small');msg.className='viewer-err';
+     rest.onclick=async()=>{rest.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:it.id});await showTrash(host,session,dir,out0);}catch(err){msg.textContent=err.message;rest.disabled=false;}};
+     row.append(info,rest,msg);list.append(row);
+    });
+    if(!r.items.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thung_rac_trong');list.append(empty);}
+    body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.thung_rac_ghi_chu');body.append(help);
+   }catch(e){wait.textContent=e.message;}
+  }
   async function showBrowser(host,session,dir,query){
    browserState={host,session,dir:dir||'',query:query||''};back.hidden=true;backState=null;
    body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(note);
@@ -192,6 +212,7 @@
     const row=doc.createElement('div');row.className='viewer-actions';row.append(go,cancelBtn);form.append(nameIn,textIn,row,msg);
     const openForm=kind=>{form.dataset.kind=kind;form.hidden=false;nameIn.placeholder=i18n(kind==='folder'?'fileviewer.ten_thu_muc_moi':'fileviewer.ten_tep_moi');nameIn.setAttribute('aria-label',nameIn.placeholder);textIn.hidden=kind!=='file';nameIn.value='';textIn.value='';msg.textContent='';go.disabled=false;nameIn.focus();};
     [['📁 '+i18n('fileviewer.thu_muc_moi'),'folder'],['📄 '+i18n('fileviewer.tep_moi'),'file']].forEach(([label,kind])=>{const b=doc.createElement('button');b.type='button';b.className='btn';b.textContent=label;b.onclick=()=>openForm(kind);actions.append(b);});
+    const trashBtn=doc.createElement('button');trashBtn.type='button';trashBtn.className='btn';trashBtn.textContent='🗑 '+i18n('fileviewer.thung_rac');trashBtn.onclick=()=>showTrash(host,session,out.path,out);actions.append(trashBtn);
     cancelBtn.onclick=()=>{form.hidden=true;};
     form.onsubmit=async e=>{
      e.preventDefault();const kind=form.dataset.kind,name=nameIn.value.trim();if(!name)return;
@@ -203,12 +224,41 @@
      }catch(err){msg.textContent=err.message;go.disabled=false;}
     };
     body.append(actions,form);
+    if(trashNote){const n=trashNote;trashNote=null;const note=doc.createElement('p');note.className='viewer-note viewer-undo';note.append(n.text+' ');
+     const undo=doc.createElement('button');undo.type='button';undo.className='btn';undo.textContent=i18n('fileviewer.hoan_tac');
+     undo.onclick=async()=>{undo.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:n.id});await showBrowser(host,session,out.path);}catch(err){note.textContent=err.message;}};
+     note.append(undo);body.append(note);}
     const head=doc.createElement('p');head.className='viewer-note';head.textContent=i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
     const list=doc.createElement('div');list.className='viewer-browser';
     const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);return b;};
+    // Folders and files get a small row of actions: rename and move to the trash (never a permanent delete).
+    const miniBtn=(label,title)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-mini';b.textContent=label;b.title=title;b.setAttribute('aria-label',title);return b;};
+    const refresh=()=>showBrowser(host,session,out.path);
+    const rowItem=(icon,text,extra,fn,full,name)=>{
+     const row=doc.createElement('div');row.className='viewer-row';list.append(row);
+     const b=item(icon,text,extra,fn);row.append(b);   // item() put the button in the list: move it into the row
+     const ren=miniBtn('✏️',i18n('fileviewer.doi_ten')),del=miniBtn('🗑',i18n('fileviewer.chuyen_thung_rac'));
+     const restoreRow=()=>{row.textContent='';row.append(b,ren,del);};
+     const inline=(nodes)=>{row.textContent='';nodes.forEach(n=>row.append(n));};
+     ren.onclick=e=>{e.stopPropagation();
+      const form=doc.createElement('form');form.className='viewer-inline';const input=doc.createElement('input');input.type='text';input.value=name;input.setAttribute('aria-label',i18n('fileviewer.doi_ten'));
+      const save=doc.createElement('button');save.type='submit';save.className='btn primary';save.textContent=i18n('fileviewer.luu_ten');const cancel=doc.createElement('button');cancel.type='button';cancel.className='btn';cancel.textContent=i18n('fileviewer.huy_tao');const msg=doc.createElement('small');msg.className='viewer-err';
+      cancel.onclick=restoreRow;form.append(input,save,cancel,msg);inline([form]);input.focus();input.select();
+      form.onsubmit=async ev=>{ev.preventDefault();const to=input.value.trim();if(!to||to===name){restoreRow();return;}save.disabled=true;
+       try{await api('POST','/api/features/browse/rename',{server:host,session,path:full,name:to});await refresh();}catch(err){msg.textContent=err.message;save.disabled=false;}};
+     };
+     del.onclick=e=>{e.stopPropagation();
+      const ask=doc.createElement('span');ask.className='viewer-ask';ask.textContent=i18n('fileviewer.chuyen_thung_rac_hoi',[name]);
+      const yes=doc.createElement('button');yes.type='button';yes.className='btn primary';yes.textContent=i18n('fileviewer.chuyen');const no=doc.createElement('button');no.type='button';no.className='btn';no.textContent=i18n('fileviewer.huy_tao');const msg=doc.createElement('small');msg.className='viewer-err';
+      no.onclick=restoreRow;inline([ask,yes,no,msg]);no.focus();
+      yes.onclick=async()=>{yes.disabled=true;
+       try{const r=await api('POST','/api/features/browse/trash',{server:host,session,path:full});trashNote={text:i18n('fileviewer.da_vao_thung_rac',[name]),id:r.id};await refresh();}catch(err){msg.textContent=err.message;yes.disabled=false;}};
+     };
+     row.append(ren,del);return b;
+    };
     if(out.parent!==null)item('⬆',i18n('fileviewer.len_mot_cap'),'',()=>showBrowser(host,session,out.parent));
-    out.dirs.forEach(name=>item('📁',name,'',()=>showBrowser(host,session,out.path+sep+name)));
-    out.files.forEach(f=>dragPath(item('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name,{fromBrowser:true})),()=>out.path+sep+f.name,()=>host));
+    out.dirs.forEach(name=>rowItem('📁',name,'',()=>showBrowser(host,session,out.path+sep+name),out.path+sep+name,name));
+    out.files.forEach(f=>dragPath(rowItem('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name,{fromBrowser:true}),out.path+sep+f.name,f.name),()=>out.path+sep+f.name,()=>host));
     if(!out.dirs.length&&!out.files.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thu_muc_nay_khong_co');list.append(empty);}
     if(out.truncated){const more=doc.createElement('p');more.className='viewer-note';more.textContent=i18n('fileviewer.chi_hien_thi_500_muc');list.append(more);}
     body.append(list);

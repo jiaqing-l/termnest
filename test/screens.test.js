@@ -121,3 +121,57 @@ test('creating a folder or file stays inside the session folder, never overwrite
     }
   } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
 });
+
+test('rename and trash stay inside the session folder, never overwrite, and the trash can restore', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { fsopRuntime, browseRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsop-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fsout-'));
+  const real = fs.realpathSync(root);
+  try {
+    fs.mkdirSync(path.join(root, 'docs', 'sub'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'docs', 'a.md'), 'A'); fs.writeFileSync(path.join(root, 'docs', 'b.md'), 'B'); fs.writeFileSync(path.join(root, 'docs', 'sub', 'c.md'), 'C');
+    const run = fsopRuntime(), op = (o) => run({ cwd: root, ...o });
+    // rename
+    let r = await op({ op: 'rename', path: path.join(root, 'docs', 'a.md'), name: 'moi.md' });
+    assert.equal(r.path, path.join(real, 'docs', 'moi.md')); assert.equal(fs.readFileSync(r.path, 'utf8'), 'A'); assert.ok(!fs.existsSync(path.join(root, 'docs', 'a.md')));
+    assert.deepEqual(await op({ op: 'rename', path: path.join(root, 'docs', 'moi.md'), name: 'b.md' }), { code: 'exists' });   // never overwrites
+    assert.equal(fs.readFileSync(path.join(root, 'docs', 'b.md'), 'utf8'), 'B');
+    for (const bad of ['', ' ', '.', '..', 'x/y', '../x', 'a\\b', 'n\x00ul', 'x'.repeat(256)]) assert.equal((await op({ op: 'rename', path: path.join(root, 'docs', 'moi.md'), name: bad })).code, 'invalid', JSON.stringify(bad));
+    assert.equal((await op({ op: 'rename', path: path.join(root, 'docs', 'nothing.md'), name: 'x' })).code, 'notfound');
+    assert.equal((await op({ op: 'rename', path: root, name: 'x' })).code, 'root');
+    assert.equal((await op({ op: 'rename', path: path.join(outside, 'f'), name: 'x' })).code, 'outside');
+    assert.equal((await op({ op: 'rename', path: '../x', name: 'y' })).code, 'outside');
+    r = await op({ op: 'rename', path: path.join(root, 'docs', 'moi.md'), name: 'MOI.md' }); assert.ok(r.path.endsWith('MOI.md'));   // letter case only
+    r = await op({ op: 'rename', path: path.join(root, 'docs', 'sub'), name: 'thu-muc-con' }); assert.ok(fs.statSync(r.path).isDirectory());   // folders too
+    // trash
+    const gone = await op({ op: 'trash', path: path.join(root, 'docs', 'thu-muc-con') });
+    assert.ok(gone.id && gone.name === 'thu-muc-con'); assert.ok(!fs.existsSync(path.join(root, 'docs', 'thu-muc-con')));
+    assert.equal(fs.readFileSync(path.join(root, '.termnest-trash', '.gitignore'), 'utf8'), '*\n');
+    assert.equal(fs.readFileSync(path.join(root, '.termnest-trash', gone.id, 'data', 'thu-muc-con', 'c.md'), 'utf8'), 'C');   // the whole folder is kept
+    const second = await op({ op: 'trash', path: path.join(root, 'docs', 'b.md') });
+    assert.deepEqual((await op({ op: 'list' })).items.map((i) => [i.name, i.rel, i.kind]), [['b.md', 'docs/b.md', 'file'], ['thu-muc-con', 'docs/thu-muc-con', 'folder']]);   // newest first
+    assert.equal((await op({ op: 'trash', path: root })).code, 'root');
+    assert.equal((await op({ op: 'trash', path: path.join(root, '.termnest-trash') })).code, 'invalid');   // the trash itself cannot be trashed or renamed
+    assert.equal((await op({ op: 'rename', path: path.join(root, '.termnest-trash'), name: 'x' })).code, 'invalid');
+    // the browser hides the trash
+    assert.ok(!(await browseRuntime()({ cwd: root, dir: '' })).dirs.includes('.termnest-trash'));
+    // restore
+    r = await op({ op: 'restore', id: second.id }); assert.equal(fs.readFileSync(r.path, 'utf8'), 'B');
+    fs.writeFileSync(path.join(root, 'docs', 'thu-muc-con'), 'a file with the old name');
+    assert.deepEqual(await op({ op: 'restore', id: gone.id }), { code: 'exists' });   // the old place is taken: nothing is overwritten
+    fs.rmSync(path.join(root, 'docs', 'thu-muc-con'));
+    fs.rmSync(path.join(root, 'docs'), { recursive: true });   // even if the parent folder is gone, the restore recreates it
+    r = await op({ op: 'restore', id: gone.id }); assert.equal(fs.readFileSync(path.join(r.path, 'c.md'), 'utf8'), 'C');
+    assert.deepEqual((await op({ op: 'list' })).items, []);
+    assert.equal((await op({ op: 'restore', id: 'zzzzzzzz' })).code, 'notfound'); assert.equal((await op({ op: 'restore', id: '../../x' })).code, 'invalid');
+    // a tampered record cannot point outside
+    const bad = path.join(root, '.termnest-trash', 'abcdef12'); fs.mkdirSync(path.join(bad, 'data'), { recursive: true }); fs.writeFileSync(path.join(bad, 'data', 'x'), 'x');
+    fs.writeFileSync(path.join(bad, 'info.json'), JSON.stringify({ name: 'x', rel: '../escape', at: 1, kind: 'file' }));
+    assert.equal((await op({ op: 'restore', id: 'abcdef12' })).code, 'outside'); assert.deepEqual(fs.readdirSync(outside), []);
+    if (process.platform !== 'win32') {   // a symlinked parent must not lead out
+      fs.symlinkSync(outside, path.join(root, 'link')); fs.writeFileSync(path.join(outside, 'secret.txt'), 's');
+      assert.equal((await op({ op: 'trash', path: path.join(root, 'link', 'secret.txt') })).code, 'outside');
+      assert.ok(fs.existsSync(path.join(outside, 'secret.txt')));
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+});

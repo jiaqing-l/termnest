@@ -15,7 +15,7 @@ window.TokenUI = function (hooks) {
   const filters=node('div','seg');
   [['days',i18n('tokenui.theo_ngay')],['weeks',i18n('tokenui.theo_tuan')]].forEach(([key,label])=>{const b=node('button','',label);b.dataset.period=key;b.onclick=()=>{period=key;render();};filters.append(b);});
   const ai=node('select');ai.setAttribute('aria-label',i18n('tokenui.loc_ai'));[['all',i18n('tokenui.tat_ca_ai')],['claude','Claude'],['codex','Codex']].forEach(([key,label])=>{const o=node('option','',label);o.value=key;ai.append(o);});ai.onchange=()=>{filter=ai.value;render();usage.render();};
-  const config=node('button','btn',i18n('tokenui.tai_khoan'));config.onclick=editAccounts;
+  const config=node('button','btn',i18n('tokenui.tai_khoan'));config.onclick=()=>editAccounts();   // not editAccounts itself: the click event would arrive as `selected` and the dialog would only offer a rename
   const refreshBtn=node('button','btn token-refresh');refreshBtn.type='button';refreshBtn.title=i18n('tokenui.doc_lai_log_va_bao');
   refreshBtn.append(node('span','token-spin'),node('span','token-refresh-ico','↻'),node('span','',i18n('tokenui.lam_moi')));
   async function refreshAll(){if(refreshBtn.classList.contains('busy'))return;refreshBtn.classList.add('busy');try{await Promise.all([poll(true),usage.reload(true)]);}finally{refreshBtn.classList.remove('busy');}}
@@ -130,6 +130,7 @@ window.TokenUI = function (hooks) {
     finally{busy=false;}
   }
   function editAccounts(selected) {
+    if(selected&&typeof selected.id!=='string')selected=null;   // an event or anything that is not an account means "add", not "rename"
     const dlg=node('dialog','token-config'),form=node('form','f');form.append(node('h2','',selected?i18n('tokenui.doi_ten_tai_khoan'):i18n('tokenui.thu_muc_tai_khoan_ai')));
     const existing=(hooks.prefs().aiAccounts||[]).map(a=>({...a}));
     if(selected&&!existing.some(a=>a.id===selected.id)) existing.push({id:selected.id,hostId:selected.hostId,tool:selected.tool,directory:selected.directory || '~/.'+selected.tool,nickname:selected.nickname||'',threshold:selected.threshold});

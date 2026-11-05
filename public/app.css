@@ -1021,3 +1021,20 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 .viewer-create textarea{font:12.5px/1.45 var(--mono);resize:vertical;min-height:90px}
 .viewer-create textarea[hidden]{display:none!important}
 .viewer-create .viewer-actions{margin:0}
+
+.viewer-row{display:flex;gap:6px;align-items:center;margin:0 0 6px}
+.viewer-row .viewer-entry{flex:1;min-width:0;margin:0}
+.viewer-mini{flex:none;width:34px;min-height:34px;padding:0;opacity:.45;font-size:14px;line-height:1}
+.viewer-row:hover .viewer-mini,.viewer-mini:focus-visible{opacity:1}
+@media(hover:none){.viewer-mini{opacity:.9}}
+.viewer-inline{display:flex;gap:6px;align-items:center;flex:1;flex-wrap:wrap}
+.viewer-inline input{flex:1;min-width:140px;padding:6px 10px;border-radius:9px;border:1.5px solid var(--primary);background:var(--surface);color:var(--fg);font:inherit}
+.viewer-ask{flex:1;min-width:0;font-size:13.5px}
+.viewer-err{color:#d33;flex-basis:100%}
+.viewer-trash-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;word-break:break-all}
+.viewer-trash-info small{color:var(--fg-3)}
+.viewer-undo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.viewer-row{flex-wrap:wrap}
+.viewer-row .viewer-entry{flex:1 1 200px}
+.viewer-ask{flex:1 1 220px}
+.viewer-err:empty{display:none}
