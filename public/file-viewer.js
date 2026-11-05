@@ -75,7 +75,7 @@
   handle.onpointerup=e=>{handle.releasePointerCapture(e.pointerId);saveWidth();};
   handle.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();resize(width+(e.key==='ArrowLeft'?40:-40));saveWidth();}};
   // A file shown here (or listed in the browser) can be dragged into the terminal or a tile of the wall: its path is typed there.
-  const dragPath=(element,getPath,getHost)=>{element.draggable=true;element.className=(element.className?element.className+' ':'')+'viewer-drag';element.ondragstart=e=>{const p=getPath();if(!p||!e.dataTransfer){e.preventDefault();return;}e.dataTransfer.setData('application/x-termnest-path',JSON.stringify({host:getHost(),path:p}));e.dataTransfer.setData('text/plain',p);e.dataTransfer.effectAllowed='copy';};};
+  const dragPath=(element,getPath,getHost)=>{element.draggable=true;element.className=(element.className?element.className+' ':'')+'viewer-drag';element.ondragstart=e=>{const p=getPath();if(!p||!e.dataTransfer){e.preventDefault();return;}const info={host:getHost(),path:p};window.__twDrag=info;e.dataTransfer.setData('application/x-termnest-path',JSON.stringify(info));e.dataTransfer.setData('text/plain',p);e.dataTransfer.effectAllowed='copy';};element.ondragend=()=>{window.__twDrag=null;};};
   const head=doc.createElement('header'),title=doc.createElement('strong'),body=doc.createElement('div');body.className='file-content';
   const copy=doc.createElement('button'),download=doc.createElement('button'),close=doc.createElement('button'),reload=doc.createElement('button'),back=doc.createElement('button');
   [copy,download,close,reload,back].forEach(b=>{b.className='btn';b.type='button';});

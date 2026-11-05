@@ -6,6 +6,9 @@
   'use strict';
   var doc = o.document, win = o.window, app = o.app;
   var mac = /Mac|iPhone|iPad|iPod/i.test(o.navigator.platform || o.navigator.userAgent || '');
+  // Windows desktop app: the OS-level full screen leaves WebView2 without mouse input until the window loses focus, so focus mode there is
+  // page-only (all the chrome hidden, the terminal fills the window) and the native full screen is never asked for.
+  var pageOnly = /Win/i.test(o.navigator.platform || o.navigator.userAgent || '') && !!o.window.TW_DESKTOP;
   var terminalFont = read('tw-term-font', null, 28), crewFont = read('tw-crew-font', 12, 24);
   var lastCrew = false, pendingFont = false, pendingFullscreen = null, fullscreen = false, busy = false;
   var handled = new WeakSet(), wheelAt = { terminal: -Infinity, crew: -Infinity };
@@ -54,7 +57,8 @@
     if (busy) return;
     var enabled = !fullscreen; busy = true; syncFullscreen(enabled);
     try {
-      if (win.TW_DESKTOP) await win.TW_DESKTOP.setFullscreen(enabled);
+      if (pageOnly) { /* CSS only */ }
+      else if (win.TW_DESKTOP) await win.TW_DESKTOP.setFullscreen(enabled);
       else if (enabled) await doc.documentElement.requestFullscreen();
       else if (doc.fullscreenElement) await doc.exitFullscreen();
     } catch (_) { o.say(i18n('viewcontrols.che_do_tap_trung', [(enabled ? i18n('viewcontrols.da_bat_khong_mo_duoc') : i18n('viewcontrols.da_tat_khong_doi_duoc'))]), false, 2800, true); }
@@ -98,7 +102,7 @@
   o.terminalHost.addEventListener('wheel', wheel('terminal'), { passive: false, capture: true });
   o.crewOutput.addEventListener('wheel', wheel('crew'), { passive: false });
   doc.addEventListener('fullscreenchange', function () { syncFullscreen(!!doc.fullscreenElement); });
-  win.addEventListener('tw-fullscreen', function (e) { syncFullscreen(e.detail); });
+  win.addEventListener('tw-fullscreen', function (e) { if (!pageOnly) syncFullscreen(e.detail); });   // the window is never full screen in page-only mode
   o.crewOutput.style.setProperty('--crew-font', crewFont + 'px'); updateLabels();
   return { font: font, zoom: zoom, handleKey: handleKey, applyTerminalFont: applyTerminalFont,
     flush: function () {

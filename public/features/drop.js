@@ -42,13 +42,17 @@
     var depth = 0;
     var inWall = function (e) { return e.target && e.target.closest && e.target.closest('#wall'); };   // the wall's tiles take their own files
     var PATH_TYPE = 'application/x-termnest-path';
-    var isPath = function (dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], PATH_TYPE) >= 0; };
-    host.addEventListener('dragover', function (e) { if (inWall(e)) return; if (isPath(e.dataTransfer)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+    // WebKit hides custom types during dragover and wants dragenter AND dragover cancelled, so the viewer also keeps its drag in window.__twDrag.
+    var isPath = function (dt) { return !!window.__twDrag || (!!dt && Array.prototype.indexOf.call(dt.types || [], PATH_TYPE) >= 0); };
+    var accept = function (e) { if (inWall(e) || !isPath(e.dataTransfer)) return; e.preventDefault(); try { e.dataTransfer.dropEffect = 'copy'; } catch (err) { /* read-only in some engines */ } };
+    host.addEventListener('dragenter', accept, true);
+    host.addEventListener('dragover', accept, true);
     // A file dragged out of the viewer: type its path into the selected session (nothing is sent until Enter), if it lives on the same machine.
     host.addEventListener('drop', function (e) {
       if (inWall(e) || !isPath(e.dataTransfer)) return;
       e.preventDefault(); e.stopPropagation();
-      var data; try { data = JSON.parse(e.dataTransfer.getData(PATH_TYPE)); } catch (err) { return; }
+      var data = window.__twDrag; window.__twDrag = null;
+      if (!data) { try { data = JSON.parse(e.dataTransfer.getData(PATH_TYPE)); } catch (err) { return; } }
       var cur = a.current && target(a.current()); if (!cur || !data || typeof data.path !== 'string') { if (a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
       if (data.host && data.host !== cur.id) { if (a.say) a.say(i18n('drop.khac_may'), false, 3500); return; }
       a.typeText(data.path + ' ');

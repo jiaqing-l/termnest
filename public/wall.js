@@ -68,12 +68,14 @@
       picker.onchange = function () { attach(picker.files); picker.value = ''; };
       fileBtn.onclick = function () { opts.browse(x.v.id, x.s.name); };
       var hasFiles = function (dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], 'Files') >= 0; };
-      var PATH_TYPE = 'application/x-termnest-path', hasPath = function (dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], PATH_TYPE) >= 0; };
-      tile.addEventListener('dragover', function (e) { if (hasFiles(e.dataTransfer) || hasPath(e.dataTransfer)) { e.preventDefault(); tile.classList.add('drop'); } });
+      var PATH_TYPE = 'application/x-termnest-path', hasPath = function (dt) { return !!root.__twDrag || (!!dt && Array.prototype.indexOf.call(dt.types || [], PATH_TYPE) >= 0); };
+      var over = function (e) { if (hasFiles(e.dataTransfer) || hasPath(e.dataTransfer)) { e.preventDefault(); tile.classList.add('drop'); } };
+      tile.addEventListener('dragenter', over); tile.addEventListener('dragover', over);
       tile.addEventListener('drop', function (e) {   // a file dragged out of the viewer: its path goes into this tile's box (same machine only)
         if (!hasPath(e.dataTransfer)) return;
         e.preventDefault(); e.stopPropagation(); tile.classList.remove('drop');
-        var data; try { data = JSON.parse(e.dataTransfer.getData(PATH_TYPE)); } catch (err) { return; }
+        var data = root.__twDrag; root.__twDrag = null;
+        if (!data) { try { data = JSON.parse(e.dataTransfer.getData(PATH_TYPE)); } catch (err) { return; } }
         if (!data || typeof data.path !== 'string') return;
         if (data.host && data.host !== x.v.id) { opts.fail(new Error(opts.text('drop.khac_may'))); return; }
         input.value = (input.value ? input.value.replace(/\s*$/, ' ') : '') + data.path + ' '; input.focus(); input.dispatchEvent(new Event('input'));
