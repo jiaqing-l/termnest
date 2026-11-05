@@ -1012,3 +1012,4 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 .viewer-back{flex:none}
 .file-viewer header strong{order:-2}
 .viewer-back{order:-1;flex:none}   /* first button of the row, right under the title */
+.viewer-drag{cursor:grab}.viewer-drag:active{cursor:grabbing}

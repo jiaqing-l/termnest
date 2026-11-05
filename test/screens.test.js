@@ -63,23 +63,37 @@ test('a file buried in a wide workspace is still offered by name (find, not a ca
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('the file browser finds files by part of their name at any depth, newest first, skipping heavy folders', async () => {
+test('the file index and filter find files by part of the name or path, newest first, skipping heavy folders', async () => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
-  const { searchRuntime } = require('../lib/features/browse');
+  const { indexRuntime, filterIndex } = require('../lib/features/browse');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-search-'));
   try {
     const put = (rel, body, age) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, body); const t = new Date(Date.now() - age * 1000); fs.utimesSync(f, t, t); };
-    put('docs/a/b/c/Manifest-Bien-The.csv', 'x', 100); put('docs/new/manifest-v2.csv', 'x', 5); put('node_modules/pkg/manifest.csv', 'x', 1); put('src/notes.md', 'x', 1); put('src/manifest.bin', 'x', 1);
-    const run = searchRuntime();
-    const hit = await run({ cwd: root, q: 'MANIFEST' });
-    assert.deepEqual(hit.files.map((f) => f.rel), ['docs/new/manifest-v2.csv', 'docs/a/b/c/Manifest-Bien-The.csv']);   // newest first; no node_modules, no .bin
-    assert.equal(hit.more, false);
-    assert.deepEqual((await run({ cwd: root, q: 'zzz-nothing' })).files, []);
-    assert.deepEqual((await run({ cwd: root, q: 'bien-the' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);
-    assert.deepEqual((await run({ cwd: root, q: 'c/manifest-bien' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);   // a path typed as folder/name
-    assert.deepEqual((await run({ cwd: root, q: 'new/manifest' })).files.map((f) => f.rel), ['docs/new/manifest-v2.csv']);
-    assert.ok((await run({ cwd: root, q: '' })).error); assert.ok((await run({ cwd: root, q: 'a\nb' })).error);
-    assert.equal((await run({ cwd: root, q: '*' })).files.length, 0);   // glob characters are literal, never a wildcard
-    assert.equal((await run({ cwd: root, q: '[' })).files.length, 0);
+    put('docs/a/b/c/Manifest-Bien-The.csv', 'x', 100); put('docs/new/manifest-v2.csv', 'x', 5); put('node_modules/pkg/manifest.csv', 'x', 1); put('src/notes.md', 'x', 1); put('src/manifest.bin', 'x', 1); put('.mobile/plan/manifest-mobile.md', 'x', 50);
+    const index = await indexRuntime()({ cwd: root });
+    assert.ok(index.rows.length >= 4 && !index.error);
+    const names = (q) => filterIndex(index.rows, q).files.map((f) => f.rel);
+    assert.deepEqual(names('MANIFEST'), ['docs/new/manifest-v2.csv', '.mobile/plan/manifest-mobile.md', 'docs/a/b/c/Manifest-Bien-The.csv']);   // newest first; no node_modules, no .bin; dot folders are searched
+    assert.deepEqual(names('bien-the'), ['docs/a/b/c/Manifest-Bien-The.csv']);
+    assert.deepEqual(names('c/manifest-bien'), ['docs/a/b/c/Manifest-Bien-The.csv']);   // a path typed as folder/name
+    assert.deepEqual(names('./new/manifest'), ['docs/new/manifest-v2.csv']);
+    assert.deepEqual(names('zzz-nothing'), []); assert.deepEqual(names('*'), []); assert.deepEqual(names('['), []);
+    assert.equal(filterIndex(index.rows, '').bad, true); assert.equal(filterIndex(index.rows, 'a\nb').bad, true);
+    const many = Array.from({ length: 80 }, (_, i) => ({ rel: 'x/file' + i + '.md', at: i }));
+    const page = filterIndex(many, 'file'); assert.equal(page.files.length, 50); assert.equal(page.more, true); assert.equal(page.files[0].rel, 'x/file79.md');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the file browser lists folders that start with a dot, but not .git or dot-files', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { browseRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-browse-'));
+  try {
+    for (const d of ['.mobile', '.github', '.git', 'docs', 'node_modules']) fs.mkdirSync(path.join(root, d));
+    fs.writeFileSync(path.join(root, 'README.md'), 'x'); fs.writeFileSync(path.join(root, '.env'), 'x'); fs.writeFileSync(path.join(root, 'a.md'), 'xx');
+    const out = await browseRuntime()({ cwd: root, dir: '' });
+    assert.deepEqual(out.dirs, ['.github', '.mobile', 'docs']);
+    assert.deepEqual(out.files.map((f) => f.name), ['a.md', 'README.md']);
+    assert.equal(out.files.find((f) => f.name === 'a.md').size, 2);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

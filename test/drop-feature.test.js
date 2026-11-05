@@ -29,3 +29,16 @@ test('the stored script writes stdin to a private temp folder and prints the pat
   assert.deepEqual(fs.readFileSync(out), PNG);
   assert.equal(fs.statSync(out).mode & 0o077, 0); assert.equal(fs.statSync(path.dirname(out)).mode & 0o077, 0);
 });
+
+test('the client reads the server and session from the app current() shape {v, s}', () => {
+  const vm = require('node:vm');
+  const TW = { el: () => ({}), app: () => ({}) };
+  const ctx = { TW, setInterval: () => 0, clearInterval() {}, document: {}, i18n: (k) => k };
+  ctx.window = ctx;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/features/drop.js'), 'utf8'), ctx);
+  const plain = (v) => JSON.parse(JSON.stringify(v));   // objects made inside the vm have another prototype
+  assert.deepEqual(plain(TW.dropTarget({ v: { id: 'srv-1' }, s: { name: 'build' } })), { id: 'srv-1', name: 'build' });
+  assert.deepEqual(plain(TW.dropTarget({ id: 'srv-2', name: 'old' })), { id: 'srv-2', name: 'old' });   // the older shape still works
+  assert.equal(TW.dropTarget(null), null);
+  assert.equal(typeof TW.upload, 'function');
+});

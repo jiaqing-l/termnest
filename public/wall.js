@@ -68,7 +68,16 @@
       picker.onchange = function () { attach(picker.files); picker.value = ''; };
       fileBtn.onclick = function () { opts.browse(x.v.id, x.s.name); };
       var hasFiles = function (dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], 'Files') >= 0; };
-      tile.addEventListener('dragover', function (e) { if (hasFiles(e.dataTransfer)) { e.preventDefault(); tile.classList.add('drop'); } });
+      var PATH_TYPE = 'application/x-termnest-path', hasPath = function (dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], PATH_TYPE) >= 0; };
+      tile.addEventListener('dragover', function (e) { if (hasFiles(e.dataTransfer) || hasPath(e.dataTransfer)) { e.preventDefault(); tile.classList.add('drop'); } });
+      tile.addEventListener('drop', function (e) {   // a file dragged out of the viewer: its path goes into this tile's box (same machine only)
+        if (!hasPath(e.dataTransfer)) return;
+        e.preventDefault(); e.stopPropagation(); tile.classList.remove('drop');
+        var data; try { data = JSON.parse(e.dataTransfer.getData(PATH_TYPE)); } catch (err) { return; }
+        if (!data || typeof data.path !== 'string') return;
+        if (data.host && data.host !== x.v.id) { opts.fail(new Error(opts.text('drop.khac_may'))); return; }
+        input.value = (input.value ? input.value.replace(/\s*$/, ' ') : '') + data.path + ' '; input.focus(); input.dispatchEvent(new Event('input'));
+      }, true);
       tile.addEventListener('dragleave', function () { tile.classList.remove('drop'); });
       tile.addEventListener('drop', function (e) { tile.classList.remove('drop'); if (!hasFiles(e.dataTransfer)) return; e.preventDefault(); attach(e.dataTransfer.files); });
       input.addEventListener('paste', function (e) { var f = e.clipboardData && e.clipboardData.files; if (f && f.length) { e.preventDefault(); attach(f); } });

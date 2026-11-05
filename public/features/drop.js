@@ -25,9 +25,11 @@
       { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' } })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || i18n('drop.khong_tai_duoc')); return j.path; }); });
   }
-  TW.upload = upload;
+  TW.upload = upload; TW.dropTarget = target;
+  // The app's current() is {v: server, s: session}; accept {id, name} too. (Reading cur.id directly sent "server=undefined", so every upload failed.)
+  function target(cur) { return cur && cur.v && cur.s ? { id: cur.v.id, name: cur.s.name } : cur && cur.id ? { id: cur.id, name: cur.name } : null; }
   function send(file) {
-    var a = app(), cur = a && a.current && a.current(); if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
+    var a = app(), cur = a && a.current && target(a.current()); if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
     var ui = chip(file);
     if (file.size > MAX) { ui.fail(i18n('drop.qua_10_mb')); return; }
     if (!OK.test(file.name)) { ui.fail(i18n('drop.loai_file_chua_ho_tro')); return; }
@@ -39,6 +41,18 @@
     var a = app(), host = a && a.dropTarget && a.dropTarget(); if (!host) return false; ensure(host);
     var depth = 0;
     var inWall = function (e) { return e.target && e.target.closest && e.target.closest('#wall'); };   // the wall's tiles take their own files
+    var PATH_TYPE = 'application/x-termnest-path';
+    var isPath = function (dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], PATH_TYPE) >= 0; };
+    host.addEventListener('dragover', function (e) { if (inWall(e)) return; if (isPath(e.dataTransfer)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+    // A file dragged out of the viewer: type its path into the selected session (nothing is sent until Enter), if it lives on the same machine.
+    host.addEventListener('drop', function (e) {
+      if (inWall(e) || !isPath(e.dataTransfer)) return;
+      e.preventDefault(); e.stopPropagation();
+      var data; try { data = JSON.parse(e.dataTransfer.getData(PATH_TYPE)); } catch (err) { return; }
+      var cur = a.current && target(a.current()); if (!cur || !data || typeof data.path !== 'string') { if (a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
+      if (data.host && data.host !== cur.id) { if (a.say) a.say(i18n('drop.khac_may'), false, 3500); return; }
+      a.typeText(data.path + ' ');
+    }, true);
     host.addEventListener('dragenter', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) { depth++; zone.hidden = false; } });
     host.addEventListener('dragover', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) e.preventDefault(); });
     host.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) zone.hidden = true; });

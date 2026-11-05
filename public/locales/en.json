@@ -1029,5 +1029,6 @@
   "fileviewer.dang_tim": "Searching…",
   "fileviewer.khong_khop": "No file matches.",
   "fileviewer.chi_50_moi_nhat": "Showing the 50 newest matches. Type more to narrow it down.",
-  "fileviewer.quay_lai": "← Files"
+  "fileviewer.quay_lai": "← Files",
+  "drop.khac_may": "That file is on a different machine than the selected session."
 }

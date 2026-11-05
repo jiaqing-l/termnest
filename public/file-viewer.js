@@ -74,11 +74,13 @@
   handle.onpointermove=e=>{if(handle.hasPointerCapture(e.pointerId))resize(innerWidth-e.clientX);};
   handle.onpointerup=e=>{handle.releasePointerCapture(e.pointerId);saveWidth();};
   handle.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();resize(width+(e.key==='ArrowLeft'?40:-40));saveWidth();}};
+  // A file shown here (or listed in the browser) can be dragged into the terminal or a tile of the wall: its path is typed there.
+  const dragPath=(element,getPath,getHost)=>{element.draggable=true;element.className=(element.className?element.className+' ':'')+'viewer-drag';element.ondragstart=e=>{const p=getPath();if(!p||!e.dataTransfer){e.preventDefault();return;}e.dataTransfer.setData('application/x-termnest-path',JSON.stringify({host:getHost(),path:p}));e.dataTransfer.setData('text/plain',p);e.dataTransfer.effectAllowed='copy';};};
   const head=doc.createElement('header'),title=doc.createElement('strong'),body=doc.createElement('div');body.className='file-content';
   const copy=doc.createElement('button'),download=doc.createElement('button'),close=doc.createElement('button'),reload=doc.createElement('button'),back=doc.createElement('button');
   [copy,download,close,reload,back].forEach(b=>{b.className='btn';b.type='button';});
   copy.textContent=i18n('fileviewer.sao_chep_duong_dan');download.textContent=i18n('fileviewer.tai_xuong');close.textContent=i18n('fileviewer.dong');reload.textContent=i18n('fileviewer.tai_lai');back.textContent=i18n('fileviewer.quay_lai');back.hidden=true;back.className='btn viewer-back';
-  head.append(title,copy,download,close,reload,back);panel.append(handle,head,body);doc.body.append(panel);
+  head.append(title,copy,download,close,reload,back);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
   let generation=0,current=null,worker=null,location=null;
   const cancel=()=>{if(worker){worker.terminate();worker=null;}};
   close.onclick=()=>{generation++;cancel();panel.hidden=true;body.textContent='';current=null;};
@@ -183,10 +185,10 @@
     const find=doc.createElement('input');find.type='search';find.className='viewer-find';find.placeholder=i18n('fileviewer.tim_ten');find.setAttribute('aria-label',i18n('fileviewer.tim_ten'));find.autocomplete='off';body.append(find);
     const head=doc.createElement('p');head.className='viewer-note';head.textContent=i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
     const list=doc.createElement('div');list.className='viewer-browser';
-    const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);};
+    const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);return b;};
     if(out.parent!==null)item('⬆',i18n('fileviewer.len_mot_cap'),'',()=>showBrowser(host,session,out.parent));
     out.dirs.forEach(name=>item('📁',name,'',()=>showBrowser(host,session,out.path+sep+name)));
-    out.files.forEach(f=>item('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name,{fromBrowser:true})));
+    out.files.forEach(f=>dragPath(item('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name,{fromBrowser:true})),()=>out.path+sep+f.name,()=>host));
     if(!out.dirs.length&&!out.files.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thu_muc_nay_khong_co');list.append(empty);}
     if(out.truncated){const more=doc.createElement('p');more.className='viewer-note';more.textContent=i18n('fileviewer.chi_hien_thi_500_muc');list.append(more);}
     body.append(list);
@@ -201,9 +203,9 @@
       try{
        const r=await api('GET','/api/features/browse/search?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&q='+encodeURIComponent(text));
        if(mine!==seq)return;results.textContent='';
-       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);const e=doc.createElement('small');e.textContent=size(f.size);b.append(e);b.onclick=()=>open(host,session,r.root+sep+f.rel.split('/').join(sep),{fromBrowser:true});results.append(b);});
+       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);b.onclick=()=>open(host,session,r.root+sep+f.rel.split('/').join(sep),{fromBrowser:true});dragPath(b,()=>r.root+sep+f.rel.split('/').join(sep),()=>host);results.append(b);});
        if(!r.files.length){const n=doc.createElement('p');n.className='viewer-note';n.textContent=i18n('fileviewer.khong_khop');results.append(n);}
-       if(r.more){const m=doc.createElement('p');m.className='viewer-note';m.textContent=i18n('fileviewer.chi_50_moi_nhat');results.append(m);}
+       if(r.more||r.capped){const m=doc.createElement('p');m.className='viewer-note';m.textContent=i18n('fileviewer.chi_50_moi_nhat');results.append(m);}
       }catch(err){if(mine===seq){results.textContent='';const n=doc.createElement('p');n.className='viewer-note';n.textContent=err.message;results.append(n);}}
      },250);
     };
