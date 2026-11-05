@@ -1007,5 +1007,9 @@
   "wall.font_minus": "Giảm cỡ chữ",
   "wall.font_plus": "Tăng cỡ chữ",
   "wall.fullscreen": "Toàn màn hình",
-  "wall.reply_hint": "Trả lời hoặc giao việc tiếp. Enter để gửi, Shift+Enter để xuống dòng."
+  "wall.reply_hint": "Trả lời hoặc giao việc tiếp. Enter để gửi, Shift+Enter để xuống dòng.",
+  "fileviewer.tim_ten": "Tìm tệp theo tên…",
+  "fileviewer.dang_tim": "Đang tìm…",
+  "fileviewer.khong_khop": "Không có tệp nào khớp.",
+  "fileviewer.chi_50_moi_nhat": "Chỉ hiện 50 kết quả mới nhất. Gõ thêm để thu hẹp."
 }

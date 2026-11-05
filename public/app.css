@@ -1003,3 +1003,6 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 .w-reply textarea{height:32px;white-space:pre-wrap}
 .w-reply{align-items:flex-end}
 .w-reply textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.viewer-find{display:block;width:100%;box-sizing:border-box;margin:0 0 10px;min-height:38px;padding:6px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface-2,var(--surface));color:var(--fg);font:inherit}
+.viewer-find:focus{outline:2px solid var(--primary);outline-offset:-1px}

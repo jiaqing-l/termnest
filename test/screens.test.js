@@ -62,3 +62,22 @@ test('a file buried in a wide workspace is still offered by name (find, not a ca
     assert.equal(none.candidates, undefined);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('the file browser finds files by part of their name at any depth, newest first, skipping heavy folders', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { searchRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-search-'));
+  try {
+    const put = (rel, body, age) => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, body); const t = new Date(Date.now() - age * 1000); fs.utimesSync(f, t, t); };
+    put('docs/a/b/c/Manifest-Bien-The.csv', 'x', 100); put('docs/new/manifest-v2.csv', 'x', 5); put('node_modules/pkg/manifest.csv', 'x', 1); put('src/notes.md', 'x', 1); put('src/manifest.bin', 'x', 1);
+    const run = searchRuntime();
+    const hit = await run({ cwd: root, q: 'MANIFEST' });
+    assert.deepEqual(hit.files.map((f) => f.rel), ['docs/new/manifest-v2.csv', 'docs/a/b/c/Manifest-Bien-The.csv']);   // newest first; no node_modules, no .bin
+    assert.equal(hit.more, false);
+    assert.deepEqual((await run({ cwd: root, q: 'zzz-nothing' })).files, []);
+    assert.deepEqual((await run({ cwd: root, q: 'bien-the' })).files.map((f) => f.rel), ['docs/a/b/c/Manifest-Bien-The.csv']);
+    assert.ok((await run({ cwd: root, q: '' })).error); assert.ok((await run({ cwd: root, q: 'a\nb' })).error);
+    assert.equal((await run({ cwd: root, q: '*' })).files.length, 0);   // glob characters are literal, never a wildcard
+    assert.equal((await run({ cwd: root, q: '[' })).files.length, 0);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
