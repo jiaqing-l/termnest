@@ -1030,5 +1030,18 @@
   "fileviewer.khong_khop": "No file matches.",
   "fileviewer.chi_50_moi_nhat": "Showing the 50 newest matches. Type more to narrow it down.",
   "fileviewer.quay_lai": "← Files",
-  "drop.khac_may": "That file is on a different machine than the selected session."
+  "drop.khac_may": "That file is on a different machine than the selected session.",
+  "srv.browse.ten_khong_hop_le": "The name is not valid.",
+  "srv.browse.da_co_ten_nay": "An item with this name already exists.",
+  "srv.browse.chi_tao_trong_thu_muc": "You can only create inside the session folder.",
+  "srv.browse.khong_co_quyen_tao": "No permission to create here.",
+  "srv.browse.khong_tao_duoc": "Could not create it.",
+  "fileviewer.thu_muc_moi": "New folder",
+  "fileviewer.tep_moi": "New file",
+  "fileviewer.ten_thu_muc_moi": "Folder name (or a/b/c for nested folders)",
+  "fileviewer.ten_tep_moi": "File name, for example notes.md",
+  "fileviewer.noi_dung_tuy_chon": "Content (optional)",
+  "fileviewer.tao": "Create",
+  "fileviewer.huy_tao": "Cancel",
+  "fileviewer.dang_tao": "Creating…"
 }

@@ -97,3 +97,27 @@ test('the file browser lists folders that start with a dot, but not .git or dot-
     assert.equal(out.files.find((f) => f.name === 'a.md').size, 2);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('creating a folder or file stays inside the session folder, never overwrites, and checks every parent', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { createRuntime } = require('../lib/features/browse');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-create-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-outside-'));
+  try {
+    const run = createRuntime(); const make = (o) => run({ cwd: root, dir: '', ...o });
+    let r = await make({ name: 'docs', kind: 'folder' }); assert.equal(r.path, fs.realpathSync(root) + path.sep + 'docs'); assert.ok(fs.statSync(r.path).isDirectory());
+    r = await make({ name: 'docs/ghi-chu.md', kind: 'file', content: '# Xin chào\n' }); assert.equal(fs.readFileSync(r.path, 'utf8'), '# Xin chào\n');
+    r = await make({ name: 'a/b/c/moi.txt', kind: 'file' }); assert.equal(fs.readFileSync(r.path, 'utf8'), '');   // missing parents are created
+    r = await run({ cwd: root, dir: path.join(root, 'docs'), name: 'phu.md', kind: 'file' }); assert.ok(r.path.endsWith(path.join('docs', 'phu.md')));   // created in the folder being shown
+    assert.deepEqual(await make({ name: 'docs/ghi-chu.md', kind: 'file', content: 'ghi đè?' }), { code: 'exists' });
+    assert.equal(fs.readFileSync(path.join(root, 'docs', 'ghi-chu.md'), 'utf8'), '# Xin chào\n');   // the first content is intact
+    assert.deepEqual(await make({ name: 'docs', kind: 'folder' }), { code: 'exists' });
+    for (const bad of ['..', '../x', 'a/../../x', '/etc/x', 'a\\b', 'x:y', 'bad|name', '', ' ', 'a/./b', 'x'.repeat(256), 'n\x00ul']) assert.equal((await make({ name: bad, kind: 'file' })).code, 'invalid', JSON.stringify(bad));
+    assert.equal((await make({ name: 'x', kind: 'socket' })).code, 'invalid'); assert.equal((await make({ name: 'x', kind: 'file', content: 'a\0b' })).code, 'invalid');
+    assert.equal((await run({ cwd: root, dir: outside, name: 'x', kind: 'file' })).code, 'outside');   // a folder outside the session
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(outside, path.join(root, 'link'));
+      assert.equal((await make({ name: 'link/escape.txt', kind: 'file' })).code, 'invalid');   // a symlinked parent must not lead out
+      assert.deepEqual(fs.readdirSync(outside), []);
+    }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+});

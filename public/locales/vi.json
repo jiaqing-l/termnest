@@ -1013,5 +1013,18 @@
   "fileviewer.khong_khop": "Không có tệp nào khớp.",
   "fileviewer.chi_50_moi_nhat": "Chỉ hiện 50 kết quả mới nhất. Gõ thêm để thu hẹp.",
   "fileviewer.quay_lai": "← Danh sách",
-  "drop.khac_may": "Tệp này nằm trên máy khác với phiên đang chọn."
+  "drop.khac_may": "Tệp này nằm trên máy khác với phiên đang chọn.",
+  "srv.browse.ten_khong_hop_le": "Tên không hợp lệ.",
+  "srv.browse.da_co_ten_nay": "Đã có mục trùng tên này.",
+  "srv.browse.chi_tao_trong_thu_muc": "Chỉ tạo được trong thư mục của phiên.",
+  "srv.browse.khong_co_quyen_tao": "Không có quyền tạo ở đây.",
+  "srv.browse.khong_tao_duoc": "Không tạo được.",
+  "fileviewer.thu_muc_moi": "Thư mục mới",
+  "fileviewer.tep_moi": "Tệp mới",
+  "fileviewer.ten_thu_muc_moi": "Tên thư mục (hoặc a/b/c để tạo lồng nhau)",
+  "fileviewer.ten_tep_moi": "Tên tệp, ví dụ ghi-chu.md",
+  "fileviewer.noi_dung_tuy_chon": "Nội dung (không bắt buộc)",
+  "fileviewer.tao": "Tạo",
+  "fileviewer.huy_tao": "Hủy",
+  "fileviewer.dang_tao": "Đang tạo…"
 }

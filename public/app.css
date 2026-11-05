@@ -1013,3 +1013,11 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 .file-viewer header strong{order:-2}
 .viewer-back{order:-1;flex:none}   /* first button of the row, right under the title */
 .viewer-drag{cursor:grab}.viewer-drag:active{cursor:grabbing}
+
+.viewer-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.viewer-create{display:grid;gap:8px;margin:0 0 12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,var(--surface))}
+.viewer-create[hidden]{display:none!important}
+.viewer-create input,.viewer-create textarea{width:100%;box-sizing:border-box;padding:7px 11px;border-radius:9px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);font:inherit}
+.viewer-create textarea{font:12.5px/1.45 var(--mono);resize:vertical;min-height:90px}
+.viewer-create textarea[hidden]{display:none!important}
+.viewer-create .viewer-actions{margin:0}

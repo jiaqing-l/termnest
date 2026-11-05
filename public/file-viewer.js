@@ -183,6 +183,26 @@
     body.textContent='';
     // Search by name across the whole session folder: results replace the listing while there is text in the box.
     const find=doc.createElement('input');find.type='search';find.className='viewer-find';find.placeholder=i18n('fileviewer.tim_ten');find.setAttribute('aria-label',i18n('fileviewer.tim_ten'));find.autocomplete='off';body.append(find);
+    // New folder / new file (optionally with some text) in the folder being shown, created on the session's machine.
+    const actions=doc.createElement('div');actions.className='viewer-actions';
+    const form=doc.createElement('form');form.className='viewer-create';form.hidden=true;
+    const nameIn=doc.createElement('input'),textIn=doc.createElement('textarea'),go=doc.createElement('button'),cancelBtn=doc.createElement('button'),msg=doc.createElement('p');
+    nameIn.type='text';nameIn.autocomplete='off';textIn.rows=5;textIn.placeholder=i18n('fileviewer.noi_dung_tuy_chon');textIn.setAttribute('aria-label',i18n('fileviewer.noi_dung_tuy_chon'));
+    go.type='submit';go.className='btn primary';go.textContent=i18n('fileviewer.tao');cancelBtn.type='button';cancelBtn.className='btn';cancelBtn.textContent=i18n('fileviewer.huy_tao');msg.className='viewer-note';
+    const row=doc.createElement('div');row.className='viewer-actions';row.append(go,cancelBtn);form.append(nameIn,textIn,row,msg);
+    const openForm=kind=>{form.dataset.kind=kind;form.hidden=false;nameIn.placeholder=i18n(kind==='folder'?'fileviewer.ten_thu_muc_moi':'fileviewer.ten_tep_moi');nameIn.setAttribute('aria-label',nameIn.placeholder);textIn.hidden=kind!=='file';nameIn.value='';textIn.value='';msg.textContent='';go.disabled=false;nameIn.focus();};
+    [['📁 '+i18n('fileviewer.thu_muc_moi'),'folder'],['📄 '+i18n('fileviewer.tep_moi'),'file']].forEach(([label,kind])=>{const b=doc.createElement('button');b.type='button';b.className='btn';b.textContent=label;b.onclick=()=>openForm(kind);actions.append(b);});
+    cancelBtn.onclick=()=>{form.hidden=true;};
+    form.onsubmit=async e=>{
+     e.preventDefault();const kind=form.dataset.kind,name=nameIn.value.trim();if(!name)return;
+     go.disabled=true;msg.textContent=i18n('fileviewer.dang_tao');
+     try{
+      const made=await api('POST','/api/features/browse/create',{server:host,session,dir:out.path,name,kind,content:kind==='file'?textIn.value:undefined});
+      await showBrowser(host,session,out.path);
+      if(kind==='file')open(host,session,made.path,{fromBrowser:true});
+     }catch(err){msg.textContent=err.message;go.disabled=false;}
+    };
+    body.append(actions,form);
     const head=doc.createElement('p');head.className='viewer-note';head.textContent=i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
     const list=doc.createElement('div');list.className='viewer-browser';
     const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);return b;};
