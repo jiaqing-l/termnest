@@ -46,7 +46,7 @@ test('the wall is wired in: script tag, static route, API route and locale keys'
   }
 });
 
-test('a file buried in a wide workspace is still offered by name (find, not a capped walk)', async () => {
+test('a file buried in a wide workspace is still offered by name (find, not a capped walk)', { skip: process.platform === 'win32' && 'uses find, which Windows does not have' }, async () => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
   const { fileRuntime } = require('../lib/file-viewer');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-wide-'));
