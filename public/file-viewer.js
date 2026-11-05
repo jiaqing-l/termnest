@@ -172,7 +172,10 @@
    try{
     const q='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+(dir?'&path='+encodeURIComponent(dir):'');
     const out=await api('GET','/api/features/browse/list?'+q);
-    body.textContent='';const head=doc.createElement('p');head.className='viewer-note';head.textContent=i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
+    body.textContent='';
+    // Search by name across the whole session folder: results replace the listing while there is text in the box.
+    const find=doc.createElement('input');find.type='search';find.className='viewer-find';find.placeholder=i18n('fileviewer.tim_ten');find.setAttribute('aria-label',i18n('fileviewer.tim_ten'));find.autocomplete='off';body.append(find);
+    const head=doc.createElement('p');head.className='viewer-note';head.textContent=i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
     const list=doc.createElement('div');list.className='viewer-browser';
     const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);};
     if(out.parent!==null)item('⬆',i18n('fileviewer.len_mot_cap'),'',()=>showBrowser(host,session,out.parent));
@@ -181,6 +184,24 @@
     if(!out.dirs.length&&!out.files.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thu_muc_nay_khong_co');list.append(empty);}
     if(out.truncated){const more=doc.createElement('p');more.className='viewer-note';more.textContent=i18n('fileviewer.chi_hien_thi_500_muc');list.append(more);}
     body.append(list);
+    const results=doc.createElement('div');results.className='viewer-browser';results.hidden=true;body.append(results);
+    let timer=null,seq=0;
+    find.oninput=()=>{
+     clearTimeout(timer);const text=find.value.trim();
+     if(text.length<2){seq++;results.hidden=true;list.hidden=false;head.hidden=false;return;}
+     timer=setTimeout(async()=>{
+      const mine=++seq;results.hidden=false;list.hidden=true;head.hidden=true;results.textContent='';
+      const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_tim');results.append(wait);
+      try{
+       const r=await api('GET','/api/features/browse/search?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&q='+encodeURIComponent(text));
+       if(mine!==seq)return;results.textContent='';
+       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);const e=doc.createElement('small');e.textContent=size(f.size);b.append(e);b.onclick=()=>open(host,session,r.root+sep+f.rel.split('/').join(sep));results.append(b);});
+       if(!r.files.length){const n=doc.createElement('p');n.className='viewer-note';n.textContent=i18n('fileviewer.khong_khop');results.append(n);}
+       if(r.more){const m=doc.createElement('p');m.className='viewer-note';m.textContent=i18n('fileviewer.chi_50_moi_nhat');results.append(m);}
+      }catch(err){if(mine===seq){results.textContent='';const n=doc.createElement('p');n.className='viewer-note';n.textContent=err.message;results.append(n);}}
+     },250);
+    };
+    find.focus();
    }catch(e){body.textContent=e.message;pathForm(host,session);}
   }
   function showCandidates(file,host,session,path){

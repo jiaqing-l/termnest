@@ -1024,5 +1024,9 @@
   "wall.font_minus": "Smaller text",
   "wall.font_plus": "Larger text",
   "wall.fullscreen": "Full screen",
-  "wall.reply_hint": "Reply or give the next task. Enter sends, Shift+Enter starts a new line."
+  "wall.reply_hint": "Reply or give the next task. Enter sends, Shift+Enter starts a new line.",
+  "fileviewer.tim_ten": "Search files by name…",
+  "fileviewer.dang_tim": "Searching…",
+  "fileviewer.khong_khop": "No file matches.",
+  "fileviewer.chi_50_moi_nhat": "Showing the 50 newest matches. Type more to narrow it down."
 }
