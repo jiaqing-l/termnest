@@ -54,7 +54,7 @@
       // The header opens the real terminal; the screen is plain selectable text and the box underneath answers right here.
       head.onclick = function () { opts.open(x.v.id, x.s.name); };
       head.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); opts.open(x.v.id, x.s.name); } };
-      input.rows = 1; input.setAttribute('autocomplete', 'off'); input.placeholder = opts.text('wall.reply'); input.setAttribute('aria-label', opts.text('wall.reply') + ' ' + x.s.name); send.type = 'submit';
+      input.rows = 1; input.setAttribute('autocomplete', 'off'); input.placeholder = opts.text('wall.reply'); input.title = opts.text('wall.reply_hint'); input.setAttribute('aria-label', opts.text('wall.reply_hint') + ' ' + x.s.name); send.type = 'submit';
       // Pictures and files: the picker button, drag and drop, or paste. The file is uploaded to the session's machine and its path lands in the box (nothing is sent until Send).
       pic.type = 'button'; pic.title = opts.text('drop.gui_anh_hoac_file_vao'); pic.setAttribute('aria-label', pic.title);
       fileBtn.type = 'button'; fileBtn.title = opts.text('html.mo_file_trong_thu_muc'); fileBtn.setAttribute('aria-label', fileBtn.title);

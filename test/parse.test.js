@@ -719,3 +719,16 @@ test('Claude footer notices (new task hint, auto-update) do not count as activit
   assert.ok(second.quiet >= 400, 'still quiet after the footer changed');
   assert.notEqual(contentSignature(a), contentSignature(['* Baked for 2m 6s · done Tuesday 11:30 PM', 'a real new answer from the model']));
 });
+
+test('opening or resizing a session (reflow, truncation, older lines scrolling in) is not activity; new words are', () => {
+  const { screenQuiet } = require('../lib/parse');
+  const wide = ['> xem docs/Implementation/Smart-Visibility/130-SV-VIFON-DE-XUAT.md', '  Ke thua danh sach 158 san pham x 5 mau. Plan con DRAFT; trien khai chua bat dau', '', '> Ask Codex to do anything', 'GPT-6.1-Sol medium · ~/Documents/thanhlg/xspire-workspaces · Doi chieu SKU Excel'];
+  const narrow = ['> xem docs/Implementation/Smart-Visibility/130-SV-VI…', '  Ke thua danh sach 158 san pham x 5 mau. P', '  DRAFT; trien khai chua bat dau', '', '> Ask Codex to do anything', 'GPT-6.1-Sol medium · ~/Documents/thanhlg/xspire-wo…'];
+  const older = ['Worked for 17m 17s', ...narrow];
+  let t = 1000000; const first = screenQuiet(null, older, 600, t);   // the session was watched before, with a taller window
+  assert.ok(first.quiet >= 600);
+  let rec = first.rec;
+  for (const lines of [wide, narrow, older, wide]) { t += 5000; const r = screenQuiet(rec, lines, 0, t); rec = r.rec; assert.ok(r.quiet >= 600, 'reflow must not reset the quiet time'); }
+  t += 5000; const fresh = screenQuiet(rec, [...wide, 'Compiling the project and running all the tests now'], 0, t);
+  assert.ok(fresh.quiet < 6, 'genuinely new words are activity');
+});

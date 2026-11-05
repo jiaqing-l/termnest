@@ -999,12 +999,13 @@
   "wall.aria": "Tất cả phiên",
   "guide.f.sshhost": "Máy chủ SSH",
   "guide.openvpn.2.n": "Thay user bằng tài khoản bạn vẫn dùng để đăng nhập vào máy.",
-  "wall.reply": "Trả lời hoặc giao việc… (⇧Enter: xuống dòng)",
+  "wall.reply": "Trả lời…",
   "wall.send": "Gửi",
   "wall.open": "Mở",
   "wall.cols": "Số cột",
   "wall.cols_auto": "Tự động",
   "wall.font_minus": "Giảm cỡ chữ",
   "wall.font_plus": "Tăng cỡ chữ",
-  "wall.fullscreen": "Toàn màn hình"
+  "wall.fullscreen": "Toàn màn hình",
+  "wall.reply_hint": "Trả lời hoặc giao việc tiếp. Enter để gửi, Shift+Enter để xuống dòng."
 }
