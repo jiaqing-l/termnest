@@ -1016,12 +1016,13 @@
   "wall.aria": "All sessions",
   "guide.f.sshhost": "SSH server",
   "guide.openvpn.2.n": "Replace user with the account you normally use to log in to the machine.",
-  "wall.reply": "Reply or give a task… (⇧Enter: new line)",
+  "wall.reply": "Reply…",
   "wall.send": "Send",
   "wall.open": "Open",
   "wall.cols": "Columns",
   "wall.cols_auto": "Auto",
   "wall.font_minus": "Smaller text",
   "wall.font_plus": "Larger text",
-  "wall.fullscreen": "Full screen"
+  "wall.fullscreen": "Full screen",
+  "wall.reply_hint": "Reply or give the next task. Enter sends, Shift+Enter starts a new line."
 }
