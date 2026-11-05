@@ -134,8 +134,9 @@
       Promise.resolve(doc.defaultView.TW_DESKTOP.save(name,current.text)).then(()=>{download.textContent=label;},()=>{download.textContent=i18n('fileviewer.khong_luu_duoc');setTimeout(()=>{download.textContent=label;},3000);});return;}
     const url=URL.createObjectURL(new Blob([current.text],{type:'text/plain;charset=utf-8'})),a=doc.createElement('a');a.href=url;a.download=current.path.split(/[\\/]/).pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   const setTitle=path=>{title.textContent=path.length>80?'…/'+path.split(/[\\/]/).slice(-2).join('/'):path;title.title=path;};
-  let gallery=null,browserState=null,backState=null,trashNote=null;
+  let gallery=null,browserState=null,backState=null,trashNote=null,picker=null;   // picker: a callback while the browser is used to choose a file for another machine
   async function open(host,session,path,opts){
+   picker=null;
    if(!(opts&&opts.keepGallery))gallery=null;
    // Opened from the file browser (or its search): remember where to come back to. Opened any other way: nothing to go back to.
    if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
@@ -228,6 +229,8 @@
     body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.thung_rac_ghi_chu');body.append(help);
    }catch(e){wait.textContent=e.message;}
   }
+  // In pick mode a click on a file hands it to the caller instead of opening it.
+  const choose=(host,session,full,opts)=>{if(picker){const cb=picker;picker=null;close.onclick();cb(host,session,full);return;}return open(host,session,full,opts);};
   async function showBrowser(host,session,dir,query){
    browserState={host,session,dir:dir||'',query:query||''};back.hidden=true;backState=null;
    body.textContent='';const note=doc.createElement('p');note.className='viewer-note';note.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(note);
@@ -262,7 +265,7 @@
      const undo=doc.createElement('button');undo.type='button';undo.className='btn';undo.textContent=i18n('fileviewer.hoan_tac');
      undo.onclick=async()=>{undo.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:n.id});await showBrowser(host,session,out.path);}catch(err){note.textContent=err.message;}};
      note.append(undo);body.append(note);}
-    const head=doc.createElement('p');head.className='viewer-note';head.textContent=i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
+    const head=doc.createElement('p');head.className='viewer-note';head.textContent=picker?i18n('drop.chon_tep_de_lay'):i18n('fileviewer.chon_tep_de_mo_thu', [(out.rel?'/'+out.rel:'')]);body.append(head);
     const list=doc.createElement('div');list.className='viewer-browser';
     const sep=out.path.includes('\\')?'\\':'/',item=(icon,text,extra,fn)=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent=icon+' '+text;b.append(t);if(extra){const e=doc.createElement('small');e.textContent=extra;b.append(e);}b.onclick=fn;list.append(b);return b;};
     // Folders and files get a small row of actions: rename and move to the trash (never a permanent delete).
@@ -293,7 +296,7 @@
     };
     if(out.parent!==null)item('⬆',i18n('fileviewer.len_mot_cap'),'',()=>showBrowser(host,session,out.parent));
     out.dirs.forEach(name=>rowItem('📁',name,'',()=>showBrowser(host,session,out.path+sep+name),out.path+sep+name,name,true));
-    out.files.forEach(f=>dragPath(rowItem('📄',f.name,size(f.size),()=>open(host,session,out.path+sep+f.name,{fromBrowser:true}),out.path+sep+f.name,f.name),()=>out.path+sep+f.name,()=>host));
+    out.files.forEach(f=>dragPath(rowItem('📄',f.name,size(f.size),()=>choose(host,session,out.path+sep+f.name,{fromBrowser:true}),out.path+sep+f.name,f.name),()=>out.path+sep+f.name,()=>host));
     if(!out.dirs.length&&!out.files.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thu_muc_nay_khong_co');list.append(empty);}
     if(out.truncated){const more=doc.createElement('p');more.className='viewer-note';more.textContent=i18n('fileviewer.chi_hien_thi_500_muc');list.append(more);}
     body.append(list);
@@ -308,7 +311,7 @@
       try{
        const r=await api('GET','/api/features/browse/search?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&q='+encodeURIComponent(text));
        if(mine!==seq)return;results.textContent='';
-       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);const full=r.root+sep+f.rel.split('/').join(sep);b.onclick=()=>open(host,session,full,{fromBrowser:true});dragPath(b,()=>full,()=>host);const rowS=doc.createElement('div');rowS.className='viewer-row';const insS=miniBtn('↳',i18n('fileviewer.chen_duong_dan'));insS.onclick=e=>{e.stopPropagation();insertPath(host,full);};rowS.append(b,insS);results.append(rowS);});
+       r.files.forEach(f=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-entry';const t=doc.createElement('span');t.className='viewer-entry-name';t.textContent='📄 '+f.rel;t.title=f.rel;b.append(t);const full=r.root+sep+f.rel.split('/').join(sep);b.onclick=()=>choose(host,session,full,{fromBrowser:true});dragPath(b,()=>full,()=>host);const rowS=doc.createElement('div');rowS.className='viewer-row';const insS=miniBtn('↳',i18n('fileviewer.chen_duong_dan'));insS.onclick=e=>{e.stopPropagation();insertPath(host,full);};rowS.append(b,insS);results.append(rowS);});
        if(!r.files.length){const n=doc.createElement('p');n.className='viewer-note';n.textContent=i18n('fileviewer.khong_khop');results.append(n);}
        if(r.more||r.capped){const m=doc.createElement('p');m.className='viewer-note';m.textContent=i18n('fileviewer.chi_50_moi_nhat');results.append(m);}
       }catch(err){if(mine===seq){results.textContent='';const n=doc.createElement('p');n.className='viewer-note';n.textContent=err.message;results.append(n);}}
@@ -353,8 +356,10 @@
   insert.onclick=()=>{if(current&&location)insertPath(location[0],current.path);};
   back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;showBrowser(b.host,b.session,b.dir,b.query);};
   // Open the viewer straight on the session's folder, without needing a path link in the terminal (phones have no easy link tap).
- function browse(host,session){generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
- return {open,browse,close:()=>close.onclick()};
+ function browse(host,session){picker=null;generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
+ function pick(host,session,cb){browse(host,session);picker=cb;return showBrowser(host,session,'');}
+ close.addEventListener('click',()=>{picker=null;});
+ return {open,browse,pick,close:()=>close.onclick()};
  }
  return {detect,provider,markdown,htmlFrame,create};
 });

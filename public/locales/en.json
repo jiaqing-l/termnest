@@ -1111,5 +1111,21 @@
   "nodehelp.os.win": "Windows (PowerShell or Command Prompt)",
   "fileviewer.chen_duong_dan": "Insert path in chat",
   "fileviewer.da_chen": "Path typed in the session. Press Enter there to send it.",
-  "fileviewer.chen_khac_may": "This file is on a different machine than the open session."
+  "fileviewer.chen_khac_may": "This file is on a different machine than the open session.",
+  "srv.drop.khong_doc_nguon": "Could not read the file on the source machine.",
+  "srv.drop.nguon_qua_lon": "The file is too large to move between machines (20 MB at most).",
+  "srv.drop.nguon_ngoai_thu_muc": "Only files inside the session folder of the source machine can be taken.",
+  "srv.drop.nguon_khong_phai_tep": "That is not a regular file.",
+  "srv.drop.nguon_khong_thay": "The file was not found on the source machine.",
+  "srv.drop.chua_chon_nguon": "Choose the source machine, session and file.",
+  "drop.tu_may_khac": "From another server…",
+  "drop.tu_may_khac_tieu_de": "Take a file from another server",
+  "drop.tu_may_khac_mo_ta": "Pick the machine and a session on it; you then choose a file from that session’s folder. It is copied to the machine of the open session and its path is typed in the chat.",
+  "drop.may_nguon": "Source machine",
+  "drop.phien_nguon": "Session on that machine",
+  "drop.chon_tep_nguon": "Choose a file…",
+  "drop.khong_co_may_khac": "No other connected server.",
+  "drop.dang_chep": "copying…",
+  "drop.chon_tep_de_lay": "Click a file to take it to the open session",
+  "drop.dong": "Cancel"
 }

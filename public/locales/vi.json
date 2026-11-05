@@ -1094,5 +1094,21 @@
   "nodehelp.os.win": "Windows (PowerShell hoặc Command Prompt)",
   "fileviewer.chen_duong_dan": "Chèn đường dẫn vào chat",
   "fileviewer.da_chen": "Đã gõ đường dẫn vào phiên. Nhấn Enter ở đó để gửi.",
-  "fileviewer.chen_khac_may": "Tệp này nằm trên máy khác với phiên đang mở."
+  "fileviewer.chen_khac_may": "Tệp này nằm trên máy khác với phiên đang mở.",
+  "srv.drop.khong_doc_nguon": "Không đọc được tệp trên máy nguồn.",
+  "srv.drop.nguon_qua_lon": "Tệp quá lớn để chuyển giữa các máy (tối đa 20 MB).",
+  "srv.drop.nguon_ngoai_thu_muc": "Chỉ lấy được tệp nằm trong thư mục của phiên trên máy nguồn.",
+  "srv.drop.nguon_khong_phai_tep": "Đây không phải là tệp thông thường.",
+  "srv.drop.nguon_khong_thay": "Không tìm thấy tệp trên máy nguồn.",
+  "srv.drop.chua_chon_nguon": "Hãy chọn máy nguồn, phiên và tệp.",
+  "drop.tu_may_khac": "Từ máy chủ khác…",
+  "drop.tu_may_khac_tieu_de": "Lấy file từ máy chủ khác",
+  "drop.tu_may_khac_mo_ta": "Chọn máy và một phiên trên máy đó, rồi chọn tệp trong thư mục của phiên. Tệp được chép sang máy của phiên đang mở và đường dẫn được gõ vào chat.",
+  "drop.may_nguon": "Máy nguồn",
+  "drop.phien_nguon": "Phiên trên máy đó",
+  "drop.chon_tep_nguon": "Chọn tệp…",
+  "drop.khong_co_may_khac": "Chưa có máy chủ nào khác đang kết nối.",
+  "drop.dang_chep": "đang chép…",
+  "drop.chon_tep_de_lay": "Bấm vào một tệp để lấy sang phiên đang mở",
+  "drop.dong": "Hủy"
 }

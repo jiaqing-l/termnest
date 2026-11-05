@@ -1049,3 +1049,6 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 .viewer-nodehelp details .viewer-cmd{margin-top:10px}
 .viewer-os,.viewer-nodehelp small{color:var(--fg-3)}
 .viewer-nodehelp>.btn.primary{align-self:flex-start}
+dialog.drop-remote{width:min(92vw,460px)}
+dialog.drop-remote .f{display:grid;gap:10px}
+dialog.drop-remote .dlg-actions{display:flex;gap:8px;justify-content:flex-end}

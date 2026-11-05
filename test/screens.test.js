@@ -148,6 +148,7 @@ test('rename and trash stay inside the session folder, never overwrite, and the 
     assert.ok(gone.id && gone.name === 'thu-muc-con'); assert.ok(!fs.existsSync(path.join(root, 'docs', 'thu-muc-con')));
     assert.equal(fs.readFileSync(path.join(root, '.termnest-trash', '.gitignore'), 'utf8'), '*\n');
     assert.equal(fs.readFileSync(path.join(root, '.termnest-trash', gone.id, 'data', 'thu-muc-con', 'c.md'), 'utf8'), 'C');   // the whole folder is kept
+    await new Promise((r) => setTimeout(r, 5));   // the list is ordered by the millisecond the item went in
     const second = await op({ op: 'trash', path: path.join(root, 'docs', 'b.md') });
     assert.deepEqual((await op({ op: 'list' })).items.map((i) => [i.name, i.rel, i.kind]), [['b.md', 'docs/b.md', 'file'], ['thu-muc-con', 'docs/thu-muc-con', 'folder']]);   // newest first
     assert.equal((await op({ op: 'trash', path: root })).code, 'root');

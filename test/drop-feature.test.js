@@ -46,3 +46,35 @@ test('the client reads the server and session from the app current() shape {v, s
   assert.equal(TW.dropTarget(null), null);
   assert.equal(typeof TW.upload, 'function');
 });
+
+test('taking a file from another machine: contained to the session folder, any file type, stored on the target', async () => {
+  const { transferReadRuntime } = require('../lib/file-viewer');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-xfer-')), outside = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-xout-'));
+  try {
+    fs.mkdirSync(path.join(root, 'docs')); fs.writeFileSync(path.join(root, 'docs', 'bao-cao.docx'), Buffer.from([0x50, 0x4b, 3, 4, 9, 9])); fs.writeFileSync(path.join(root, 'trang.html'), '<h1>Xin chào</h1>');
+    fs.writeFileSync(path.join(outside, 'secret.txt'), 's');
+    const read = transferReadRuntime(), run = (p, max = 1000) => read({ cwd: root, path: p, max });
+    const ok = await run('docs/bao-cao.docx'); assert.equal(ok.name, 'bao-cao.docx'); assert.deepEqual([...Buffer.from(ok.b64, 'base64')], [0x50, 0x4b, 3, 4, 9, 9]);
+    assert.equal(Buffer.from((await run(path.join(root, 'trang.html'))).b64, 'base64').toString(), '<h1>Xin chào</h1>');   // an absolute path inside the folder works
+    assert.equal((await run('docs')).code, 'notfile'); assert.equal((await run('nothing.txt')).code, 'notfound'); assert.equal((await run('../x')).code, 'notfound');
+    assert.equal((await run(path.join(outside, 'secret.txt'))).code, 'outside');
+    assert.equal((await run('docs/bao-cao.docx', 3)).code, 'toolarge');
+    for (const bad of ['', 'a\nb', 'x'.repeat(5000)]) assert.equal((await run(bad)).code, 'invalid');
+    if (process.platform !== 'win32') { fs.symlinkSync(outside, path.join(root, 'link')); assert.equal((await run('link/secret.txt')).code, 'outside'); }
+    // the route: source read, then the target stores it with its own checks
+    let handler; const fails = [], sent = []; const stored = [];
+    const backend = (id, extra = {}) => ({ ready: true, mode: 'native', cfg: { local: true }, snapshot: { sessions: [{ name: 's', path: root }] },
+      exec: async (cmd, t, m, input) => { if (/display-message/.test(cmd)) return { code: 0, out: root + '\n' }; if (input) { stored.push([id, input.length]); return { code: 0, out: '/tmp/termnest-drop-1/stored.docx\n' }; } return { code: 0, out: '' }; }, ...extra });
+    const backends = { src: backend('src'), dst: backend('dst'), win: backend('win', { mode: 'powershell' }) };
+    drop.register({ route: (m, p, h) => { if (p === '/transfer') handler = h; }, backendOf: (id) => backends[id] || null, shq: (x) => "'" + x + "'",
+      fail: (res, code, msg) => fails.push(msg), send: (res, code, body) => sent.push(body), readJson: async (req) => req.body, readBody: async () => Buffer.alloc(0) });
+    const call = (body) => handler({ req: { body }, res: {}, url: new URL('http://x/transfer') });
+    await call({ from: { server: 'src', session: 's', path: 'docs/bao-cao.docx' }, to: { server: 'dst', session: 's' } });
+    assert.deepEqual(stored, [['dst', 6]]); assert.equal(sent[0].path, '/tmp/termnest-drop-1/stored.docx'); assert.equal(sent[0].name, 'bao-cao.docx'); assert.equal(sent[0].kind, 'archive');
+    await call({ from: { server: 'src', session: 's', path: path.join(outside, 'secret.txt') }, to: { server: 'dst', session: 's' } }); assert.match(fails.at(-1), /thư mục của phiên/);
+    await call({ from: { server: 'gone', session: 's', path: 'a' }, to: { server: 'dst', session: 's' } }); assert.match(fails.at(-1), /chưa kết nối/);
+    await call({ from: { server: 'src', session: 's', path: 'a' }, to: { server: 'win', session: 's' } }); assert.match(fails.at(-1), /chưa hỗ trợ/);
+    await call({ from: { server: 'src' }, to: {} }); assert.match(fails.at(-1), /chọn máy nguồn/i);
+    assert.equal(stored.length, 1);   // nothing else was written
+  } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+});
