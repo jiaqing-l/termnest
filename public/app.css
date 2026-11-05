@@ -1113,7 +1113,8 @@ dialog.drop-remote{display:none}
 .style-card b{font-size:13px}.style-card small{color:var(--fg-3);font-size:11.5px;line-height:1.35}
 
 /* more effects */
-#fx.rain i{top:0;width:2px;height:var(--s);background:linear-gradient(to bottom,transparent,rgba(95,160,230,.85));animation:fx-fall var(--d) linear var(--dl) infinite;border-radius:2px}
+#fx.rain i{top:0;width:1.5px;height:var(--s);rotate:-12deg;opacity:calc(var(--o)*.8);background:linear-gradient(to bottom,transparent,rgba(86,150,225,.9));border-radius:2px;animation:fx-rain var(--d) linear var(--dl) infinite}
+@keyframes fx-rain{0%{transform:translate3d(-4vh,-10vh,0)}100%{transform:translate3d(26vh,108vh,0)}}
 #fx.drift i{top:var(--y);animation:fx-drift var(--d) ease-in-out var(--dl) infinite alternate}
 #fx.drift i::before{content:"";position:absolute;inset:0;background:var(--img) center/contain no-repeat;animation:fx-flap .5s ease-in-out infinite alternate}
 @keyframes fx-drift{0%{transform:translate3d(0,0,0) rotate(-8deg)}33%{transform:translate3d(var(--dx),-9vh,0) rotate(10deg)}66%{transform:translate3d(calc(var(--dx)*-.6),7vh,0) rotate(-6deg)}100%{transform:translate3d(calc(var(--dx)*1.4),-3vh,0) rotate(8deg)}}

@@ -4,7 +4,7 @@
   var KINDS = {
     anhdao: { img: ['petal'], n: 22, mode: 'fall', d: 12 }, mai: { img: ['mai'], n: 18, mode: 'fall', d: 14 }, thu: { img: ['leaf'], n: 18, mode: 'fall', d: 13 },
     dong: { img: ['snow'], n: 34, mode: 'fall', d: 9 }, he: { img: ['bubble'], n: 14, mode: 'rise', d: 14 }, dem: { img: ['star'], n: 38, mode: 'twinkle', d: 3 },
-    mua: { img: [], n: 70, mode: 'rain', d: 1 }, noel: { img: ['snow', 'snow', 'ball', 'gift'], n: 30, mode: 'fall', d: 10 },
+    mua: { img: [], n: 90, mode: 'rain', d: 0.9 }, noel: { img: ['snow', 'snow', 'ball', 'gift'], n: 30, mode: 'fall', d: 10 },
     trungthu: { img: ['lantern'], n: 12, mode: 'rise', d: 17, size: [22, 38] }, halloween: { img: ['pumpkin', 'bat'], n: 16, mode: 'fall', d: 12 },
     buom: { img: ['butterfly'], n: 9, mode: 'drift', d: 16, size: [20, 30] }, phaohoa: { img: [], n: 5, mode: 'burst', d: 2.6 }
   };
