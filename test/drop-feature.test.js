@@ -78,3 +78,12 @@ test('taking a file from another machine: contained to the session folder, any f
     assert.equal(stored.length, 1);   // nothing else was written
   } finally { fs.rmSync(root, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
 });
+
+test('a machine that is not connected is reported as not connected, not as unsupported', async () => {
+  let handler; const fails = [];
+  drop.register({ route: (m, p, h) => { if (p === '/upload') handler = h; }, backendOf: (id) => (id === 'win' ? { mode: 'powershell' } : null), fail: (res, code, msg) => fails.push(msg) });
+  await handler({ req: {}, res: {}, url: new URL('http://x/upload?server=gone&session=s&name=a.png') });
+  await handler({ req: {}, res: {}, url: new URL('http://x/upload?server=win&session=s&name=a.png') });
+  assert.match(fails[0], /chưa kết nối/);
+  assert.match(fails[1], /chưa hỗ trợ/);
+});
