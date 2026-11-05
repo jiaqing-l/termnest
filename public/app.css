@@ -1008,3 +1008,7 @@ html.i18n-wait #stage{visibility:hidden;animation:i18n-reveal 0s 2.5s forwards}
 .viewer-find:focus{outline:2px solid var(--primary);outline-offset:-1px}
 
 .viewer-browser[hidden],.viewer-note[hidden]{display:none!important}   /* the grid layout above would otherwise win over [hidden] and the listing stayed under the search results */
+.viewer-back[hidden]{display:none!important}
+.viewer-back{flex:none}
+.file-viewer header strong{order:-2}
+.viewer-back{order:-1;flex:none}   /* first button of the row, right under the title */

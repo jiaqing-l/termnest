@@ -1028,5 +1028,6 @@
   "fileviewer.tim_ten": "Search files by name…",
   "fileviewer.dang_tim": "Searching…",
   "fileviewer.khong_khop": "No file matches.",
-  "fileviewer.chi_50_moi_nhat": "Showing the 50 newest matches. Type more to narrow it down."
+  "fileviewer.chi_50_moi_nhat": "Showing the 50 newest matches. Type more to narrow it down.",
+  "fileviewer.quay_lai": "← Files"
 }
