@@ -2,7 +2,7 @@
 // Drag or paste a file onto the terminal: it is uploaded to the session's host and its path is typed (no Enter).
 (function () {
   var TW = window.TW; if (!TW) return;
-  var el = TW.el, MAX = 10 * 1024 * 1024, OK = /\.(png|jpe?g|gif|webp|txt|md|log|json|csv|pdf)$/i, tray = null, zone = null;
+  var el = TW.el, MAX = 25 * 1024 * 1024, BLOCKED = /\.(exe|dll|msi|com|scr|bat|cmd|app|dmg|pkg|apk|ipa)$/i, tray = null, zone = null;
   function app() { return TW.app(); }
   function ensure(host) {
     if (tray) return;
@@ -19,8 +19,8 @@
   }
   // Uploads one file to a session's host and resolves with its path (the wall's tiles use this too).
   function upload(server, session, file) {
-    if (file.size > MAX) return Promise.reject(new Error(i18n('drop.qua_10_mb')));
-    if (!OK.test(file.name)) return Promise.reject(new Error(i18n('drop.loai_file_chua_ho_tro')));
+    if (file.size > MAX) return Promise.reject(new Error(i18n('drop.qua_25_mb')));
+    if (BLOCKED.test(file.name)) return Promise.reject(new Error(i18n('drop.loai_file_chua_ho_tro')));
     return fetch('/api/features/drop/upload?server=' + encodeURIComponent(server) + '&session=' + encodeURIComponent(session) + '&name=' + encodeURIComponent(file.name),
       { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' } })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || i18n('drop.khong_tai_duoc')); return j.path; }); });
@@ -31,8 +31,8 @@
   function send(file) {
     var a = app(), cur = a && a.current && target(a.current()); if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
     var ui = chip(file);
-    if (file.size > MAX) { ui.fail(i18n('drop.qua_10_mb')); return; }
-    if (!OK.test(file.name)) { ui.fail(i18n('drop.loai_file_chua_ho_tro')); return; }
+    if (file.size > MAX) { ui.fail(i18n('drop.qua_25_mb')); return; }
+    if (BLOCKED.test(file.name)) { ui.fail(i18n('drop.loai_file_chua_ho_tro')); return; }
     upload(cur.id, cur.name, file).then(function (path) { ui.ok(path); a.typeText(path + ' '); }).catch(function (e) { ui.fail(e.message); });
   }
   function files(dt) { return dt && dt.files ? Array.prototype.slice.call(dt.files) : []; }
@@ -69,7 +69,6 @@
     var bar = document.querySelector('.keybar'); if (!bar) return false;
     if (document.getElementById('drop-pick')) return true;
     var input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.hidden = true; input.id = 'drop-input';
-    input.accept = 'image/*,.txt,.md,.log,.json,.csv,.pdf';
     input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 5).forEach(send); input.value = ''; });
     var b = el('button', 'btn', i18n('drop.gui_anh')); b.type = 'button'; b.id = 'drop-pick'; b.title = i18n('drop.gui_anh_hoac_file_vao');
     b.addEventListener('click', function () { input.click(); });

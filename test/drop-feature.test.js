@@ -9,16 +9,20 @@ const drop = require('../lib/features/drop');
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
 
-test('accepts real images, text and pdf; rejects mismatches, binaries, empty and oversized', () => {
+test('accepts any file except programs; checks that pictures, pdf, text and Office files are what they claim', () => {
   assert.equal(drop.check('a.PNG', PNG), 'png');
   assert.equal(drop.check('n.md', Buffer.from('# hi')), 'md');
   assert.equal(drop.check('x.pdf', Buffer.from('%PDF-1.7 ...')), 'pdf');
+  assert.equal(drop.check('trang.html', Buffer.from('<h1>x</h1>')), 'html');
+  assert.equal(drop.check('bao-cao.docx', Buffer.from([0x50, 0x4b, 3, 4, 0, 0])), 'docx');
+  assert.equal(drop.check('data.parquet', Buffer.from([1, 2, 3, 0])), 'parquet');   // unknown types pass through, binary or not
+  assert.equal(drop.check('noext', Buffer.from('x')), 'dat');
   assert.throws(() => drop.check('fake.png', Buffer.from('not an image at all')), /không đúng/);
+  assert.throws(() => drop.check('fake.xlsx', Buffer.from('plain text')), /không đúng/);
   assert.throws(() => drop.check('a.txt', Buffer.from([65, 0, 66])), /nhị phân/);
-  assert.throws(() => drop.check('a.exe', Buffer.from('MZ')), /chưa được hỗ trợ/);
+  for (const bad of ['a.exe', 'x.DLL', 'setup.msi', 'run.bat', 'tool.cmd']) assert.throws(() => drop.check(bad, Buffer.from('MZ')), /chương trình/);
   assert.throws(() => drop.check('a.png', Buffer.alloc(0)), /rỗng/);
   assert.throws(() => drop.check('a.txt', Buffer.alloc(drop.MAX_BYTES + 1, 65)), /quá lớn/);
-  assert.throws(() => drop.check('noext', Buffer.from('x')), /chưa được hỗ trợ/);
 });
 
 test('the stored script writes stdin to a private temp folder and prints the path', { skip: process.platform === 'win32' }, () => {

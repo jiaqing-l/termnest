@@ -58,7 +58,7 @@
       // Pictures and files: the picker button, drag and drop, or paste. The file is uploaded to the session's machine and its path lands in the box (nothing is sent until Send).
       pic.type = 'button'; pic.title = opts.text('drop.gui_anh_hoac_file_vao'); pic.setAttribute('aria-label', pic.title);
       fileBtn.type = 'button'; fileBtn.title = opts.text('html.mo_file_trong_thu_muc'); fileBtn.setAttribute('aria-label', fileBtn.title);
-      picker.type = 'file'; picker.multiple = true; picker.hidden = true; picker.accept = 'image/*,.txt,.md,.log,.json,.csv,.pdf';
+      picker.type = 'file'; picker.multiple = true; picker.hidden = true; 
       function attach(list) {
         Array.prototype.slice.call(list || [], 0, 5).forEach(function (file) {
           opts.upload(x.v.id, x.s.name, file).then(function (path) { input.value = (input.value ? input.value.replace(/\s*$/, ' ') : '') + path + ' '; input.focus(); input.dispatchEvent(new Event('input')); }).catch(function (err) { opts.fail(err); });
