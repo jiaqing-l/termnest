@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>It stays awake for you, so you can sleep soundly.</strong><br>
-  Máy thức thay bạn, để bạn yên giấc.<br>
+  Máy luôn hoạt động để bạn ngủ ngon.<br>
   <sub>Mọi phiên terminal trên mọi máy, gọn trong một cửa sổ.</sub>
 </p>
 
