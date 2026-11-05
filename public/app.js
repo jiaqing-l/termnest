@@ -932,7 +932,7 @@
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
   }
   // ---- Effects: Settings → Hiệu ứng. The usual look stays; public/fx.js adds a light layer of particles over it.
-  var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["anhdao", ["#ffb7d1", "#fff5f8", "#f48fb1", "#ec5b8f"]], ["mai", ["#ffd23f", "#fff2d6", "#c46a00", "#d71920"]], ["thu", ["#e8641e", "#ffb24a", "#7a3a12", "#fff6ec"]], ["dong", ["#ffffff", "#d7e6f5", "#7cc4f2", "#3b82f6"]], ["he", ["#ffffff", "#cdeef7", "#19c3e6", "#0a84c6"]], ["dem", ["#fff6c9", "#151b40", "#3b2f8f", "#070a1c"]], ["mua", ["#5fa0e6", "#cfe3f7", "#8fb8e8", "#2f5f9a"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["trungthu", ["#ff5a36", "#ffd166", "#7a3a12", "#fff2d6"]], ["halloween", ["#f28c1a", "#2b1a3f", "#3a1d00", "#4a7a1e"]], ["buom", ["#7aa6ff", "#ffd6e8", "#3a5fc0", "#a8e6a1"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]]
+  var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]];
   var AMOUNT = { few: 0.5, normal: 1, many: 1.8 };
   var fxLayer = null;
   function fxKind() { try { var k = localStorage.getItem('tw-fx-kind'); return window.TwFx && window.TwFx.KINDS[k] ? k : 'none'; } catch (e) { return 'none'; } }
