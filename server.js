@@ -348,11 +348,14 @@ async function addServer(req, res) {
   const host = String(b.host || '').trim();
   const user = String(b.user || '').trim();
   const port = Number(b.port || 22);
-  const auth = b.auth === 'key' ? 'key' : 'password';
+  // SSH key only unless password login is allowed in Settings. "newkey": TERMNEST makes a key and installs it with the server
+  // password used once (never stored); "keyref": a key TERMNEST made that the user installed by hand; "key": the user's own key file.
+  const auth = ['key', 'newkey', 'keyref'].includes(b.auth) ? b.auth : 'password';
+  if (auth === 'password' && !mergePrefs(vault.data.prefs).allowPassword) { fail(res, 400, tr('srv.ssh.chi_dung_khoa')); return; }
   if (!validHost(host)) { fail(res, 400, tr('srv.server.dia_chi_may_chu_chua')); return; }
   if (!validUser(user)) { fail(res, 400, tr('srv.server.tai_khoan_chua_dung')); return; }
   if (!Number.isInteger(port) || port < 1 || port > 65535) { fail(res, 400, tr('srv.server.cong_chua_dung')); return; }
-  if (auth === 'password' && (typeof b.password !== 'string' || !b.password)) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
+  if ((auth === 'password' || auth === 'newkey') && (typeof b.password !== 'string' || !b.password)) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
   if (auth === 'key' && (typeof b.key !== 'string' || !b.key.includes('PRIVATE KEY'))) {
     fail(res, 400, tr('srv.server.chon_file_khoa_ssh_rieng'));
     return;
@@ -361,17 +364,35 @@ async function addServer(req, res) {
     fail(res, 409, tr('srv.server.tai_khoan_nay_da_co'));
     return;
   }
-  const cfg = { id: crypto.randomUUID(), host, port, user, auth, name: '', fingerprint: '' };
+  const cfg = { id: crypto.randomUUID(), host, port, user, auth: auth === 'password' ? 'password' : 'key', name: '', fingerprint: '' };
   if (auth === 'key') {
     cfg.key = b.key;
     if (b.passphrase) cfg.passphrase = String(b.passphrase);
   }
+  if (auth === 'keyref') {
+    const k = require('./lib/sshkey').take(b.keyRef);
+    if (!k) { fail(res, 400, tr('srv.ssh.khoa_het_han')); return; }
+    cfg.key = k.private;
+  }
+  if (auth === 'newkey') {
+    // Log in once with the password, install a new key, then the password is forgotten.
+    const once = new Remote({ ...cfg, auth: 'password' }, () => {});
+    try {
+      await once.connect(b.password);
+      cfg.fingerprint = once.cfg.fingerprint;
+      const k = require('./lib/sshkey').makeKey(require('os').hostname());
+      const out = await once.exec(`sh -c ${shq(require('./lib/sshkey').INSTALL_SCRIPT)}`, 20000, 4096, Buffer.from(k.public + '\n'));
+      if (out.code !== 0 || !/INSTALLED/.test(out.out || '')) throw new Error(tr('srv.ssh.khong_cai_duoc_khoa'));
+      cfg.key = k.private;
+    } catch (err) { once.close(); fail(res, 400, err.message); return; }
+    once.close();
+  }
   const r = new Remote(cfg, () => {});
   try {
-    await r.connect(auth === 'password' ? b.password : undefined);
+    await r.connect(cfg.auth === 'password' ? b.password : undefined);
   } catch (err) {
     r.close();
-    fail(res, 400, err.message);
+    fail(res, 400, auth === 'keyref' ? tr('srv.ssh.khoa_chua_cai', [err.message]) : err.message);
     return;
   }
   r.onLearn = () => saveVault();
@@ -393,6 +414,23 @@ function removeServer(res, id) {
   if (vault.data.known) delete vault.data.known[id];
   delete savedHistory[id];
   saveHistory();
+  saveVault();
+  send(res, 200, { ok: true });
+}
+
+// A server that logs in with a password moves to an SSH key: a new key is installed over the open connection, a second
+// connection proves the key works, and only then is the server switched (the password is forgotten).
+async function switchToKey(res, r) {
+  if (r.cfg.local || r.cfg.auth !== 'password') { fail(res, 400, tr('srv.ssh.da_dung_khoa')); return; }
+  if (!r.ready) { fail(res, 400, tr('srv.server.may_chu_chua_ket_noi')); return; }
+  const K = require('./lib/sshkey'), k = K.makeKey(os.hostname());
+  try {
+    const out = await r.exec(`sh -c ${shq(K.INSTALL_SCRIPT)}`, 20000, 4096, Buffer.from(k.public + '\n'));
+    if (out.code !== 0 || !/INSTALLED/.test(out.out || '')) throw new Error(tr('srv.ssh.khong_cai_duoc_khoa'));
+    const probe = new Remote({ ...r.cfg, auth: 'key', key: k.private }, () => {});
+    try { await probe.connect(); } finally { probe.close(); }
+  } catch (err) { fail(res, 400, err.message); return; }
+  Object.assign(r.cfg, { auth: 'key', key: k.private }); r.password = null;
   saveVault();
   send(res, 200, { ok: true });
 }
@@ -734,6 +772,11 @@ async function api(req, res, url) {
     return;
   }
   // Backups: where the encrypted copies are, an extra folder of the user's choice (a synced Drive folder…), and "copy now".
+  // A new key for the "install it myself" path: the public half and the command to paste on the server.
+  if (p === '/api/ssh-key/new' && m === 'POST') {
+    const K = require('./lib/sshkey'), k = K.makeKey(os.hostname());
+    send(res, 200, { ref: K.hold(k), publicKey: k.public, command: K.manualCommand(k.public) }); return;
+  }
   if (p === '/api/backup' && m === 'GET') { send(res, 200, { ...vault.info(), suggestions: require('./lib/backup').cloudFolders() }); return; }
   if (p === '/api/backup/folder' && m === 'POST') {
     const body = await readJson(req), dir = typeof body.dir === 'string' ? body.dir.trim() : null;
@@ -809,7 +852,7 @@ async function api(req, res, url) {
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
-  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot-check|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
+  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/use-key|\/reboot-check|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
   if (sv) {
     const id = sv[1];
     const tail = sv[2] || '';
@@ -817,6 +860,7 @@ async function api(req, res, url) {
     if (tail === '/connect' && m === 'POST') { await reconnect(req, res, id); return; }
     const r = remotes.get(id);
     if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
+    if (tail === '/use-key' && m === 'POST') { await switchToKey(res, r); return; }
     if (tail === '/reboot-check' && m === 'GET') {
       try { send(res, 200, await require('./lib/reboot').rebootCheck(r, shq)); } catch (err) { fail(res, 400, err.message); }
       return;

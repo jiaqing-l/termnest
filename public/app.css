@@ -1245,3 +1245,6 @@ dialog.drop-remote{display:none}
 #dlg-set .set-group .bk-restore>span:first-child{flex:1 1 100%;font-weight:600}
 #dlg-set .mv2-opt{flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:13px;color:var(--fg-2)}
 #dlg-set .mv2-opt input{width:16px;height:16px;margin-top:2px;flex:none;accent-color:var(--primary)}
+.key-warn{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:0 0 10px;border-radius:12px;background:var(--wait-soft);color:var(--fg);font-size:13px}
+.key-warn span{flex:1 1 240px}.key-warn .btn.sm{padding:5px 12px;font-size:12.5px;min-height:0}
+.key-manual{display:grid;gap:8px}.key-manual pre{margin:0;padding:10px 12px;border-radius:10px;background:#0f1520;color:#cfd8e6;font:12px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}

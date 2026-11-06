@@ -786,7 +786,7 @@
   var readAlerts = {}; try { readAlerts = JSON.parse(localStorage.getItem('tw-alerts-read') || '{}') || {}; } catch (e) { readAlerts = {}; }
   function saveRead() { try { localStorage.setItem('tw-alerts-read', JSON.stringify(readAlerts)); } catch (e) { /* optional */ } }
   // Which kinds of alert are worth interrupting for. The rest stay quiet (the bell, red number and browser notices all follow this).
-  var ALERT_CATS = ['ask', 'quiet', 'load', 'service', 'restart', 'offline'], alertCats = { ask: true, quiet: false, load: false, service: true, restart: true, offline: true };
+  var ALERT_CATS = ['ask', 'quiet', 'load', 'service', 'restart', 'offline'], alertCats = { ask: true, quiet: true, load: false, service: true, restart: true, offline: true };
   try { Object.assign(alertCats, JSON.parse(localStorage.getItem('tw-alert-cats') || '{}')); } catch (e) { /* defaults */ }
   function wantAlert(cat) { return alertCats[cat] !== false; }
   function waitCat(s) { return s.asking ? 'ask' : 'quiet'; }
@@ -842,6 +842,7 @@
   }
   $('set-backup-every').onchange = function () { savePrefs({ backupMinutes: Number(this.value) }).catch(settingsError); };
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
+  $('set-allow-pass').onchange = function () { savePrefs({ allowPassword: this.checked }).catch(settingsError); };
   $('set-auto-restore-remote').onchange = function () { savePrefs({ autoRestoreRemote: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
   var editingPet = null;
@@ -881,7 +882,9 @@
       if (s.state !== 'wait') { waitCalls.delete(key); deliveries.delete(key); return; }
       if (waitStates && waitStates[key] && waitStates[key] !== 'wait' && wantAlert(waitCat(s))) meow();
       var since = s.stateSince;
-      if (!Number.isFinite(since) || Date.now() - since < window.PetState.LIMITS.wait || waitCalls.get(key) === since ||
+      // A question is reported after a few seconds; a session that finished after 30 quiet seconds (it may only be pausing).
+      var settle = s.asking ? 5000 : 30000;
+      if (!Number.isFinite(since) || Date.now() - since < settle || waitCalls.get(key) === since ||
           !wantAlert(waitCat(s)) || !browserOn || !('Notification' in window) || Notification.permission !== 'granted') return;
       waitCalls.set(key, since);
       // Rasterise local SVG artwork; no remote image or push service.
@@ -892,7 +895,7 @@
           if (!browserOn || !current.on || !session || session.state !== 'wait' || session.stateSince !== since) return;
           var canvas = document.createElement('canvas'); canvas.width = canvas.height = 96;
           canvas.getContext('2d').drawImage(img, 0, 0, 96, 96);
-          var n = new Notification(i18n('app.cho_ban_hon_2_phut', [s.name]), { body: v.name + ': ' + question(session), tag: key, icon: canvas.toDataURL('image/png') });
+          var n = new Notification(i18n(session.asking ? 'alerts.notify_ask' : 'alerts.notify_done', [s.name]), { body: v.name + ': ' + question(session), tag: key, icon: canvas.toDataURL('image/png') });
           n.onclick = function () { window.focus(); openSession(v.id, s.name); n.close(); };
         } catch (e) { /* notification support varies */ }
       };
@@ -985,6 +988,7 @@
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-backup-every').value = String(prefs.backupMinutes || 60);
     $('set-auto-restore-remote').checked = !!prefs.autoRestoreRemote;
+    $('set-allow-pass').checked = !!prefs.allowPassword;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;
     Object.keys(HP).forEach(function (k) { $('lim-' + k).value = prefs.limits[k]; $('lim-' + k + '-v').textContent = prefs.limits[k] + '%'; });
@@ -1021,6 +1025,13 @@
     table($('dt-top'), sys ? (sys.top || []).map(function (p) { return [p.cmd, number(p.cpu) + '% · ' + number(p.memGb) + ' GB']; }) : [[i18n('app.so_lieu'), i18n('app.dang_cho')]]);
     var rows = [[i18n('app.ket_noi'), v.on ? i18n('app.da_ket_noi') : i18n('app.mat_ket_noi_3')]];
     if (sys) rows = rows.concat([[i18n('app.he_dieu_hanh'), sys.os], [i18n('app.thoi_gian_chay'), span(sys.uptimeSec)], [i18n('app.dich_vu_loi_3'), (sys.failed || []).join(', ') || i18n('app.khong_co')], [i18n('app.khoi_dong_lai'), sys.rebootRequired ? i18n('app.can_khoi_dong_lai') : i18n('app.chua_can')], [i18n('app.ban_cap_nhat_2'), sys.updates == null ? i18n('app.chua_co_so_lieu') : sys.updates]]);
+    var kw = $('dt-key'); kw.textContent = ''; kw.hidden = !(!v.local && v.auth === 'password');
+    if (!kw.hidden) {
+      var go = el('button', 'btn primary sm', i18n('ssh.switch')); go.type = 'button'; go.disabled = !v.on;
+      var msg = el('span', '', v.on ? i18n('ssh.uses_password') : i18n('ssh.uses_password_off'));
+      go.onclick = function () { go.disabled = true; go.textContent = i18n('ssh.switching'); api('POST', '/api/servers/' + v.id + '/use-key').then(function () { kw.textContent = '✓ ' + i18n('ssh.switched'); return refresh(true); }).catch(function (err) { msg.textContent = err.message; go.disabled = false; go.textContent = i18n('ssh.switch'); }); };
+      kw.append(el('b', '', '🔑'), msg, go);
+    }
     table($('dt-sys'), rows); if (!$('dlg-detail').open) $('dlg-detail').showModal(); loadHistory(24);
   }
   $('q').oninput = function () { query = this.value.trim().toLowerCase(); renderSide(); renderGrid(); };
@@ -1211,7 +1222,8 @@
   }
   function addDlg() {
     ['s-host', 's-user', 's-pass', 's-phrase', 's-key'].forEach(function (i) { $(i).value = ''; });
-    $('s-port').value = '22'; $('s-err').textContent = ''; $('dlg-srv').showModal(); $('s-host').focus();
+    $('s-port').value = '22'; $('s-err').textContent = ''; sshRef = null; $('s-ref-cmd').hidden = $('s-ref-copy').hidden = true; $('s-ref-hint').textContent = i18n('ssh.manual_hint');
+    $('s-opt-pass').hidden = $('s-opt-pass').disabled = !prefs.allowPassword; $('s-auth').value = 'newkey'; $('s-auth').onchange.call($('s-auth')); $('dlg-srv').showModal(); $('s-host').focus();
   }
   function delDlg(v) { delTarget = v; $('d-title').textContent = i18n('app.go_3', [(v.local ? i18n('app.may_nay', [v.hostname]) : v.user + '@' + v.name)]); $('dlg-del').showModal(); $('d-cancel').focus(); }
   function killDlg() { killTarget = curItem(); if (!killTarget) return; $('k-title').textContent = i18n('app.dung_2', [killTarget.s.name]); $('k-err').textContent = ''; $('dlg-kill').showModal(); $('k-cancel').focus(); }
@@ -1240,10 +1252,21 @@
   $('p-cancel').onclick = function () { $('dlg-pass').close(); };
   $('k-cancel').onclick = function () { $('dlg-kill').close(); };
   $('d-cancel').onclick = function () { $('dlg-del').close(); };
+  // Adding a server: SSH keys only unless password login is allowed in Settings → Servers. "newkey" makes a key and installs
+  // it with the server password used once; "keyref" shows a command to install the made key by hand.
+  var sshRef = null;
   $('s-auth').onchange = function () {
-    var k = this.value === 'key'; $('s-kl').hidden = !k; $('s-ppl').hidden = !k; $('s-pl').hidden = k;
-    $('s-hint').textContent = k ? i18n('app.khoa_duoc_ma_hoa_khi') : i18n('app.khong_luu_mat_khau_web');
+    var a = this.value;
+    $('s-kl').hidden = $('s-ppl').hidden = a !== 'key'; $('s-pl').hidden = !(a === 'newkey' || a === 'password'); $('s-ref').hidden = a !== 'keyref';
+    $('s-pl-t').textContent = i18n(a === 'newkey' ? 'ssh.pass_once' : 'html.mat_khau');
+    $('s-hint').textContent = i18n(a === 'password' ? 'app.khong_luu_mat_khau_web' : a === 'newkey' ? 'ssh.hint_newkey' : 'app.khoa_duoc_ma_hoa_khi');
   };
+  $('s-ref-make').onclick = function () {
+    var b = this; b.disabled = true;
+    api('POST', '/api/ssh-key/new').then(function (r) { sshRef = r.ref; $('s-ref-cmd').textContent = r.command; $('s-ref-cmd').hidden = $('s-ref-copy').hidden = false; $('s-ref-hint').textContent = i18n('ssh.manual_then'); })
+      .catch(function (err) { $('s-err').textContent = err.message; }).finally(function () { b.disabled = false; });
+  };
+  $('s-ref-copy').onclick = function () { var t = $('s-ref-cmd').textContent; try { (window.TW_DESKTOP ? window.TW_DESKTOP.copy(t) : navigator.clipboard.writeText(t)); this.textContent = i18n('nodehelp.copied'); } catch (e) { /* text is selectable */ } };
   $('form-new').onsubmit = function (e) {
     e.preventDefault(); var n = $('n-name').value.trim(), id = $('n-srv').value;
     if (!/^[A-Za-z0-9_-]+$/.test(n)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong_2'); return; }
@@ -1261,10 +1284,11 @@
       api('POST', '/api/servers', body).then(function (r) { $('dlg-srv').close(); return refresh(true).then(function () { setScope(r.id); say(i18n('app.da_them_may_chu'), true, 2500); }); })
         .catch(function (err) { $('s-err').textContent = err.message; }).finally(function () { $('s-ok').disabled = false; });
     };
-    if (auth === 'password') {
+    if (auth === 'password' || auth === 'newkey') {
       body.password = $('s-pass').value; if (!body.password) { $('s-err').textContent = i18n('app.nhap_mat_khau'); return; }
       send(); return;
     }
+    if (auth === 'keyref') { if (!sshRef) { $('s-err').textContent = i18n('ssh.make_first'); return; } body.keyRef = sshRef; send(); return; }
     var f = $('s-key').files[0]; if (!f) { $('s-err').textContent = i18n('app.chon_file_khoa_ssh'); return; }
     body.passphrase = $('s-phrase').value;
     f.text().then(function (t) { body.key = t; send(); });

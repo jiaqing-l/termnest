@@ -887,3 +887,14 @@ test('macOS ps without etimes: elapsed time in [[dd-]hh:]mm:ss still maps sessio
   assert.equal(snap.sessions[0].aiSessionId, id);
   assert.equal(snap.workersReliable, true);
 });
+
+test('servers are added with SSH keys only unless password login is allowed in Settings', async (t) => {
+  assert.equal(mergePrefs().allowPassword, false);
+  assert.equal(cleanPrefs({ allowPassword: true }).allowPassword, true);
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const r = await h.request('POST', '/api/servers', { host: 'example.com', user: 'me', auth: 'password', password: 'x' });
+  assert.equal(r.code, 400); assert.match(r.body.error, /SSH key|khóa/i);
+  const k = await h.request('POST', '/api/ssh-key/new', {});
+  assert.match(k.body.publicKey, /^ssh-ed25519 /); assert.match(k.body.command, /authorized_keys/); assert.ok(!JSON.stringify(k.body).includes('PRIVATE KEY'));
+});
