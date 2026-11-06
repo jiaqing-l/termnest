@@ -754,3 +754,46 @@ test('the poll reports the pane size and keeps the path intact', () => {
   assert.equal(sessions[0].size, '120x40'); assert.equal(sessions[0].path, '/home/a b|~|c');
   assert.equal(sessions[1].size, ''); assert.equal(sessions[1].path, '/tmp');
 });
+
+test('a reboot resumes the conversation each agent held: ids are read while it runs and used on restore', async (t) => {
+  const { parsePoll, agentId } = require('../lib/parse');
+  const cid = '1cbf2a9d-d71e-4998-868f-d2953df55c34', xid = '019a1b2c-3d4e-7f60-8a9b-0c1d2e3f4a5b';
+  assert.deepEqual(agentId('claude', `{"pid":41,"sessionId":"${cid}","cwd":"/work/app","name":"x"}`), { tool: 'claude', id: cid, cwd: '/work/app' });
+  assert.deepEqual(agentId('codex', `rollout-2026-11-06T09-00-00-${xid}.jsonl`), { tool: 'codex', id: xid });
+  for (const bad of ['{"sessionId":"nope"}', 'not json', '{}']) assert.equal(agentId('claude', bad), null);
+  assert.equal(agentId('codex', 'rollout-x.jsonl'), null);
+  // Claude started by hand in a shell (pane 10 → 41), Codex below a node wrapper (pane 20 → 51 → 52); 99 belongs to no session.
+  const snap = parsePoll(['@@PS', '41 10 50 claude', '51 20 50 node /usr/bin/codex', '52 51 50 codex', '99 1 5 claude', '@@AGENTIDS',
+    `claude 41 {"pid":41,"sessionId":"${cid}","cwd":"/work/app"}`, `codex 52 /home/u/.codex/sessions/2026/11/06/rollout-2026-11-06T09-00-00-${xid}.jsonl`,
+    `claude 99 {"pid":99,"sessionId":"${xid}"}`, '@@SESS', '$0|~|a|~|0|~|100|~|200|~|claude|~|/work', '$1|~|b|~|0|~|100|~|200|~|node|~|/srv',
+    '@@DETAIL', '$0|~|10|~|0|~|', '$1|~|20|~|0|~|', '@@END'].join('\n'), 300);
+  const [a, b] = snap.sessions;
+  const reused = parsePoll(['@@PS', '41 10 50 -bash', '@@AGENTIDS', `claude 41 {"pid":41,"sessionId":"${cid}"}`, '@@SESS', '$0|~|a|~|0|~|100|~|200|~|bash|~|/work', '@@DETAIL', '$0|~|10|~|0|~|', '@@END'].join('\n'), 300);
+  assert.equal(reused.sessions[0].aiSessionId, undefined);   // a pid reused by a shell is not that Claude
+  assert.equal(a.aiTool, 'claude'); assert.equal(a.aiSessionId, cid); assert.equal(a.aiCwd, '/work/app');
+  assert.equal(b.aiTool, 'codex'); assert.equal(b.aiSessionId, xid);
+  const now = 1000 * 1000;
+  const seen = syncKnown(undefined, 'boot1', [{ ...a, name: 'a', path: '/work', created: 100 }, { ...b, name: 'b', path: '/srv', created: 100 }], now).record;
+  assert.deepEqual(seen.sessions.a, { dir: '/work/app', run: 'claude', resume: cid });
+  assert.deepEqual(seen.sessions.b, { dir: '/srv', run: 'codex', resume: xid });
+  // Right after a start the pane is still a shell: the conversation is kept. A settled shell means the agent was left.
+  const young = { name: 'a', path: '/work/app', cmd: 'bash', created: now / 1000 - 30 };
+  assert.deepEqual(syncKnown(seen, 'boot1', [young, { ...b, name: 'b', path: '/srv', created: 100 }], now).record.sessions.a, seen.sessions.a);
+  assert.deepEqual(syncKnown(seen, 'boot1', [{ ...young, created: 100 }], now).record.sessions.a, { dir: '/work/app', run: 'shell' });
+  assert.equal(syncKnown(seen, 'boot1', [{ ...young, cmd: 'vim', created: 100 }], now).record.sessions.a.resume, cid);   // another program in front keeps it
+  // Restore: Claude resumes its recorded id when the transcript exists; Codex resumes by id.
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const id = '22222222-2222-2222-2222-222222222222', cfg = { id };
+  h.vault.data.servers.push(cfg);
+  h.vault.data.known[id] = { bootId: 'boot1', sessions: seen.sessions, lost: [] };
+  const calls = [];
+  const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/work/app\n\0' }; }, poll: async () => {} };
+  h.remotes.set(id, r);
+  h.onPoll(r, { bootId: 'boot2', sessions: [] });
+  const result = await h.request('POST', `/api/servers/${id}/restore`, {});
+  assert.deepEqual(result.body.restored.sort(), ['a', 'b']);
+  assert.ok(calls.some((cmd) => cmd.includes(`${cid}.jsonl`) && cmd.includes('claude --resume')));
+  assert.ok(calls.some((cmd) => cmd.includes(`codex resume ${xid}`)));
+  assert.equal(h.vault.data.known[id].sessions.a.resume, cid);
+});

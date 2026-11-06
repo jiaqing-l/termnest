@@ -406,11 +406,13 @@ async function startSession(r, options) {
   return withSessionChange(r, () => executeStartSession(r, options));
 }
 
-async function executeStartSession(r, { name, dir, run, restoring = false }) {
+async function executeStartSession(r, { name, dir, run, restoring = false, resume = '' }) {
   if (!validName(name)) throw new Error(tr('srv.server.ten_chi_dung_chu_khong'));
   if (!validDir(dir)) throw new Error(tr('srv.server.thu_muc_chua_dung'));
   if (!['shell', 'claude', 'codex'].includes(run)) throw new Error(tr('srv.server.lenh_chua_dung'));
   dir = dir.trim();
+  // After a reboot the conversation the agent held is resumed by its own id (recorded while it ran).
+  resume = restoring && typeof resume === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(resume) ? resume : '';
   let resolvedDir;
   if (r.mode === 'powershell') {
     resolvedDir = await r.startPlain({ name, dir, run, restoring });
@@ -438,6 +440,11 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
         `for f in "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/${shq(id + '.jsonl')}; do`,
         `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(id)}`)}; break; fi`,
         `done`,
+        ...(resume ? [
+          `for f in "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/${shq(resume + '.jsonl')}; do`,
+          `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(resume)}`)}; break; fi`,
+          `done`,
+        ] : []),
         // Decide remotely, but send one simple command to the user's login shell (including fish).
         `tmux send-keys -t ${shq(`=${name}:`)} "$cmd" Enter`,
       ].join('\n');
@@ -450,7 +457,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
       }
     }
     if (run === 'codex') {
-      const cmd = r.cfg.local ? await r.codexLaunch(restoring) : 'codex';
+      const cmd = resume ? `codex resume ${resume}` : r.cfg.local ? await r.codexLaunch(restoring) : 'codex';
       const launched = await r.exec(`tmux send-keys -t ${shq(`=${name}:`)} ${shq(cmd)} Enter`).catch(() => ({ code: 1 }));
       if (launched.code !== 0) {
         await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`).catch(() => {});
@@ -460,7 +467,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
   }
   vault.data.known ||= {};
   const known = vault.data.known[r.cfg.id] ||= { bootId: r.snapshot?.bootId || '', sessions: {}, lost: [] };
-  Object.defineProperty(known.sessions, name, { value: { dir: resolvedDir, run }, enumerable: true, configurable: true, writable: true });
+  Object.defineProperty(known.sessions, name, { value: resume ? { dir: resolvedDir, run, resume } : { dir: resolvedDir, run }, enumerable: true, configurable: true, writable: true });
   known.lost = (known.lost || []).filter((n) => n !== name);
   const prefs = mergePrefs(vault.data.prefs);
   prefs.recentDirs = [resolvedDir, ...prefs.recentDirs.filter((d) => d !== resolvedDir)].slice(0, 8);
