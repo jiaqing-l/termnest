@@ -1193,7 +1193,7 @@
   "settings.backup_pick": "Chọn thư mục khác…",
   "settings.backup_last_label": "Lần gần nhất",
   "settings.backup_extra_none": "Không",
-  "settings.backup_foot": "Bản sao được mã hóa, giữ 10 bản. Chọn thư mục Google Drive, iCloud hoặc OneDrive trên máy để tự đưa lên mạng. Nơi lưu:",
+  "settings.backup_foot": "Mỗi bản sao là toàn bộ dữ liệu TERMNEST tại một thời điểm (mọi server, mọi phiên), đã mã hóa. Giữ 10 thời điểm gần nhất. Chọn thư mục Google Drive, iCloud hoặc OneDrive để tự đưa lên mạng. Nơi lưu:",
   "tokenui.tai_khoan_ai": "Tài khoản AI",
   "tokenui.them_tai_khoan": "Thêm tài khoản",
   "tokenui.sua": "Sửa",

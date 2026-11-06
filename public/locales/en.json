@@ -1210,7 +1210,7 @@
   "settings.backup_pick": "Choose another folder…",
   "settings.backup_last_label": "Last backup",
   "settings.backup_extra_none": "Nowhere else",
-  "settings.backup_foot": "Copies are encrypted; the newest 10 are kept. Pick a Google Drive, iCloud or OneDrive folder on this computer to upload them. Stored in:",
+  "settings.backup_foot": "Each copy is all of the TERMNEST data at one moment (every server, every session), encrypted. The 10 most recent moments are kept. Pick a Google Drive, iCloud or OneDrive folder to upload them. Stored in:",
   "tokenui.tai_khoan_ai": "AI accounts",
   "tokenui.them_tai_khoan": "Add account",
   "tokenui.sua": "Edit",
