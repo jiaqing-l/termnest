@@ -38,6 +38,14 @@
           <div class="err" id="setup-err" role="status"></div>
           <button class="btn primary" type="submit" data-i18n="html.tao_mat_khau"></button>
         </form>
+        <button type="button" class="btn link-btn" id="setup-restore" hidden data-i18n="settings.setup_restore"></button>
+        <form id="form-setup-restore" class="f" hidden>
+          <label><span data-i18n="settings.setup_restore_file"></span><input id="setup-restore-file" type="file" accept=".json,application/json" required></label>
+          <label><span data-i18n="settings.restore_pass"></span><input id="setup-restore-pass" type="password" required autocomplete="off"></label>
+          <div class="err" id="setup-restore-err" role="status"></div>
+          <button class="btn primary" type="submit" data-i18n="settings.restore_go"></button>
+          <button class="btn" type="button" id="setup-restore-back" data-i18n="tokenui.huy"></button>
+        </form>
       </div>
     </div>
   </div>
@@ -236,6 +244,9 @@
       <label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
       <div class="sw"><span data-i18n="settings.backup_last_label"></span><span class="set-val" id="bk-last"></span><button type="button" class="btn sm" id="bk-now" data-i18n="settings.backup_now"></button></div>
       <label class="sw"><span data-i18n="settings.backup_extra"></span><select id="bk-target"></select></label>
+      <div class="sw"><span data-i18n="settings.restore_label"></span><button type="button" class="btn sm" id="bk-restore" data-i18n="settings.restore_pick"></button></div>
+      <form class="sw set-stack bk-restore" id="bk-restore-form" hidden><span id="bk-restore-file"></span><input type="password" id="bk-restore-pass" autocomplete="off" required data-i18n-attrs="placeholder:settings.restore_pass;aria-label:settings.restore_pass"><button class="btn sm danger" type="submit" data-i18n="settings.restore_go"></button><button class="btn sm" type="button" id="bk-restore-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="settings.restore_warn"></small></form>
+      <input type="file" id="bk-restore-input" accept=".json,application/json" hidden>
     </div>
     <p class="hint set-foot"><span data-i18n="settings.backup_foot"></span> <code id="bk-dir"></code></p>
     <p id="bk-note" class="hint" role="status"></p>

@@ -67,3 +67,14 @@ test('copies also go to a folder of the user\'s choice, and synced cloud folders
     assert.equal(cloudFolders(home, 'darwin')[0].path, gd);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('a backup file opens only with its own password', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-read-')), file = path.join(dir, 'vault.json');
+  try {
+    new Vault(file).create('old-machine', { servers: [{ id: 's1' }], features: { notes: { notes: [{ t: 'ghi chú' }] } } });
+    const text = fs.readFileSync(file, 'utf8');
+    assert.deepEqual(Vault.read(text, 'old-machine').servers, [{ id: 's1' }]);
+    assert.equal(Vault.read(text, 'old-machine').features.notes.notes[0].t, 'ghi chú');
+    for (const [t, pw] of [[text, 'wrong'], ['not json', 'old-machine'], ['{"v":2}', 'old-machine'], ['{}', 'x']]) assert.equal(Vault.read(t, pw), null);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

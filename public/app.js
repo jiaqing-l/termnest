@@ -1078,6 +1078,24 @@
     if (keep) bkShow(keep);   // until a folder is picked the choice stays as it was
     if (me) browseDir(me.id, '', bkSet);
   };
+  // Restore from a backup file (moving to another computer, or going back to an earlier moment). The file's own password opens it.
+  var bkFile = null;
+  $('bk-restore').onclick = function () { $('bk-restore-input').value = ''; $('bk-restore-input').click(); };
+  $('bk-restore-input').onchange = function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    f.text().then(function (text) { bkFile = text; $('bk-restore-file').textContent = '📄 ' + f.name; $('bk-restore-form').hidden = false; $('bk-restore-pass').value = ''; $('bk-restore-pass').focus(); });
+  };
+  $('bk-restore-cancel').onclick = function () { bkFile = null; $('bk-restore-form').hidden = true; };
+  $('bk-restore-form').onsubmit = function (e) {
+    e.preventDefault(); if (!bkFile) return;
+    var go = this.querySelector('[type=submit]'); go.disabled = true;
+    api('POST', '/api/backup/restore', { backup: bkFile, password: $('bk-restore-pass').value }).then(function (r) {
+      bkFile = null; $('bk-restore-form').hidden = true; $('dlg-set').close();
+      say(i18n('settings.restore_done', [r.servers]), true, 6000);
+      api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); });
+      refresh(true);
+    }).catch(bkError).finally(function () { go.disabled = false; });
+  };
   $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(function (r) { bkShow(Object.assign(r, { suggestions: bkData && bkData.suggestions })); }).catch(bkError).finally(function () { b.disabled = false; }); };
   $('set').onclick = function () { renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(setTab); $('dlg-set').showModal(); };
   document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });
@@ -1330,6 +1348,16 @@
       setupToken = null; $('setup-pass').value = ''; $('setup-confirm').value = ''; showLogin();
     }).catch(function (err) { $('setup-err').textContent = err.message; });
   };
+  // First run: start from a backup made on another computer instead of a new password.
+  $('setup-restore').onclick = function () { $('form-setup').hidden = true; $('setup-restore').hidden = true; $('form-setup-restore').hidden = false; };
+  $('setup-restore-back').onclick = function () { $('form-setup-restore').hidden = true; $('form-setup').hidden = false; $('setup-restore').hidden = false; };
+  $('form-setup-restore').onsubmit = function (e) {
+    e.preventDefault(); $('setup-restore-err').textContent = '';
+    var f = $('setup-restore-file').files[0]; if (!f) return;
+    f.text().then(function (text) { return api('POST', '/api/setup/restore', { backup: text, password: $('setup-restore-pass').value, setupToken: setupToken }); })
+      .then(function () { setupToken = null; $('setup-restore-pass').value = ''; $('form-setup-restore').hidden = true; showLogin(); })
+      .catch(function (err) { $('setup-restore-err').textContent = err.message; });
+  };
   $('set-quit').onclick = function () {
     api('POST', '/api/quit').then(function () { stopPolling(); $('dlg-set').close(); say(i18n('app.ung_dung_da_dung_ban'), false); }).catch(settingsError);
   };
@@ -1337,7 +1365,7 @@
     stopPolling(); fileViewer.close(); tokens.clear(); closeCrew(); closeTerm(); cur = null; firstState = true; waitStates = null; document.title = 'TERMNEST';
     document.querySelectorAll('dialog[open]').forEach(function (d) { d.close(); });
     $('login').hidden = false; $('login-pass').value = '';
-    api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
+    api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-restore').hidden = !(s.webSetup && setupToken); $('form-setup-restore').hidden = true; $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
   }
   (function wireSelectionButtons() {
     var m = $('mouse-mode'), c = $('copy-sel');

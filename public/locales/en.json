@@ -1218,5 +1218,14 @@
   "tokenui.chua_co_tai_khoan": "No accounts yet. TERMNEST reads ~/.claude and ~/.codex on each machine.",
   "tokenui.khong_gioi_han": "No limit",
   "tokenui.vi_du_cong_viec": "e.g. Work",
-  "tokenui.nguong_ngan": "limit {0}/day"
+  "tokenui.nguong_ngan": "limit {0}/day",
+  "settings.restore_label": "Restore from a backup",
+  "settings.restore_pick": "Choose file…",
+  "settings.restore_pass": "The backup's TERMNEST password",
+  "settings.restore_go": "Restore",
+  "settings.restore_warn": "Every server, session, setting, note and AI account on this computer is replaced by the backup. The current data is backed up first; this computer keeps its password.",
+  "settings.restore_done": "Restored: {0} servers.",
+  "settings.setup_restore": "Used TERMNEST on another computer? Restore from a backup",
+  "settings.setup_restore_file": "Backup file (vault-….json in the backups or TERMNEST-backup folder)",
+  "srv.backup.khong_mo_duoc": "Cannot open the backup: wrong password or not a TERMNEST backup file."
 }

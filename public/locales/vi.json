@@ -1201,5 +1201,14 @@
   "tokenui.chua_co_tai_khoan": "Chưa khai báo tài khoản nào. TERMNEST đang đọc ~/.claude và ~/.codex trên mỗi máy.",
   "tokenui.khong_gioi_han": "Không giới hạn",
   "tokenui.vi_du_cong_viec": "Ví dụ: Công việc",
-  "tokenui.nguong_ngan": "ngưỡng {0}/ngày"
+  "tokenui.nguong_ngan": "ngưỡng {0}/ngày",
+  "settings.restore_label": "Khôi phục từ bản sao",
+  "settings.restore_pick": "Chọn tệp…",
+  "settings.restore_pass": "Mật khẩu TERMNEST của bản sao",
+  "settings.restore_go": "Khôi phục",
+  "settings.restore_warn": "Toàn bộ server, phiên, cài đặt, ghi chú và tài khoản AI trên máy này sẽ được thay bằng bản sao. Dữ liệu hiện tại được sao lưu trước; mật khẩu của máy này giữ nguyên.",
+  "settings.restore_done": "Đã khôi phục: {0} server.",
+  "settings.setup_restore": "Đã dùng TERMNEST ở máy khác? Khôi phục từ bản sao",
+  "settings.setup_restore_file": "Tệp bản sao (vault-….json trong thư mục backups hoặc TERMNEST-backup)",
+  "srv.backup.khong_mo_duoc": "Không mở được bản sao: sai mật khẩu hoặc tệp không phải bản sao TERMNEST."
 }

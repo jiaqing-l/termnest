@@ -856,3 +856,25 @@ test('before a reboot the dialog learns which agents run and which folders hold 
   assert.deepEqual(failing.changed, []);
   await assert.rejects(rebootCheck({ ready: false }, shq));
 });
+
+test('restoring a backup while signed in swaps the data, copies the old data first, and drops the other computer\'s own sessions', async (t) => {
+  const { Vault } = require('../lib/vault');
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const local = '00000000-0000-4000-8000-000000000001', gone = '66666666-6666-6666-6666-666666666666';
+  const closed = [];
+  h.remotes.set(gone, { cfg: { id: gone }, close: () => closed.push(gone) });
+  h.vault.data.servers.push({ id: gone });
+  const other = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-other-')), 'vault.json');
+  new Vault(other).create('other-pass', { servers: [], prefs: { backupMinutes: 360 }, known: { [local]: { bootId: 'x', sessions: { mine: { dir: '/Users/x', run: 'shell' } }, lost: ['mine'] } }, features: { notes: { notes: [] } } });
+  const backup = fs.readFileSync(other, 'utf8');
+  assert.equal((await h.request('POST', '/api/backup/restore', { backup, password: 'nope' })).code, 400);
+  const before = fs.readdirSync(path.join(path.dirname(h.vault.file), 'backups')).length;
+  const ok = await h.request('POST', '/api/backup/restore', { backup, password: 'other-pass' });
+  assert.equal(ok.code, 200);
+  assert.deepEqual(closed, [gone]); assert.ok(!h.remotes.has(gone));
+  assert.equal(h.vault.data.prefs.backupMinutes, 360);
+  assert.equal(h.vault.data.known[local], undefined);
+  assert.ok(fs.readdirSync(path.join(path.dirname(h.vault.file), 'backups')).length > before);
+  const again = new Vault(h.vault.file); assert.equal(again.unlock('test'), true);   // this computer keeps its own password
+});

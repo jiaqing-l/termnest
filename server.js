@@ -172,13 +172,13 @@ function send(res, code, body) {
 }
 function fail(res, code, error, extra) { send(res, code, { error, ...(extra || {}) }); }
 
-function readJson(req) {
+function readJson(req, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', (d) => {
       size += d.length;
-      if (size > MAX_BODY) { reject(new Error('too large')); req.destroy(); return; }
+      if (size > limit) { reject(new Error('too large')); req.destroy(); return; }
       chunks.push(d);
     });
     req.on('end', () => {
@@ -238,6 +238,13 @@ function addRemote(cfg) {
   configureRemote(r);
   remotes.set(cfg.id, r);
   return r;
+}
+
+// Data from another machine: "This computer" there is not this computer, so its sessions are not offered for restore here.
+function forThisMachine(data) {
+  const out = { ...data, servers: Array.isArray(data.servers) ? data.servers : [], known: { ...(data.known || {}) } };
+  delete out.known[LOCAL_ID];
+  return out;
 }
 
 function startRemotes() {
@@ -588,6 +595,19 @@ async function api(req, res, url) {
       ...(process.env.TW_PACKAGED === '1' ? { packaged: true } : {}) });
     return;
   }
+  // First run on a new machine: start from a backup file instead of an empty store. The backup keeps its own password.
+  if (p === '/api/setup/restore' && m === 'POST') {
+    if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
+    const body = await readJson(req, 16 * 1024 * 1024);
+    if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
+    const digest = (value) => crypto.createHash('sha256').update(value).digest();
+    if (typeof body.setupToken !== 'string' || !crypto.timingSafeEqual(digest(body.setupToken), digest(process.env.TW_SETUP_TOKEN))) { fail(res, 403, tr('srv.server.ma_thiet_lap_khong_hop')); return; }
+    const data = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    if (!data) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    vault.create(body.password, forThisMachine(data));
+    delete process.env.TW_SETUP_TOKEN;
+    send(res, 200, { ok: true }); return;
+  }
   if (p === '/api/setup' && m === 'POST') {
     if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
     const body = await readJson(req);
@@ -675,6 +695,20 @@ async function api(req, res, url) {
     vault.data.prefs = { ...mergePrefs(vault.data.prefs), backupDir: dir };
     if (dir) vault.copy(); else saveVault();
     send(res, 200, vault.info()); return;
+  }
+  // Signed in: replace this machine's data with a backup (servers, sessions, settings, notes, AI accounts). The current data is
+  // copied first, and this store keeps its own password.
+  if (p === '/api/backup/restore' && m === 'POST') {
+    const body = await readJson(req, 16 * 1024 * 1024);
+    const data = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    vault.copy();
+    const keep = new Set(data.servers.map((s) => s.id));
+    for (const [id, r] of [...remotes]) if (id !== LOCAL_ID && !keep.has(id)) { r.close(); remotes.delete(id); }
+    vault.data = forThisMachine(data);
+    for (const cfg of vault.data.servers) if (remotes.has(cfg.id)) { remotes.get(cfg.id).close(); remotes.delete(cfg.id); }
+    startRemotes(); saveVault();
+    send(res, 200, { ok: true, servers: vault.data.servers.length }); return;
   }
   if (p === '/api/backup/now' && m === 'POST') { vault.copy(); send(res, 200, vault.info()); return; }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
