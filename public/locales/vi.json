@@ -1210,5 +1210,17 @@
   "settings.restore_done": "Đã khôi phục: {0} server.",
   "settings.setup_restore": "Đã dùng TERMNEST ở máy khác? Khôi phục từ bản sao",
   "settings.setup_restore_file": "Tệp bản sao (vault-….json trong thư mục backups hoặc TERMNEST-backup)",
-  "srv.backup.khong_mo_duoc": "Không mở được bản sao: sai mật khẩu hoặc tệp không phải bản sao TERMNEST."
+  "srv.backup.khong_mo_duoc": "Không mở được bản sao: sai mật khẩu hoặc tệp không phải bản sao TERMNEST.",
+  "petyard.bua": "Búa",
+  "petyard.cat_bua": "Cất búa",
+  "petyard.bua_title": "Cầm búa gõ đầu các bạn thú (chỉ cho vui, không ảnh hưởng phiên)",
+  "petyard.bua_note": "Đang cầm búa: bấm vào một bạn thú để gõ. Esc hoặc Cất búa để thôi.",
+  "petyard.bop": "BỐP!",
+  "petyard.ouch_1": "Á đau!",
+  "petyard.ouch_2": "Sếp ơi tha em!",
+  "petyard.ouch_3": "Em làm việc chăm mà…",
+  "petyard.ouch_4": "Ui da, u đầu rồi!",
+  "petyard.ouch_5": "Gõ nhẹ thôi sếp!",
+  "petyard.ouch_6": "Hu hu, em mách mèo nhà!",
+  "petyard.choang": "Choáng quá… thấy sao bay 💫"
 }

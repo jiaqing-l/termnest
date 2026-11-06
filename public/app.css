@@ -1225,3 +1225,20 @@ dialog.drop-remote{display:none}
 .link-btn{background:transparent;border:0;color:var(--primary);text-decoration:underline;padding:6px 0;box-shadow:none}
 #dlg-set .bk-restore .pw{flex:1 1 220px;min-width:0}
 #dlg-set .bk-restore .pw input{width:100%}
+/* Hammer mode in the playground: a hammer cursor, a swing, a squash, spinning stars, and a dizzy pet after five quick bonks */
+#pet-yard2.hammer,#pet-yard2.hammer .yw{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext x='2' y='26' font-size='26'%3E%F0%9F%94%A8%3C/text%3E%3C/svg%3E") 6 6,crosshair}
+.yd-hammer[aria-pressed="true"]{background:var(--primary);color:var(--surface);border-color:var(--primary)}
+.yd-ham{font-size:30px;transform-origin:80% 85%;animation:yd-ham .42s ease-in forwards}
+@keyframes yd-ham{0%{transform:rotate(-70deg) translate(-6px,-10px);opacity:1}45%{transform:rotate(25deg)}60%{transform:rotate(10deg)}100%{transform:rotate(18deg);opacity:0}}
+.yd-pow{font:900 15px var(--round);color:#ff4d4d;text-shadow:0 1px 0 #fff;animation:yd-pow .7s ease-out forwards}
+@keyframes yd-pow{0%{transform:scale(.4);opacity:0}30%{transform:scale(1.25);opacity:1}100%{transform:translateY(-22px) scale(1);opacity:0}}
+.yd-star{font-size:12px;animation:yd-star .9s ease-out forwards}
+@keyframes yd-star{to{transform:translateY(-20px) rotate(220deg);opacity:0}}
+.yp.bonked svg{animation:yd-squash .7s ease-out}
+@keyframes yd-squash{0%{transform:none}15%{transform:scale(1.25,.45) translateY(12px)}45%{transform:scale(.9,1.12)}70%{transform:scale(1.04,.96)}100%{transform:none}}
+.yp.dizzy svg{animation:yd-dizzy .5s ease-in-out infinite}
+.yp.dizzy::after{content:'💫';position:absolute;left:50%;top:-14px;transform:translateX(-50%);font-size:15px;animation:yd-bob 1s ease-in-out infinite;pointer-events:none}
+@keyframes yd-dizzy{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@media (prefers-reduced-motion:reduce){.yp.bonked svg,.yp.dizzy svg{animation:none}}
+.yp.dizzy{position:relative}
+.yd-ham{font-size:34px}

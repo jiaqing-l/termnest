@@ -18,7 +18,10 @@
   const head = document.querySelector('.playground > b');
   const score = el('span', 'yd-score'), kickoff = el('button', 'btn yd-kick', i18n('petyard.da_bong'));
   kickoff.type = 'button'; kickoff.title = i18n('petyard.cho_cac_ban_thu_da');
-  if (head) head.append(score, kickoff);
+  // Hammer mode (just for fun): the cursor becomes a hammer and a tap bonks a pet instead of opening its bubble. Nothing else happens.
+  const hammer = el('button', 'btn yd-kick yd-hammer', '🔨 ' + i18n('petyard.bua'));
+  hammer.type = 'button'; hammer.title = i18n('petyard.bua_title'); hammer.setAttribute('aria-pressed', 'false');
+  if (head) head.append(score, kickoff, hammer);
 
   // ---------- helpers ----------
   const hour = () => new Date().getHours();
@@ -146,8 +149,30 @@
     if (canPlay()) { const r = w.pet.getBoundingClientRect(); particle('yd-food', '🍖', r.left + 8, r.top - 6); }
     setTimeout(() => { joy(w); hearts(w); say(w, i18n('petyard.ngon_qua_cam_on_sep')); setTimeout(() => startAct('share', w), 900); }, 560);
   }
+  function setHammer(on) {
+    root.classList.toggle('hammer', on); hammer.setAttribute('aria-pressed', String(on));
+    hammer.textContent = on ? '✋ ' + i18n('petyard.cat_bua') : '🔨 ' + i18n('petyard.bua');
+    if (on) { stopMatch(); closeBubbles(); note(i18n('petyard.bua_note'), 3000); }
+  }
+  hammer.onclick = () => setHammer(!root.classList.contains('hammer'));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && root.classList.contains('hammer')) setHammer(false); });
+  const OUCH = ['petyard.ouch_1', 'petyard.ouch_2', 'petyard.ouch_3', 'petyard.ouch_4', 'petyard.ouch_5', 'petyard.ouch_6'];
+  // A bonk: the hammer swings down on the pet's head, the pet squashes, stars spin; five quick bonks make it dizzy for a moment.
+  function bonk(w) {
+    const r = w.pet.getBoundingClientRect(), now = Date.now();
+    w.bonks = (w.bonks || []).filter((t) => now - t < 4000); w.bonks.push(now);
+    const dizzy = w.bonks.length >= 5 || w.pet.classList.contains('dizzy');   // still seeing stars: every bonk keeps it dizzy
+    if (!still()) {
+      particle('yd-ham', '🔨', r.left + r.width / 2 - 4, r.top - 30);
+      setTimeout(() => { particle('yd-pow', i18n('petyard.bop'), r.left + r.width / 2 - 14, r.top - 18); for (let i = 0; i < 3; i++) particle('yd-star', '⭐', r.left + r.width / 2 + (i - 1) * 12, r.top - 4); }, 160);
+      w.pet.classList.remove('bonked'); void w.pet.offsetWidth; setTimeout(() => w.pet.classList.add('bonked'), 150);
+    }
+    if (dizzy) { w.bonks = []; w.pet.classList.add('dizzy'); clearTimeout(w.dizzyT); w.dizzyT = setTimeout(() => w.pet.classList.remove('dizzy'), 3500); }
+    setTimeout(() => say(w, dizzy ? i18n('petyard.choang') : i18n(OUCH[Math.floor(Math.random() * OUCH.length)])), 260);
+  }
   root.addEventListener('click', (e) => {
     const node = e.target.closest('.yw'); if (!node || Date.now() < suppress) return; const w = walkers.get(node.dataset.key); if (!w) return;
+    if (root.classList.contains('hammer')) { closeBubbles(); bonk(w); return; }
     const i = w.info, open = () => ctx.open(i.r.v.id, i.r.s.name);
     if (i.mode === 'alarmed') { open(); return; }
     joy(w);
@@ -157,6 +182,7 @@
   // drag a pet to another spot
   root.addEventListener('pointerdown', (e) => {
     const node = e.target.closest('.yw'); if (!node || e.button !== 0) return;
+    if (root.classList.contains('hammer')) return;   // no dragging while holding the hammer
     stopMatch(); stopAct(); const r = node.getBoundingClientRect(), y = root.getBoundingClientRect();
     drag = { node, y, x: e.clientX, moved: false }; node.style.animation = 'none'; node.style.left = (r.left - y.left) + 'px'; node.querySelector('.yp').style.animation = 'none';
   });

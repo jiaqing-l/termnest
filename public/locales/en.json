@@ -1227,5 +1227,17 @@
   "settings.restore_done": "Restored: {0} servers.",
   "settings.setup_restore": "Used TERMNEST on another computer? Restore from a backup",
   "settings.setup_restore_file": "Backup file (vault-….json in the backups or TERMNEST-backup folder)",
-  "srv.backup.khong_mo_duoc": "Cannot open the backup: wrong password or not a TERMNEST backup file."
+  "srv.backup.khong_mo_duoc": "Cannot open the backup: wrong password or not a TERMNEST backup file.",
+  "petyard.bua": "Hammer",
+  "petyard.cat_bua": "Put it away",
+  "petyard.bua_title": "Bonk the pets with a hammer (just for fun, sessions are not touched)",
+  "petyard.bua_note": "Holding the hammer: tap a pet to bonk it. Esc or Put it away to stop.",
+  "petyard.bop": "BONK!",
+  "petyard.ouch_1": "Ouch!",
+  "petyard.ouch_2": "Boss, have mercy!",
+  "petyard.ouch_3": "But I work so hard…",
+  "petyard.ouch_4": "Ow, that's a bump!",
+  "petyard.ouch_5": "Gently, boss!",
+  "petyard.ouch_6": "I'm telling the house cat!",
+  "petyard.choang": "So dizzy… seeing stars 💫"
 }
