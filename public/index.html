@@ -242,7 +242,7 @@
     <h4 data-i18n="move2.title"></h4>
     <div class="set-group">
       <div class="sw"><span data-i18n="move2.export_label"></span><button type="button" class="btn sm primary" id="mv2-open" data-i18n="move2.export_btn"></button></div>
-      <form class="sw set-stack bk-restore" id="mv2-form" hidden><span id="mv2-sum"></span><input type="password" id="mv2-pass" autocomplete="current-password" required data-i18n-attrs="placeholder:move2.pass;aria-label:move2.pass"><button class="btn sm primary" type="submit" data-i18n="move2.export_go"></button><button class="btn sm" type="button" id="mv2-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="move2.export_warn"></small></form>
+      <form class="sw set-stack bk-restore" id="mv2-form" hidden><span id="mv2-sum"></span><label class="mv2-opt" id="mv2-srv-row" hidden><input type="checkbox" id="mv2-srv"><span id="mv2-srv-t"></span></label><input type="password" id="mv2-pass" autocomplete="current-password" required data-i18n-attrs="placeholder:move2.pass;aria-label:move2.pass"><button class="btn sm primary" type="submit" data-i18n="move2.export_go"></button><button class="btn sm" type="button" id="mv2-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="move2.export_warn"></small></form>
       <div class="sw set-stack" id="mv2-done" hidden><span id="mv2-done-t"></span><code id="mv2-path"></code><small class="hint" data-i18n="move2.next"></small></div>
       <div class="sw set-stack" id="mv2-wait" hidden><span data-i18n="move2.waiting"></span><small class="hint" id="mv2-wait-list"></small><button type="button" class="btn sm" id="mv2-retry" data-i18n="move2.retry"></button></div>
     </div>

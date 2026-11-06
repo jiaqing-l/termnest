@@ -57,3 +57,26 @@ test('the file goes to the Desktop when there is one, named by date', () => {
     assert.equal(T.exportName(new Date(2026, 10, 6, 9, 5)), 'TERMNEST-chuyen-may-2026-11-06-0905.termnest');
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
+
+test('server chats travel as a spare copy and go back only to a server that lost them', { skip: process.platform === 'win32' }, async () => {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-srvchat-'))), H = path.join(base, 'srv');
+  try {
+    const id = '3cbf2a9d-d71e-4998-868f-d2953df55c36', dir = path.join(H, 'ws', 'app');
+    fs.mkdirSync(dir, { recursive: true }); repo(dir, 'git@gitlab.example.com:me/app.git');
+    const proj = path.join(H, '.claude', 'projects', dir.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
+    fs.writeFileSync(path.join(proj, id + '.jsonl'), '{"m":"hello"}\n');
+    const srv = { ...machine(H, [{ name: 'SV1', path: dir, aiTool: 'claude', aiSessionId: id }]), cfg: { id: 's1' }, publicView: () => ({ name: 'dev-ubuntu-02' }) };
+    const localOnly = { ...machine(base, []), cfg: { id: 'local', local: true } };
+    const sizes = await T.collectServers([localOnly, srv], {}, true);
+    assert.equal(sizes.chats.length, 1); assert.equal(sizes.chats[0].serverName, 'dev-ubuntu-02'); assert.equal(sizes.chats[0].b64, undefined);
+    const full = await T.collectServers([localOnly, srv], {}, false);
+    assert.equal(full.chats[0].server, 's1');
+    assert.equal(await T.restoreOnServer(srv, full.chats[0], shq), 'present');   // the server still has it: untouched
+    fs.writeFileSync(path.join(proj, id + '.jsonl'), '{"m":"hello"}\n{"m":"went on"}\n');
+    assert.equal(await T.restoreOnServer(srv, full.chats[0], shq), 'present');
+    assert.ok(fs.readFileSync(path.join(proj, id + '.jsonl'), 'utf8').includes('went on'));
+    fs.rmSync(path.join(H, '.claude'), { recursive: true, force: true });   // the server was reinstalled
+    assert.equal(await T.restoreOnServer(srv, full.chats[0], shq), 'written');
+    assert.equal(fs.readFileSync(path.join(proj, id + '.jsonl'), 'utf8'), '{"m":"hello"}\n');
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});

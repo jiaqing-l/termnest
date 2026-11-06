@@ -1243,3 +1243,5 @@ dialog.drop-remote{display:none}
 .yp.dizzy{position:relative}
 .yd-ham{font-size:34px}
 #dlg-set .set-group .bk-restore>span:first-child{flex:1 1 100%;font-weight:600}
+#dlg-set .mv2-opt{flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:13px;color:var(--fg-2)}
+#dlg-set .mv2-opt input{width:16px;height:16px;margin-top:2px;flex:none;accent-color:var(--primary)}

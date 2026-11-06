@@ -253,17 +253,27 @@ function keepIncoming(chats) {
   if (!chats || !chats.length) { fs.rmSync(INCOMING_FILE, { force: true }); vault.data.moveWaiting = []; return; }
   fs.mkdirSync(DATA, { recursive: true, mode: 0o700 });
   const tmp = INCOMING_FILE + '.tmp'; fs.writeFileSync(tmp, vault.sealExtra(chats), { mode: 0o600 }); fs.renameSync(tmp, INCOMING_FILE);
-  vault.data.moveWaiting = chats.map((c) => ({ name: c.name, tool: c.tool, origin: c.origin || '', dir: c.dir }));
+  vault.data.moveWaiting = chats.map((c) => ({ name: c.name, tool: c.tool, origin: c.origin || '', dir: c.dir, server: c.serverName || '' }));
 }
 let placing = null;
 async function placeIncoming() {
   if (placing) return placing;
   placing = (async () => {
     let chats; try { chats = vault.openExtra(fs.readFileSync(INCOMING_FILE, 'utf8')); } catch { return; }
-    const local = remotes.get(LOCAL_ID);
-    if (!chats || !local || !local.ready || local.mode === 'powershell') return;
+    const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
+    if (!chats) return;
+    // Spare copies of server chats go back to their own server, and only where that server lost them.
+    const serverWaiting = [];
+    for (const c of chats.filter((x) => x.server)) {
+      const r = remotes.get(c.server);
+      if (!r || !r.ready || r.mode === 'powershell') { serverWaiting.push(c); continue; }
+      try { if (await T.restoreOnServer(r, c, shq) === 'waiting') serverWaiting.push(c); } catch { serverWaiting.push(c); }
+    }
+    const mine = chats.filter((x) => !x.server);
+    if (!local || !local.ready || local.mode === 'powershell') { keepIncoming([...mine, ...serverWaiting]); saveVault(); return; }
     const known = vault.data.known[LOCAL_ID] ||= { bootId: '', sessions: {}, lost: [] };
-    const { placed, waiting } = await require('./lib/transfer').place(local, chats, known, shq);
+    const { placed, waiting: localWaiting } = await T.place(local, mine, known, shq);
+    const waiting = [...localWaiting, ...serverWaiting];
     const taken = new Set([...(local.snapshot?.sessions || []).map((s) => s.name), ...Object.keys(known.sessions)]);
     for (const p of placed) {
       const name = require('./lib/features/move').freeName(p.name, taken); taken.add(name);
@@ -756,8 +766,9 @@ async function api(req, res, url) {
     const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], true) : { chats: [], bytes: 0, skipped: [] };
     // Sessions on the servers keep their chats there: the new computer reconnects and resumes them, nothing to carry.
     const onServers = [...remotes.values()].filter((r) => !r.cfg.local).reduce((n, r) => n + (r.snapshot?.sessions || []).length, 0);
+    const sc = url.searchParams.get('servers') === '1' ? await T.collectServers([...remotes.values()], vault.data.known, true, c.bytes) : null;
     const localSessions = (local?.snapshot?.sessions || []).length;
-    send(res, 200, { servers: vault.data.servers.length, onServers, localSessions, chats: c.chats.map((x) => ({ name: x.name, tool: x.tool, size: x.size })), bytes: c.bytes, skipped: c.skipped, dir: T.exportDir(), waiting: vault.data.moveWaiting || [] });
+    send(res, 200, { servers: vault.data.servers.length, onServers, localSessions, serverChats: sc ? { count: sc.chats.length, bytes: sc.bytes, skipped: sc.skipped.length } : null, chats: c.chats.map((x) => ({ name: x.name, tool: x.tool, size: x.size })), bytes: c.bytes, skipped: c.skipped, dir: T.exportDir(), waiting: vault.data.moveWaiting || [] });
     return;
   }
   if (p === '/api/transfer/export' && m === 'POST') {
@@ -765,10 +776,11 @@ async function api(req, res, url) {
     if (!vault.check(body.password)) { fail(res, 400, tr('srv.server.sai_mat_khau')); return; }
     const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
     const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], false) : { chats: [], bytes: 0, skipped: [] };
+    const sc = body.withServers === true ? await T.collectServers([...remotes.values()], vault.data.known, false, c.bytes) : { chats: [], bytes: 0, skipped: [] };
     const file = path.join(T.exportDir(), T.exportName());
-    const text = Vault.pack(body.password, { kind: T.KIND, made: Date.now(), from: os.hostname(), data: vault.data, chats: c.chats });
+    const text = Vault.pack(body.password, { kind: T.KIND, made: Date.now(), from: os.hostname(), data: vault.data, chats: [...c.chats, ...sc.chats] });
     fs.writeFileSync(file, text, { mode: 0o600 });
-    send(res, 200, { path: file, bytes: Buffer.byteLength(text), chats: c.chats.length, skipped: c.skipped }); return;
+    send(res, 200, { path: file, bytes: Buffer.byteLength(text), chats: c.chats.length, serverChats: sc.chats.length, skipped: [...c.skipped, ...sc.skipped] }); return;
   }
   if (p === '/api/transfer/retry' && m === 'POST') { await placeIncoming().catch(() => {}); send(res, 200, { waiting: vault.data.moveWaiting || [] }); return; }
   if (p === '/api/backup/now' && m === 'POST') { vault.copy(); send(res, 200, vault.info()); return; }

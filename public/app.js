@@ -1103,12 +1103,14 @@
   function mvSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
   function mvWaiting(list) {
     $('mv2-wait').hidden = !(list && list.length);
-    $('mv2-wait-list').textContent = (list || []).map(function (w) { return w.name + (w.origin ? ' · ' + w.origin : ''); }).join(' — ');
+    $('mv2-wait-list').textContent = (list || []).map(function (w) { return w.name + (w.server ? ' (' + w.server + ')' : '') + (w.origin ? ' · ' + w.origin : ''); }).join(' — ');
   }
   function renderTransfer() { api('GET', '/api/transfer').then(function (t) { mvWaiting(t.waiting); }).catch(function () { /* older server */ }); }
   $('mv2-open').onclick = function () {
     $('mv2-done').hidden = true; $('mv2-form').hidden = false; $('mv2-sum').textContent = i18n('move2.reading'); $('mv2-pass').value = ''; $('mv2-pass').focus();
-    api('GET', '/api/transfer').then(function (t) {
+    $('mv2-srv-row').hidden = true; $('mv2-srv').checked = false;
+    api('GET', '/api/transfer?servers=1').then(function (t) {
+      if (t.serverChats && t.serverChats.count) { $('mv2-srv-row').hidden = false; $('mv2-srv-t').textContent = i18n('move2.with_servers', [t.serverChats.count, mvSize(t.serverChats.bytes)]); }
       $('mv2-sum').textContent = i18n('move2.summary2', [t.servers, t.onServers || 0, t.localSessions || 0, t.chats.length, mvSize(t.bytes), t.dir]) + (t.skipped.length ? ' ' + i18n('move2.skipped', [t.skipped.map(function (x) { return x.name; }).join(', ')]) : '');
       mvWaiting(t.waiting);
     }).catch(bkError);
@@ -1116,9 +1118,9 @@
   $('mv2-cancel').onclick = function () { $('mv2-form').hidden = true; };
   $('mv2-form').onsubmit = function (e) {
     e.preventDefault(); var go = this.querySelector('[type=submit]'); go.disabled = true; go.textContent = i18n('move2.exporting');
-    api('POST', '/api/transfer/export', { password: $('mv2-pass').value }).then(function (r) {
+    api('POST', '/api/transfer/export', { password: $('mv2-pass').value, withServers: $('mv2-srv').checked }).then(function (r) {
       $('mv2-form').hidden = true; $('mv2-done').hidden = false;
-      $('mv2-done-t').textContent = '✓ ' + i18n('move2.done', [r.chats, mvSize(r.bytes)]); $('mv2-path').textContent = r.path;
+      $('mv2-done-t').textContent = '✓ ' + i18n('move2.done', [r.chats, mvSize(r.bytes)]) + (r.serverChats ? ' ' + i18n('move2.done_servers', [r.serverChats]) : ''); $('mv2-path').textContent = r.path;
     }).catch(bkError).finally(function () { go.disabled = false; go.textContent = i18n('move2.export_go'); });
   };
   $('mv2-retry').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/transfer/retry').then(function (r) { mvWaiting(r.waiting); refresh(true); }).catch(bkError).finally(function () { b.disabled = false; }); };
