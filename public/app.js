@@ -957,8 +957,17 @@
   }
   try { if (localStorage.getItem('tw-density') === 'compact') document.documentElement.setAttribute('data-density', 'compact'); } catch (e) { /* optional */ }
   renderFx();
+  // Settings → Clean-up: how long "Send file" keeps what it stored and how long the trash keeps items (kept on the server).
+  function renderCleanup() {
+    var t = $('set-temp-days'), r = $('set-trash-days'); if (!t || !r) return;
+    var save = function (patch) { api('POST', '/api/features/browse/cleanup', patch).catch(settingsError); };
+    api('GET', '/api/features/browse/cleanup').then(function (c) { t.value = String(c.tempDays); r.value = String(c.trashDays); }).catch(function () { /* older server */ });
+    t.onchange = function () { save({ tempDays: Number(t.value) }); };
+    r.onchange = function () { save({ trashDays: Number(r.value) }); };
+  }
   function renderSettings() {
     renderStylePicker();
+    renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;

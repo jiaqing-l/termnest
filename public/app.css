@@ -1122,3 +1122,10 @@ dialog.drop-remote{display:none}
 #fx.burst i{top:var(--y);width:0;height:0;background:none;animation:none}
 #fx.burst b{position:absolute;left:0;top:0;width:var(--s);height:var(--s);margin:calc(var(--s)/-2);border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);opacity:0;animation:fx-spark var(--d) cubic-bezier(.1,.7,.3,1) var(--dl) infinite}
 @keyframes fx-spark{0%{transform:translate(0,0) scale(1);opacity:1}70%{opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(.2);opacity:0}}
+/* Trash and temp files lists: a header with the count and size, confirm-in-place buttons, checkbox rows */
+.viewer-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 6px}
+.viewer-list-head small{color:var(--fg-3);margin-right:auto}
+.viewer-confirm{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.viewer-confirm .viewer-ask{flex:0 1 auto}
+.viewer-pick{cursor:pointer}
+.viewer-pick input{margin:0 4px 0 0}

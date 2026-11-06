@@ -213,24 +213,74 @@
    row.append(go);body.append(row);
   }
   function size(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
-  // The trash of the session folder: what was moved there, newest first, each with Restore. Nothing here deletes for good.
+  // A button that asks before it acts: the first click shows the question with Yes / No in its place.
+  function confirmBtn(label,ask,yesLabel,act,danger){
+   const box=doc.createElement('span');box.className='viewer-confirm';
+   const btn=doc.createElement('button');btn.type='button';btn.className='btn'+(danger?' danger':'');btn.textContent=label;
+   const msg=doc.createElement('small');msg.className='viewer-err';
+   const reset=()=>{box.textContent='';box.append(btn,msg);};
+   btn.onclick=()=>{
+    box.textContent='';const q=doc.createElement('span');q.className='viewer-ask';q.textContent=ask;
+    const yes=doc.createElement('button');yes.type='button';yes.className='btn primary danger';yes.textContent=yesLabel;
+    const no=doc.createElement('button');no.type='button';no.className='btn';no.textContent=i18n('fileviewer.huy_tao');no.onclick=reset;
+    yes.onclick=async()=>{yes.disabled=no.disabled=true;try{await act();}catch(err){reset();msg.textContent=err.message;}};
+    box.append(q,yes,no);no.focus();
+   };
+   reset();return box;
+  }
+  function listHead(title,count,bytes,extra){
+   const head=doc.createElement('div');head.className='viewer-list-head';const t=doc.createElement('b');t.textContent=title;
+   const n=doc.createElement('small');n.textContent=i18n('fileviewer.so_muc',[count,size(bytes||0)]);head.append(t,n,...extra);return head;
+  }
+  function backTo(host,session,dir){const back=doc.createElement('button');back.type='button';back.className='btn';back.textContent=i18n('fileviewer.ve_thu_muc');back.onclick=()=>showBrowser(host,session,dir);return back;}
+  // The trash of the session folder, newest first: Restore, Delete for good (item by item, asked first) and Empty trash.
   async function showTrash(host,session,dir,out0){
-   body.textContent='';
-   const back=doc.createElement('button');back.type='button';back.className='btn';back.textContent=i18n('fileviewer.ve_thu_muc');back.onclick=()=>showBrowser(host,session,dir);body.append(back);
+   body.textContent='';body.append(backTo(host,session,dir));
    const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
+   const again=()=>showTrash(host,session,dir,out0),q='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session);
    try{
-    const r=await api('GET','/api/features/browse/trash?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session));
+    const r=await api('GET','/api/features/browse/trash?'+q);
     wait.remove();
+    const empty=r.items.length?[confirmBtn('🧹 '+i18n('fileviewer.don_thung_rac'),i18n('fileviewer.don_thung_rac_hoi',[r.count||r.items.length]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/empty',{server:host,session});await again();},true)]:[];
+    body.append(listHead(i18n('fileviewer.thung_rac'),r.count||r.items.length,r.bytes,empty));
     const list=doc.createElement('div');list.className='viewer-browser';
     r.items.forEach(it=>{
      const row=doc.createElement('div');row.className='viewer-row';const info=doc.createElement('div');info.className='viewer-trash-info';
-     const name=doc.createElement('b');name.textContent=(it.kind==='folder'?'📁 ':'📄 ')+it.name;const where=doc.createElement('small');where.textContent=it.rel+' · '+new Date(it.at).toLocaleString();info.append(name,where);
+     const name=doc.createElement('b');name.textContent=(it.kind==='folder'?'📁 ':'📄 ')+it.name;const where=doc.createElement('small');where.textContent=it.rel+' · '+size(it.bytes||0)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,where);
      const rest=doc.createElement('button');rest.type='button';rest.className='btn primary';rest.textContent=i18n('fileviewer.khoi_phuc');const msg=doc.createElement('small');msg.className='viewer-err';
-     rest.onclick=async()=>{rest.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:it.id});await showTrash(host,session,dir,out0);}catch(err){msg.textContent=err.message;rest.disabled=false;}};
-     row.append(info,rest,msg);list.append(row);
+     rest.onclick=async()=>{rest.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:it.id});await again();}catch(err){msg.textContent=err.message;rest.disabled=false;}};
+     const purge=confirmBtn(i18n('fileviewer.xoa_vinh_vien'),i18n('fileviewer.xoa_vinh_vien_hoi',[it.name]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/purge',{server:host,session,id:it.id});await again();},true);
+     row.append(info,rest,purge,msg);list.append(row);
     });
-    if(!r.items.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thung_rac_trong');list.append(empty);}
+    if(!r.items.length){const none=doc.createElement('p');none.className='viewer-note';none.textContent=i18n('fileviewer.thung_rac_trong');list.append(none);}
     body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.thung_rac_ghi_chu');body.append(help);
+   }catch(e){wait.textContent=e.message;}
+  }
+  // Files "Send file" stored on this machine (its private temp folder), newest first: pick some to delete, or delete them all.
+  async function showTemp(host,session,dir){
+   body.textContent='';body.append(backTo(host,session,dir));
+   const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
+   const again=()=>showTemp(host,session,dir);
+   try{
+    const r=await api('GET','/api/features/browse/temp?server='+encodeURIComponent(host));
+    wait.remove();
+    const chosen=new Set();
+    const delSel=doc.createElement('button');delSel.type='button';delSel.className='btn danger';delSel.disabled=true;
+    const label=()=>{delSel.textContent=i18n('fileviewer.xoa_da_chon',[chosen.size]);delSel.disabled=!chosen.size;};label();
+    const selMsg=doc.createElement('small');selMsg.className='viewer-err';
+    delSel.onclick=async()=>{delSel.disabled=true;try{await api('POST','/api/features/browse/temp',{server:host,names:[...chosen]});await again();}catch(err){selMsg.textContent=err.message;label();}};
+    const all=r.items.length?[delSel,confirmBtn(i18n('fileviewer.xoa_tat_ca'),i18n('fileviewer.xoa_tat_ca_tam_hoi',[r.count]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/temp',{server:host,all:true});await again();},true),selMsg]:[];
+    body.append(listHead(i18n('fileviewer.file_tam'),r.count,r.bytes,all));
+    const list=doc.createElement('div');list.className='viewer-browser';
+    r.items.forEach(it=>{
+     const row=doc.createElement('label');row.className='viewer-row viewer-pick';const box=doc.createElement('input');box.type='checkbox';
+     box.onchange=()=>{if(box.checked)chosen.add(it.name);else chosen.delete(it.name);label();};
+     const info=doc.createElement('div');info.className='viewer-trash-info';const name=doc.createElement('b');name.textContent='📄 '+it.name;
+     const meta=doc.createElement('small');meta.textContent=size(it.bytes)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,meta);
+     row.append(box,info);list.append(row);
+    });
+    if(!r.items.length){const none=doc.createElement('p');none.className='viewer-note';none.textContent=i18n('fileviewer.file_tam_trong');list.append(none);}
+    body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.file_tam_ghi_chu',[r.dir||'']);body.append(help);
    }catch(e){wait.textContent=e.message;}
   }
   // In pick mode a click on a file hands it to the caller instead of opening it.
@@ -254,6 +304,7 @@
     const openForm=kind=>{form.dataset.kind=kind;form.hidden=false;nameIn.placeholder=i18n(kind==='folder'?'fileviewer.ten_thu_muc_moi':'fileviewer.ten_tep_moi');nameIn.setAttribute('aria-label',nameIn.placeholder);textIn.hidden=kind!=='file';nameIn.value='';textIn.value='';msg.textContent='';go.disabled=false;nameIn.focus();};
     [['📁 '+i18n('fileviewer.thu_muc_moi_ngan'),'folder'],['📄 '+i18n('fileviewer.tep_moi_ngan'),'file']].forEach(([label,kind])=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-tool';b.title=kind==='folder'?i18n('fileviewer.thu_muc_moi'):i18n('fileviewer.tep_moi');b.textContent=label;b.onclick=()=>openForm(kind);actions.append(b);});
     const trashBtn=doc.createElement('button');trashBtn.type='button';trashBtn.className='btn viewer-tool';trashBtn.title=i18n('fileviewer.thung_rac');trashBtn.textContent='🗑 '+i18n('fileviewer.thung_rac_ngan');trashBtn.onclick=()=>showTrash(host,session,out.path,out);actions.append(trashBtn);
+    const tempBtn=doc.createElement('button');tempBtn.type='button';tempBtn.className='btn viewer-tool';tempBtn.title=i18n('fileviewer.file_tam_tieu_de');tempBtn.textContent='🗂 '+i18n('fileviewer.file_tam');tempBtn.onclick=()=>showTemp(host,session,out.path);actions.append(tempBtn);
     cancelBtn.onclick=()=>{form.hidden=true;};
     form.onsubmit=async e=>{
      e.preventDefault();const kind=form.dataset.kind,name=nameIn.value.trim();if(!name)return;
