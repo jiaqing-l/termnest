@@ -84,6 +84,33 @@
   // A file shown here (or listed in the browser) can be dragged into the terminal or a tile of the wall: its path is typed there.
   const dragPath=(element,getPath,getHost)=>{element.draggable=true;element.className=(element.className?element.className+' ':'')+'viewer-drag';element.ondragstart=e=>{const p=getPath();if(!p||!e.dataTransfer){e.preventDefault();return;}const info={host:getHost(),path:p};window.__twDrag=info;e.dataTransfer.setData('application/x-termnest-path',JSON.stringify(info));e.dataTransfer.setData('text/plain',p);e.dataTransfer.effectAllowed='copy';};element.ondragend=()=>{window.__twDrag=null;};};
   const head=doc.createElement('header'),title=doc.createElement('strong'),body=doc.createElement('div');body.className='file-content';
+  // Links inside a document never move the whole app away (that left a blank window): another file opens here, with Back
+  // to this one; a "#section" scrolls; a web address opens in the browser.
+  const slug=t=>String(t).trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu,'').replace(/\s+/g,'-');
+  function jump(id){
+   let want=id;try{want=decodeURIComponent(id);}catch{/* as written */}
+   const hit=body.querySelector('[id="'+want.replace(/"/g,'')+'"]')||[...body.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>slug(h.textContent)===slug(want));
+   if(hit)hit.scrollIntoView({block:'start',behavior:'smooth'});
+  }
+  function resolveFrom(file,ref){
+   const win=/\\/.test(file)&&!file.startsWith('/'),sep=win?'\\':'/';
+   const parts=(ref.startsWith('/')||/^[A-Za-z]:[\\/]/.test(ref)?ref:file.split(/[\\/]/).slice(0,-1).join(sep)+sep+ref).split(/[\\/]/),out=[];
+   parts.forEach((x,i)=>{if(x==='..'){if(out.length>1)out.pop();}else if(x!=='.'&&!(x===''&&i>0))out.push(x);});
+   return out.join(sep)||sep;
+  }
+  body.addEventListener('click',e=>{
+   const a=e.target.closest&&e.target.closest('a[href]');if(!a||!body.contains(a))return;
+   const raw=a.getAttribute('href')||'';e.preventDefault();
+   if(raw.startsWith('#')){jump(raw.slice(1));return;}
+   let u;try{u=new URL(raw,window.location.href);}catch{return;}
+   if(/^(https?:|mailto:)$/.test(u.protocol)&&(u.origin!==window.location.origin||/^[a-z]+:/i.test(raw))){window.open(u.href,'_blank','noopener');return;}
+   if(!current||!location)return;
+   let ref=raw.split('#')[0].split('?')[0];try{ref=decodeURIComponent(ref);}catch{/* as written */}
+   const frag=raw.includes('#')?raw.slice(raw.indexOf('#')+1):'';
+   if(!ref){if(frag)jump(frag);return;}
+   const [host,session]=location,from=current.path;
+   open(host,session,resolveFrom(from,ref),{fromFile:from}).then(()=>{if(frag)setTimeout(()=>jump(frag),400);});
+  });
   const copy=doc.createElement('button'),download=doc.createElement('button'),close=doc.createElement('button'),reload=doc.createElement('button'),back=doc.createElement('button'),insert=doc.createElement('button');
   [copy,download,close,reload,back,insert].forEach(b=>{b.className='btn';b.type='button';});
   copy.textContent=i18n('fileviewer.sao_chep_duong_dan');download.textContent=i18n('fileviewer.tai_xuong');close.textContent=i18n('fileviewer.dong');reload.textContent=i18n('fileviewer.tai_lai');back.textContent=i18n('fileviewer.quay_lai');insert.textContent='↳ '+i18n('fileviewer.chen_duong_dan');back.hidden=true;back.className='btn viewer-back';
@@ -143,9 +170,10 @@
    picker=null;insert.hidden=true;
    if(!(opts&&opts.keepGallery))gallery=null;
    // Opened from the file browser (or its search): remember where to come back to. Opened any other way: nothing to go back to.
-   if(opts&&opts.fromTemp)backState={host,session,dir:opts.fromTemp.dir,temp:true};
+   if(opts&&opts.fromFile)backState={host,session,file:opts.fromFile};
+   else if(opts&&opts.fromTemp)backState={host,session,dir:opts.fromTemp.dir,temp:true};
    else if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
-   back.hidden=!backState;back.textContent=backState&&backState.temp?'← '+i18n('fileviewer.file_tam'):i18n('fileviewer.quay_lai');
+   back.hidden=!backState;back.textContent=backState&&backState.file?'← '+backState.file.split(/[\\/]/).pop():backState&&backState.temp?'← '+i18n('fileviewer.file_tam'):i18n('fileviewer.quay_lai');
    const request=++generation;cancel();location=[host,session,path,opts&&opts.fromTemp?{fromTemp:opts.fromTemp}:undefined];current=null;panel.hidden=false;setTitle(path);body.textContent=i18n('fileviewer.dang_doc_tep');copy.disabled=download.disabled=reload.disabled=true;
    try{
     const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path)+(opts&&opts.fromTemp?'&temp=1':'');
@@ -418,7 +446,7 @@
   });
   reload.onclick=()=>{if(location)open(...location);};
   insert.onclick=()=>{if(current&&location)insertPath(location[0],current.path);};
-  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;if(b.temp){showTemp(b.host,b.session,b.dir);return;}showBrowser(b.host,b.session,b.dir,b.query);};
+  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;if(b.file){open(b.host,b.session,b.file);return;}if(b.temp){showTemp(b.host,b.session,b.dir);return;}showBrowser(b.host,b.session,b.dir,b.query);};
   // Open the viewer straight on the session's folder, without needing a path link in the terminal (phones have no easy link tap).
  function browse(host,session){picker=null;insert.hidden=true;generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
  function pick(host,session,cb){browse(host,session);picker=cb;return showBrowser(host,session,'');}
