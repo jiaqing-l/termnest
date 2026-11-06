@@ -44,3 +44,26 @@ test('the copy interval follows the setting', () => {
     v.data.prefs.backupMinutes = 1440; v.save(); assert.equal(copies().length, 2);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('copies also go to a folder of the user\'s choice, and synced cloud folders are suggested', () => {
+  const { cloudFolders, checkFolder } = require('../lib/backup');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-extra-')), file = path.join(dir, 'data', 'vault.json'), drive = path.join(dir, 'drive');
+  try {
+    fs.mkdirSync(drive);
+    assert.equal(checkFolder(drive), '');
+    assert.equal(checkFolder('relative/dir'), 'invalid'); assert.equal(checkFolder(path.join(dir, 'missing')), 'notfound');
+    fs.writeFileSync(path.join(dir, 'f'), ''); assert.equal(checkFolder(path.join(dir, 'f')), 'notdir');
+    const v = new Vault(file); v.create('pw', { servers: ['a'], prefs: { backupDir: drive } });
+    const mine = fs.readdirSync(path.join(drive, 'TERMNEST-backup'));
+    assert.equal(mine.length, 1); assert.ok(!fs.readFileSync(path.join(drive, 'TERMNEST-backup', mine[0]), 'utf8').includes('"a"'));
+    assert.equal(v.info().extra, path.join(drive, 'TERMNEST-backup')); assert.equal(v.info().extraError, '');
+    // a copy from the other folder opens like any other once put back as the store
+    fs.copyFileSync(path.join(drive, 'TERMNEST-backup', mine[0]), path.join(dir, 'restored.json'));
+    const back = new Vault(path.join(dir, 'restored.json')); assert.equal(back.unlock('pw'), true); assert.deepEqual(back.data.servers, ['a']);
+    // suggestions: a fake home with a Google Drive and an iCloud folder
+    const home = path.join(dir, 'home'), gd = path.join(home, 'Library', 'CloudStorage', 'GoogleDrive-me@x.com', 'My Drive');
+    fs.mkdirSync(gd, { recursive: true }); fs.mkdirSync(path.join(home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs'), { recursive: true });
+    assert.deepEqual(cloudFolders(home, 'darwin').map((c) => c.kind), ['gdrive', 'icloud']);
+    assert.equal(cloudFolders(home, 'darwin')[0].path, gd);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

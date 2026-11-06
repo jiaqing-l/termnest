@@ -206,35 +206,56 @@
   <label><span data-i18n="html.mu_theo_mua"></span><select id="pet-hat"><option value="" data-i18n="html.khong_mu"></option><option value="flower" data-i18n="html.hoa_xuan"></option><option value="summer" data-i18n="html.mu_he"></option><option value="pumpkin" data-i18n="html.bi_ngo"></option><option value="winter" data-i18n="html.mu_dong"></option></select></label>
   <p id="pet-error" role="status"></p><button class="btn primary" data-i18n="tokenui.luu"></button>
 </form></dialog>
-<dialog id="dlg-set" class="wide">
-  <div class="dlg-h"><h2><span data-i18n="html.cai_dat"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
-  <section class="st"><h3><span data-i18n="settings.language"></span></h3>
-    <label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label>
-    <div class="style-sec"><b data-i18n="settings.style_label"></b><p class="hint" data-i18n="settings.style_hint"></p><div id="set-style" class="style-grid" role="radiogroup"></div><label class="sw"><span data-i18n="settings.fx_amount"></span><select id="set-fx-amount"><option value="few" data-i18n="settings.fx_few"></option><option value="normal" data-i18n="settings.fx_normal"></option><option value="many" data-i18n="settings.fx_many"></option></select></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label></div>
+<dialog id="dlg-set" class="wide set-dlg">
+  <div class="dlg-h set-head"><h2><span data-i18n="html.cai_dat"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
+  <div class="set-body">
+  <nav class="set-nav" role="tablist"><button type="button" class="set-tab" role="tab" data-tab="look" data-i18n="settings.tab_look"></button><button type="button" class="set-tab" role="tab" data-tab="alerts" data-i18n="settings.tab_alerts"></button><button type="button" class="set-tab" role="tab" data-tab="servers" data-i18n="settings.tab_servers"></button><button type="button" class="set-tab" role="tab" data-tab="backup" data-i18n="settings.tab_backup"></button><button type="button" class="set-tab" role="tab" data-tab="commands" data-i18n="settings.tab_commands"></button><button type="button" class="set-tab" role="tab" data-tab="more" data-i18n="settings.tab_more"></button></nav>
+  <div class="set-panes">
+  <section class="set-pane" data-pane="look">
+    <div class="set-group"><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label></div>
+    <h4 data-i18n="settings.style_label"></h4>
+    <div class="set-free"><p class="hint" data-i18n="settings.style_hint"></p><div id="set-style" class="style-grid" role="radiogroup"></div></div>
+    <div class="set-group"><label class="sw"><span data-i18n="settings.fx_amount"></span><select id="set-fx-amount"><option value="few" data-i18n="settings.fx_few"></option><option value="normal" data-i18n="settings.fx_normal"></option><option value="many" data-i18n="settings.fx_many"></option></select></label></div>
   </section>
-  <section class="st"><h3><span data-i18n="settings.cleanup"></span></h3>
-    <p class="hint" data-i18n="settings.cleanup_hint"></p>
-    <label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
-    <label class="sw"><span data-i18n="settings.temp_days"></span><select id="set-temp-days"><option value="1" data-i18n="settings.days_1"></option><option value="3" data-i18n="settings.days_3"></option><option value="7" data-i18n="settings.days_7"></option><option value="30" data-i18n="settings.days_30"></option><option value="0" data-i18n="settings.keep_by_hand"></option></select></label>
-    <label class="sw"><span data-i18n="settings.trash_days"></span><select id="set-trash-days"><option value="0" data-i18n="settings.never_auto"></option><option value="7" data-i18n="settings.days_7"></option><option value="14" data-i18n="settings.days_14"></option><option value="30" data-i18n="settings.days_30"></option><option value="90" data-i18n="settings.days_90"></option></select></label>
+  <section class="set-pane" data-pane="alerts">
+    <div class="set-group"><label class="sw"><span data-i18n="html.tieng_meo_khi_bat_dau"></span><input type="checkbox" id="set-sound"></label><label class="sw"><span data-i18n="html.bao_tren_trinh_duyet_khi"></span><input type="checkbox" id="set-browser"></label></div>
+    <h4 data-i18n="settings.alerts_title"></h4><p class="hint" data-i18n="settings.alerts_hint"></p>
+    <div class="set-group" id="set-alert-cats"></div>
   </section>
-  <section class="st"><h3><span data-i18n="html.thong_bao"></span></h3>
-    <label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label>
-    <label class="sw"><span data-i18n="settings.auto_restore_remote"></span><input type="checkbox" id="set-auto-restore-remote"></label>
-    <label class="sw"><span data-i18n="html.tieng_meo_khi_bat_dau"></span><input type="checkbox" id="set-sound"></label>
-    <label class="sw"><span data-i18n="html.bao_tren_trinh_duyet_khi"></span><input type="checkbox" id="set-browser"></label>
-  </section>
-  <section class="st"><h3><span data-i18n="settings.alerts_title"></span></h3><p><span data-i18n="settings.alerts_hint"></span></p><div id="set-alert-cats"></div></section>
-  <section class="st"><h3><span data-i18n="html.nguong_canh_bao"></span></h3><p><span data-i18n="html.vuot_nguong_thi_the_may"></span></p>
-    <div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_cpu"><b id="lim-cpu-v"></b></div>
+  <section class="set-pane" data-pane="servers">
+    <h4 data-i18n="settings.restore_title"></h4>
+    <div class="set-group"><label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label><label class="sw"><span data-i18n="settings.auto_restore_remote"></span><input type="checkbox" id="set-auto-restore-remote"></label></div>
+    <h4 data-i18n="html.nguong_canh_bao"></h4><p class="hint" data-i18n="html.vuot_nguong_thi_the_may"></p>
+    <div class="set-group set-ranges"><div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_cpu"><b id="lim-cpu-v"></b></div>
     <div class="rng"><span>RAM</span><input type="range" id="lim-ram" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_ram"><b id="lim-ram-v"></b></div>
-    <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div>
+    <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div></div>
   </section>
-  <section class="st"><h3><span data-i18n="html.lenh_mau"></span></h3><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" required data-i18n-attrs="aria-label:html.lenh_moi;placeholder:html.ph_command"><button class="btn" type="submit" data-i18n="html.them"></button></form></section>
-  <button type="button" class="btn" id="set-quit" hidden data-i18n="html.thoat_ung_dung"></button>
+  <section class="set-pane" data-pane="backup">
+    <h4 data-i18n="settings.backup_title"></h4><p class="hint" data-i18n="settings.backup_hint"></p>
+    <div class="set-group"><label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
+      <div class="sw set-stack"><span data-i18n="settings.backup_where"></span><code id="bk-dir"></code><small id="bk-last"></small><button type="button" class="btn" id="bk-now" data-i18n="settings.backup_now"></button></div>
+    </div>
+    <h4 data-i18n="settings.backup_extra"></h4><p class="hint" data-i18n="settings.backup_extra_hint"></p>
+    <div class="set-group set-pad">
+      <div id="bk-suggest" class="chips-f"></div>
+      <form id="bk-form" class="dir-input"><input id="bk-extra" autocomplete="off" spellcheck="false" data-i18n-attrs="aria-label:settings.backup_extra;placeholder:settings.backup_extra_ph"><button class="btn primary" type="submit" data-i18n="tokenui.luu"></button><button class="btn" type="button" id="bk-clear" data-i18n="settings.backup_extra_off"></button></form>
+      <p id="bk-note" class="hint" role="status"></p>
+    </div>
+    <h4 data-i18n="settings.cleanup_title"></h4><p class="hint" data-i18n="settings.cleanup_hint"></p>
+    <div class="set-group"><label class="sw"><span data-i18n="settings.temp_days"></span><select id="set-temp-days"><option value="1" data-i18n="settings.days_1"></option><option value="3" data-i18n="settings.days_3"></option><option value="7" data-i18n="settings.days_7"></option><option value="30" data-i18n="settings.days_30"></option><option value="0" data-i18n="settings.keep_by_hand"></option></select></label><label class="sw"><span data-i18n="settings.trash_days"></span><select id="set-trash-days"><option value="0" data-i18n="settings.never_auto"></option><option value="7" data-i18n="settings.days_7"></option><option value="14" data-i18n="settings.days_14"></option><option value="30" data-i18n="settings.days_30"></option><option value="90" data-i18n="settings.days_90"></option></select></label></div>
+  </section>
+  <section class="set-pane" data-pane="commands">
+    <h4 data-i18n="html.lenh_mau"></h4><p class="hint" data-i18n="settings.commands_hint"></p>
+    <div class="set-free"><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" required data-i18n-attrs="aria-label:html.lenh_moi;placeholder:html.ph_command"><button class="btn" type="submit" data-i18n="html.them"></button></form></div>
+  </section>
+  <section class="set-pane" data-pane="more">
+    <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p><div><button type="button" class="btn primary" id="set-guide" data-i18n="settings.phone_guide"></button></div></section>
+    <section class="st" id="pwa-sec" hidden><h3><span data-i18n="settings.pwa_title"></span></h3><p class="hint" id="pwa-desc"></p><div><button type="button" class="btn primary" id="set-pwa" data-i18n="settings.pwa_button" hidden></button></div></section>
+    <div class="set-free"><button type="button" class="btn" id="set-quit" hidden data-i18n="html.thoat_ung_dung"></button></div>
+  </section>
   <p id="set-note" role="status"></p>
-  <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p><div><button type="button" class="btn primary" id="set-guide" data-i18n="settings.phone_guide"></button></div></section>
-  <section class="st" id="pwa-sec" hidden><h3><span data-i18n="settings.pwa_title"></span></h3><p class="hint" id="pwa-desc"></p><div><button type="button" class="btn primary" id="set-pwa" data-i18n="settings.pwa_button" hidden></button></div></section>
+  </div>
+  </div>
 </dialog>
 
 

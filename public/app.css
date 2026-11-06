@@ -1133,3 +1133,45 @@ dialog.drop-remote{display:none}
 .reboot-check ul{margin:4px 0 8px;padding-left:18px;word-break:break-all}
 .reboot-check b{color:var(--bad)}
 .reboot-check .ok{color:var(--fg-3)}
+/* Settings: fixed header, tabs on the left (a scrolling row on phones), one pane at a time, grouped rows */
+#dlg-set.set-dlg{padding:0;width:min(94vw,880px)!important;height:min(86vh,720px);max-height:none;overflow:hidden}
+#dlg-set.set-dlg[open]{display:flex;flex-direction:column}
+#dlg-set .set-head{margin:0;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
+#dlg-set .set-body{flex:1;min-height:0;display:grid;grid-template-columns:190px minmax(0,1fr)}
+#dlg-set .set-nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;border-right:1px solid var(--line);overflow:auto}
+#dlg-set .set-tab{all:unset;cursor:pointer;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--fg-2)}
+#dlg-set .set-tab:hover{background:var(--line)}
+#dlg-set .set-tab:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+#dlg-set .set-tab[aria-selected="true"]{background:var(--primary);color:var(--surface)}
+#dlg-set .set-panes{overflow:auto;padding:16px 22px 24px;min-width:0}
+#dlg-set .set-pane{display:grid;gap:10px;align-content:start}
+#dlg-set .set-pane[hidden]{display:none}
+#dlg-set .set-pane h4{margin:8px 0 0;font:800 12px var(--round);letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+#dlg-set .set-pane h4:first-child{margin-top:0}
+#dlg-set .set-pane .hint{margin:-4px 0 0;font-size:12.5px;color:var(--fg-3)}
+#dlg-set .set-group{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+#dlg-set .set-group>.sw,#dlg-set .set-group>label.sw{padding:11px 14px;margin:0;border-bottom:1px solid var(--line);font-weight:600}
+#dlg-set .set-group>.sw:last-child{border-bottom:0}
+#dlg-set .set-group select{width:auto;min-width:150px;max-width:240px;flex:none}
+#dlg-set .set-group .sw>span:first-child{flex:1;min-width:0}
+#dlg-set .set-ranges{padding:10px 14px;display:grid;gap:10px}
+#dlg-set .set-pad{padding:12px 14px;display:grid;gap:10px}
+#dlg-set .set-stack{flex-wrap:wrap}
+#dlg-set .set-stack code{flex:1 1 100%;order:3;font-size:12px;word-break:break-all;color:var(--fg-3);background:transparent;padding:0}
+#dlg-set .set-stack small{color:var(--fg-3);font-weight:500}
+#dlg-set .set-free{display:grid;gap:10px}
+#dlg-set .set-free .style-grid{margin:0}
+#dlg-set #set-note:empty{display:none}
+#dlg-set #bk-note:empty{display:none}
+#dlg-set #bk-note.bad{color:var(--bad)}
+#dlg-set .dir-input input{flex:1;min-width:0}
+#dlg-set .set-pane>.st{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+@media (max-width:640px){
+  #dlg-set.set-dlg{width:100vw!important;height:100dvh;border-radius:0}
+  #dlg-set .set-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+  #dlg-set .set-nav{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px 10px;gap:6px}
+  #dlg-set .set-tab{white-space:nowrap;padding:7px 12px;background:var(--line)}
+  #dlg-set .set-panes{padding:14px 14px 28px}
+  #dlg-set .set-group select{min-width:120px;max-width:55vw}
+}
+@media (max-width:640px){#dlg-set .set-stack>span:first-child{flex-basis:100%}#dlg-set .dir-input{flex-wrap:wrap}#dlg-set .dir-input input{flex-basis:100%}}

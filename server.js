@@ -662,6 +662,18 @@ async function api(req, res, url) {
     catch { send(res, 500, { error: tr('srv.server.khong_doc_duoc_bao_cao') }); }
     return;
   }
+  // Backups: where the encrypted copies are, an extra folder of the user's choice (a synced Drive folder…), and "copy now".
+  if (p === '/api/backup' && m === 'GET') { send(res, 200, { ...vault.info(), suggestions: require('./lib/backup').cloudFolders() }); return; }
+  if (p === '/api/backup/folder' && m === 'POST') {
+    const body = await readJson(req), dir = typeof body.dir === 'string' ? body.dir.trim() : null;
+    if (dir === null) { fail(res, 400, tr('srv.backup.thu_muc_khong_hop_le')); return; }
+    const problem = dir ? require('./lib/backup').checkFolder(dir) : '';
+    if (problem) { fail(res, 400, tr({ notfound: 'srv.backup.khong_thay_thu_muc', notdir: 'srv.backup.khong_phai_thu_muc', denied: 'srv.backup.khong_ghi_duoc' }[problem] || 'srv.backup.thu_muc_khong_hop_le')); return; }
+    vault.data.prefs = { ...mergePrefs(vault.data.prefs), backupDir: dir };
+    if (dir) vault.copy(); else saveVault();
+    send(res, 200, vault.info()); return;
+  }
+  if (p === '/api/backup/now' && m === 'POST') { vault.copy(); send(res, 200, vault.info()); return; }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
   if (p === '/api/prefs' && m === 'PUT') {
     const input = await readJson(req);
