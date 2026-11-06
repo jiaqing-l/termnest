@@ -67,8 +67,12 @@
   const handle=doc.createElement('div');handle.className='viewer-resize';handle.tabIndex=0;handle.setAttribute('role','separator');handle.setAttribute('aria-orientation','vertical');handle.setAttribute('aria-label',i18n('fileviewer.doi_chieu_rong_ban_xem'));
   let width=840;
   try{const saved=Number(localStorage.getItem('file-viewer-width'));if(saved>=320&&saved<=2400)width=saved;}catch{}
-  const resize=value=>{width=Math.max(320,Math.min(innerWidth,value));panel.style.width=width+'px';handle.setAttribute('aria-valuenow',Math.round(width));};
+  // Never wider than the window minus room for the sidebar and the terminal (480px): a full-width panel left its own
+  // drag handle on top of the app's controls. Small screens show the panel full width (CSS) and are not limited here.
+  const widest=()=>innerWidth<900?innerWidth:Math.max(320,innerWidth-480);
+  const resize=value=>{width=Math.max(320,Math.min(widest(),value));panel.style.width=width+'px';handle.setAttribute('aria-valuenow',Math.round(width));handle.setAttribute('aria-valuemax',Math.round(widest()));};
   resize(width);
+  if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>resize(width));
   const saveWidth=()=>{try{localStorage.setItem('file-viewer-width',String(width));}catch{}};
   handle.onpointerdown=e=>{handle.setPointerCapture(e.pointerId);};
   handle.onpointermove=e=>{if(handle.hasPointerCapture(e.pointerId))resize(innerWidth-e.clientX);};
