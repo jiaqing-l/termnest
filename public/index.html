@@ -40,7 +40,7 @@
         </form>
         <button type="button" class="btn link-btn" id="setup-restore" hidden data-i18n="settings.setup_restore"></button>
         <form id="form-setup-restore" class="f" hidden>
-          <label><span data-i18n="settings.setup_restore_file"></span><input id="setup-restore-file" type="file" accept=".json,application/json" required></label>
+          <label><span data-i18n="settings.setup_restore_file"></span><input id="setup-restore-file" type="file" accept=".termnest,.json,application/json" required></label>
           <label><span data-i18n="settings.restore_pass"></span><input id="setup-restore-pass" type="password" required autocomplete="off"></label>
           <div class="err" id="setup-restore-err" role="status"></div>
           <button class="btn primary" type="submit" data-i18n="settings.restore_go"></button>
@@ -239,6 +239,13 @@
     <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div></div>
   </section>
   <section class="set-pane" data-pane="backup">
+    <h4 data-i18n="move2.title"></h4>
+    <div class="set-group">
+      <div class="sw"><span data-i18n="move2.export_label"></span><button type="button" class="btn sm primary" id="mv2-open" data-i18n="move2.export_btn"></button></div>
+      <form class="sw set-stack bk-restore" id="mv2-form" hidden><span id="mv2-sum"></span><input type="password" id="mv2-pass" autocomplete="current-password" required data-i18n-attrs="placeholder:move2.pass;aria-label:move2.pass"><button class="btn sm primary" type="submit" data-i18n="move2.export_go"></button><button class="btn sm" type="button" id="mv2-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="move2.export_warn"></small></form>
+      <div class="sw set-stack" id="mv2-done" hidden><span id="mv2-done-t"></span><code id="mv2-path"></code><small class="hint" data-i18n="move2.next"></small></div>
+      <div class="sw set-stack" id="mv2-wait" hidden><span data-i18n="move2.waiting"></span><small class="hint" id="mv2-wait-list"></small><button type="button" class="btn sm" id="mv2-retry" data-i18n="move2.retry"></button></div>
+    </div>
     <h4 data-i18n="settings.backup_title"></h4>
     <div class="set-group">
       <label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
@@ -246,7 +253,7 @@
       <label class="sw"><span data-i18n="settings.backup_extra"></span><select id="bk-target"></select></label>
       <div class="sw"><span data-i18n="settings.restore_label"></span><button type="button" class="btn sm" id="bk-restore" data-i18n="settings.restore_pick"></button></div>
       <form class="sw set-stack bk-restore" id="bk-restore-form" hidden><span id="bk-restore-file"></span><input type="password" id="bk-restore-pass" autocomplete="off" required data-i18n-attrs="placeholder:settings.restore_pass;aria-label:settings.restore_pass"><button class="btn sm danger" type="submit" data-i18n="settings.restore_go"></button><button class="btn sm" type="button" id="bk-restore-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="settings.restore_warn"></small></form>
-      <input type="file" id="bk-restore-input" accept=".json,application/json" hidden>
+      <input type="file" id="bk-restore-input" accept=".termnest,.json,application/json" hidden>
     </div>
     <p class="hint set-foot"><span data-i18n="settings.backup_foot"></span> <code id="bk-dir"></code></p>
     <p id="bk-note" class="hint" role="status"></p>

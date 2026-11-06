@@ -1042,7 +1042,7 @@
     [].forEach.call(tabs, function (t) { var on = t.dataset.tab === tab; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; });
     [].forEach.call(panes, function (p) { p.hidden = p.dataset.pane !== tab; });
     var box = document.querySelector('#dlg-set .set-panes'); if (box) box.scrollTop = 0;
-    if (tab === 'backup') renderBackup();
+    if (tab === 'backup') { renderBackup(); renderTransfer(); }
   }
   [].forEach.call(document.querySelectorAll('#dlg-set .set-tab'), function (t) {
     t.onclick = function () { showSetTab(t.dataset.tab); };
@@ -1091,11 +1091,34 @@
     var go = this.querySelector('[type=submit]'); go.disabled = true;
     api('POST', '/api/backup/restore', { backup: bkFile, password: $('bk-restore-pass').value }).then(function (r) {
       bkFile = null; $('bk-restore-form').hidden = true; $('dlg-set').close();
-      say(i18n('settings.restore_done', [r.servers]), true, 6000);
+      say(r.chats ? i18n('move2.restored', [r.servers, r.chats - (r.waiting || 0), r.waiting || 0]) : i18n('settings.restore_done', [r.servers]), true, 9000);
       api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); });
       refresh(true);
     }).catch(bkError).finally(function () { go.disabled = false; });
   };
+  // "Chuyển máy": one file with everything (data + the chats of this computer's sessions), saved on the Desktop.
+  function mvSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function mvWaiting(list) {
+    $('mv2-wait').hidden = !(list && list.length);
+    $('mv2-wait-list').textContent = (list || []).map(function (w) { return w.name + (w.origin ? ' · ' + w.origin : ''); }).join(' — ');
+  }
+  function renderTransfer() { api('GET', '/api/transfer').then(function (t) { mvWaiting(t.waiting); }).catch(function () { /* older server */ }); }
+  $('mv2-open').onclick = function () {
+    $('mv2-done').hidden = true; $('mv2-form').hidden = false; $('mv2-sum').textContent = i18n('move2.reading'); $('mv2-pass').value = ''; $('mv2-pass').focus();
+    api('GET', '/api/transfer').then(function (t) {
+      $('mv2-sum').textContent = i18n('move2.summary', [t.servers, t.chats.length, mvSize(t.bytes), t.dir]) + (t.skipped.length ? ' ' + i18n('move2.skipped', [t.skipped.map(function (x) { return x.name; }).join(', ')]) : '');
+      mvWaiting(t.waiting);
+    }).catch(bkError);
+  };
+  $('mv2-cancel').onclick = function () { $('mv2-form').hidden = true; };
+  $('mv2-form').onsubmit = function (e) {
+    e.preventDefault(); var go = this.querySelector('[type=submit]'); go.disabled = true; go.textContent = i18n('move2.exporting');
+    api('POST', '/api/transfer/export', { password: $('mv2-pass').value }).then(function (r) {
+      $('mv2-form').hidden = true; $('mv2-done').hidden = false;
+      $('mv2-done-t').textContent = '✓ ' + i18n('move2.done', [r.chats, mvSize(r.bytes)]); $('mv2-path').textContent = r.path;
+    }).catch(bkError).finally(function () { go.disabled = false; go.textContent = i18n('move2.export_go'); });
+  };
+  $('mv2-retry').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/transfer/retry').then(function (r) { mvWaiting(r.waiting); refresh(true); }).catch(bkError).finally(function () { b.disabled = false; }); };
   $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(function (r) { bkShow(Object.assign(r, { suggestions: bkData && bkData.suggestions })); }).catch(bkError).finally(function () { b.disabled = false; }); };
   $('set').onclick = function () { renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(setTab); $('dlg-set').showModal(); };
   document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });

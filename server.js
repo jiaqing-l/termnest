@@ -247,12 +247,44 @@ function forThisMachine(data) {
   return out;
 }
 
+// Chats carried by a "Chuyển máy" file wait (encrypted with the store's key) until this computer can place them.
+const INCOMING_FILE = path.join(DATA, 'incoming-chats.json');
+function keepIncoming(chats) {
+  if (!chats || !chats.length) { fs.rmSync(INCOMING_FILE, { force: true }); vault.data.moveWaiting = []; return; }
+  fs.mkdirSync(DATA, { recursive: true, mode: 0o700 });
+  const tmp = INCOMING_FILE + '.tmp'; fs.writeFileSync(tmp, vault.sealExtra(chats), { mode: 0o600 }); fs.renameSync(tmp, INCOMING_FILE);
+  vault.data.moveWaiting = chats.map((c) => ({ name: c.name, tool: c.tool, origin: c.origin || '', dir: c.dir }));
+}
+let placing = null;
+async function placeIncoming() {
+  if (placing) return placing;
+  placing = (async () => {
+    let chats; try { chats = vault.openExtra(fs.readFileSync(INCOMING_FILE, 'utf8')); } catch { return; }
+    const local = remotes.get(LOCAL_ID);
+    if (!chats || !local || !local.ready || local.mode === 'powershell') return;
+    const known = vault.data.known[LOCAL_ID] ||= { bootId: '', sessions: {}, lost: [] };
+    const { placed, waiting } = await require('./lib/transfer').place(local, chats, known, shq);
+    const taken = new Set([...(local.snapshot?.sessions || []).map((s) => s.name), ...Object.keys(known.sessions)]);
+    for (const p of placed) {
+      const name = require('./lib/features/move').freeName(p.name, taken); taken.add(name);
+      Object.defineProperty(known.sessions, name, { value: { dir: p.dir, run: p.tool, resume: p.id }, enumerable: true, configurable: true, writable: true });
+      known.lost = [...new Set([...(known.lost || []), name])];
+    }
+    keepIncoming(waiting); saveVault(); updateLost(local);
+  })().finally(() => { placing = null; });
+  return placing;
+}
+// A restored file: a plain backup (the data) or a "Chuyển máy" file (the data plus this old computer's chats).
+function restoredData(obj) {
+  return obj && obj.kind === require('./lib/transfer').KIND ? { data: obj.data, chats: Array.isArray(obj.chats) ? obj.chats : [] } : { data: obj, chats: [] };
+}
+
 function startRemotes() {
   vault.data.prefs = mergePrefs(vault.data.prefs);
   vault.data.known ||= {};
   if (!remotes.has(LOCAL_ID)) {
     const local = addRemote(localConfig());
-    local.connect().then(() => local.poll()).catch((err) => { local.error = err.message; });
+    local.connect().then(() => local.poll()).then(() => placeIncoming()).catch((err) => { local.error = err.message; });
   }
   const ids = new Set([LOCAL_ID, ...vault.data.servers.map((s) => s.id)]);
   savedHistory = Object.fromEntries(Object.entries(savedHistory).filter(([id]) => ids.has(id)));
@@ -602,13 +634,15 @@ async function api(req, res, url) {
   // First run on a new machine: start from a backup file instead of an empty store. The backup keeps its own password.
   if (p === '/api/setup/restore' && m === 'POST') {
     if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
-    const body = await readJson(req, 16 * 1024 * 1024);
+    const body = await readJson(req, 400 * 1024 * 1024);
     if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
     const digest = (value) => crypto.createHash('sha256').update(value).digest();
     if (typeof body.setupToken !== 'string' || !crypto.timingSafeEqual(digest(body.setupToken), digest(process.env.TW_SETUP_TOKEN))) { fail(res, 403, tr('srv.server.ma_thiet_lap_khong_hop')); return; }
-    const data = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
-    if (!data) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    const opened = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    const { data, chats } = restoredData(opened);
+    if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
     vault.create(body.password, forThisMachine(data));
+    keepIncoming(chats); vault.save();
     delete process.env.TW_SETUP_TOKEN;
     send(res, 200, { ok: true }); return;
   }
@@ -703,17 +737,37 @@ async function api(req, res, url) {
   // Signed in: replace this machine's data with a backup (servers, sessions, settings, notes, AI accounts). The current data is
   // copied first, and this store keeps its own password.
   if (p === '/api/backup/restore' && m === 'POST') {
-    const body = await readJson(req, 16 * 1024 * 1024);
-    const data = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    const body = await readJson(req, 400 * 1024 * 1024);
+    const opened = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    const { data, chats } = restoredData(opened);
     if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
     vault.copy();
     const keep = new Set(data.servers.map((s) => s.id));
     for (const [id, r] of [...remotes]) if (id !== LOCAL_ID && !keep.has(id)) { r.close(); remotes.delete(id); }
     vault.data = forThisMachine(data);
     for (const cfg of vault.data.servers) if (remotes.has(cfg.id)) { remotes.get(cfg.id).close(); remotes.delete(cfg.id); }
-    startRemotes(); saveVault();
-    send(res, 200, { ok: true, servers: vault.data.servers.length }); return;
+    startRemotes(); keepIncoming(chats); saveVault();
+    await placeIncoming().catch(() => {});
+    send(res, 200, { ok: true, servers: vault.data.servers.length, chats: chats.length, waiting: (vault.data.moveWaiting || []).length }); return;
   }
+  // "Chuyển máy": what would go into the file, writing it (the password is asked again), and retrying chats still waiting.
+  if (p === '/api/transfer' && m === 'GET') {
+    const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
+    const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], true) : { chats: [], bytes: 0, skipped: [] };
+    send(res, 200, { servers: vault.data.servers.length, chats: c.chats.map((x) => ({ name: x.name, tool: x.tool, size: x.size })), bytes: c.bytes, skipped: c.skipped, dir: T.exportDir(), waiting: vault.data.moveWaiting || [] });
+    return;
+  }
+  if (p === '/api/transfer/export' && m === 'POST') {
+    const body = await readJson(req);
+    if (!vault.check(body.password)) { fail(res, 400, tr('srv.server.sai_mat_khau')); return; }
+    const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
+    const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], false) : { chats: [], bytes: 0, skipped: [] };
+    const file = path.join(T.exportDir(), T.exportName());
+    const text = Vault.pack(body.password, { kind: T.KIND, made: Date.now(), from: os.hostname(), data: vault.data, chats: c.chats });
+    fs.writeFileSync(file, text, { mode: 0o600 });
+    send(res, 200, { path: file, bytes: Buffer.byteLength(text), chats: c.chats.length, skipped: c.skipped }); return;
+  }
+  if (p === '/api/transfer/retry' && m === 'POST') { await placeIncoming().catch(() => {}); send(res, 200, { waiting: vault.data.moveWaiting || [] }); return; }
   if (p === '/api/backup/now' && m === 'POST') { vault.copy(); send(res, 200, vault.info()); return; }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
   if (p === '/api/prefs' && m === 'PUT') {
