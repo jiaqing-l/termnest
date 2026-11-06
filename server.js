@@ -493,7 +493,14 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
 
 async function killSession(res, r, name) {
   if (typeof name !== 'string' || !name || name.length > 128) { fail(res, 400, tr('srv.server.ten_phien_chua_dung')); return; }
-  const stopped = await withSessionChange(r, async () => {
+  const stopped = await stopSession(r, name);
+  if (!stopped) { fail(res, 400, tr('srv.server.khong_dung_duoc_phien_nay')); return; }
+  await r.poll();
+  send(res, 200, { ok: true });
+}
+
+function stopSession(r, name) {
+  return withSessionChange(r, async () => {
     const out = r.mode === 'powershell' ? { code: r.killPlain(name) ? 0 : 1 } : await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`);
     if (out.code !== 0) return false;
     const known = vault.data.known?.[r.cfg.id];
@@ -505,9 +512,6 @@ async function killSession(res, r, name) {
     }
     return true;
   });
-  if (!stopped) { fail(res, 400, tr('srv.server.khong_dung_duoc_phien_nay')); return; }
-  await r.poll();
-  send(res, 200, { ok: true });
 }
 
 async function restore(req, res, r) {
@@ -775,6 +779,7 @@ let activeRequests = 0;
 // Drop-in features (lib/features/*.js + public/features/*): see lib/features.js.
 const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'), publicDir: path.join(PUB, 'features'),
   deps: { remotes: () => remotes, backendOf: (id) => { const r = remotes.get(id); return r?.ready ? r : null; }, send, fail, readJson, shq,
+    startSession: async (r, o) => { await startSession(r, o); await r.poll(); }, stopSession: async (r, name) => { const ok = await stopSession(r, name); if (ok) await r.poll(); return ok; },
     vault: () => vault, save: () => saveVault() } });
 features.load();
 
