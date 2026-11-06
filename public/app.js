@@ -1109,7 +1109,7 @@
   $('mv2-open').onclick = function () {
     $('mv2-done').hidden = true; $('mv2-form').hidden = false; $('mv2-sum').textContent = i18n('move2.reading'); $('mv2-pass').value = ''; $('mv2-pass').focus();
     api('GET', '/api/transfer').then(function (t) {
-      $('mv2-sum').textContent = i18n('move2.summary', [t.servers, t.chats.length, mvSize(t.bytes), t.dir]) + (t.skipped.length ? ' ' + i18n('move2.skipped', [t.skipped.map(function (x) { return x.name; }).join(', ')]) : '');
+      $('mv2-sum').textContent = i18n('move2.summary2', [t.servers, t.onServers || 0, t.localSessions || 0, t.chats.length, mvSize(t.bytes), t.dir]) + (t.skipped.length ? ' ' + i18n('move2.skipped', [t.skipped.map(function (x) { return x.name; }).join(', ')]) : '');
       mvWaiting(t.waiting);
     }).catch(bkError);
   };

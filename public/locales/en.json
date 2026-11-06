@@ -1281,7 +1281,6 @@
   "move2.export_go": "Export to file",
   "move2.exporting": "Exporting…",
   "move2.reading": "Looking at what to take along…",
-  "move2.summary": "{0} servers, settings, notes, AI accounts and the chats of {1} sessions on this computer ({2}). The file is saved in {3}.",
   "move2.skipped": "Chats not taken: {0}.",
   "move2.export_warn": "The file is encrypted but holds SSH passwords and chat contents: copy it with a USB drive or AirDrop, never by chat or email.",
   "move2.done": "Exported: {0} sessions with chats, {1}.",
@@ -1293,5 +1292,6 @@
   "settings.ime_auto": "Automatic",
   "settings.ime_on": "Always on",
   "settings.ime_off": "Off",
-  "settings.ime_reopen": "Saved. Reopen the terminal (or reload the page) to apply. Choose \"Always on\" if typed text appears twice."
+  "settings.ime_reopen": "Saved. Reopen the terminal (or reload the page) to apply. Choose \"Always on\" if typed text appears twice.",
+  "move2.summary2": "{0} servers (connection details, SSH passwords), settings, notes, AI accounts. {1} sessions on the servers: their chats stay on the servers and resume once the new computer reconnects. {2} sessions on this computer: chats of {3} of them are carried ({4}). The file is saved in {5}."
 }

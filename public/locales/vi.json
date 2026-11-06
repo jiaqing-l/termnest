@@ -1264,7 +1264,6 @@
   "move2.export_go": "Xuất ra tệp",
   "move2.exporting": "Đang xuất…",
   "move2.reading": "Đang xem có gì để mang theo…",
-  "move2.summary": "Gồm {0} server, cài đặt, ghi chú, tài khoản AI và chat của {1} phiên trên máy này ({2}). Tệp được lưu ở {3}.",
   "move2.skipped": "Không mang được chat của: {0}.",
   "move2.export_warn": "Tệp đã mã hóa nhưng chứa mật khẩu SSH và nội dung chat: chép bằng USB hoặc AirDrop, đừng gửi qua chat hay email.",
   "move2.done": "Đã xuất: {0} phiên có chat, {1}.",
@@ -1276,5 +1275,6 @@
   "settings.ime_auto": "Tự động",
   "settings.ime_on": "Luôn bật",
   "settings.ime_off": "Tắt",
-  "settings.ime_reopen": "Đã lưu. Mở lại terminal (hoặc tải lại trang) để áp dụng. Chọn \"Luôn bật\" nếu gõ bị lặp chữ."
+  "settings.ime_reopen": "Đã lưu. Mở lại terminal (hoặc tải lại trang) để áp dụng. Chọn \"Luôn bật\" nếu gõ bị lặp chữ.",
+  "move2.summary2": "Gồm {0} server (thông tin kết nối, mật khẩu SSH), cài đặt, ghi chú, tài khoản AI. {1} phiên trên server: chat vẫn nằm trên server, máy mới kết nối lại là mở tiếp được. {2} phiên trên máy này: mang theo chat của {3} phiên ({4}). Tệp được lưu ở {5}."
 }

@@ -754,7 +754,10 @@ async function api(req, res, url) {
   if (p === '/api/transfer' && m === 'GET') {
     const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
     const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], true) : { chats: [], bytes: 0, skipped: [] };
-    send(res, 200, { servers: vault.data.servers.length, chats: c.chats.map((x) => ({ name: x.name, tool: x.tool, size: x.size })), bytes: c.bytes, skipped: c.skipped, dir: T.exportDir(), waiting: vault.data.moveWaiting || [] });
+    // Sessions on the servers keep their chats there: the new computer reconnects and resumes them, nothing to carry.
+    const onServers = [...remotes.values()].filter((r) => !r.cfg.local).reduce((n, r) => n + (r.snapshot?.sessions || []).length, 0);
+    const localSessions = (local?.snapshot?.sessions || []).length;
+    send(res, 200, { servers: vault.data.servers.length, onServers, localSessions, chats: c.chats.map((x) => ({ name: x.name, tool: x.tool, size: x.size })), bytes: c.bytes, skipped: c.skipped, dir: T.exportDir(), waiting: vault.data.moveWaiting || [] });
     return;
   }
   if (p === '/api/transfer/export' && m === 'POST') {

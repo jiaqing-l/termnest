@@ -878,3 +878,12 @@ test('restoring a backup while signed in swaps the data, copies the old data fir
   assert.ok(fs.readdirSync(path.join(path.dirname(h.vault.file), 'backups')).length > before);
   const again = new Vault(h.vault.file); assert.equal(again.unlock('test'), true);   // this computer keeps its own password
 });
+
+test('macOS ps without etimes: elapsed time in [[dd-]hh:]mm:ss still maps sessions to their agents', () => {
+  const { parsePoll } = require('../lib/parse');
+  const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude', '30 1 05:07 /usr/sbin/cron', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '@@DETAIL', '$0|~|1226|~|0|~|', '@@END'].join('\n'), 300);
+  assert.equal(snap.sessions[0].aiSessionId, id);
+  assert.equal(snap.workersReliable, true);
+});
