@@ -1181,3 +1181,6 @@ dialog.drop-remote{display:none}
 /* Long paths in notes wrap instead of running off a phone screen; wide tables scroll inside the document */
 .viewer-note{overflow-wrap:anywhere}
 .document table{display:block;max-width:100%;overflow-x:auto}
+#dlg-set .set-pad>*,#dlg-set .set-pane>*{min-width:0;overflow-wrap:anywhere}
+@media (max-width:640px){#dlg-set .set-group .set-stack>span:first-child{flex:1 1 100%}}
+@media (max-width:640px){#dlg-set.set-dlg{margin:0;inset:0;max-width:100vw;max-height:100dvh}}

@@ -1188,13 +1188,15 @@
   "settings.backup_now": "Sao lưu ngay",
   "settings.backup_last": "Lần gần nhất: {0} · {1} bản",
   "settings.backup_none": "Chưa có bản sao.",
-  "settings.backup_extra": "Lưu thêm vào thư mục khác",
-  "settings.backup_extra_hint": "Chọn một thư mục trên máy, hoặc thư mục của Google Drive, iCloud, OneDrive hay Dropbox để ứng dụng đó tự đẩy lên mạng. Bản sao vẫn được mã hóa; TERMNEST không cần mật khẩu Drive.",
-  "settings.backup_extra_ph": "Đường dẫn đầy đủ, ví dụ /Users/ban/Google Drive",
+  "settings.backup_extra": "Lưu thêm một bản sang thư mục khác (trên máy này)",
+  "settings.backup_extra_hint": "Thư mục phải nằm trên máy đang chạy TERMNEST, ví dụ ổ USB, ổ ngoài, hoặc thư mục mà Google Drive, iCloud, OneDrive, Dropbox trên máy này đang đồng bộ. Khi chọn thư mục đồng bộ, ứng dụng đó tự đẩy bản sao lên mạng. Bản sao vẫn được mã hóa; TERMNEST không cần mật khẩu Drive.",
+  "settings.backup_extra_ph": "Hoặc dán đường dẫn đầy đủ",
   "settings.backup_extra_off": "Ngừng lưu thêm",
   "settings.backup_extra_on": "Đang lưu thêm vào {0}",
   "settings.backup_extra_failed": "Lần sao lưu gần nhất không ghi được vào thư mục đã chọn. Kiểm tra thư mục còn tồn tại và còn quyền ghi.",
   "settings.cleanup_title": "Dọn dẹp",
   "settings.commands_hint": "Lệnh hay dùng, bấm một lần để gõ vào phiên đang mở.",
-  "fileviewer.mo_xem": "Mở để xem"
+  "fileviewer.mo_xem": "Mở để xem",
+  "settings.backup_pick": "Chọn thư mục…",
+  "settings.backup_no_cloud": "Chưa thấy Google Drive, iCloud, OneDrive hay Dropbox trên máy này. Muốn tự đẩy lên Drive: cài “Google Drive cho máy tính”, đăng nhập, rồi bấm Chọn thư mục và chọn thư mục Google Drive (My Drive)."
 }

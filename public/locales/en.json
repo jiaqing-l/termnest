@@ -1205,13 +1205,15 @@
   "settings.backup_now": "Back up now",
   "settings.backup_last": "Last: {0} · {1} copies",
   "settings.backup_none": "No copy yet.",
-  "settings.backup_extra": "Also save to another folder",
-  "settings.backup_extra_hint": "Pick a folder on this machine, or a Google Drive, iCloud, OneDrive or Dropbox folder so that app uploads it. Copies stay encrypted; TERMNEST never needs your Drive password.",
-  "settings.backup_extra_ph": "Full path, e.g. /Users/you/Google Drive",
+  "settings.backup_extra": "Also keep a copy in another folder (on this computer)",
+  "settings.backup_extra_hint": "The folder must be on the computer running TERMNEST: a USB or external drive, or a folder that Google Drive, iCloud, OneDrive or Dropbox on this computer keeps in sync. A synced folder is uploaded by that app. Copies stay encrypted; TERMNEST never needs your Drive password.",
+  "settings.backup_extra_ph": "Or paste a full path",
   "settings.backup_extra_off": "Stop saving there",
   "settings.backup_extra_on": "Also saving to {0}",
   "settings.backup_extra_failed": "The last copy could not be written to the chosen folder. Check that it still exists and is writable.",
   "settings.cleanup_title": "Clean-up",
   "settings.commands_hint": "Frequent commands, one click types them into the open session.",
-  "fileviewer.mo_xem": "Open to view"
+  "fileviewer.mo_xem": "Open to view",
+  "settings.backup_pick": "Choose folder…",
+  "settings.backup_no_cloud": "No Google Drive, iCloud, OneDrive or Dropbox folder found on this computer. To upload to Drive automatically: install “Google Drive for desktop”, sign in, then Choose folder and pick the Google Drive (My Drive) folder."
 }

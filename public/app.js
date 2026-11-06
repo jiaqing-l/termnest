@@ -1063,10 +1063,16 @@
     api('GET', '/api/backup').then(function (b) {
       bkShow(b);
       var box = $('bk-suggest'); box.textContent = '';
+      $('bk-nocloud').hidden = !!(b.suggestions || []).length;
       (b.suggestions || []).forEach(function (s) { var c = el('button', 'btn', '☁ ' + (BK_KIND[s.kind] || s.kind)); c.type = 'button'; c.title = s.path; c.onclick = function () { $('bk-extra').value = s.path; $('bk-extra').focus(); }; box.append(c); });
     }).catch(bkError);
   }
   $('bk-form').onsubmit = function (e) { e.preventDefault(); api('POST', '/api/backup/folder', { dir: $('bk-extra').value }).then(bkShow).catch(bkError); };
+  // Pick the folder in the same folder browser as "New session", on this computer (where TERMNEST and its data live).
+  $('bk-pick').onclick = function () {
+    var me = servers.find(function (v) { return v.local; }); if (!me) return;
+    browseDir(me.id, $('bk-extra').value.trim(), function (chosen) { $('bk-extra').value = chosen; api('POST', '/api/backup/folder', { dir: chosen }).then(bkShow).catch(bkError); });
+  };
   $('bk-clear').onclick = function () { api('POST', '/api/backup/folder', { dir: '' }).then(bkShow).catch(bkError); };
   $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(bkShow).catch(bkError).finally(function () { b.disabled = false; }); };
   $('set').onclick = function () { renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(setTab); $('dlg-set').showModal(); };
