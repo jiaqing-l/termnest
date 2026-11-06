@@ -231,19 +231,17 @@
     <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div></div>
   </section>
   <section class="set-pane" data-pane="backup">
-    <h4 data-i18n="settings.backup_title"></h4><p class="hint" data-i18n="settings.backup_hint"></p>
-    <div class="set-group"><label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
-      <div class="sw set-stack"><span data-i18n="settings.backup_where"></span><code id="bk-dir"></code><small id="bk-last"></small><button type="button" class="btn" id="bk-now" data-i18n="settings.backup_now"></button></div>
+    <h4 data-i18n="settings.backup_title"></h4>
+    <div class="set-group">
+      <label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
+      <div class="sw"><span data-i18n="settings.backup_last_label"></span><span class="set-val" id="bk-last"></span><button type="button" class="btn sm" id="bk-now" data-i18n="settings.backup_now"></button></div>
+      <label class="sw"><span data-i18n="settings.backup_extra"></span><select id="bk-target"></select></label>
     </div>
-    <h4 data-i18n="settings.backup_extra"></h4><p class="hint" data-i18n="settings.backup_extra_hint"></p>
-    <div class="set-group set-pad">
-      <div id="bk-suggest" class="chips-f"></div>
-      <p id="bk-nocloud" class="hint" hidden data-i18n="settings.backup_no_cloud"></p>
-      <form id="bk-form" class="dir-input"><input id="bk-extra" autocomplete="off" spellcheck="false" data-i18n-attrs="aria-label:settings.backup_extra;placeholder:settings.backup_extra_ph"><button class="btn" type="button" id="bk-pick" data-i18n="settings.backup_pick"></button><button class="btn primary" type="submit" data-i18n="tokenui.luu"></button><button class="btn" type="button" id="bk-clear" data-i18n="settings.backup_extra_off"></button></form>
-      <p id="bk-note" class="hint" role="status"></p>
-    </div>
-    <h4 data-i18n="settings.cleanup_title"></h4><p class="hint" data-i18n="settings.cleanup_hint"></p>
+    <p class="hint set-foot"><span data-i18n="settings.backup_foot"></span> <code id="bk-dir"></code></p>
+    <p id="bk-note" class="hint" role="status"></p>
+    <h4 data-i18n="settings.cleanup_title"></h4>
     <div class="set-group"><label class="sw"><span data-i18n="settings.temp_days"></span><select id="set-temp-days"><option value="1" data-i18n="settings.days_1"></option><option value="3" data-i18n="settings.days_3"></option><option value="7" data-i18n="settings.days_7"></option><option value="30" data-i18n="settings.days_30"></option><option value="0" data-i18n="settings.keep_by_hand"></option></select></label><label class="sw"><span data-i18n="settings.trash_days"></span><select id="set-trash-days"><option value="0" data-i18n="settings.never_auto"></option><option value="7" data-i18n="settings.days_7"></option><option value="14" data-i18n="settings.days_14"></option><option value="30" data-i18n="settings.days_30"></option><option value="90" data-i18n="settings.days_90"></option></select></label></div>
+    <p class="hint set-foot" data-i18n="settings.cleanup_hint"></p>
   </section>
   <section class="set-pane" data-pane="commands">
     <h4 data-i18n="html.lenh_mau"></h4><p class="hint" data-i18n="settings.commands_hint"></p>

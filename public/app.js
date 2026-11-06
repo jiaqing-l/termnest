@@ -1048,33 +1048,37 @@
     t.onclick = function () { showSetTab(t.dataset.tab); };
     t.onkeydown = function (e) { if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); var all = [].slice.call(document.querySelectorAll('#dlg-set .set-tab')), i = all.indexOf(t) + (e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1); var n = all[(i + all.length) % all.length]; showSetTab(n.dataset.tab); n.focus(); };
   });
-  // Backup: where the encrypted copies are, when the last one was made, and an extra folder (a Drive / iCloud / OneDrive folder syncs it).
-  var BK_KIND = { gdrive: 'Google Drive', icloud: 'iCloud Drive', onedrive: 'OneDrive', dropbox: 'Dropbox' };
+  // Backup: when the last encrypted copy was made, "Back up now", and one choice for an extra copy: none, a synced cloud folder
+  // found on this computer (its app uploads it), or any other folder picked in the folder browser.
+  var BK_KIND = { gdrive: 'Google Drive', icloud: 'iCloud Drive', onedrive: 'OneDrive', dropbox: 'Dropbox' }, bkData = null;
+  function bkLabel(dir) { var parts = String(dir).split(/[\\/]/).filter(Boolean); return parts.slice(-2).join('/') || dir; }
   function bkShow(b) {
-    $('bk-dir').textContent = b.dir;
-    $('bk-last').textContent = b.lastAt ? i18n('settings.backup_last', [new Date(b.lastAt).toLocaleString(i18n('lang.locale')), b.count]) : i18n('settings.backup_none');
-    $('bk-extra').value = b.extra ? b.extra.replace(/[\\/]TERMNEST-backup$/, '') : '';
-    $('bk-clear').hidden = !b.extra;
+    bkData = b;
+    $('bk-dir').textContent = b.dir; $('bk-dir').title = b.dir;
+    $('bk-last').textContent = b.lastAt ? new Date(b.lastAt).toLocaleTimeString(i18n('lang.locale'), { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date(b.lastAt).toLocaleDateString(i18n('lang.locale'), { day: '2-digit', month: '2-digit' }) : i18n('settings.backup_none');
+    var sel = $('bk-target'), extra = b.extra ? b.extra.replace(/[\\/]TERMNEST-backup$/, '') : '';
+    sel.textContent = '';
+    var add = function (value, text, title) { var o = el('option', '', text); o.value = value; if (title) o.title = title; sel.append(o); return o; };
+    add('', i18n('settings.backup_extra_none'));
+    var known = false;
+    (b.suggestions || []).forEach(function (c) { add(c.path, '☁ ' + (BK_KIND[c.kind] || c.kind), c.path); if (c.path === extra) known = true; });
+    if (extra && !known) add(extra, '📁 ' + bkLabel(extra), extra);
+    add('*', i18n('settings.backup_pick'));
+    sel.value = extra; sel.title = extra;
     var note = $('bk-note'); note.className = 'hint' + (b.extraError ? ' bad' : '');
-    note.textContent = b.extraError ? i18n('settings.backup_extra_failed') : b.extra ? i18n('settings.backup_extra_on', [b.extra]) : '';
+    note.textContent = b.extraError ? i18n('settings.backup_extra_failed') : '';
   }
-  function bkError(err) { var note = $('bk-note'); note.className = 'hint bad'; note.textContent = err.message; }
-  function renderBackup() {
-    api('GET', '/api/backup').then(function (b) {
-      bkShow(b);
-      var box = $('bk-suggest'); box.textContent = '';
-      $('bk-nocloud').hidden = !!(b.suggestions || []).length;
-      (b.suggestions || []).forEach(function (s) { var c = el('button', 'btn', '☁ ' + (BK_KIND[s.kind] || s.kind)); c.type = 'button'; c.title = s.path; c.onclick = function () { $('bk-extra').value = s.path; $('bk-extra').focus(); }; box.append(c); });
-    }).catch(bkError);
-  }
-  $('bk-form').onsubmit = function (e) { e.preventDefault(); api('POST', '/api/backup/folder', { dir: $('bk-extra').value }).then(bkShow).catch(bkError); };
-  // Pick the folder in the same folder browser as "New session", on this computer (where TERMNEST and its data live).
-  $('bk-pick').onclick = function () {
-    var me = servers.find(function (v) { return v.local; }); if (!me) return;
-    browseDir(me.id, $('bk-extra').value.trim(), function (chosen) { $('bk-extra').value = chosen; api('POST', '/api/backup/folder', { dir: chosen }).then(bkShow).catch(bkError); });
+  function bkError(err) { var note = $('bk-note'); note.className = 'hint bad'; note.textContent = err.message; if (bkData) { var keep = bkData; setTimeout(function () { $('bk-target').value = keep.extra ? keep.extra.replace(/[\\/]TERMNEST-backup$/, '') : ''; }, 0); } }
+  function bkSet(dir) { api('POST', '/api/backup/folder', { dir: dir }).then(function (b) { bkShow(Object.assign(b, { suggestions: bkData && bkData.suggestions })); }).catch(bkError); }
+  function renderBackup() { api('GET', '/api/backup').then(bkShow).catch(bkError); }
+  $('bk-target').onchange = function () {
+    var v = this.value;
+    if (v !== '*') { bkSet(v); return; }
+    var me = servers.find(function (s) { return s.local; }), keep = bkData;
+    if (keep) bkShow(keep);   // until a folder is picked the choice stays as it was
+    if (me) browseDir(me.id, '', bkSet);
   };
-  $('bk-clear').onclick = function () { api('POST', '/api/backup/folder', { dir: '' }).then(bkShow).catch(bkError); };
-  $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(bkShow).catch(bkError).finally(function () { b.disabled = false; }); };
+  $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(function (r) { bkShow(Object.assign(r, { suggestions: bkData && bkData.suggestions })); }).catch(bkError).finally(function () { b.disabled = false; }); };
   $('set').onclick = function () { renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(setTab); $('dlg-set').showModal(); };
   document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });
   $('dt-see').onclick = function () { $('dlg-detail').close(); setScope(detailId); setView('over'); };

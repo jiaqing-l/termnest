@@ -1184,3 +1184,8 @@ dialog.drop-remote{display:none}
 #dlg-set .set-pad>*,#dlg-set .set-pane>*{min-width:0;overflow-wrap:anywhere}
 @media (max-width:640px){#dlg-set .set-group .set-stack>span:first-child{flex:1 1 100%}}
 @media (max-width:640px){#dlg-set.set-dlg{margin:0;inset:0;max-width:100vw;max-height:100dvh}}
+#dlg-set .set-val{color:var(--fg-3);font-weight:500;font-size:12.5px;white-space:nowrap}
+#dlg-set .btn.sm{padding:5px 10px;font-size:12.5px;min-height:0}
+#dlg-set .set-foot{margin-top:-2px}
+#dlg-set .set-foot code{font-size:11.5px;color:var(--fg-3);background:transparent;padding:0;word-break:break-all}
+#dlg-set #bk-target{max-width:220px}
