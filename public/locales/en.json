@@ -1212,5 +1212,6 @@
   "settings.backup_extra_on": "Also saving to {0}",
   "settings.backup_extra_failed": "The last copy could not be written to the chosen folder. Check that it still exists and is writable.",
   "settings.cleanup_title": "Clean-up",
-  "settings.commands_hint": "Frequent commands, one click types them into the open session."
+  "settings.commands_hint": "Frequent commands, one click types them into the open session.",
+  "fileviewer.mo_xem": "Open to view"
 }

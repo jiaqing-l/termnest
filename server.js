@@ -624,7 +624,10 @@ async function api(req, res, url) {
   if (p === '/api/state' && m === 'GET') { send(res, 200, publicState()); return; }
   if ((p === '/api/file' || p === '/api/file-preview') && m === 'GET') {
     try {
-      const value = await require('./lib/file-viewer').readSessionFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('session'), url.searchParams.get('path'));
+      // temp=1: a file in the machine's private "Send file" folder, not in the session folder.
+      const fv = require('./lib/file-viewer'), temp = url.searchParams.get('temp') === '1';
+      const value = temp ? await fv.readTempFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('path'))
+        : await fv.readSessionFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('session'), url.searchParams.get('path'));
       if(p === '/api/file-preview' && !value.error){
         if(value.kind !== 'html'){fail(res,400,tr('srv.server.chi_ho_tro_ban_xem'));return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
@@ -632,7 +635,7 @@ async function api(req, res, url) {
         let page = value.text;
         try {
           const backend = remotes.get(url.searchParams.get('server')), session = url.searchParams.get('session'), reader = require('./lib/file-viewer').readSessionFile;
-          page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs));
+          if (!temp) page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs));
         } catch { /* the report still opens, just without its pictures */ }
         res.end(injectReportLinks(page));return;
       }

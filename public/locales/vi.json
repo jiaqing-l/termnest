@@ -1195,5 +1195,6 @@
   "settings.backup_extra_on": "Đang lưu thêm vào {0}",
   "settings.backup_extra_failed": "Lần sao lưu gần nhất không ghi được vào thư mục đã chọn. Kiểm tra thư mục còn tồn tại và còn quyền ghi.",
   "settings.cleanup_title": "Dọn dẹp",
-  "settings.commands_hint": "Lệnh hay dùng, bấm một lần để gõ vào phiên đang mở."
+  "settings.commands_hint": "Lệnh hay dùng, bấm một lần để gõ vào phiên đang mở.",
+  "fileviewer.mo_xem": "Mở để xem"
 }

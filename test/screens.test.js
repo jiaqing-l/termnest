@@ -276,3 +276,17 @@ test('the file feature loads while TERMNEST is still locked (its settings are re
     settings: { get: () => { throw new TypeError("Cannot read properties of null (reading 'features')"); }, set() {} } }));
   assert.deepEqual(browse.cleanupSettings(), { tempDays: 1, trashDays: 0 });
 });
+
+test('a temp file opens with the same reader, rooted at the private Send file folder; other names are refused', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { readTempFile } = require('../lib/file-viewer');
+  const tmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-tview-'))), saved = process.env.TMPDIR;
+  process.env.TMPDIR = tmp;
+  try {
+    const dir = path.join(tmp, 'termnest-drop-' + (process.getuid ? process.getuid() : 0)); fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, '20261106-ab.md'), '# Xin chào');
+    const local = { cfg: { local: true }, mode: 'native' };
+    const ok = await readTempFile(local, '20261106-ab.md'); assert.equal(ok.kind, 'markdown'); assert.equal(ok.text, '# Xin chào');
+    for (const bad of ['../x.md', '/etc/passwd', 'a/b.md', '']) assert.ok((await readTempFile(local, bad)).error);
+  } finally { if (saved === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = saved; fs.rmSync(tmp, { recursive: true, force: true }); }
+});

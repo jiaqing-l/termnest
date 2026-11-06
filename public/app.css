@@ -1175,3 +1175,9 @@ dialog.drop-remote{display:none}
   #dlg-set .set-group select{min-width:120px;max-width:55vw}
 }
 @media (max-width:640px){#dlg-set .set-stack>span:first-child{flex-basis:100%}#dlg-set .dir-input{flex-wrap:wrap}#dlg-set .dir-input input{flex-basis:100%}}
+.viewer-link{all:unset;cursor:pointer;font-weight:700;word-break:break-all}
+.viewer-link:hover{text-decoration:underline;color:var(--primary)}
+.viewer-link:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+/* Long paths in notes wrap instead of running off a phone screen; wide tables scroll inside the document */
+.viewer-note{overflow-wrap:anywhere}
+.document table{display:block;max-width:100%;overflow-x:auto}

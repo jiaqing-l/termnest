@@ -143,14 +143,15 @@
    picker=null;insert.hidden=true;
    if(!(opts&&opts.keepGallery))gallery=null;
    // Opened from the file browser (or its search): remember where to come back to. Opened any other way: nothing to go back to.
-   if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
-   back.hidden=!backState;
-   const request=++generation;cancel();location=[host,session,path];current=null;panel.hidden=false;setTitle(path);body.textContent=i18n('fileviewer.dang_doc_tep');copy.disabled=download.disabled=reload.disabled=true;
+   if(opts&&opts.fromTemp)backState={host,session,dir:opts.fromTemp.dir,temp:true};
+   else if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
+   back.hidden=!backState;back.textContent=backState&&backState.temp?'← '+i18n('fileviewer.file_tam'):i18n('fileviewer.quay_lai');
+   const request=++generation;cancel();location=[host,session,path,opts&&opts.fromTemp?{fromTemp:opts.fromTemp}:undefined];current=null;panel.hidden=false;setTitle(path);body.textContent=i18n('fileviewer.dang_doc_tep');copy.disabled=download.disabled=reload.disabled=true;
    try{
-    const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path);
+    const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path)+(opts&&opts.fromTemp?'&temp=1':'');
     const file=await api('GET','/api/file?'+query);if(request!==generation)return;
     // One file with that name below the session folder: it is the one meant (the path shown was relative to another folder), open it.
-    if(file.candidates&&file.candidates.length===1&&!(opts&&opts.auto)){return open(host,session,file.candidates[0],Object.assign({},opts,{auto:true}));}
+    if(file.candidates&&file.candidates.length===1&&!(opts&&(opts.auto||opts.fromTemp))){return open(host,session,file.candidates[0],Object.assign({},opts,{auto:true}));}
     if(file.candidates&&file.candidates.length){showCandidates(file,host,session,path);return;}
     if(file.error)throw Error(file.error);current=file;insert.hidden=false;setTitle(file.path);body.textContent='';copy.disabled=download.disabled=reload.disabled=false;
     if(file.kind==='image'){showImage(file,host,session);return;}
@@ -258,6 +259,7 @@
   }
   // Files "Send file" stored on this machine (its private temp folder), newest first: pick some to delete, or delete them all.
   async function showTemp(host,session,dir){
+   generation++;cancel();location=[host,session,''];current=null;back.hidden=true;backState=null;insert.hidden=true;setTitle(i18n('fileviewer.file_tam_tieu_de'));copy.disabled=download.disabled=reload.disabled=true;
    body.textContent='';body.append(backTo(host,session,dir));
    const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
    const again=()=>showTemp(host,session,dir);
@@ -275,7 +277,8 @@
     r.items.forEach(it=>{
      const row=doc.createElement('label');row.className='viewer-row viewer-pick';const box=doc.createElement('input');box.type='checkbox';
      box.onchange=()=>{if(box.checked)chosen.add(it.name);else chosen.delete(it.name);label();};
-     const info=doc.createElement('div');info.className='viewer-trash-info';const name=doc.createElement('b');name.textContent='📄 '+it.name;
+     const info=doc.createElement('div');info.className='viewer-trash-info';const name=doc.createElement('button');name.type='button';name.className='viewer-link';name.textContent='📄 '+it.name;name.title=i18n('fileviewer.mo_xem');
+     name.onclick=e=>{e.preventDefault();e.stopPropagation();open(host,session,it.name,{fromTemp:{dir}});};
      const meta=doc.createElement('small');meta.textContent=size(it.bytes)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,meta);
      row.append(box,info);list.append(row);
     });
@@ -415,7 +418,7 @@
   });
   reload.onclick=()=>{if(location)open(...location);};
   insert.onclick=()=>{if(current&&location)insertPath(location[0],current.path);};
-  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;showBrowser(b.host,b.session,b.dir,b.query);};
+  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;if(b.temp){showTemp(b.host,b.session,b.dir);return;}showBrowser(b.host,b.session,b.dir,b.query);};
   // Open the viewer straight on the session's folder, without needing a path link in the terminal (phones have no easy link tap).
  function browse(host,session){picker=null;insert.hidden=true;generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
  function pick(host,session,cb){browse(host,session);picker=cb;return showBrowser(host,session,'');}
