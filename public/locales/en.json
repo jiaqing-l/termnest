@@ -249,7 +249,7 @@
   "tokenui.them_thu_muc": "Add folder",
   "tokenui.huy": "Cancel",
   "tokenui.luu": "Save",
-  "tokenui.doc_tren_may_da_chon": "Read on the chosen machine. No login token is entered. If no folder is declared, ~/.claude and ~/.codex are used.",
+  "tokenui.doc_tren_may_da_chon": "Each account is a Claude or Codex config folder on one machine. TERMNEST only reads usage numbers and never needs a login token.",
   "usageui.chu_nhat": "Sunday",
   "usageui.thu_hai": "Monday",
   "usageui.thu_ba": "Tuesday",
@@ -1210,5 +1210,13 @@
   "settings.backup_pick": "Choose another folder…",
   "settings.backup_last_label": "Last backup",
   "settings.backup_extra_none": "Nowhere else",
-  "settings.backup_foot": "Copies are encrypted; the newest 10 are kept. Pick a Google Drive, iCloud or OneDrive folder on this computer to upload them. Stored in:"
+  "settings.backup_foot": "Copies are encrypted; the newest 10 are kept. Pick a Google Drive, iCloud or OneDrive folder on this computer to upload them. Stored in:",
+  "tokenui.tai_khoan_ai": "AI accounts",
+  "tokenui.them_tai_khoan": "Add account",
+  "tokenui.sua": "Edit",
+  "tokenui.xong": "Done",
+  "tokenui.chua_co_tai_khoan": "No accounts yet. TERMNEST reads ~/.claude and ~/.codex on each machine.",
+  "tokenui.khong_gioi_han": "No limit",
+  "tokenui.vi_du_cong_viec": "e.g. Work",
+  "tokenui.nguong_ngan": "limit {0}/day"
 }
