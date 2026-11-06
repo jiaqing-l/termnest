@@ -698,7 +698,7 @@
   function addLost(sec, v) {
     if (!(v.lost || []).length && !restoreNotes[v.id]) return;
     var box = el('div', 'lost'), text = el('div'), restore = el('button', 'btn primary', i18n('app.khoi_phuc')), dismiss = el('button', 'btn', i18n('app.bo_qua'));
-    text.append(el('b', '', i18n('app.phien_co_the_khoi_phuc', [(v.lost || []).length])), el('span', '', restoreNotes[v.id] || (v.lost.map(function (s) { return s.name; }).join(' · ') + (v.local && v.lost.some(function (s) { return s.run === 'codex'; }) ? i18n('app.codex_chon_hoi_thoai_trong') : ''))));
+    text.append(el('b', '', i18n('app.phien_co_the_khoi_phuc', [(v.lost || []).length])), el('span', '', restoreNotes[v.id] || (v.lost.map(function (s) { return s.name; }).join(' · ') + (v.local && v.lost.some(function (s) { return s.run === 'codex' && !s.resumes; }) ? i18n('app.codex_chon_hoi_thoai_trong') : ''))));
     restore.disabled = !v.on || !v.lost.length;
     restore.onclick = function () {
       restore.disabled = true;

@@ -413,6 +413,13 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
   dir = dir.trim();
   // After a reboot the conversation the agent held is resumed by its own id (recorded while it ran).
   resume = restoring && typeof resume === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(resume) ? resume : '';
+  // Two agents writing one transcript would corrupt it: a conversation already open in another session is not resumed twice.
+  if (resume) {
+    const k = vault.data.known?.[r.cfg.id], lostNames = new Set(k?.lost || []);
+    const held = Object.entries(k?.sessions || {}).some(([n, v]) => n !== name && !lostNames.has(n) && v.resume === resume)
+      || (r.snapshot?.sessions || []).some((s) => s.name !== name && s.aiSessionId === resume);
+    if (held) resume = '';
+  }
   let resolvedDir;
   if (r.mode === 'powershell') {
     resolvedDir = await r.startPlain({ name, dir, run, restoring });
