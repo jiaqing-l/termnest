@@ -1157,5 +1157,13 @@
   "settings.days_90": "90 ngày",
   "settings.keep_by_hand": "Không tự xóa",
   "settings.never_auto": "Không tự dọn",
-  "srv.browse.khong_xoa_duoc": "Không xóa được."
+  "srv.browse.khong_xoa_duoc": "Không xóa được.",
+  "app.du_lieu_khoi_phuc_ban_sao": "Tệp dữ liệu TERMNEST bị hỏng nên đã dùng bản sao lúc {0}. Thay đổi sau thời điểm đó có thể thiếu.",
+  "settings.auto_restore_remote": "Tự khôi phục phiên trên server khác sau khi server khởi động lại",
+  "app.reboot_dang_kiem": "Đang kiểm tra việc đang dở…",
+  "app.reboot_khong_co_gi": "Không thấy agent đang chạy hay thay đổi git chưa lưu.",
+  "app.reboot_agent_dang_chay": "{0} phiên đang chạy Claude/Codex sẽ bị dừng:",
+  "app.reboot_chua_luu_git": "{0} thư mục có việc chưa lưu vào git:",
+  "app.reboot_thay_doi": "{0} tệp chưa commit",
+  "app.reboot_chua_push": "{0} commit chưa push"
 }

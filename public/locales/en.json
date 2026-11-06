@@ -1174,5 +1174,13 @@
   "settings.days_90": "90 days",
   "settings.keep_by_hand": "Never (by hand)",
   "settings.never_auto": "Never",
-  "srv.browse.khong_xoa_duoc": "Could not delete."
+  "srv.browse.khong_xoa_duoc": "Could not delete.",
+  "app.du_lieu_khoi_phuc_ban_sao": "The TERMNEST data file was damaged, so the copy from {0} was used. Changes made after that may be missing.",
+  "settings.auto_restore_remote": "Restore sessions on other servers automatically after they restart",
+  "app.reboot_dang_kiem": "Checking for unfinished work…",
+  "app.reboot_khong_co_gi": "No running agents or unsaved git changes found.",
+  "app.reboot_agent_dang_chay": "{0} sessions running Claude/Codex will be stopped:",
+  "app.reboot_chua_luu_git": "{0} folders have work not saved in git:",
+  "app.reboot_thay_doi": "{0} files not committed",
+  "app.reboot_chua_push": "{0} commits not pushed"
 }

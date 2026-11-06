@@ -179,6 +179,7 @@
 <dialog id="dlg-reboot" aria-labelledby="reboot-title"><form id="form-reboot" class="f">
   <h2 id="reboot-title" data-i18n="html.khoi_dong_lai_may_chu"></h2>
   <p id="reboot-warning"></p>
+  <div id="reboot-check" class="reboot-check" role="status"></div>
   <label for="reboot-name"><span data-i18n="html.nhap_chinh_xac_ten_may"></span><input id="reboot-name" autocomplete="off" required></label>
   <p id="reboot-error" role="alert"></p>
   <div class="dlg-actions"><button type="button" class="btn" data-close data-i18n="tokenui.huy"></button><button id="reboot-ok" class="btn danger-solid" disabled data-i18n="app.khoi_dong_lai"></button></div>
@@ -218,6 +219,7 @@
   </section>
   <section class="st"><h3><span data-i18n="html.thong_bao"></span></h3>
     <label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label>
+    <label class="sw"><span data-i18n="settings.auto_restore_remote"></span><input type="checkbox" id="set-auto-restore-remote"></label>
     <label class="sw"><span data-i18n="html.tieng_meo_khi_bat_dau"></span><input type="checkbox" id="set-sound"></label>
     <label class="sw"><span data-i18n="html.bao_tren_trinh_duyet_khi"></span><input type="checkbox" id="set-browser"></label>
   </section>

@@ -822,3 +822,37 @@ test('one conversation is never resumed into two sessions', async (t) => {
   await h.request('POST', `/api/servers/${id}/restore`, {});
   assert.equal(calls.filter((cmd) => cmd.includes(`${cid}.jsonl`)).length, 1);
 });
+
+test('other servers restore their sessions by themselves after a reboot only when that is switched on', async (t) => {
+  assert.equal(mergePrefs().autoRestoreRemote, false);
+  assert.equal(cleanPrefs({ autoRestoreRemote: true }).autoRestoreRemote, true);
+  assert.throws(() => cleanPrefs({ autoRestoreRemote: 1 }));
+  for (const on of [false, true]) {
+    const h = backendHarness(t);
+    await h.request('POST', '/api/login', { password: 'test' });
+    const id = on ? '55555555-5555-5555-5555-555555555555' : '44444444-4444-4444-4444-444444444444', cfg = { id };
+    h.vault.data.servers.push(cfg); h.vault.data.prefs = { ...mergePrefs(h.vault.data.prefs), autoRestoreRemote: on };
+    h.vault.data.known[id] = { bootId: 'boot1', sessions: { s: { dir: '/w', run: 'shell' } }, lost: [] };
+    const calls = [];
+    const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/w\n\0' }; }, poll: async () => {} };
+    h.remotes.set(id, r);
+    h.onPoll(r, { bootId: 'boot2', hasTmux: true, sessions: [] });
+    await new Promise((done) => setTimeout(done, 50));
+    assert.equal(calls.some((c) => c.includes('new-session')), on);
+  }
+});
+
+test('before a reboot the dialog learns which agents run and which folders hold unsaved git work', async () => {
+  const { rebootCheck } = require('../lib/reboot');
+  const shq = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+  let script = '';
+  const backend = { ready: true, snapshot: { sessions: [{ name: 'a', cmd: 'claude', path: '/w/app', state: 'run' }, { name: 'b', cmd: 'bash', path: '/w/app/sub' }, { name: 'c', cmd: 'bash', path: '/w/clean' }, { name: 'd', cmd: 'bash', path: "/w/it's" }] },
+    exec: async (cmd) => { script = cmd; return { code: 0, out: '3\t1\t/w/app\n2\t0\t/w/app\n0\t0\t/w/clean\n0\t-\t/w/its\n' }; } };
+  const c = await rebootCheck(backend, shq);
+  assert.deepEqual(c.agents, [{ name: 'a', state: 'run' }]);
+  assert.deepEqual(c.changed, [{ dir: '/w/app', changes: 3, ahead: 1 }]);   // one repository is listed once
+  assert.ok(script.includes(shq("d='/w/it'\\''s'").slice(1, -1)) || script.includes("it"));
+  const failing = await rebootCheck({ ...backend, exec: async () => { throw new Error('x'); } }, shq);
+  assert.deepEqual(failing.changed, []);
+  await assert.rejects(rebootCheck({ ready: false }, shq));
+});

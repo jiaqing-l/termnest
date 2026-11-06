@@ -213,7 +213,7 @@ function onPoll(r, snap, sessionVersion = r.sessionVersion) {
   saveVault();
   updateLost(r);
   if (typeof features !== 'undefined') features.emitSnapshot(r, snap);
-  if (r.cfg.local && vault.data.prefs.autoRestoreLocal && r.lost.length && !r.restoring) {
+  if ((r.cfg.local ? vault.data.prefs.autoRestoreLocal : vault.data.prefs.autoRestoreRemote) && r.lost.length && !r.restoring) {
     // One attempt per boot; failures stay visible for manual retry.
     if (r.restoreBoot !== snap.bootId) {
       r.restoreBoot = snap.bootId; r.restoring = true;
@@ -282,7 +282,8 @@ async function login(req, res) {
   sessions.set(token, now + SESSION_MS);
   setCookie(res, token);
   startRemotes();
-  send(res, 200, { ok: true });
+  // The store was damaged and the newest good copy was used: the page tells the user from when the data is.
+  send(res, 200, vault.recovered ? { ok: true, recoveredAt: vault.recovered.at } : { ok: true });
 }
 
 function publicState() {
@@ -686,7 +687,7 @@ async function api(req, res, url) {
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
-  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
+  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot-check|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
   if (sv) {
     const id = sv[1];
     const tail = sv[2] || '';
@@ -694,6 +695,10 @@ async function api(req, res, url) {
     if (tail === '/connect' && m === 'POST') { await reconnect(req, res, id); return; }
     const r = remotes.get(id);
     if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
+    if (tail === '/reboot-check' && m === 'GET') {
+      try { send(res, 200, await require('./lib/reboot').rebootCheck(r, shq)); } catch (err) { fail(res, 400, err.message); }
+      return;
+    }
     if (tail === '/reboot' && m === 'POST') {
       const body = await readJson(req);
       try { send(res, 200, await require('./lib/reboot').rebootServer(r, body.name)); }

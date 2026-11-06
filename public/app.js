@@ -762,6 +762,15 @@
     $('reboot-warning').textContent = i18n('app.khoi_dong_lai_se_ket', [v.name, v.sessions.length]);
     $('reboot-name').value = ''; $('reboot-error').textContent = ''; $('reboot-ok').disabled = true;
     $('dlg-reboot').showModal(); $('reboot-name').focus();
+    // What the reboot would interrupt: agents at work, and unsaved work in git (not committed / not pushed).
+    var box = $('reboot-check'); box.textContent = i18n('app.reboot_dang_kiem');
+    api('GET', '/api/servers/' + v.id + '/reboot-check').then(function (c) {
+      if (rebootTarget !== v) return;
+      box.textContent = '';
+      if (!c.agents.length && !c.changed.length) { box.append(el('p', 'ok', i18n('app.reboot_khong_co_gi'))); return; }
+      if (c.agents.length) { box.append(el('b', '', i18n('app.reboot_agent_dang_chay', [c.agents.length]))); var ul = el('ul'); c.agents.forEach(function (a) { ul.append(el('li', '', a.name)); }); box.append(ul); }
+      if (c.changed.length) { box.append(el('b', '', i18n('app.reboot_chua_luu_git', [c.changed.length]))); var ul2 = el('ul'); c.changed.forEach(function (d) { ul2.append(el('li', '', d.dir + ' · ' + [d.changes ? i18n('app.reboot_thay_doi', [d.changes]) : '', d.ahead ? i18n('app.reboot_chua_push', [d.ahead]) : ''].filter(Boolean).join(', '))); }); box.append(ul2); }
+    }).catch(function () { if (rebootTarget === v) box.textContent = ''; });
   }
   $('reboot-name').oninput = function () { $('reboot-ok').disabled = rebootBusy || !rebootTarget || this.value !== rebootTarget.name; };
   $('form-reboot').onsubmit = function (e) {
@@ -832,6 +841,7 @@
     } catch (e) { /* optional sound never interrupts input */ }
   }
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
+  $('set-auto-restore-remote').onchange = function () { savePrefs({ autoRestoreRemote: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
   var editingPet = null;
   // Grid picker: automatic, then every registered pet, grouped. The hidden #pet-kind keeps the form code unchanged.
@@ -969,6 +979,7 @@
     renderStylePicker();
     renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
+    $('set-auto-restore-remote').checked = !!prefs.autoRestoreRemote;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;
     Object.keys(HP).forEach(function (k) { $('lim-' + k).value = prefs.limits[k]; $('lim-' + k + '-v').textContent = prefs.limits[k] + '%'; });
@@ -1288,7 +1299,7 @@
   function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
-    api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });
+    api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });
   };
   $('logout').onclick = function () { api('POST', '/api/logout').finally(showLogin); };
 
