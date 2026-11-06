@@ -1192,9 +1192,9 @@ dialog.drop-remote{display:none}
 /* AI accounts dialog: fixed header with Add and Close, compact account lines, fields only for the row being edited */
 .token-config.token-config{padding:0;width:min(640px,95vw);max-height:86vh;overflow:hidden}
 .token-config[open]{display:flex;flex-direction:column}
-.token-config .acc-form{display:flex;flex-direction:column;min-height:0;flex:1;gap:0}
+.token-config .acc-form{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;gap:0;max-height:86vh}
 .token-config .acc-head{margin:0;padding:14px 18px;border-bottom:1px solid var(--line);gap:8px;flex:none}
-.token-config .acc-body{overflow:auto;padding:14px 18px;display:grid;gap:8px;min-height:0}
+.token-config .acc-body{overflow:auto;padding:14px 18px;display:grid;gap:8px;min-height:0;flex:1 1 auto}
 .token-config .acc-actions{padding:12px 18px;border-top:1px solid var(--line);margin:0;align-items:center;flex:none}
 .token-config .acc-actions .err{margin:0 auto 0 0;font-size:12px}
 .acc-list{display:grid;gap:8px}
@@ -1215,4 +1215,6 @@ dialog.drop-remote{display:none}
 .accf-directory{grid-column:1/-1}
 .acc-empty{margin:4px 0;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--fg-3);font-size:13px}
 .acc-empty[hidden]{display:none}
-@media(max-width:640px){.token-config.token-config{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;inset:0;border-radius:0}.acc-fields{grid-template-columns:1fr}.acc-sum{gap:8px;padding:8px 10px}}
+@media(max-width:640px){.token-config.token-config{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;inset:0;border-radius:0}.token-config .acc-form{max-height:100dvh;height:100%}.acc-fields{grid-template-columns:1fr}.acc-sum{gap:8px;padding:8px 10px}}
+.style-card .sw-colors{width:100%;align-self:stretch;flex:none}
+.token-config .acc-body{align-content:start}
