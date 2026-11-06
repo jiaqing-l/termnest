@@ -263,9 +263,16 @@ test('clean-up settings accept only the offered choices, and Send file uses the 
   const routes = {}, sent = [], fails = [];
   let stored = null;
   browse.register({ route: (m, p, h) => { routes[m + p] = h; }, remotes: () => [], backendOf: () => null, send: (res, c, b) => sent.push(b), fail: (res, c, m) => fails.push(m),
-    readJson: async (req) => req.body, shq: (x) => x, settings: { get: () => ({ tempDays: 3 }), set: (v) => { stored = v; } } });
+    readJson: async (req) => req.body, shq: (x) => x, settings: { get: () => stored || { tempDays: 3 }, set: (v) => { stored = v; } } });
   await routes['GET/cleanup']({ res: {} }); assert.deepEqual(sent.at(-1), { tempDays: 3, trashDays: 0 });
   await routes['POST/cleanup']({ req: { body: { trashDays: 30 } }, res: {} }); assert.deepEqual(stored, { tempDays: 3, trashDays: 30 });
   await routes['POST/cleanup']({ req: { body: { trashDays: 5 } }, res: {} }); assert.equal(fails.length, 1); assert.deepEqual(stored, { tempDays: 3, trashDays: 30 });
   assert.equal(browse.cleanupSettings().tempDays, 3);
+});
+
+test('the file feature loads while TERMNEST is still locked (its settings are read only when needed)', () => {
+  const browse = require('../lib/features/browse');
+  assert.doesNotThrow(() => browse.register({ route() {}, remotes: () => [], backendOf: () => null, send() {}, fail() {}, readJson: async () => ({}), shq: (x) => x,
+    settings: { get: () => { throw new TypeError("Cannot read properties of null (reading 'features')"); }, set() {} } }));
+  assert.deepEqual(browse.cleanupSettings(), { tempDays: 1, trashDays: 0 });
 });

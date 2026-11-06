@@ -840,6 +840,7 @@
       o.connect(g); g.connect(audioContext.destination); o.start(t); o.stop(t + .32); o.onended = function () { o.disconnect(); g.disconnect(); };
     } catch (e) { /* optional sound never interrupts input */ }
   }
+  $('set-backup-every').onchange = function () { savePrefs({ backupMinutes: Number(this.value) }).catch(settingsError); };
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
   $('set-auto-restore-remote').onchange = function () { savePrefs({ autoRestoreRemote: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
@@ -979,6 +980,7 @@
     renderStylePicker();
     renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
+    $('set-backup-every').value = String(prefs.backupMinutes || 60);
     $('set-auto-restore-remote').checked = !!prefs.autoRestoreRemote;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;

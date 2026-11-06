@@ -1145,8 +1145,8 @@
   "fileviewer.xoa_tat_ca_tam_hoi": "Xóa cả {0} file tạm trên máy này?",
   "fileviewer.file_tam_trong": "Không có file tạm.",
   "fileviewer.file_tam_ghi_chu": "Các file nhận qua \"Gửi file\" được lưu ở {0} (chỉ tài khoản của bạn đọc được). Tự xóa theo Cài đặt → Dọn dẹp.",
-  "settings.cleanup": "Dọn dẹp",
-  "settings.cleanup_hint": "Áp dụng cho mọi máy đang kết nối, kiểm tra mỗi giờ.",
+  "settings.cleanup": "Sao lưu và dọn dẹp",
+  "settings.cleanup_hint": "Bản sao dữ liệu TERMNEST (server, cài đặt, phiên đã biết, mã hội thoại) luôn được mã hóa, giữ 10 bản mới nhất, và tạo thêm mỗi lần mở TERMNEST. Dọn dẹp áp dụng cho mọi máy đang kết nối, kiểm tra mỗi giờ.",
   "settings.temp_days": "Xóa file tạm (Gửi file) sau",
   "settings.trash_days": "Tự dọn thùng rác vĩnh viễn sau",
   "settings.days_1": "1 ngày",
@@ -1165,5 +1165,10 @@
   "app.reboot_agent_dang_chay": "{0} phiên đang chạy Claude/Codex sẽ bị dừng:",
   "app.reboot_chua_luu_git": "{0} thư mục có việc chưa lưu vào git:",
   "app.reboot_thay_doi": "{0} tệp chưa commit",
-  "app.reboot_chua_push": "{0} commit chưa push"
+  "app.reboot_chua_push": "{0} commit chưa push",
+  "settings.backup_every": "Tạo bản sao dữ liệu TERMNEST mỗi",
+  "settings.min_15": "15 phút",
+  "settings.hour_1": "1 giờ",
+  "settings.hour_6": "6 giờ",
+  "settings.hour_24": "24 giờ"
 }

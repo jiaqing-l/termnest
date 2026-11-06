@@ -1162,8 +1162,8 @@
   "fileviewer.xoa_tat_ca_tam_hoi": "Delete all {0} temp files on this machine?",
   "fileviewer.file_tam_trong": "No temp files.",
   "fileviewer.file_tam_ghi_chu": "Files received with \"Send file\" are kept in {0} (readable by your account only). They are removed as set in Settings → Clean-up.",
-  "settings.cleanup": "Clean-up",
-  "settings.cleanup_hint": "Applies to every connected machine, checked every hour.",
+  "settings.cleanup": "Backup and clean-up",
+  "settings.cleanup_hint": "Copies of the TERMNEST data (servers, settings, known sessions, conversation ids) are always encrypted; the newest 10 are kept, and one more is made each time TERMNEST opens. Clean-up applies to every connected machine and is checked every hour.",
   "settings.temp_days": "Delete temp files (Send file) after",
   "settings.trash_days": "Empty the trash for good after",
   "settings.days_1": "1 day",
@@ -1182,5 +1182,10 @@
   "app.reboot_agent_dang_chay": "{0} sessions running Claude/Codex will be stopped:",
   "app.reboot_chua_luu_git": "{0} folders have work not saved in git:",
   "app.reboot_thay_doi": "{0} files not committed",
-  "app.reboot_chua_push": "{0} commits not pushed"
+  "app.reboot_chua_push": "{0} commits not pushed",
+  "settings.backup_every": "Copy the TERMNEST data every",
+  "settings.min_15": "15 minutes",
+  "settings.hour_1": "1 hour",
+  "settings.hour_6": "6 hours",
+  "settings.hour_24": "24 hours"
 }

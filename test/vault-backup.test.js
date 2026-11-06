@@ -29,3 +29,18 @@ test('the store keeps encrypted hourly copies and opens the newest good one when
     const again = new Vault(file); assert.equal(again.unlock('pw'), true); assert.equal(again.recovered, null);   // repaired
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('the copy interval follows the setting', () => {
+  const { cleanPrefs, mergePrefs } = require('../lib/parse');
+  assert.equal(mergePrefs().backupMinutes, 60);
+  assert.equal(cleanPrefs({ backupMinutes: 15 }).backupMinutes, 15);
+  assert.throws(() => cleanPrefs({ backupMinutes: 5 }));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-vault-')), file = path.join(dir, 'vault.json');
+  try {
+    const v = new Vault(file); v.create('pw', { servers: [], prefs: { backupMinutes: 15 } });
+    const copies = () => fs.readdirSync(path.join(dir, 'backups'));
+    const only = copies()[0]; fs.renameSync(path.join(dir, 'backups', only), path.join(dir, 'backups', `vault-${Date.now() - 20 * 60000}.json`));
+    v.save(); assert.equal(copies().length, 2);   // 20 minutes > 15: a new copy
+    v.data.prefs.backupMinutes = 1440; v.save(); assert.equal(copies().length, 2);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

@@ -851,7 +851,7 @@ test('before a reboot the dialog learns which agents run and which folders hold 
   const c = await rebootCheck(backend, shq);
   assert.deepEqual(c.agents, [{ name: 'a', state: 'run' }]);
   assert.deepEqual(c.changed, [{ dir: '/w/app', changes: 3, ahead: 1 }]);   // one repository is listed once
-  assert.ok(script.includes(shq("d='/w/it'\\''s'").slice(1, -1)) || script.includes("it"));
+  assert.ok(script.includes('/w/clean'));   // every session folder is looked at, each one quoted
   const failing = await rebootCheck({ ...backend, exec: async () => { throw new Error('x'); } }, shq);
   assert.deepEqual(failing.changed, []);
   await assert.rejects(rebootCheck({ ready: false }, shq));
