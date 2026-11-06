@@ -1288,5 +1288,10 @@
   "move2.next": "On the new computer: install TERMNEST, choose “Restore from the old computer”, pick this file and enter the TERMNEST password.",
   "move2.waiting": "Sessions waiting for their repository (not on this computer yet)",
   "move2.retry": "Try again after cloning",
-  "move2.restored": "Restored {0} servers. {1} sessions of the old computer are ready in Overview → Restore; {2} wait for their repository (see Settings → Backup)."
+  "move2.restored": "Restored {0} servers. {1} sessions of the old computer are ready in Overview → Restore; {2} wait for their repository (see Settings → Backup).",
+  "settings.ime": "Fix Vietnamese typing in the terminal (Unikey, IBus, Bamboo)",
+  "settings.ime_auto": "Automatic",
+  "settings.ime_on": "Always on",
+  "settings.ime_off": "Off",
+  "settings.ime_reopen": "Saved. Reopen the terminal (or reload the page) to apply. Choose \"Always on\" if typed text appears twice."
 }

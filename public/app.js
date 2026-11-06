@@ -593,7 +593,7 @@
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
     function send(d) { paneSend(p, d); }
     scrollbar(p);
-    p.ime = window.TerminalIME.attach(p.term, send, { onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
+    p.ime = window.TerminalIME.attach(p.term, send, { enabled: (function () { var m = ''; try { m = localStorage.getItem('tw-ime') || ''; } catch (e) { /* optional */ } return m === 'on' ? true : m === 'off' ? false : undefined; })(), onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
       if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
@@ -976,8 +976,11 @@
     t.onchange = function () { save({ tempDays: Number(t.value) }); };
     r.onchange = function () { save({ trashDays: Number(r.value) }); };
   }
+  // Settings → Giao diện → Vietnamese typing in the terminal: automatic (WebKit apps), always or never (tw-ime). Applies to
+  // terminals opened afterwards; read where each terminal is created.
   function renderSettings() {
     renderStylePicker();
+    var ime = $('set-ime'); if (ime) { try { ime.value = localStorage.getItem('tw-ime') || 'auto'; } catch (e) { ime.value = 'auto'; } ime.onchange = function () { try { localStorage.setItem('tw-ime', ime.value === 'auto' ? '' : ime.value); } catch (e) { /* optional */ } $('set-note').textContent = i18n('settings.ime_reopen'); }; }
     renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-backup-every').value = String(prefs.backupMinutes || 60);

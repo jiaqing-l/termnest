@@ -1271,5 +1271,10 @@
   "move2.next": "Ở máy mới: cài TERMNEST, bấm “Khôi phục từ máy cũ”, chọn tệp này và nhập mật khẩu TERMNEST.",
   "move2.waiting": "Phiên chờ repo (máy này chưa có repo của chúng)",
   "move2.retry": "Thử lại sau khi clone",
-  "move2.restored": "Đã khôi phục {0} server. {1} phiên của máy cũ đã sẵn sàng ở Tổng quan → Khôi phục; {2} phiên chờ clone repo (xem Cài đặt → Sao lưu)."
+  "move2.restored": "Đã khôi phục {0} server. {1} phiên của máy cũ đã sẵn sàng ở Tổng quan → Khôi phục; {2} phiên chờ clone repo (xem Cài đặt → Sao lưu).",
+  "settings.ime": "Sửa lỗi bộ gõ tiếng Việt trong terminal (Unikey, IBus, Bamboo)",
+  "settings.ime_auto": "Tự động",
+  "settings.ime_on": "Luôn bật",
+  "settings.ime_off": "Tắt",
+  "settings.ime_reopen": "Đã lưu. Mở lại terminal (hoặc tải lại trang) để áp dụng. Chọn \"Luôn bật\" nếu gõ bị lặp chữ."
 }

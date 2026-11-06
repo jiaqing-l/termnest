@@ -7,8 +7,10 @@
     options = options || {};
     var area = term.textarea, host = term.element;
     var nav = root.navigator || {}, ua = nav.userAgent || '';
+    // Every WebKit that is not Chromium: Safari/WKWebView on macOS and WebKitGTK (the Ubuntu desktop app), where IBus
+    // (Unikey, Bamboo) rewrites the helper textarea and xterm alone would send the old and the new text both.
     var enabled = options.enabled !== undefined ? options.enabled :
-      /Mac/.test(nav.platform || '') && /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
+      /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
     var composing = false, pending = null, timer = null, idleTimer = null, disposed = false, emitting = false;
     var shadow = area.value, draft = '', startValue = '', start = 0, end = 0;
     var listeners = [], claimed = new Set(), overlay = null, anchor = null;

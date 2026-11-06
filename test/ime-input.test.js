@@ -240,13 +240,15 @@ test('idle is deferred through compositionend, disposal removes listeners and ca
   assert.deepEqual(f.writes, ['việt']); assert.equal(idle, 1);
 });
 
-test('automatic platform gate enables macOS WKWebView/Safari only', () => {
+test('automatic platform gate enables every non-Chromium WebKit (macOS WKWebView/Safari, Ubuntu WebKitGTK)', () => {
   const source = fs.readFileSync(require.resolve('../public/ime-input'), 'utf8');
   for (const [platform, userAgent, enabled] of [
     ['MacIntel', 'AppleWebKit/605.1.15', true],
     ['MacIntel', 'AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15', true],
     ['MacIntel', 'AppleWebKit/537.36 Chrome/130.0', false],
     ['Win32', 'AppleWebKit/537.36 Edg/130.0', false],
+    ['Linux x86_64', 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko)', true],
+    ['Linux x86_64', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', false],
     ['Linux x86_64', 'Firefox/130.0', false]
   ]) {
     const context = { navigator: { platform, userAgent }, setTimeout, clearTimeout };
