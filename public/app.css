@@ -1418,3 +1418,19 @@ dialog.drop-remote{display:none}
 #cmds .pop{width:max-content;max-width:min(560px,calc(100vw - 340px))}
 #cmds .pop .btn{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono,ui-monospace,monospace);font-size:12.5px}
 @media (max-width:760px){#cmds .pop{width:auto;max-width:none}}
+
+/* Compact density that actually fits more sessions: narrower cards, shorter previews, tighter sidebar rows and wall tiles */
+[data-density="compact"] .grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+[data-density="compact"] #v-over .grid>.card{min-height:160px}
+[data-density="compact"] #v-over .grid>.card .mini{flex-basis:70px;min-height:70px;font-size:10.5px;padding:6px 10px}
+[data-density="compact"] .card-head{padding:5px 8px;gap:6px}
+[data-density="compact"] .card-head svg,[data-density="compact"] .card-head .pet-body,[data-density="compact"] .card-head .pet-body svg{width:28px;height:28px}
+[data-density="compact"] .card-foot{padding:4px 10px;font-size:11px}
+[data-density="compact"] .w-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:6px}
+[data-density="compact"] .side .sess{padding:4px 8px;margin-bottom:1px;gap:8px}
+[data-density="compact"] .side .ava{width:34px;height:34px;border-radius:11px}
+[data-density="compact"] .side .ava svg{width:28px;height:28px}
+[data-density="compact"] #fleet{gap:8px}
+[data-density="compact"] #v-over{gap:8px}
+/* The top bar of a view no longer holds the pets switch (moved to Settings → Look) */
+.main-top{justify-content:flex-end}

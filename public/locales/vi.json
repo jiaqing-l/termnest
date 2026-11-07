@@ -1121,7 +1121,7 @@
   "drop.thu_muc_hien_tai": "Thư mục của phiên gần nhất",
   "settings.style_label": "Hiệu ứng",
   "settings.style_hint": "Thêm hiệu ứng nhẹ lên giao diện quen thuộc. Tự ẩn ở màn Terminal, khi tab bị ẩn và khi hệ thống yêu cầu giảm chuyển động. Được nhớ trên thiết bị này.",
-  "settings.density_compact": "Thu nhỏ khoảng cách (nhiều phiên hơn trên màn hình)",
+  "settings.density_compact": "Gọn: thẻ phiên nhỏ hơn, nhiều phiên hơn trên màn hình",
   "settings.fx_label": "Hiệu ứng động (cánh hoa, tuyết, sao…)",
   "settings.fx_amount": "Lượng hiệu ứng",
   "settings.fx_few": "Ít",
@@ -1614,5 +1614,6 @@
   "ops.phan_chu_y": "Cần chú ý",
   "ops.phan_chi_tiet": "Chi tiết",
   "ops.viec_nen_ten": "Việc nền của Claude",
-  "ops.bang_chung_ten": "Trạng thái từng phiên agent"
+  "ops.bang_chung_ten": "Trạng thái từng phiên agent",
+  "settings.pets_label": "Thú cưng (sân chơi, hình thú ở mỗi phiên)"
 }

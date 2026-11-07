@@ -246,3 +246,4 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .ops-page .ops-card{border-radius:14px}
 @media(max-width:640px){.ops-page details.ops-card>summary small{display:none}.ops-page details.ops-card>summary h3{white-space:normal}}
 .cp-mr.merged,.cp-ci.success{color:#0f8a57}.cp-mr.closed,.cp-ci.failed{color:var(--bad)}.cp-ci.running{color:#2f80ed}
+@media(max-width:640px){.ops-head{gap:8px}.ops-tools{width:100%;justify-content:flex-start;flex-wrap:wrap;gap:6px}.ops-tools .ops-expand{order:2}.ops-tools>.btn:last-child{margin-left:auto}}
