@@ -908,3 +908,15 @@ test('the terminal menu can clear a pane\'s tmux scrollback', async (t) => {
   const r = await h.request('POST', `/api/servers/${id}/sessions/SV1/keys`, { clearHistory: true, text: '' });
   assert.equal(r.code, 200); assert.match(calls[0], /tmux clear-history -t '=SV1:'/);
 });
+
+test("the agent's own status file reaches the session: Claude status, parked flag, background sessions, Codex turn event", () => {
+  const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude', '777 1300 01:00 codex', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
+    'claudestat 21127 interactive idle 1793948461283 - 1 PG review', 'claudestat 39545 bg waiting 1794029355684 permission 0 Lỗi nghiệp vụ',
+    'claudestat 1 interactive weird 1 - 0 x', 'codexstat 777 task_started 1794029000',
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '$1|~|CX|~|0|~|100|~|200|~|codex|~|/Users/me/ws',
+    '@@DETAIL', '$0|~|1226|~|0|~|', '$1|~|1300|~|0|~|', '@@END'].join('\n'), 300);
+  assert.deepEqual(snap.sessions[0].aiStatus, { tool: 'claude', status: 'idle', at: 1793948461283, waitingFor: '', parked: true });
+  assert.deepEqual(snap.sessions[1].aiStatus, { tool: 'codex', status: 'busy', at: 1794029000000, waitingFor: '' });
+  assert.deepEqual(snap.bgAgents.map((b) => [b.name, b.status, b.waitingFor]), [['Lỗi nghiệp vụ', 'waiting', 'permission']]);
+});

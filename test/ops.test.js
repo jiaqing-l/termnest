@@ -9,85 +9,79 @@ function run(sessions, extra = {}) {
   const memo = extra.memo || {};
   return ops.evaluate({ server: 'm1', snapshot: { cpu: 10, ram: 20, sessions, ...(extra.snap || {}) }, online: extra.online !== false, lost: extra.lost || [], pack: extra.pack || pack, memo, now: extra.now || NOW, nudges: extra.nudges || [] });
 }
-const agent = (o) => ({ name: 'a', created: 1, cmd: 'claude', state: 'wait', asking: false, activityAge: 10, lines: ['❯ '], ...o });
+// A Claude pane whose own session file says `status`, last changed `mins` ago.
+const claude = (status, mins, o = {}) => ({ name: 'a', created: 1, cmd: 'claude', state: 'wait', activityAge: 5, lines: ['❯ '], aiStatus: { tool: 'claude', status, at: NOW - mins * 60000, waitingFor: '', ...(o.st || {}) }, ...o });
 const rules = (list) => list.map((f) => f.rule).sort();
 
-test('a pending question is only reported, and a pack cannot turn it into a suggestion', () => {
-  const memo = {};
-  run([agent({ asking: true })], { memo });
-  const later = run([agent({ asking: true })], { memo, now: NOW + 4 * 60000 });
-  assert.deepEqual(rules(later), ['asking']);
-  assert.equal(later[0].template, undefined);
-  assert.equal(ops.cleanPack({ rules: { asking: { level: 'suggest' } } }).rules.asking.level, 'notify');
-  assert.equal(ops.canSend(agent({ asking: true })), 'asking');
+test('working / waiting / done come only from the status the agent writes, timed from that file', () => {
+  assert.deepEqual(rules(run([claude('busy', 90, { activityAge: 9000 })])), []);
+  assert.deepEqual(run([claude('waiting', 4, { st: { waitingFor: 'permission' } })]).map((f) => [f.rule, f.source, f.params[0]]), [['asking', 'status', 'permission']]);
+  assert.deepEqual(run([claude('idle', 2)]).map((f) => [f.rule, f.source]), [['finished', 'status']]);
+  const d = run([claude('idle', 50)]);
+  assert.deepEqual(d.map((f) => [f.rule, f.params[0], f.template]), [['dormant', 50, 'continue']]);
+  assert.ok(d[0].since >= 50 * 60);
 });
 
-test('a waiting agent is finished at first and dormant with a one-click nudge after the threshold', () => {
-  const memo = {};
-  run([agent()], { memo });
-  assert.deepEqual(rules(run([agent()], { memo, now: NOW + 2 * 60000 })), ['finished']);
-  const d = run([agent({ activityAge: 31 * 60 })], { memo });
-  assert.deepEqual(rules(d), ['dormant']);
-  assert.equal(d[0].template, 'continue');
-  assert.equal(ops.canSend(agent()), '');
+test('screen text alone never makes a verdict: no status file means "unknown", even with a question or an error on screen', () => {
+  const noFile = { name: 'b', created: 1, cmd: 'claude', state: 'wait', asking: true, activityAge: 4000, lines: ['Error: boom', 'Do you want to proceed?', '❯ 1. Yes', 'usage limit reached'] };
+  const m = {}; run([noFile], { memo: m });
+  assert.deepEqual(rules(run([noFile], { memo: m, now: NOW + 61000 })), ['unknown']);
+  assert.equal(ops.canSend(noFile), 'unknown');
 });
 
-test('screen signals: error, quota, low context, loop', () => {
-  const memo = {};
-  const err = agent({ name: 'e', lines: ['Error: build failed', '❯ '] });
-  const quota = agent({ name: 'q', lines: ['You have hit your limit · resets 5pm'] });
-  const ctx = agent({ name: 'c', state: 'run', lines: ['working', 'Context left until auto-compact: 8%'] });
-  const loop = agent({ name: 'l', state: 'run', lines: Array(6).fill('Retrying request to the server now') });
-  run([err, quota, ctx, loop], { memo });
-  const out = run([err, quota, ctx, loop], { memo, now: NOW + 6 * 60000 });
-  assert.deepEqual(rules(out), ['context', 'error', 'finished', 'loop', 'quota']);
-  assert.equal(out.find((f) => f.rule === 'context').params[0], 8);
+test('nothing is typed unless the agent itself says idle at its own prompt', () => {
+  assert.equal(ops.canSend(claude('waiting', 1)), 'asking');
+  assert.equal(ops.canSend(claude('busy', 1)), 'busy');
+  assert.equal(ops.canSend(claude('idle', 1, { st: { parked: true } })), 'hub');
+  assert.equal(ops.canSend({ name: 's', cmd: 'bash', state: 'idle' }), 'no-agent');
+  assert.equal(ops.canSend(null), 'gone');
+  assert.equal(ops.canSend(claude('idle', 40)), '');
 });
 
-test('an agent that left its session, a lost session, an offline machine and overload', () => {
+test("a pane whose conversation was moved to Claude's background list is not reported as done", () => {
+  assert.deepEqual(rules(run([claude('idle', 1300, { st: { parked: true } })])), []);
+});
+
+test('background Claude sessions are listed only when they wait for you', () => {
+  const out = run([], { snap: { bgAgents: [{ name: 'Fix PG', status: 'waiting', at: NOW - 600000 }, { name: 'Done', status: 'idle', at: NOW }] } });
+  assert.deepEqual(out.map((f) => [f.rule, f.session]), [['asking', 'bg:Fix PG']]);
+});
+
+test('Codex: an aborted turn from its rollout is reported', () => {
+  const codex = { name: 'c', created: 1, cmd: 'codex', aiStatus: { tool: 'codex', status: 'aborted', at: NOW - 120000 } };
+  assert.deepEqual(rules(run([codex])), ['aborted']);
+});
+
+test('process and machine facts: agent gone from its pane, lost after reboot, offline, overload', () => {
   const memo = {};
-  run([agent()], { memo });
-  assert.deepEqual(rules(run([agent({ cmd: 'zsh', state: 'idle' })], { memo })), ['exited']);
+  run([claude('busy', 1)], { memo });
+  assert.deepEqual(run([{ name: 'a', created: 1, cmd: 'zsh', state: 'idle' }], { memo }).map((f) => [f.rule, f.source]), [['exited', 'process']]);
   assert.deepEqual(rules(run([], { lost: ['x'] })), ['lost']);
   const m2 = {}; run([], { online: false, memo: m2 });
   assert.deepEqual(rules(run([], { online: false, memo: m2, now: NOW + 3 * 60000 })), ['offline']);
-  const m3 = {}; run([], { memo: m3, snap: { cpu: 97 } });
-  assert.deepEqual(rules(run([], { memo: m3, snap: { cpu: 97 }, now: NOW + 6 * 60000 })), ['overload']);
+  const m3 = {}; run([], { memo: m3, snap: { cpu: 97.4 } });
+  assert.deepEqual(run([], { memo: m3, snap: { cpu: 97.4 }, now: NOW + 6 * 60000 }).map((f) => f.params), [[97, 20]]);
 });
 
-test('a plain shell is never nudged and a working session is left alone', () => {
-  assert.equal(ops.canSend({ name: 's', cmd: 'bash', state: 'idle' }), 'no-agent');
-  assert.equal(ops.canSend(agent({ state: 'run' })), 'busy');
-  assert.equal(ops.canSend(null), 'gone');
+test('a nudge is confirmed only by the status file changing after it', () => {
+  const n = { at: NOW - 60000, verified: null };
+  assert.equal(ops.verify(n, claude('busy', 0), NOW, 3), true);
+  assert.equal(ops.verify(n, claude('idle', 0), NOW, 3), true);
+  assert.equal(ops.verify(n, claude('idle', 5), NOW, 3), null);
+  assert.equal(ops.verify(n, claude('idle', 5), NOW + 3 * 60000, 3), false);
+  assert.equal(ops.verify(n, { name: 'x', cmd: 'claude' }, NOW + 3 * 60000, 3), false);
+  assert.ok(rules(run([claude('idle', 5)], { nudges: [{ ...n, server: 'm1', session: 'a', verified: false }] })).includes('unheard'));
 });
 
-test('a nudge is verified by activity after it, and an unheard one is reported once', () => {
-  const n = { at: NOW, server: 'm1', session: 'a', verified: null };
-  assert.equal(ops.verify(n, agent({ activityAge: 0 }), NOW + 5000, 3), true);
-  assert.equal(ops.verify(n, agent({ activityAge: 60 }), NOW + 60000, 3), null);
-  assert.equal(ops.verify(n, agent({ activityAge: 300 }), NOW + 4 * 60000, 3), false);
-  const out = run([agent({ activityAge: 300 })], { nudges: [{ ...n, verified: false }] });
-  assert.ok(rules(out).includes('unheard'));
-});
-
-test('a shared pack keeps only valid custom rules and templates, and they match screen text', () => {
-  const p = ops.cleanPack({ name: 'team-x', templates: { ship: 'Run the release checklist.', bad: 'a\u0007b' },
-    custom: [{ id: 'migr', title: 'Migration on a shared DB', match: 'database update', severity: 'urgent' }, { id: 'x', title: 't', match: '(' }, { id: '../a', title: 't', match: 'a' }] });
-  assert.equal(p.name, 'team-x');
-  assert.deepEqual(p.custom.map((c) => c.id), ['migr']);
-  assert.ok(p.templates.ship && !p.templates.bad && p.templates.continue);
-  const out = run([agent({ state: 'run', lines: ['dotnet ef database update'] })], { pack: p });
-  assert.equal(out.find((f) => f.rule === 'custom').params[0], 'Migration on a shared DB');
+test('only "dormant" can carry a message; a team pack adds labelled text matches only', () => {
+  assert.equal(ops.cleanPack({ rules: { asking: { level: 'suggest' } } }).rules.asking.level, 'notify');
+  const p = ops.cleanPack({ name: 'team-x', custom: [{ id: 'rel', title: 'Release script started', match: 'release\\.sh', level: 'suggest' }, { id: 'x', title: 't', match: '(' }] });
+  assert.deepEqual(p.custom.map((c) => [c.id, c.level]), [['rel', 'notify']]);
+  const out = run([claude('busy', 1, { lines: ['./release.sh --prod'] })], { pack: p });
+  assert.deepEqual(out.map((f) => [f.rule, f.source, f.params[0]]), [['custom', 'text', 'Release script started']]);
 });
 
 test('the core pack has no project-specific rule', () => {
-  const text = JSON.stringify(ops.DEFAULT_PACK);
-  for (const word of ['xspire', 'crew', 'dotnet', 'gitlab', 'devkit']) assert.ok(!text.toLowerCase().includes(word), word);
-});
-
-test('a quiet prompt with sub-agents or background tasks still working is neither finished nor nudged', () => {
-  const bg = agent({ activityAge: 40 * 60, lines: ['❯ ', '  ⏵⏵ auto mode on (shift+tab to cycle) · ← 4 agents'] });
-  assert.deepEqual(rules(run([bg])), []);
-  assert.equal(ops.canSend(bg), 'busy');
-  assert.equal(ops.canSend(agent({ lines: ['2 background tasks running'] })), 'busy');
+  const text = JSON.stringify(ops.DEFAULT_PACK).toLowerCase();
+  for (const word of ['xspire', 'crew', 'dotnet', 'gitlab', 'devkit']) assert.ok(!text.includes(word), word);
 });

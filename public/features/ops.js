@@ -6,9 +6,10 @@
   var TW = window.TW; if (!TW) return;
   var el = TW.el, page = null, tab = null, data = null, busy = {}, editing = false;
   var SEV = { urgent: 0, warn: 1, info: 2 };
-  var RULES = ['asking', 'finished', 'dormant', 'error', 'exited', 'quota', 'context', 'loop', 'overload', 'lost', 'offline', 'unheard'];
+  var RULES = ['asking', 'finished', 'dormant', 'aborted', 'unknown', 'exited', 'overload', 'lost', 'offline', 'unheard'];
 
   function title(f) { return f.rule === 'custom' ? f.params[0] : i18n('ops.r.' + f.rule, f.params); }
+  function who(f) { return f.session.indexOf('bg:') === 0 ? i18n('ops.phien_nen', [f.session.slice(3)]) : f.session; }
   function since(sec) { return sec < 60 ? i18n('ops.vua_moi') : sec < 3600 ? i18n('ops.phut', [Math.floor(sec / 60)]) : i18n('ops.gio', [Math.floor(sec / 3600)]); }
   function button(label, cls, fn) { var b = el('button', 'btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; return b; }
   function post(path, body) { return TW.api('POST', '/api/features/ops' + path, body || {}); }
@@ -16,10 +17,11 @@
   function row(f, srv) {
     var r = el('div', 'ops-row ' + f.severity), t = el('div', 'ops-t'), acts = el('div', 'ops-acts');
     r.append(el('span', 'ops-dot'));
-    t.append(el('b', '', title(f)), el('small', '', [f.session, srv.name, since(f.since)].filter(Boolean).join(' · ')));
+    var meta = el('small', ''); meta.append(el('span', 'ops-src ' + f.source, i18n('ops.src_' + f.source)), document.createTextNode(' ' + [who(f), srv.name, since(f.since)].filter(Boolean).join(' · ')));
+    t.append(el('b', '', title(f)), meta);
     if (f.template && data.pack.templates[f.template]) t.append(el('code', 'ops-msg', data.pack.templates[f.template]));
     r.append(t);
-    if (f.session) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
+    if (f.session && f.session.indexOf('bg:') !== 0) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
     if (f.template) {
       var send = button(i18n('ops.gui_nhac'), 'primary', function () {
         if (busy[f.key]) return; busy[f.key] = true; send.disabled = true;
