@@ -1455,5 +1455,8 @@
   "alerts.os_on": "Thông báo trên máy: đang bật — cảnh báo mới hiện cả ở trung tâm thông báo của máy.",
   "alerts.os_off": "Thông báo trên máy: đang tắt — cảnh báo chỉ hiện trong TERMNEST.",
   "alerts.os_turn_on": "Bật thông báo trên máy",
-  "app.so_may_chu": "{0} máy chủ"
+  "app.so_may_chu": "{0} máy chủ",
+  "ssh.hint_key_only": "Chọn tệp khóa riêng tư của bạn, ví dụ ~/.ssh/id_ed25519. Khóa công khai tương ứng phải có sẵn trong ~/.ssh/authorized_keys của tài khoản trên server. Khóa được mã hóa khi lưu.",
+  "ssh.pick_key": "Chọn tệp khóa…",
+  "ssh.no_key": "Chưa chọn tệp"
 }

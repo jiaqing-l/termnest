@@ -1472,5 +1472,8 @@
   "alerts.os_on": "Computer notifications: on — new alerts also appear in the notification centre.",
   "alerts.os_off": "Computer notifications: off — alerts only show inside TERMNEST.",
   "alerts.os_turn_on": "Turn on",
-  "app.so_may_chu": "{0} servers"
+  "app.so_may_chu": "{0} servers",
+  "ssh.hint_key_only": "Pick your private key file, e.g. ~/.ssh/id_ed25519. Its public key must already be in ~/.ssh/authorized_keys of that account on the server. The key is encrypted when stored.",
+  "ssh.pick_key": "Choose key file…",
+  "ssh.no_key": "No file chosen"
 }

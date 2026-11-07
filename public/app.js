@@ -928,7 +928,6 @@
   }
   $('set-backup-every').onchange = function () { savePrefs({ backupMinutes: Number(this.value) }).catch(settingsError); };
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
-  $('set-allow-pass').onchange = function () { savePrefs({ allowPassword: this.checked }).catch(settingsError); };
   $('set-auto-restore-remote').onchange = function () { savePrefs({ autoRestoreRemote: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
   var editingPet = null;
@@ -1091,7 +1090,6 @@
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-backup-every').value = String(prefs.backupMinutes || 60);
     $('set-auto-restore-remote').checked = !!prefs.autoRestoreRemote;
-    $('set-allow-pass').checked = !!prefs.allowPassword;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;
     Object.keys(HP).forEach(function (k) { $('lim-' + k).value = prefs.limits[k]; $('lim-' + k + '-v').textContent = prefs.limits[k] + '%'; });
@@ -1324,9 +1322,8 @@
     $('n-pet').innerHTML = pet('frog', 'run'); $('n-name').value = ''; $('n-dir').value = ''; $('n-err').textContent = ''; renderTemplates(); $('dlg-new').showModal(); $('n-name').focus();
   }
   function addDlg() {
-    ['s-host', 's-user', 's-pass', 's-phrase', 's-key'].forEach(function (i) { $(i).value = ''; });
-    $('s-port').value = '22'; $('s-err').textContent = ''; sshRef = null; $('s-ref-cmd').hidden = $('s-ref-copy').hidden = true; $('s-ref-hint').textContent = i18n('ssh.manual_hint');
-    $('s-opt-pass').hidden = $('s-opt-pass').disabled = !prefs.allowPassword; $('s-auth').value = 'newkey'; $('s-auth').onchange.call($('s-auth')); $('dlg-srv').showModal(); $('s-host').focus();
+    ['s-host', 's-user', 's-phrase', 's-key'].forEach(function (i) { $(i).value = ''; });
+    $('s-port').value = '22'; $('s-err').textContent = ''; $('s-key-name').textContent = i18n('ssh.no_key'); $('dlg-srv').showModal(); $('s-host').focus();
   }
   function delDlg(v) { delTarget = v; $('d-title').textContent = i18n('app.go_3', [(v.local ? i18n('app.may_nay', [v.hostname]) : v.user + '@' + v.name)]); $('dlg-del').showModal(); $('d-cancel').focus(); }
   function killDlg() { killTarget = curItem(); if (!killTarget) return; $('k-title').textContent = i18n('app.dung_2', [killTarget.s.name]); $('k-err').textContent = ''; $('dlg-kill').showModal(); $('k-cancel').focus(); }
@@ -1355,21 +1352,8 @@
   $('p-cancel').onclick = function () { $('dlg-pass').close(); };
   $('k-cancel').onclick = function () { $('dlg-kill').close(); };
   $('d-cancel').onclick = function () { $('dlg-del').close(); };
-  // Adding a server: SSH keys only unless password login is allowed in Settings → Servers. "newkey" makes a key and installs
-  // it with the server password used once; "keyref" shows a command to install the made key by hand.
-  var sshRef = null;
-  $('s-auth').onchange = function () {
-    var a = this.value;
-    $('s-kl').hidden = $('s-ppl').hidden = a !== 'key'; $('s-pl').hidden = !(a === 'newkey' || a === 'password'); $('s-ref').hidden = a !== 'keyref';
-    $('s-pl-t').textContent = i18n(a === 'newkey' ? 'ssh.pass_once' : 'html.mat_khau');
-    $('s-hint').textContent = i18n(a === 'password' ? 'app.khong_luu_mat_khau_web' : a === 'newkey' ? 'ssh.hint_newkey' : 'app.khoa_duoc_ma_hoa_khi');
-  };
-  $('s-ref-make').onclick = function () {
-    var b = this; b.disabled = true;
-    api('POST', '/api/ssh-key/new').then(function (r) { sshRef = r.ref; $('s-ref-cmd').textContent = r.command; $('s-ref-cmd').hidden = $('s-ref-copy').hidden = false; $('s-ref-hint').textContent = i18n('ssh.manual_then'); })
-      .catch(function (err) { $('s-err').textContent = err.message; }).finally(function () { b.disabled = false; });
-  };
-  $('s-ref-copy').onclick = function () { var t = $('s-ref-cmd').textContent; try { (window.TW_DESKTOP ? window.TW_DESKTOP.copy(t) : navigator.clipboard.writeText(t)); this.textContent = i18n('nodehelp.copied'); } catch (e) { /* text is selectable */ } };
+  // Adding a server: one way only — the user's own SSH private key file (and its passphrase, if any).
+  $('s-key').onchange = function () { var f = this.files[0]; $('s-key-name').textContent = f ? f.name : i18n('ssh.no_key'); };
   $('form-new').onsubmit = function (e) {
     e.preventDefault(); var n = $('n-name').value.trim(), id = $('n-srv').value;
     if (!/^[A-Za-z0-9_-]+$/.test(n)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong_2'); return; }
@@ -1379,7 +1363,7 @@
   };
   $('form-srv').onsubmit = function (e) {
     e.preventDefault();
-    var auth = $('s-auth').value, body = { host: $('s-host').value.trim(), port: Number($('s-port').value), user: $('s-user').value.trim(), auth: auth };
+    var body = { host: $('s-host').value.trim(), port: Number($('s-port').value), user: $('s-user').value.trim(), auth: 'key' };
     if (!body.host) { $('s-err').textContent = i18n('app.nhap_dia_chi_may_chu'); return; }
     if (!body.user) { $('s-err').textContent = i18n('app.nhap_tai_khoan'); return; }
     var send = function () {
@@ -1387,11 +1371,6 @@
       api('POST', '/api/servers', body).then(function (r) { $('dlg-srv').close(); return refresh(true).then(function () { setScope(r.id); say(i18n('app.da_them_may_chu'), true, 2500); }); })
         .catch(function (err) { $('s-err').textContent = err.message; }).finally(function () { $('s-ok').disabled = false; });
     };
-    if (auth === 'password' || auth === 'newkey') {
-      body.password = $('s-pass').value; if (!body.password) { $('s-err').textContent = i18n('app.nhap_mat_khau'); return; }
-      send(); return;
-    }
-    if (auth === 'keyref') { if (!sshRef) { $('s-err').textContent = i18n('ssh.make_first'); return; } body.keyRef = sshRef; send(); return; }
     var f = $('s-key').files[0]; if (!f) { $('s-err').textContent = i18n('app.chon_file_khoa_ssh'); return; }
     body.passphrase = $('s-phrase').value;
     f.text().then(function (t) { body.key = t; send(); });

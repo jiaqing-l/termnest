@@ -157,12 +157,9 @@
   <h2><span data-i18n="app.them_may_chu_2"></span></h2>
   <div class="two"><label for="s-host"><span data-i18n="html.dia_chi_may_chu"></span><input id="s-host" data-i18n-attrs="placeholder:html.ph_host" autocomplete="off"></label><label for="s-port"><span data-i18n="html.cong"></span><input id="s-port" value="22" inputmode="numeric"></label></div>
   <label for="s-user"><span data-i18n="tokenui.tai_khoan"></span><input id="s-user" data-i18n-attrs="placeholder:html.ph_user" autocomplete="off"></label>
-  <label for="s-auth"><span data-i18n="html.cach_dang_nhap"></span><select id="s-auth"><option value="newkey" data-i18n="ssh.opt_newkey"></option><option value="keyref" data-i18n="ssh.opt_keyref"></option><option value="key" data-i18n="ssh.opt_key"></option><option value="password" id="s-opt-pass" data-i18n="ssh.opt_password"></option></select></label>
-  <label for="s-pass" id="s-pl"><span id="s-pl-t" data-i18n="ssh.pass_once"></span><input id="s-pass" type="password" autocomplete="off"></label>
-  <div id="s-ref" class="key-manual" hidden><button type="button" class="btn" id="s-ref-make" data-i18n="ssh.make_key"></button><p class="hint" id="s-ref-hint" data-i18n="ssh.manual_hint"></p><pre id="s-ref-cmd" hidden></pre><button type="button" class="btn" id="s-ref-copy" hidden data-i18n="nodehelp.copy"></button></div>
-  <label for="s-key" id="s-kl" hidden><span data-i18n="html.file_khoa_ssh_rieng_tu"></span><input id="s-key" type="file"></label>
-  <label for="s-phrase" id="s-ppl" hidden><span data-i18n="html.mat_khau_cua_khoa_neu"></span><input id="s-phrase" type="password" autocomplete="off"></label>
-  <p class="hint" id="s-hint" data-i18n="app.khong_luu_mat_khau_web"></p>
+  <label for="s-key" id="s-kl"><span data-i18n="html.file_khoa_ssh_rieng_tu"></span><span class="file-pick"><input id="s-key" type="file"><span class="btn" aria-hidden="true" data-i18n="ssh.pick_key"></span><span id="s-key-name" class="fname" data-i18n="ssh.no_key"></span></span></label>
+  <label for="s-phrase" id="s-ppl"><span data-i18n="html.mat_khau_cua_khoa_neu"></span><input id="s-phrase" type="password" autocomplete="off"></label>
+  <p class="hint" id="s-hint" data-i18n="ssh.hint_key_only"></p>
   <div class="err" id="s-err"></div>
   <div class="dlg-actions"><button type="button" class="btn" id="s-cancel" data-i18n="tokenui.huy"></button><button class="btn primary" type="submit" id="s-ok" data-i18n="html.them"></button></div>
 </form></dialog>
@@ -238,7 +235,7 @@
   </section>
   <section class="set-pane" data-pane="servers">
     <h4 data-i18n="settings.restore_title"></h4>
-    <div class="set-group"><label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label><label class="sw"><span data-i18n="settings.auto_restore_remote"></span><input type="checkbox" id="set-auto-restore-remote"></label><label class="sw"><span data-i18n="ssh.allow_password"></span><input type="checkbox" id="set-allow-pass"></label></div>
+    <div class="set-group"><label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label><label class="sw"><span data-i18n="settings.auto_restore_remote"></span><input type="checkbox" id="set-auto-restore-remote"></label></div>
     <h4 data-i18n="html.nguong_canh_bao"></h4><p class="hint" data-i18n="html.vuot_nguong_thi_the_may"></p>
     <div class="set-group set-ranges"><div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_cpu"><b id="lim-cpu-v"></b></div>
     <div class="rng"><span>RAM</span><input type="range" id="lim-ram" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_ram"><b id="lim-ram-v"></b></div>

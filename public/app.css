@@ -1408,3 +1408,9 @@ dialog.drop-remote{display:none}
 #app.side-mini .side .srv-row .ava{background:color-mix(in srgb,var(--c) 14%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent)}
 #app.side-mini .side .srv-all{margin-bottom:6px}
 .srv-row .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Add server: a localised file picker instead of the browser's own "Choose File" */
+.file-pick{position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:5px 6px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.file-pick input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.file-pick .btn{pointer-events:none;flex:none;min-height:32px}
+.file-pick .fname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-2);font-size:13px}
+.file-pick:focus-within{outline:2px solid color-mix(in srgb,#2f80ed 55%,transparent);outline-offset:1px}
