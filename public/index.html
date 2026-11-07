@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="/termnest-icon.svg">
 <link rel="stylesheet" href="/vendor/xterm.css">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css">
+<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css">
 </head>
 <body>
 <div id="stage"><div id="app">
@@ -223,6 +223,8 @@
   <div class="set-panes">
   <section class="set-pane" data-pane="look">
     <div class="set-group"><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label></div>
+    <h4 data-i18n="look.theme"></h4>
+    <div class="set-free"><p class="hint" data-i18n="look.theme_hint"></p><div id="set-theme" class="style-grid" role="radiogroup"></div></div>
     <h4 data-i18n="settings.style_label"></h4>
     <div class="set-free"><p class="hint" data-i18n="settings.style_hint"></p><div id="set-style" class="style-grid" role="radiogroup"></div></div>
     <div class="set-group"><label class="sw"><span data-i18n="settings.fx_amount"></span><select id="set-fx-amount"><option value="few" data-i18n="settings.fx_few"></option><option value="normal" data-i18n="settings.fx_normal"></option><option value="many" data-i18n="settings.fx_many"></option></select></label></div>
@@ -302,5 +304,6 @@
 <script src="/view-controls.js"></script>
 <script src="/fx.js"></script>
 <script src="/app.js"></script>
+<script src="/look.js"></script>
 </body>
 </html>

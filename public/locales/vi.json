@@ -1121,7 +1121,7 @@
   "drop.thu_muc_hien_tai": "Thư mục của phiên gần nhất",
   "settings.style_label": "Hiệu ứng",
   "settings.style_hint": "Thêm hiệu ứng nhẹ lên giao diện quen thuộc. Tự ẩn ở màn Terminal, khi tab bị ẩn và khi hệ thống yêu cầu giảm chuyển động. Được nhớ trên thiết bị này.",
-  "settings.density_compact": "Gọn (nhiều phiên hơn trên màn hình)",
+  "settings.density_compact": "Thu nhỏ khoảng cách (nhiều phiên hơn trên màn hình)",
   "settings.fx_label": "Hiệu ứng động (cánh hoa, tuyết, sao…)",
   "settings.fx_amount": "Lượng hiệu ứng",
   "settings.fx_few": "Ít",
@@ -1301,5 +1301,16 @@
   "srv.ssh.khoa_chua_cai": "Không đăng nhập được bằng khóa. Lệnh cài khóa đã chạy trên server chưa? ({0})",
   "srv.ssh.da_dung_khoa": "Máy chủ này đã dùng SSH key.",
   "alerts.notify_ask": "🔔 {0} đang hỏi bạn",
-  "alerts.notify_done": "✅ {0} đã xong, chờ việc tiếp"
+  "alerts.notify_done": "✅ {0} đã xong, chờ việc tiếp",
+  "look.keys": "Phím",
+  "look.commands": "Lệnh mẫu",
+  "look.help_short": "?",
+  "look.help": "Cách chọn và sao chép chữ",
+  "look.reply_to": "Trả lời {0}",
+  "look.theme": "Theme",
+  "look.theme_hint": "Đổi ngay khi bấm, được nhớ trên thiết bị này. Cùng công tắc \"Thú cưng\" ở Tổng quan.",
+  "look.theme_pets": "Thú cưng",
+  "look.theme_pets_d": "Thú cưng ở thanh bên, thẻ phiên và sân chơi",
+  "look.theme_clean": "Gọn",
+  "look.theme_clean_d": "Không thú cưng, chấm màu trạng thái; hợp môi trường công ty"
 }

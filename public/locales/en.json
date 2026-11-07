@@ -1318,5 +1318,16 @@
   "srv.ssh.khoa_chua_cai": "Could not log in with the key. Was the install command run on the server? ({0})",
   "srv.ssh.da_dung_khoa": "This server already uses an SSH key.",
   "alerts.notify_ask": "🔔 {0} is asking you",
-  "alerts.notify_done": "✅ {0} finished and waits for you"
+  "alerts.notify_done": "✅ {0} finished and waits for you",
+  "look.keys": "Keys",
+  "look.commands": "Commands",
+  "look.help_short": "?",
+  "look.help": "How to select and copy text",
+  "look.reply_to": "Reply to {0}",
+  "look.theme": "Theme",
+  "look.theme_hint": "Applies at once and is saved on this device. Same switch as \"Pets\" on the overview.",
+  "look.theme_pets": "Pets",
+  "look.theme_pets_d": "Pets in the sidebar, session cards and playground",
+  "look.theme_clean": "Clean",
+  "look.theme_clean_d": "No pets, coloured status dots; suits a work setting"
 }

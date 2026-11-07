@@ -124,6 +124,8 @@ const STATIC = {
   '/termnest-logo-dark.svg': [path.join(PUB, 'termnest-logo-dark.svg'), 'image/svg+xml'],
   '/termnest-logo-oncolor.svg': [path.join(PUB, 'termnest-logo-oncolor.svg'), 'image/svg+xml'],
   '/app.css': [path.join(PUB, 'app.css'), 'text/css; charset=utf-8'],
+  '/look.css': [path.join(PUB, 'look.css'), 'text/css; charset=utf-8'],
+  '/look.js': [path.join(PUB, 'look.js'), 'text/javascript; charset=utf-8'],
   '/vendor/xterm.js': [path.join(NM, '@xterm/xterm/lib/xterm.js'), 'text/javascript; charset=utf-8'],
   '/vendor/xterm.css': [path.join(NM, '@xterm/xterm/css/xterm.css'), 'text/css; charset=utf-8'],
   '/vendor/addon-fit.js': [path.join(NM, '@xterm/addon-fit/lib/addon-fit.js'), 'text/javascript; charset=utf-8'],
