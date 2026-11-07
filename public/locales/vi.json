@@ -1483,5 +1483,6 @@
   "ops.s.overload": "quá tải · CPU {0}% · RAM {1}%",
   "ops.s.lost": "mất sau khi khởi động lại máy",
   "ops.s.offline": "mất kết nối",
-  "ops.s.unheard": "đã nhắc nhưng chưa phản hồi"
+  "ops.s.unheard": "đã nhắc nhưng chưa phản hồi",
+  "ops.loc_muc": "Lọc theo mức"
 }

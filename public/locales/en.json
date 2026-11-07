@@ -1500,5 +1500,6 @@
   "ops.s.overload": "overloaded · CPU {0}% · RAM {1}%",
   "ops.s.lost": "lost after a reboot",
   "ops.s.offline": "not reachable",
-  "ops.s.unheard": "nudged, no reaction"
+  "ops.s.unheard": "nudged, no reaction",
+  "ops.loc_muc": "Filter by level"
 }

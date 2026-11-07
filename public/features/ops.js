@@ -82,12 +82,12 @@
   // Filters: by level (click a count) and by machine; remembered while the page is open.
   var filt = { sev: '', srv: '' };
   function summary(all) {
-    var box = el('div', 'ops-sum'), n = { urgent: 0, warn: 0, info: 0 };
+    var box = el('div', 'ops-toolbar'), seg = el('div', 'ops-seg'), n = { urgent: 0, warn: 0, info: 0 }; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', i18n('ops.loc_muc')); box.append(seg);
     all.forEach(function (x) { n[x.f.severity]++; });
     [['', 'ops.tat_ca', all.length], ['urgent', 'ops.can_ban'], ['warn', 'ops.can_xem'], ['info', 'ops.thong_tin']].forEach(function (k) {
-      var c = el('button', 'ops-chip ' + (k[0] || 'all')); c.type = 'button'; c.setAttribute('aria-pressed', String(filt.sev === k[0]));
-      c.append(el('b', '', String(k[0] ? n[k[0]] : k[2])), el('span', '', i18n(k[1])));
-      c.onclick = function () { filt.sev = k[0]; draw(); }; box.append(c);
+      var c = el('button', 'ops-seg-b ' + (k[0] || 'all')); c.type = 'button'; c.setAttribute('aria-pressed', String(filt.sev === k[0]));
+      c.append(el('span', 'ops-seg-dot'), el('span', '', i18n(k[1])), el('b', 'ops-seg-n', String(k[0] ? n[k[0]] : k[2])));
+      c.onclick = function () { filt.sev = k[0]; draw(); }; seg.append(c);
     });
     if (data.servers.length > 1) {
       var sel = el('select', 'ops-srv'); sel.setAttribute('aria-label', i18n('ops.loc_may'));
@@ -207,7 +207,8 @@
     var tools = el('div', 'ops-tools');
     if (data.dismissed) tools.append(button(i18n('ops.hien_lai', [data.dismissed]), 'ghost', function () { post('/dismiss', { all: true }).then(load); }));
     tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
-    head.append(h, summary(all), tools); page.append(head);
+    head.append(h, tools); page.append(head);
+    var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);
     if (editing) page.append(rulesForm());
     var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); });
     var groups = el('div', 'ops-groups');

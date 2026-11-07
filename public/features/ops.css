@@ -104,3 +104,25 @@
 .ops-ev>summary{flex-wrap:wrap;row-gap:2px}
 .ops-ev>summary h3{flex:1 1 auto;white-space:nowrap}
 @media(max-width:640px){.ops-ev>summary small{flex-basis:100%}.ops-meta{white-space:normal}}
+
+/* Header: title on the left, actions on the right; below it one toolbar — a segmented level filter and a compact machine picker */
+.ops-head{align-items:flex-start}
+.ops-title p{max-width:640px}
+.ops-bar-top{display:flex;margin:-2px 0 2px}
+.ops-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;width:100%}
+.ops-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.ops-seg-b{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:var(--fg-2);font:600 13px var(--round,inherit);cursor:pointer}
+.ops-seg-b:hover{color:var(--fg)}
+.ops-seg-b[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08),0 2px 8px -4px rgba(0,0,0,.3)}
+.ops-seg-dot{width:8px;height:8px;border-radius:50%;background:var(--fg-3)}
+.ops-seg-b.all .ops-seg-dot{background:linear-gradient(135deg,var(--bad),var(--wait))}
+.ops-seg-b.urgent .ops-seg-dot{background:var(--bad)}
+.ops-seg-b.warn .ops-seg-dot{background:#e8a62c}
+.ops-seg-n{min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:color-mix(in srgb,var(--fg) 9%,transparent);color:var(--fg);font:800 11.5px/20px var(--round,inherit);text-align:center}
+.ops-seg-b.urgent .ops-seg-n{background:var(--bad-soft);color:var(--bad)}
+.ops-seg-b.warn .ops-seg-n{background:var(--wait-soft);color:var(--wait)}
+.ops-toolbar .ops-srv{width:auto;min-width:150px;max-width:240px;min-height:38px;border-radius:12px;margin-left:auto}
+/* Tab badge: same readable yellow as the sidebar counts */
+.ops-badge{background:#ffb020!important;color:#3b2500!important}
+@media(max-width:640px){.ops-seg{width:100%}.ops-seg-b{flex:1 1 auto;justify-content:center;padding:0 8px}.ops-toolbar .ops-srv{margin-left:0;max-width:none;width:100%}}
+.ops-seg-b>span:nth-child(2){display:inline-block}.ops-seg-b>span:nth-child(2)::first-letter{text-transform:uppercase}
