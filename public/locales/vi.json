@@ -1321,5 +1321,7 @@
   "move.chat_pick": "Chọn cuộc chat…",
   "move.chat_unknown": "TERMNEST chưa đọc được phiên này đang mở cuộc chat nào (Claude bản cũ không ghi lại). Hãy chọn cuộc chat ở ô trên: mới nhất thường là cuộc đang mở.",
   "move.chat_none": "Không thấy cuộc chat nào của thư mục này trên máy cũ.",
-  "look.see_waiting": "Xem {0} phiên đang chờ"
+  "look.see_waiting": "Xem {0} phiên đang chờ",
+  "app.can_khoi_dong_lai_cap_nhat": "Cần khởi động lại (cập nhật)",
+  "app.can_khoi_dong_lai_title": "Ubuntu đã cài bản cập nhật cần khởi động lại máy mới có hiệu lực. Bấm để xem phiên nào đang chạy rồi mới quyết định."
 }

@@ -1325,3 +1325,4 @@ dialog.drop-remote{display:none}
 #v-over .hero .hero-reply:hover{filter:brightness(.97)}
 #v-over .hero h1{font-size:24px}
 @media (max-width:640px){#v-over .hero .chip{height:28px;padding:0 10px;font-size:12px}#v-over .hero .hero-reply{flex-basis:100%;height:34px}}
+.reboot-ask{border-color:var(--wait-line,#e39b00);color:var(--wait,#a15c00);background:var(--wait-soft,#fff7e6)}

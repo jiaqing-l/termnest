@@ -1338,5 +1338,7 @@
   "move.chat_pick": "Choose the chat…",
   "move.chat_unknown": "TERMNEST could not tell which chat this session has open (older Claude versions do not record it). Choose it above: the newest is usually the open one.",
   "move.chat_none": "No chat of this folder was found on the old machine.",
-  "look.see_waiting": "See the {0} waiting sessions"
+  "look.see_waiting": "See the {0} waiting sessions",
+  "app.can_khoi_dong_lai_cap_nhat": "Restart needed (updates)",
+  "app.can_khoi_dong_lai_title": "Ubuntu installed updates that take effect after a restart. Click to see what is running before deciding."
 }

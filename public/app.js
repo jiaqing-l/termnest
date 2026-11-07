@@ -761,8 +761,9 @@
       if (sys && (sys.failed || []).length) tags.append(el('span', 'tg b', i18n('app.dich_vu_loi', [sys.failed.length])));
       if (sys && sys.rebootRequired) {
         if (!v.local) {
-          var reboot = el('button', 'btn danger reboot', v.rebooting ? i18n('app.dang_khoi_dong_lai') : i18n('app.khoi_dong_lai'));
-          reboot.type = 'button'; reboot.disabled = !v.on || v.rebooting;
+          // Ubuntu asks for a restart after updates (/var/run/reboot-required): say so plainly; the click still asks before doing it.
+          var reboot = el('button', 'btn reboot reboot-ask', v.rebooting ? i18n('app.dang_khoi_dong_lai') : '⟳ ' + i18n('app.can_khoi_dong_lai_cap_nhat'));
+          reboot.title = i18n('app.can_khoi_dong_lai_title'); reboot.type = 'button'; reboot.disabled = !v.on || v.rebooting;
           reboot.onclick = function () { rebootDlg(v); }; tags.append(reboot);
         } else tags.append(el('span', 'tg b', i18n('app.can_khoi_dong_lai')));
       }
