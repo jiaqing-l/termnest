@@ -1337,5 +1337,6 @@
   "move.chat": "Chat",
   "move.chat_pick": "Choose the chat…",
   "move.chat_unknown": "TERMNEST could not tell which chat this session has open (older Claude versions do not record it). Choose it above: the newest is usually the open one.",
-  "move.chat_none": "No chat of this folder was found on the old machine."
+  "move.chat_none": "No chat of this folder was found on the old machine.",
+  "look.see_waiting": "See the {0} waiting sessions"
 }

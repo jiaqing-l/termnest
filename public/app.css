@@ -1311,3 +1311,17 @@ dialog.drop-remote{display:none}
 .term-tools .pane-opt{padding:3px 8px!important}
 .term-tools #command-list{overflow:visible!important}
 .term-tools #command-list{-webkit-mask-image:none;mask-image:none;flex:0 1 auto}
+/* Overview hero: one even row of stats (same height, same glass style); "waiting" stands out by a dot and outline, not a white blob;
+   the reply button matches the row height */
+#v-over .hero .chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+#v-over .hero .chip{height:30px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);color:#fff;font-size:12.5px;font-weight:600;line-height:1;backdrop-filter:blur(4px)}
+#v-over .hero .chip b{font:800 14px var(--round);color:#fff}
+#v-over .hero .chip.alert{border-color:rgba(255,214,102,.95);background:rgba(255,196,0,.18)}
+#v-over .hero .chip.alert::before,#v-over .hero .chip.conn::before{content:'';width:8px;height:8px;border-radius:50%;background:#ffd666;flex:none;box-shadow:0 0 0 3px rgba(255,214,102,.25)}
+#v-over .hero .chip.conn::before{background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.22)}
+#app.offline #v-over .hero .chip.conn{background:rgba(220,38,38,.25);border-color:rgba(255,160,160,.9)}
+#app.offline #v-over .hero .chip.conn::before{background:#f87171}
+#v-over .hero .hero-reply{height:30px;min-height:30px;padding:0 14px;border-radius:10px;border:0;background:#fff;color:var(--primary);font-weight:800;font-size:12.5px;box-shadow:0 6px 16px -8px rgba(0,0,0,.45);margin-left:4px}
+#v-over .hero .hero-reply:hover{filter:brightness(.97)}
+#v-over .hero h1{font-size:24px}
+@media (max-width:640px){#v-over .hero .chip{height:28px;padding:0 10px;font-size:12px}#v-over .hero .hero-reply{flex-basis:100%;height:34px}}

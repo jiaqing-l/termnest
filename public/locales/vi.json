@@ -1320,5 +1320,6 @@
   "move.chat": "Cuộc chat",
   "move.chat_pick": "Chọn cuộc chat…",
   "move.chat_unknown": "TERMNEST chưa đọc được phiên này đang mở cuộc chat nào (Claude bản cũ không ghi lại). Hãy chọn cuộc chat ở ô trên: mới nhất thường là cuộc đang mở.",
-  "move.chat_none": "Không thấy cuộc chat nào của thư mục này trên máy cũ."
+  "move.chat_none": "Không thấy cuộc chat nào của thư mục này trên máy cũ.",
+  "look.see_waiting": "Xem {0} phiên đang chờ"
 }

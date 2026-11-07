@@ -99,7 +99,14 @@
     box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
     // The first session waiting for you gets a reply button right in the summary.
     var first = vis().filter(function (x) { return x.s.state === 'wait'; })[0];
-    if (first) { var reply = el('button', 'btn primary hero-reply', i18n('look.reply_to', [first.s.name])); reply.type = 'button'; reply.onclick = function () { openSession(first.v.id, first.s.name); }; box.append(reply); }
+    // One waiting session: reply to it. Several: show only the waiting ones (the "Chờ bạn" filter) and scroll to them.
+    var waiting = vis().filter(function (x) { return x.s.state === 'wait'; });
+    if (waiting.length === 1) { var reply = el('button', 'btn primary hero-reply', i18n('look.reply_to', [first.s.name])); reply.type = 'button'; reply.onclick = function () { openSession(first.v.id, first.s.name); }; box.append(reply); }
+    else if (waiting.length > 1) {
+      var all = el('button', 'btn primary hero-reply', i18n('look.see_waiting', [waiting.length])); all.type = 'button';
+      all.onclick = function () { var f = document.querySelector('#f button[data-f="wait"]'); if (f) f.click(); var g = $('grid') || document.querySelector('#v-over .grid'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+      box.append(all);
+    }
     $('shelf').innerHTML = scoped().flatMap(function (v) { return (v.houseSessions || v.sessions).map(function (s) { return { v: v, s: s }; }); }).slice(0, 5).map(function (x) { return pet(petFor(x.v, x.s), x.s.state); }).join('');
   }
   function renderSide() {
