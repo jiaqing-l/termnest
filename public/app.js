@@ -961,6 +961,13 @@
   };
   var waitCalls = new Map(), deliveries = new Map();
   try { deliveries = new Map(JSON.parse(sessionStorage.getItem('tw-deliveries') || '[]')); } catch (e) { /* optional */ }
+  // One computer notification per state change of a session, remembered across reloads and restarts of the app; a session
+  // that already finished before the app opened is not announced again (it is still in the bell list).
+  var notified = new Set(), pageStart = Date.now();
+  try { notified = new Set(JSON.parse(localStorage.getItem('tw-notified') || '[]')); } catch (e) { /* optional */ }
+  function markNotified(k) { notified.add(k); var all = Array.from(notified); if (all.length > 400) { all = all.slice(-300); notified = new Set(all); } try { localStorage.setItem('tw-notified', JSON.stringify(all)); } catch (e) { /* optional */ } }
+  // The moment the state began: the agent's own timestamp when it writes one, else when TERMNEST first saw it.
+  function stateAt(s) { var st = s.stateSource === 'status' && s.aiStatus; return st ? ((st.parked && st.job && st.job.at) || st.at || s.stateSince) : s.stateSince; }
   function notifyWaits() {
     var next = {}, live = new Set();
     servers.forEach(function (v) { (v.houseSessions || v.sessions).forEach(function (s) {
@@ -974,6 +981,10 @@
       if (!Number.isFinite(since) || Date.now() - since < settle || waitCalls.get(key) === since ||
           !wantAlert(waitCat(s)) || !browserOn || !('Notification' in window) || Notification.permission !== 'granted') return;
       waitCalls.set(key, since);
+      var once = key + '/' + (s.asking ? 'ask' : 'done') + '/' + (stateAt(s) || since);
+      if (notified.has(once)) return;
+      markNotified(once);
+      if (!s.asking && (stateAt(s) || since) < pageStart - 60000) return;
       // Rasterise local SVG artwork; no remote image or push service.
       var img = new Image();
       img.onload = function () {

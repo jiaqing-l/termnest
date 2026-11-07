@@ -271,6 +271,11 @@
     h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', i18n('ops.mo_ta', [data.servers.length, data.servers.reduce(function (n, s) { return n + s.sessions.length; }, 0)])));
     var tools = el('div', 'ops-tools');
     if (data.dismissed) tools.append(button(i18n('ops.hien_lai', [data.dismissed]), 'ghost', function () { post('/dismiss', { all: true }).then(load); }));
+    // Jump to the plugin card (it sits below the groups); its count shows how many sessions run an older plugin.
+    var staleN = 0; ((plug && plug.servers) || []).forEach(function (v) { staleN += v.stale.length; });
+    var jump = button('🔌 ' + i18n('pl.tieu_de'), 'ghost ops-jump', function () { var c = page.querySelector('.ops-plug'); if (c) { c.open = true; c.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+    if (staleN) jump.append(el('span', 'ops-count warn', String(staleN)));
+    tools.append(jump);
     tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
     head.append(h, tools); page.append(head);
     var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);

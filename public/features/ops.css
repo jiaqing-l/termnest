@@ -150,3 +150,11 @@
 .pl-row .ops-t{flex:1 1 auto;min-width:0}
 .ops-acts:empty{display:none}
 @media(max-width:640px){.pl-row .ops-line{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}.pl-row .ops-name{max-width:100%}.pl-row{flex-wrap:nowrap;align-items:flex-start}.pl-row .ops-dot{margin-top:7px}.pl-row .ops-meta{white-space:normal}}
+/* Machine picker: same height and look as the segmented filter, own chevron instead of the OS control */
+.ops-toolbar .ops-srv{-webkit-appearance:none;appearance:none;min-height:40px;padding:0 36px 0 14px;border-radius:12px;border:1px solid var(--line);background-color:var(--surface-2);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b879d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;color:var(--fg);font:600 13px var(--round,inherit);cursor:pointer;box-shadow:none}
+.ops-toolbar .ops-srv:hover{border-color:color-mix(in srgb,var(--fg) 25%,var(--line))}
+.ops-toolbar .ops-srv:focus-visible{outline:2px solid color-mix(in srgb,#2f80ed 55%,transparent);outline-offset:1px}
+.ops-jump{display:inline-flex;align-items:center;gap:6px}
+.ops-tools{flex-wrap:wrap;justify-content:flex-end}
