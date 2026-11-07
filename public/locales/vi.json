@@ -1615,5 +1615,13 @@
   "ops.phan_chi_tiet": "Chi tiết",
   "ops.viec_nen_ten": "Việc nền của Claude",
   "ops.bang_chung_ten": "Trạng thái từng phiên agent",
-  "settings.pets_label": "Thú cưng (sân chơi, hình thú ở mỗi phiên)"
+  "settings.pets_label": "Thú cưng (sân chơi, hình thú ở mỗi phiên)",
+  "app.khong_lay_duoc_du_lieu": "Nối được nhưng không lấy được dữ liệu",
+  "app.khong_lay_duoc_du_lieu_chi_tiet": "Nối SSH được nhưng không lấy được dữ liệu: {0}",
+  "app.chua_co_phan_hoi": "chưa có phản hồi",
+  "fg.nhap_token": "Nhập token trước.",
+  "fg.dang_kiem": "Đang kiểm tra với {0}…",
+  "srv.forge.qua_lau": "Không tới được {0} trong 10 giây — máy này có cần VPN / mạng nội bộ để vào GitLab đó không?",
+  "srv.forge.khong_tim_thay_may": "Không tìm thấy máy {0} (tên miền không phân giải được).",
+  "srv.forge.khong_ket_noi_duoc_may": "Không kết nối được tới {0} ({1})."
 }

@@ -1632,5 +1632,13 @@
   "ops.phan_chi_tiet": "Details",
   "ops.viec_nen_ten": "Claude background jobs",
   "ops.bang_chung_ten": "Status of each agent session",
-  "settings.pets_label": "Pets (playground, a pet on every session)"
+  "settings.pets_label": "Pets (playground, a pet on every session)",
+  "app.khong_lay_duoc_du_lieu": "Connected, but no data",
+  "app.khong_lay_duoc_du_lieu_chi_tiet": "SSH is connected but no data comes back: {0}",
+  "app.chua_co_phan_hoi": "no answer yet",
+  "fg.nhap_token": "Enter a token first.",
+  "fg.dang_kiem": "Checking with {0}…",
+  "srv.forge.qua_lau": "Could not reach {0} within 10 seconds — does this computer need a VPN / the internal network for it?",
+  "srv.forge.khong_tim_thay_may": "Host {0} not found (the name does not resolve).",
+  "srv.forge.khong_ket_noi_duoc_may": "Could not connect to {0} ({1})."
 }

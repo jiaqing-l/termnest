@@ -20,3 +20,10 @@
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b879d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 10px center;font-weight:600;cursor:pointer}
 .fg-form .btn{min-height:36px}
+/* One height for the whole row so the Connect button lines up with the fields */
+.fg-form{align-items:end}
+.fg-f input,.fg-f select{height:42px;min-height:42px;box-sizing:border-box}
+.fg-form>.btn{height:42px;min-height:42px;margin:0;box-shadow:none;align-self:end}
+.fg-status{margin:0;min-height:18px;font-size:12.5px;font-weight:600}
+.fg-status.ok{color:#0f8a57}.fg-status.bad{color:var(--bad)}.fg-status.wait{color:var(--fg-2)}
+#forge-pane .fg-f{margin:0}

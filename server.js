@@ -442,7 +442,9 @@ async function reconnect(req, res, id) {
   const r = remotes.get(id);
   if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
   const b = await readJson(req);
-  if (r.ready) { send(res, 200, { ok: true }); return; }
+  // Connected but no data: drop the connection and open a fresh one (b.force from the "no data" card).
+  if (r.ready && b.force === true && !r.cfg.local) { try { r.close(); } catch { /* already closed */ } }
+  else if (r.ready) { send(res, 200, { ok: true }); return; }
   if (r.cfg.auth === 'password' && !r.password && !b.password) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
   try {
     await r.connect(r.cfg.auth === 'password' ? (b.password || r.password) : undefined);

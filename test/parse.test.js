@@ -935,9 +935,8 @@ test('officialState maps the status file onto run / wait / idle and marks the so
 });
 
 test('Claude background jobs are read from state.json as Claude writes them', () => {
-  const S = '|~|';
-  const snap = parsePoll(['@@JOBS', ['job', '85d488e5', 'working', 'blocked', '2026-11-07T05:29:15.468Z', '0', 'send a prompt to start', 'Không nên cho merge P1', 'Lỗi nghiệp vụ PG cũ'].join(S),
-    ['job', '../x', 'done', 'idle', '', '0', '', '', 'bad id'].join(S), '@@SESS', '@@END'].join('\n'), 300);
+  const snap = parsePoll(['@@JOBS', '@@J 85d488e5', '"state": "working"', '"detail": "Không nên cho merge P1"', '"tempo": "blocked"', '"tasks": 0', '"needs": "send a prompt to start"',
+    '"name": "Lỗi nghiệp vụ PG cũ"', '"updatedAt": "2026-11-07T05:29:15.468Z"', '"state": "ignored second value"', '@@J ../x', '"state": "done"', '@@SESS', '@@END'].join('\n'), 300);
   assert.deepEqual(snap.jobs, [{ id: '85d488e5', state: 'working', tempo: 'blocked', at: Date.parse('2026-11-07T05:29:15.468Z'), tasks: 0, needs: 'send a prompt to start', detail: 'Không nên cho merge P1', name: 'Lỗi nghiệp vụ PG cũ' }]);
 });
 

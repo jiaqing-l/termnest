@@ -793,7 +793,7 @@
     box.append(text, restore, dismiss); sec.append(box);
   }
   function hot(v, k) { return v.on && v[k] != null && v[k] >= prefs.limits[k]; }
-  function problems(v) { if (!v.on) return [i18n('app.mat_ket_noi_3')]; return Object.keys(HP).filter(function (k) { return hot(v, k); }).map(function (k) { return i18n('app.cao_nguong', [HP[k][0], number(v[k]), prefs.limits[k]]); }); }
+  function problems(v) { if (!v.on) return [i18n('app.mat_ket_noi_3')]; if (v.noData) return [i18n('app.khong_lay_duoc_du_lieu')]; return Object.keys(HP).filter(function (k) { return hot(v, k); }).map(function (k) { return i18n('app.cao_nguong', [HP[k][0], number(v[k]), prefs.limits[k]]); }); }
   function number(n) { return Number.isFinite(n) ? Math.round(n * 100) / 100 : '—'; }
   function compactNumber(n) { return Number.isFinite(n) ? Math.round(n * 10) / 10 : '—'; }
   function ring(v, k, label, value) {
@@ -838,6 +838,12 @@
         } else tags.append(el('span', 'tg b', i18n('app.can_khoi_dong_lai')));
       }
       if (sys && sys.updates) tags.append(el('span', 'tg w', i18n('app.ban_cap_nhat', [sys.updates])));
+      if (v.noData) {
+        // Connected over SSH but the data request fails: say why and offer a fresh connection.
+        var nd = el('div', 'fc-nodata'), ndb = el('button', 'btn primary', i18n('app.ket_noi_lai'));
+        nd.append(el('span', '', i18n('app.khong_lay_duoc_du_lieu_chi_tiet', [v.pollError || i18n('app.chua_co_phan_hoi')])));
+        ndb.type = 'button'; ndb.onclick = function () { connectAgain(v, ndb); }; nd.append(ndb); card.append(nd);
+      }
       if (tags.children.length) card.append(tags); box.append(card);
     });
   }
@@ -1343,7 +1349,7 @@
   function connectAgain(v, b) {
     if (v.needsPassword) { passTarget = v; $('p-title').textContent = i18n('app.ket_noi_2', [(v.local ? i18n('app.may_nay', [v.hostname]) : v.user + '@' + v.name)]); $('p-pass').value = ''; $('p-err').textContent = ''; $('dlg-pass').showModal(); $('p-pass').focus(); return; }
     b.disabled = true; b.textContent = i18n('app.dang_ket_noi');
-    api('POST', '/api/servers/' + v.id + '/connect', {}).then(function () { say(i18n('app.da_ket_noi_lai_viec', [v.name]), true, 3000); return refresh(true); })
+    api('POST', '/api/servers/' + v.id + '/connect', v.noData ? { force: true } : {}).then(function () { say(i18n('app.da_ket_noi_lai_viec', [v.name]), true, 3000); return refresh(true); })
       .catch(function (e) { say(e.message, false, 4000); b.disabled = false; b.textContent = i18n('app.ket_noi_lai'); });
   }
 
