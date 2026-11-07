@@ -84,3 +84,10 @@ test('the core pack has no project-specific rule', () => {
   const text = JSON.stringify(ops.DEFAULT_PACK);
   for (const word of ['xspire', 'crew', 'dotnet', 'gitlab', 'devkit']) assert.ok(!text.toLowerCase().includes(word), word);
 });
+
+test('a quiet prompt with sub-agents or background tasks still working is neither finished nor nudged', () => {
+  const bg = agent({ activityAge: 40 * 60, lines: ['❯ ', '  ⏵⏵ auto mode on (shift+tab to cycle) · ← 4 agents'] });
+  assert.deepEqual(rules(run([bg])), []);
+  assert.equal(ops.canSend(bg), 'busy');
+  assert.equal(ops.canSend(agent({ lines: ['2 background tasks running'] })), 'busy');
+});
