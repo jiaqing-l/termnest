@@ -119,6 +119,71 @@
     return box;
   }
 
+  // "Plugin & skill": what Claude Code itself reports per machine and account, which open sessions started before a plugin
+  // changed, and one button to bring them up to date in place (/reload-plugins when Claude reports idle).
+  var plug = null;
+  function when(ms) { return ms ? new Date(ms).toLocaleString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+  function pluginCard() {
+    var box = el('details', 'ops-card ops-ev ops-plug'), sum = el('summary', 'ops-card-h'); keepOpen(box, 'plugins', true);
+    var stale = 0; ((plug && plug.servers) || []).forEach(function (v) { stale += v.stale.length; });
+    var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', '🔌'), document.createTextNode(i18n('pl.tieu_de')));
+    if (stale) h3.append(el('span', 'ops-count warn', String(stale)));
+    sum.append(h3, el('small', 'ops-pack', i18n('pl.nguon'))); box.append(sum);
+    if (!plug) { box.append(el('p', 'ops-empty', i18n('pl.dang_doc'))); return box; }
+    var bar = el('div', 'pl-bar'), auto = el('label', 'pl-auto'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!plug.autoReload;
+    cb.onchange = function () { TW.api('POST', '/api/features/plugins/auto', { on: cb.checked }).then(loadPlugins).catch(function (e) { TW.app().say(e.message, false, 3000); }); };
+    auto.append(cb, el('span', '', i18n('pl.tu_nap_lai'))); bar.append(auto);
+    bar.append(button(i18n('pl.kiem_lai'), 'ghost', function () { Promise.all(plug.servers.map(function (v) { return TW.api('POST', '/api/features/plugins/refresh', { server: v.id }).catch(function () {}); })).then(loadPlugins); }));
+    box.append(bar);
+    plug.servers.forEach(function (v) {
+      var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
+      head.append(el('b', '', v.local ? i18n('app.local_name') : v.name), el('small', '', v.scanned ? i18n('pl.doc_luc', [when(v.scanned)]) : i18n('pl.chua_doc')));
+      sec.append(head);
+      if (v.windows) { sec.append(el('p', 'ops-note', i18n('pl.windows'))); box.append(sec); return; }
+      if (v.noClaude) { sec.append(el('p', 'ops-note', i18n('pl.khong_co_claude'))); box.append(sec); return; }
+      if (v.error) sec.append(el('p', 'ops-note', v.error));
+      v.accounts.forEach(function (a) {
+        a.plugins.forEach(function (pg) {
+          var r = el('div', 'pl-row'), t = el('div', 'ops-t'), line = el('div', 'ops-line');
+          line.append(el('b', 'ops-name', pg.id.split('@')[0]), el('span', 'pl-ver', pg.running || pg.version || '—'));
+          if (pg.folder) line.append(el('span', 'ops-src status', i18n('pl.tu_thu_muc')));
+          if (!pg.usedBySessions && !pg.enabled) line.append(el('span', 'ops-src', i18n('pl.khong_bat_o_day')));
+          var meta = el('small', 'ops-meta'); meta.append(document.createTextNode([a.cfg, pg.scope, i18n('pl.doi_luc', [when(pg.changedAt)]), pg.folder && pg.version !== pg.running ? i18n('pl.ban_ghi', [pg.version]) : ''].filter(Boolean).join(' · ')));
+          t.append(line, meta); r.append(el('span', 'ops-dot'), t);
+          var acts = el('div', 'ops-acts');
+          if (!pg.folder) acts.append(button(i18n('pl.cap_nhat'), '', function () {
+            TW.api('POST', '/api/features/plugins/update', { server: v.id, cfg: a.cfg, id: pg.id }).then(function (x) { TW.app().say(i18n('pl.dang_cap_nhat', [x.session]), true, 4000); TW.app().openSession(v.id, x.session); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
+          }));
+          else acts.title = i18n('pl.thu_muc_goi_y');
+          r.append(acts); sec.append(r);
+        });
+      });
+      if (v.stale.length) {
+        var st = el('div', 'pl-stale'), sh = el('div', 'pl-stale-h');
+        sh.append(el('span', '', i18n('pl.phien_ban_cu', [v.stale.length])));
+        sh.append(button(i18n('pl.nap_lai_tat_ca', [v.stale.length]), 'primary', function () {
+          TW.api('POST', '/api/features/plugins/reload', { server: v.id, all: true }).then(function (x) { TW.app().say(i18n('pl.da_nap', [x.now, x.queued]), true, 4000); loadPlugins(); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
+        }));
+        st.append(sh);
+        var chips = el('div', 'pl-chips');
+        v.stale.forEach(function (x) {
+          var state = x.queued ? 'queued' : x.parked ? 'parked' : x.status;
+          var c = el('span', 'pl-chip ' + state); c.append(el('b', '', x.session), el('span', '', i18n('pl.st_' + state)));
+          c.title = i18n('pl.mo_truoc', [when(x.changedAt)]); chips.append(c);
+        });
+        st.append(chips, el('p', 'ops-note', i18n('pl.giai_thich'))); sec.append(st);
+      }
+      box.append(sec);
+    });
+    if (plug.log && plug.log.length) {
+      var lg = el('div', 'pl-log'); lg.append(el('small', 'ops-pack', i18n('pl.da_gui_gan_day')));
+      plug.log.slice(0, 5).forEach(function (n) { lg.append(el('div', 'pl-log-r', when(n.at) + ' · /reload-plugins → ' + n.session + ' · ' + (n.serverName || '') + ' · ' + i18n('pl.vi_' + n.why))); });
+      box.append(lg);
+    }
+    return box;
+  }
+  function loadPlugins() { return TW.api('GET', '/api/features/plugins/data').then(function (r) { plug = r; if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { /* optional */ }); }
+
   // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
   function evidence() {
     var box = el('details', 'ops-card ops-ev'), rows = []; keepOpen(box, 'evidence', false);
@@ -220,7 +285,7 @@
       sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
       items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
     });
-    page.append(groups, jobList(), evidence(), logList());
+    page.append(groups, pluginCard(), jobList(), evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }
@@ -237,6 +302,6 @@
   (function () {
     var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) { page = box; box.classList.add('ops-page'); }, onShow: load });
     if (v) tab = v.tab;
-    load(); setInterval(function () { if (!document.hidden) load(); }, 10000);
+    load(); loadPlugins(); setInterval(function () { if (!document.hidden) { load(); loadPlugins(); } }, 10000);
   })();
 })();

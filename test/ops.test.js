@@ -107,3 +107,11 @@ test('built-in nudge texts follow the reader language; a team template stays as 
   assert.equal(ops.withTemplates(p, {}).templates.continue, ops.CORE_TEMPLATES.continue);
   assert.equal(run([claude('idle', 50)])[0].template, 'continue');
 });
+
+test('a parked pane reports the background conversation it shows, but never offers a nudge', () => {
+  const parked = claude('idle', 1300, { st: { parked: true, job: { status: 'idle', at: NOW - 50 * 60000 } } });
+  const out = run([parked]);
+  assert.deepEqual(out.map((f) => [f.rule, f.level, f.template]), [['dormant', 'notify', undefined]]);
+  assert.equal(ops.canSend(parked), 'hub');
+  assert.deepEqual(rules(run([claude('idle', 1, { st: { parked: true, job: { status: 'waiting', at: NOW } } })])), ['asking']);
+});

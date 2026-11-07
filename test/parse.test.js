@@ -912,11 +912,11 @@ test('the terminal menu can clear a pane\'s tmux scrollback', async (t) => {
 test("the agent's own status file reaches the session: Claude status, parked flag, background sessions, Codex turn event", () => {
   const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
   const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude', '777 1300 01:00 codex', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
-    'claudestat 21127 interactive idle 1793948461283 - 1 PG review', 'claudestat 39545 bg waiting 1794029355684 permission 0 Lỗi nghiệp vụ',
-    'claudestat 1 interactive weird 1 - 0 x', 'codexstat 777 task_started 1794029000',
+    'claudestat 21127 interactive idle 1793948461283 - 1 1793900000000 .claude PG review', 'claudestat 39545 bg waiting 1794029355684 permission 0 1794000000000 .claude-tech2 Lỗi nghiệp vụ',
+    'claudestat 1 interactive weird 1 - 0 1 .claude x', 'codexstat 777 task_started 1794029000',
     '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '$1|~|CX|~|0|~|100|~|200|~|codex|~|/Users/me/ws',
     '@@DETAIL', '$0|~|1226|~|0|~|', '$1|~|1300|~|0|~|', '@@END'].join('\n'), 300);
-  assert.deepEqual(snap.sessions[0].aiStatus, { tool: 'claude', status: 'idle', at: 1793948461283, waitingFor: '', parked: true });
+  assert.deepEqual(snap.sessions[0].aiStatus, { tool: 'claude', status: 'idle', at: 1793948461283, waitingFor: '', parked: true, startedAt: 1793900000000, cfg: '.claude' });
   assert.deepEqual(snap.sessions[1].aiStatus, { tool: 'codex', status: 'busy', at: 1794029000000, waitingFor: '' });
   assert.deepEqual(snap.bgAgents.map((b) => [b.name, b.status, b.waitingFor]), [['Lỗi nghiệp vụ', 'waiting', 'permission']]);
   // Every view follows the agent's own status: the parked pane is idle, the busy Codex pane is running.
@@ -939,4 +939,14 @@ test('Claude background jobs are read from state.json as Claude writes them', ()
   const snap = parsePoll(['@@JOBS', ['job', '85d488e5', 'working', 'blocked', '2026-11-07T05:29:15.468Z', '0', 'send a prompt to start', 'Không nên cho merge P1', 'Lỗi nghiệp vụ PG cũ'].join(S),
     ['job', '../x', 'done', 'idle', '', '0', '', '', 'bad id'].join(S), '@@SESS', '@@END'].join('\n'), 300);
   assert.deepEqual(snap.jobs, [{ id: '85d488e5', state: 'working', tempo: 'blocked', at: Date.parse('2026-11-07T05:29:15.468Z'), tasks: 0, needs: 'send a prompt to start', detail: 'Không nên cho merge P1', name: 'Lỗi nghiệp vụ PG cũ' }]);
+});
+
+test('a pane with an interactive Claude and its background process: the interactive one is the session, the background one its conversation', () => {
+  const snap = parsePoll(['@@PS', '100 50 01:00 claude', '200 100 01:00 claude', '@@PSOK', '1', '@@AGENTIDS',
+    'claudestat 200 bg idle 1794029355684 - 0 1794029355462 .claude Lỗi PG', 'claudestat 100 interactive idle 1793948461283 - 1 1793882085088 .claude main',
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/w', '@@DETAIL', '$0|~|50|~|0|~|', '@@END'].join('\n'), 300);
+  const st = snap.sessions[0].aiStatus;
+  assert.equal(st.parked, true); assert.equal(st.startedAt, 1793882085088);
+  assert.deepEqual(st.job, { status: 'idle', at: 1794029355684, waitingFor: '', startedAt: 1794029355462 });
+  assert.deepEqual([snap.sessions[0].state, snap.sessions[0].stateSource], ['wait', 'status']);
 });

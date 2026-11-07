@@ -126,3 +126,27 @@
 .ops-badge{background:#ffb020!important;color:#3b2500!important}
 @media(max-width:640px){.ops-seg{width:100%}.ops-seg-b{flex:1 1 auto;justify-content:center;padding:0 8px}.ops-toolbar .ops-srv{margin-left:0;max-width:none;width:100%}}
 .ops-seg-b>span:nth-child(2){display:inline-block}.ops-seg-b>span:nth-child(2)::first-letter{text-transform:uppercase}
+
+/* Plugin & skill card */
+.ops-count.warn{background:var(--wait-soft);color:var(--wait)}
+.pl-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 10px 6px}
+.pl-auto{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg-2)}
+.pl-srv{margin:4px 4px 8px;padding:8px 6px 4px;border-top:1px solid var(--line)}
+.pl-srv-h{display:flex;align-items:baseline;gap:10px;padding:0 6px 4px}
+.pl-srv-h b{font-size:13.5px}.pl-srv-h small{color:var(--fg-3);font-size:12px}
+.pl-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px}
+.pl-row:hover{background:var(--surface-2)}
+.pl-ver{font:700 12.5px var(--mono,ui-monospace,monospace);padding:1px 8px;border-radius:7px;background:var(--surface-2);color:var(--fg)}
+.pl-stale{margin:6px 8px 4px;padding:10px;border-radius:12px;background:var(--wait-soft)}
+.pl-stale-h{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:var(--fg)}
+.pl-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.pl-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;background:var(--surface);font-size:12px;color:var(--fg-2);border:1px solid var(--line)}
+.pl-chip b{color:var(--fg);font-size:12.5px}
+.pl-chip.idle{border-color:#2fa463}.pl-chip.queued{border-color:#2f80ed}.pl-chip.waiting{border-color:var(--bad)}
+.pl-log{padding:6px 12px 4px;border-top:1px solid var(--line);margin-top:4px}
+.pl-log-r{font-size:12px;color:var(--fg-2);padding:2px 0}
+@media(max-width:640px){.pl-bar{flex-wrap:wrap}.pl-stale-h{flex-wrap:wrap}}
+.ops-plug>summary h3{display:flex;align-items:center;gap:8px}
+.pl-row .ops-t{flex:1 1 auto;min-width:0}
+.ops-acts:empty{display:none}
+@media(max-width:640px){.pl-row .ops-line{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}.pl-row .ops-name{max-width:100%}.pl-row{flex-wrap:nowrap;align-items:flex-start}.pl-row .ops-dot{margin-top:7px}.pl-row .ops-meta{white-space:normal}}
