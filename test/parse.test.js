@@ -950,3 +950,39 @@ test('a pane with an interactive Claude and its background process: the interact
   assert.deepEqual(st.job, { status: 'idle', at: 1794029355684, waitingFor: '', startedAt: 1794029355462 });
   assert.deepEqual([snap.sessions[0].state, snap.sessions[0].stateSource], ['wait', 'status']);
 });
+
+test('launch options kept across a restore are the listed flags only, values checked', () => {
+  const { safeFlags, cleanFlags } = require('../lib/agent-flags');
+  assert.deepEqual(safeFlags('claude', 'claude --model opus --permission-mode=acceptEdits --resume 1234 -p "rm -rf /" --add-dir /etc --dangerously-skip-permissions'),
+    ['--model', 'opus', '--permission-mode', 'acceptEdits', '--dangerously-skip-permissions']);
+  assert.deepEqual(safeFlags('codex', 'codex -m gpt-6 --sandbox workspace-write -a never --full-auto exec "do it"'), ['-m', 'gpt-6', '--sandbox', 'workspace-write', '-a', 'never', '--full-auto']);
+  assert.deepEqual(safeFlags('claude', 'claude --model $(whoami)'), []);
+  assert.deepEqual(cleanFlags('claude', ['--model', 'opus', '; rm -rf ~', '--model', 'x']), ['--model', 'opus']);
+  assert.deepEqual(cleanFlags('shell', ['--model', 'opus']), []);
+});
+
+test('the flags an agent ran with are recorded with its session for the restore', () => {
+  const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude --model opus --permission-mode plan', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '@@DETAIL', '$0|~|1226|~|0|~|', '@@END'].join('\n'), 300);
+  assert.deepEqual(snap.sessions[0].aiFlags, ['--model', 'opus', '--permission-mode', 'plan']);
+  const r = syncKnown({ bootId: 'b', sessions: {}, lost: [] }, 'b', snap.sessions);
+  assert.deepEqual(r.record.sessions['PG-App'].flags, ['--model', 'opus', '--permission-mode', 'plan']);
+});
+
+test('a restore starts the agent with the model and mode it ran with (listed flags only)', async (t) => {
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const cid = '33333333-3333-3333-3333-333333333333', xid = '44444444-4444-4444-4444-444444444444', id = '55555555-5555-5555-5555-555555555555', cfg = { id };
+  h.vault.data.servers.push(cfg);
+  h.vault.data.known[id] = { bootId: 'boot1', lost: [], sessions: {
+    a: { dir: '/work', run: 'claude', resume: cid, flags: ['--model', 'opus', '--permission-mode', 'plan', '$(boom)'] },
+    b: { dir: '/srv', run: 'codex', resume: xid, flags: ['-m', 'gpt-6', '--full-auto'] } } };
+  const calls = [];
+  const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/work\n\0' }; }, poll: async () => {} };
+  h.remotes.set(id, r); h.onPoll(r, { bootId: 'boot2', sessions: [] });
+  await h.request('POST', `/api/servers/${id}/restore`, {});
+  assert.ok(calls.some((c) => c.includes('claude --resume') && c.includes('--model') && c.includes('opus') && c.includes('plan')));
+  assert.ok(!calls.some((c) => c.includes('boom')));
+  assert.ok(calls.some((c) => c.includes(`codex resume ${xid}`) && c.includes('gpt-6') && c.includes('--full-auto')));
+});

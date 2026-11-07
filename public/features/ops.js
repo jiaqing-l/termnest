@@ -42,11 +42,18 @@
     if (f.rule === 'custom') return f.params[0];
     if (f.rule === 'bgjob') return jobLabel({ tempo: 'blocked', needs: f.params[1] }).text;
     if (f.rule === 'dormant') return i18n('ops.s.dormant', [span(f.params[0])]);
+    if (f.rule === 'quota') return i18n('ops.s.quota', f.params) + (f.alt ? ' · ' + i18n('ops.goi_y_tk', [f.alt.name, 100 - f.alt.used]) : ' · ' + i18n('ops.khong_tk_khac'));
     return i18n('ops.s.' + f.rule, f.params);
   }
   // AI accounts near a limit, from the token readings TERMNEST already makes (Token AI tab); threshold from the pack.
   var tokens = null;
   function loadTokens() { return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)).then(function (r) { tokens = r; }).catch(function () { /* optional */ }); }
+  // The account of the same tool with the most room left (highest of its 5-hour and weekly use, lowest wins). A suggestion only.
+  function used(a) { var l = a.limits || {}, v = [l.session, l.weekly].filter(function (x) { return x && Number.isFinite(x.percent); }).map(function (x) { return x.percent; }); return v.length ? Math.max.apply(null, v) : null; }
+  function bestOther(a) {
+    var best = null; (tokens.accounts || []).forEach(function (b) { if (b.id === a.id || b.tool !== a.tool) return; var u = used(b); if (u == null || u >= (data.pack.rules.quota.pct || 90)) return; if (!best || u < best.u) best = { u: u, b: b }; });
+    return best ? { name: best.b.nickname || ((best.b.tool === 'claude' ? 'Claude' : 'Codex') + (best.b.email ? ' · ' + best.b.email : '')), used: Math.round(best.u) } : null;
+  }
   function quotaFindings() {
     var rule = data && data.pack.rules.quota, out = [];
     if (!rule || rule.level === 'off' || !tokens || !tokens.accounts) return out;
@@ -54,7 +61,7 @@
       [['session', 'ops.han_5_gio'], ['weekly', 'ops.han_tuan']].forEach(function (w) {
         var x = a.limits && a.limits[w[0]]; if (!x || !(x.percent >= rule.pct)) return;
         var name = a.nickname || ((a.tool === 'claude' ? 'Claude' : 'Codex') + (a.email ? ' · ' + a.email : ''));
-        out.push({ key: 'acct/' + a.id + '/' + w[0], rule: 'quota', server: '', session: 'acc:' + name, severity: x.percent >= 100 ? 'urgent' : 'warn', level: 'notify', since: 0, params: [Math.round(x.percent), i18n(w[1])], source: 'machine' });
+        out.push({ key: 'acct/' + a.id + '/' + w[0], rule: 'quota', server: '', session: 'acc:' + name, severity: x.percent >= 100 ? 'urgent' : 'warn', level: 'notify', since: 0, params: [Math.round(x.percent), i18n(w[1])], source: 'machine', alt: bestOther(a) });
       });
     });
     return out;
@@ -224,6 +231,12 @@
     crew.servers.forEach(function (v) {
       var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
       head.append(el('b', '', v.local ? i18n('app.local_name') : v.name), el('small', '', v.roots.map(function (r) { return r.root + ' · ' + i18n('cp.so_task', [r.tasks, r.enrolled]); }).join(' · ')));
+      // Crew kit version (commit of scripts/crew); marked when machines run different versions.
+      (v.kit || []).forEach(function (k) {
+        var others = []; crew.servers.forEach(function (o) { (o.kit || []).forEach(function (x) { if (x.commit) others.push(x.commit); }); });
+        var differs = k.commit && others.some(function (c) { return c !== k.commit; });
+        head.append(el('span', 'ops-src' + (differs ? ' cp-kit-diff' : ''), k.commit ? i18n(differs ? 'cp.kit_khac' : 'cp.kit', [k.commit, when(k.at)]) : i18n('cp.kit_khong_ro')));
+      });
       v.roots.forEach(function (r) {
         if (!auditSkillFor(v, r.root)) { head.append(el('span', 'ops-src', i18n('cp.chua_co_skill'))); return; }
         var b = button(v.auditOpen || v.auditPending ? i18n('cp.dang_chay_trum') : i18n('cp.chay_trum'), 'primary', function () {
@@ -232,8 +245,28 @@
         if (v.auditPending) b.disabled = true; head.append(b);
       });
       sec.append(head);
-      if (!v.findings.length) sec.append(el('p', 'ops-empty ok', i18n('cp.on')));
+      // Board per orchestrator: each session enrolled in nudge.conf, its open tasks, their tracks, and the workers running them.
+      var bySession = {}; (v.tasks || []).forEach(function (t) { if (t.session && ['done', 'closed', 'abandoned', 'archived', 'merged'].indexOf(t.status) < 0) (bySession[t.session] = bySession[t.session] || []).push(t); });
+      var orch = Object.keys(bySession);
+      if (orch.length) {
+        sec.append(el('div', 'cp-sub', i18n('cp.theo_orch', [orch.length])));
+        orch.forEach(function (name) {
+          var o = el('div', 'cp-orch'), oh = el('div', 'cp-orch-h');
+          oh.append(el('b', '', name), button(i18n('ops.mo'), 'ghost', function () { TW.app().openSession(v.id, name); })); o.append(oh);
+          bySession[name].forEach(function (t) {
+            var tr = el('div', 'cp-task'), tt = el('div', 'ops-t'), tk = el('div', 'cp-tracks');
+            tt.append(el('b', 'ops-name', t.title || t.id), el('small', 'ops-meta', t.id + ' · ' + when(t.updated)));
+            t.tracks.forEach(function (k) {
+              var w = (v.workers || []).filter(function (x) { return x.task === t.id && x.track === k.id; })[0];
+              tk.append(el('span', 'cp-tr ' + (w ? 'running' : k.state), k.id + ' · ' + (w ? i18n('cp.worker_chay', [w.kind || 'agent', span(w.elapsed / 60)]) : k.state) + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')));
+            });
+            tr.append(el('span', 'cp-st ' + t.status, t.status || '—'), tt, tk); o.append(tr);
+          });
+          sec.append(o);
+        });
+      } else sec.append(el('p', 'ops-note', i18n('cp.khong_orch')));
       if (v.findings.length) sec.append(el('div', 'cp-sub', i18n('cp.bat_thuong', [v.findings.length])));
+      else sec.append(el('p', 'ops-empty ok', i18n('cp.on')));
       var more = !!(crewMore[v.id]), list = more ? v.findings : v.findings.slice(0, 10);
       list.forEach(function (f) {
         var r = el('div', 'ops-row ' + CAT[f.cat]), t = el('div', 'ops-t'), line = el('div', 'ops-line');
@@ -271,12 +304,13 @@
   function evidence() {
     var box = el('details', 'ops-card ops-ev'), rows = []; keepOpen(box, 'evidence', false);
     data.servers.forEach(function (srv) {
-      srv.sessions.forEach(function (s) { if (s.agent || s.ai) rows.push({ srv: srv, name: s.name, ai: s.ai }); });
+      srv.sessions.forEach(function (s) { if (s.agent || s.ai) rows.push({ srv: srv, name: s.name, ai: s.ai, bg: s.bgAgents || [] }); });
       (srv.bg || []).forEach(function (b) { rows.push({ srv: srv, name: i18n('ops.phien_nen', [b.name]), ai: { tool: 'claude', status: b.status, at: b.at } }); });
     });
     var sum = el('summary', 'ops-card-h'); sum.append(el('h3', '', i18n('ops.bang_chung', [rows.length])), el('small', 'ops-pack', i18n('ops.bang_chung_ghi_chu'))); box.append(sum);
     rows.forEach(function (r) {
       var row = el('div', 'ops-log'), st = r.ai, label = !st ? i18n('ops.ev_none') : st.tool + ' · ' + st.status + (st.parked ? ' · ' + i18n('ops.ev_parked') : '') + (st.waitingFor ? ' · ' + st.waitingFor : '');
+      if (r.bg && r.bg.length) label += ' · ' + i18n('ops.agent_ngam', [r.bg.length, r.bg.map(function (w) { return (w.kind || 'agent') + ' ' + span(w.elapsed / 60); }).join(', ')]);
       row.append(el('span', 'ops-st ' + (!st ? 'bad' : st.status === 'waiting' ? 'wait' : 'ok'), st ? st.status : '—'), el('span', 'ops-log-t', r.name + ' · ' + r.srv.name + ' — ' + label),
         el('time', '', st && st.at ? new Date(st.at).toLocaleString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { dateStyle: 'short', timeStyle: 'short' }) : ''));
       box.append(row);

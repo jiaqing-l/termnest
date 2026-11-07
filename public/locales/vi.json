@@ -1560,5 +1560,14 @@
   "cp.tat_ca_task": "Tất cả task trong {1} ngày ({0})",
   "cp.vong_sua": "{0} vòng sửa",
   "cp.xem_them": "Xem thêm {0} mục",
-  "cp.thu_gon": "Thu gọn"
+  "cp.thu_gon": "Thu gọn",
+  "ops.agent_ngam": "{0} agent chạy ngầm ({1})",
+  "ops.goi_y_tk": "tài khoản còn nhiều lượt: {0} (còn {1}%)",
+  "ops.khong_tk_khac": "không có tài khoản cùng loại còn dư",
+  "cp.kit": "crew kit {0} · {1}",
+  "cp.kit_khac": "crew kit {0} · {1} — khác máy khác",
+  "cp.kit_khong_ro": "crew kit: không rõ phiên bản",
+  "cp.theo_orch": "Theo orchestrator ({0})",
+  "cp.khong_orch": "Không có orchestrator nào đang đăng ký trong nudge.conf trên máy này.",
+  "cp.worker_chay": "{0} đang chạy {1}"
 }

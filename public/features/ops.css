@@ -192,3 +192,8 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .cp-tr.dispatched,.cp-tr.running,.cp-tr.fix{background:color-mix(in srgb,#2f80ed 14%,transparent);color:#2f80ed}
 @media(max-width:640px){.cp-task{grid-template-columns:1fr}.cp-tracks{justify-content:flex-start}}
 .cp-more{margin:4px 10px 6px}
+
+.cp-orch{margin:4px 8px 8px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.cp-orch-h{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface-2)}
+.cp-orch-h b{font-size:13px}.cp-orch .cp-task:first-of-type{border-top:0}
+.cp-kit-diff{background:var(--wait-soft)!important;color:var(--wait)!important}

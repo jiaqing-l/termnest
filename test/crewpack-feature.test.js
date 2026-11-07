@@ -62,3 +62,8 @@ test('several failed tracks of one task are one finding that names them', () => 
   const out = cp.classify(crew, [], Date.now()).filter((f) => f.code === 'track_failed');
   assert.deepEqual(out.map((f) => f.params), [['A, B, C', 3]]);
 });
+
+test('the crew kit version is the commit of scripts/crew, empty when that is not a git checkout', async () => {
+  const root = fixture(), res = await cp.crewRuntime()({ cwds: [root], days: 3 });
+  assert.deepEqual(res.roots[0].kit, { commit: '', at: 0 });
+});

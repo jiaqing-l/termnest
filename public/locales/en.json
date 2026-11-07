@@ -1577,5 +1577,14 @@
   "cp.tat_ca_task": "All tasks in the last {1} days ({0})",
   "cp.vong_sua": "{0} fix rounds",
   "cp.xem_them": "Show {0} more",
-  "cp.thu_gon": "Show less"
+  "cp.thu_gon": "Show less",
+  "ops.agent_ngam": "{0} background agents ({1})",
+  "ops.goi_y_tk": "account with room left: {0} ({1}% left)",
+  "ops.khong_tk_khac": "no other account of this kind has room",
+  "cp.kit": "crew kit {0} · {1}",
+  "cp.kit_khac": "crew kit {0} · {1} — differs from other machines",
+  "cp.kit_khong_ro": "crew kit: version unknown",
+  "cp.theo_orch": "By orchestrator ({0})",
+  "cp.khong_orch": "No orchestrator is enrolled in nudge.conf on this machine.",
+  "cp.worker_chay": "{0} running {1}"
 }

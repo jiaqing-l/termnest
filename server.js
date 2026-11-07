@@ -21,6 +21,7 @@ const { keysScript, BAD: BAD_KEYS } = require('./lib/keys');
 const { injectReportLinks } = require('./lib/report-links');
 const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
+const { cleanFlags } = require('./lib/agent-flags');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
@@ -496,11 +497,13 @@ async function startSession(r, options) {
   return withSessionChange(r, () => executeStartSession(r, options));
 }
 
-async function executeStartSession(r, { name, dir, run, restoring = false, resume = '' }) {
+async function executeStartSession(r, { name, dir, run, restoring = false, resume = '', flags = [] }) {
   if (!validName(name)) throw new Error(tr('srv.server.ten_chi_dung_chu_khong'));
   if (!validDir(dir)) throw new Error(tr('srv.server.thu_muc_chua_dung'));
   if (!['shell', 'claude', 'codex'].includes(run)) throw new Error(tr('srv.server.lenh_chua_dung'));
   dir = dir.trim();
+  // On a restore the agent starts with the options it ran with (model, permission mode): listed flags only, checked again.
+  const extra = restoring ? cleanFlags(run, flags).map((f) => shq(f)).join(' ') : '', sp = extra ? ' ' + extra : '';
   // After a reboot the conversation the agent held is resumed by its own id (recorded while it ran).
   resume = restoring && typeof resume === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(resume) ? resume : '';
   // Two agents writing one transcript would corrupt it: a conversation already open in another session is not resumed twice.
@@ -533,13 +536,13 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
     if (run === 'claude') {
       const id = claudeSessionId(resolvedDir, name);
       const script = [
-        `cmd=${shq(`claude --session-id ${shq(id)} --name ${shq(name)}`)}`,
+        `cmd=${shq(`claude --session-id ${shq(id)} --name ${shq(name)}${sp}`)}`,
         `for f in "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/${shq(id + '.jsonl')}; do`,
-        `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(id)}`)}; break; fi`,
+        `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(id)}${sp}`)}; break; fi`,
         `done`,
         ...(resume ? [
           `for f in "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/${shq(resume + '.jsonl')}; do`,
-          `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(resume)}`)}; break; fi`,
+          `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(resume)}${sp}`)}; break; fi`,
           `done`,
         ] : []),
         // Decide remotely, but send one simple command to the user's login shell (including fish).
@@ -554,7 +557,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
       }
     }
     if (run === 'codex') {
-      const cmd = resume ? `codex resume ${resume}` : r.cfg.local ? await r.codexLaunch(restoring) : 'codex';
+      const cmd = resume ? `codex resume ${resume}${sp}` : r.cfg.local ? await r.codexLaunch(restoring) : 'codex' + sp;
       const launched = await r.exec(`tmux send-keys -t ${shq(`=${name}:`)} ${shq(cmd)} Enter`).catch(() => ({ code: 1 }));
       if (launched.code !== 0) {
         await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`).catch(() => {});
