@@ -197,3 +197,31 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .cp-orch-h{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface-2)}
 .cp-orch-h b{font-size:13px}.cp-orch .cp-task:first-of-type{border-top:0}
 .cp-kit-diff{background:var(--wait-soft)!important;color:var(--wait)!important}
+
+/* Crew card, tidier: header = name + one meta line + one row of pills; orchestrator boxes without heavy borders */
+.ops-crew .pl-srv-h{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:4px 12px}
+.cp-hl{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-width:0}
+.cp-hl b{font-size:14px}
+.cp-root{color:var(--fg-2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.cp-pills{grid-column:1;display:flex;flex-wrap:wrap;gap:4px}
+.ops-crew .pl-srv-h .cp-audit{grid-column:2;grid-row:1 / span 2;align-self:center;margin:0}
+.cp-orch{border:0;background:var(--surface-2);border-radius:12px;margin:6px 6px 10px;padding:2px 0}
+.cp-orch-h{background:transparent;padding:6px 10px 2px}
+.cp-on{display:flex;align-items:baseline;gap:6px;min-width:0}
+.cp-on b{font-size:13.5px}.cp-on small{color:var(--fg-3);font-size:12px}
+.cp-open{min-height:28px!important;padding:0 10px!important}
+.cp-otask{grid-template-columns:minmax(0,1fr) auto;border-top:0;padding:6px 10px;margin:0 6px 4px;background:var(--surface);border-radius:10px}
+.cp-tl{display:flex;align-items:center;gap:7px;min-width:0}
+.cp-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--fg-3)}
+.cp-dot.executing,.cp-dot.dispatched{background:#2f80ed}.cp-dot.planning{background:#e8a62c}.cp-dot.done,.cp-dot.merged{background:#19c37d}
+.ops-crew .ops-row{padding:8px 10px}
+@media(max-width:640px){
+  .ops-crew .pl-srv-h{grid-template-columns:1fr}
+  .ops-crew .pl-srv-h .cp-audit{grid-column:1;grid-row:auto;justify-self:start}
+  .cp-otask{grid-template-columns:1fr}
+  .ops-crew .ops-row{flex-wrap:nowrap;align-items:flex-start}
+  .ops-crew .ops-row .ops-acts{width:auto;flex:none}
+  .ops-crew .ops-line{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 8px}
+  .ops-crew .ops-name{max-width:100%}
+  .ops-crew .ops-status{white-space:normal;flex-basis:100%}
+}

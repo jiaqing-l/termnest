@@ -230,19 +230,22 @@
     dl.append(el('span', '', i18n('cp.xet_task')), ds); bar.append(dl); box.append(bar);
     crew.servers.forEach(function (v) {
       var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
-      head.append(el('b', '', v.local ? i18n('app.local_name') : v.name), el('small', '', v.roots.map(function (r) { return r.root + ' · ' + i18n('cp.so_task', [r.tasks, r.enrolled]); }).join(' · ')));
+      var hl = el('div', 'cp-hl'), pills = el('div', 'cp-pills');
+      hl.append(el('b', '', v.local ? i18n('app.local_name') : v.name));
+      v.roots.forEach(function (r) { var m = el('small', 'cp-root', r.root.split('/').filter(Boolean).pop() + ' · ' + i18n('cp.so_task', [r.tasks, r.enrolled])); m.title = r.root; hl.append(m); });
+      head.append(hl, pills);
       // Crew kit version (commit of scripts/crew); marked when machines run different versions.
       (v.kit || []).forEach(function (k) {
         var others = []; crew.servers.forEach(function (o) { (o.kit || []).forEach(function (x) { if (x.commit) others.push(x.commit); }); });
         var differs = k.commit && others.some(function (c) { return c !== k.commit; });
-        head.append(el('span', 'ops-src' + (differs ? ' cp-kit-diff' : ''), k.commit ? i18n(differs ? 'cp.kit_khac' : 'cp.kit', [k.commit, when(k.at)]) : i18n('cp.kit_khong_ro')));
+        pills.append(el('span', 'ops-src' + (differs ? ' cp-kit-diff' : ''), k.commit ? i18n(differs ? 'cp.kit_khac' : 'cp.kit', [k.commit, when(k.at)]) : i18n('cp.kit_khong_ro')));
       });
       v.roots.forEach(function (r) {
-        if (!auditSkillFor(v, r.root)) { head.append(el('span', 'ops-src', i18n('cp.chua_co_skill'))); return; }
+        if (!auditSkillFor(v, r.root)) { pills.append(el('span', 'ops-src', i18n('cp.chua_co_skill'))); return; }
         var b = button(v.auditOpen || v.auditPending ? i18n('cp.dang_chay_trum') : i18n('cp.chay_trum'), 'primary', function () {
           TW.api('POST', '/api/features/crewpack/audit', { server: v.id, root: r.root }).then(function (x) { TW.app().say(i18n('cp.da_mo_trum', [x.session]), true, 4000); TW.app().openSession(v.id, x.session); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
         });
-        if (v.auditPending) b.disabled = true; head.append(b);
+        if (v.auditPending) b.disabled = true; b.classList.add('cp-audit'); head.append(b);
       });
       sec.append(head);
       // Board per orchestrator: each session enrolled in nudge.conf, its open tasks, their tracks, and the workers running them.
@@ -252,15 +255,17 @@
         sec.append(el('div', 'cp-sub', i18n('cp.theo_orch', [orch.length])));
         orch.forEach(function (name) {
           var o = el('div', 'cp-orch'), oh = el('div', 'cp-orch-h');
-          oh.append(el('b', '', name), button(i18n('ops.mo'), 'ghost', function () { TW.app().openSession(v.id, name); })); o.append(oh);
+          var on = el('div', 'cp-on'); on.append(el('span', 'ops-gi', '🧑‍✈️'), el('b', '', name), el('small', '', i18n('cp.so_task_mo', [bySession[name].length])));
+          oh.append(on, button(i18n('ops.mo'), 'ghost cp-open', function () { TW.app().openSession(v.id, name); })); o.append(oh);
           bySession[name].forEach(function (t) {
             var tr = el('div', 'cp-task'), tt = el('div', 'ops-t'), tk = el('div', 'cp-tracks');
-            tt.append(el('b', 'ops-name', t.title || t.id), el('small', 'ops-meta', t.id + ' · ' + when(t.updated)));
+            var tl = el('div', 'cp-tl'); tl.append(el('span', 'cp-dot ' + t.status), el('b', 'ops-name', t.title || t.id));
+            tt.append(tl, el('small', 'ops-meta', [t.status, t.id, when(t.updated)].join(' · ')));
             t.tracks.forEach(function (k) {
               var w = (v.workers || []).filter(function (x) { return x.task === t.id && x.track === k.id; })[0];
               tk.append(el('span', 'cp-tr ' + (w ? 'running' : k.state), k.id + ' · ' + (w ? i18n('cp.worker_chay', [w.kind || 'agent', span(w.elapsed / 60)]) : k.state) + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')));
             });
-            tr.append(el('span', 'cp-st ' + t.status, t.status || '—'), tt, tk); o.append(tr);
+            tr.classList.add('cp-otask'); tr.append(tt, tk); o.append(tr);
           });
           sec.append(o);
         });

@@ -1569,5 +1569,6 @@
   "cp.kit_khong_ro": "crew kit: không rõ phiên bản",
   "cp.theo_orch": "Theo orchestrator ({0})",
   "cp.khong_orch": "Không có orchestrator nào đang đăng ký trong nudge.conf trên máy này.",
-  "cp.worker_chay": "{0} đang chạy {1}"
+  "cp.worker_chay": "{0} đang chạy {1}",
+  "cp.so_task_mo": "{0} task đang mở"
 }

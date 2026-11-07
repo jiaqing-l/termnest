@@ -1586,5 +1586,6 @@
   "cp.kit_khong_ro": "crew kit: version unknown",
   "cp.theo_orch": "By orchestrator ({0})",
   "cp.khong_orch": "No orchestrator is enrolled in nudge.conf on this machine.",
-  "cp.worker_chay": "{0} running {1}"
+  "cp.worker_chay": "{0} running {1}",
+  "cp.so_task_mo": "{0} open tasks"
 }
