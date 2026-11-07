@@ -37,13 +37,33 @@
   function button(label, cls, fn) { var b = el('button', 'btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; return b; }
   function post(path, body) { return TW.api('POST', '/api/features/ops' + path, body || {}); }
 
+  // Short status for the second half of a row ("<session> — <status>"); the session or job name is the first half.
+  function status(f) {
+    if (f.rule === 'custom') return f.params[0];
+    if (f.rule === 'bgjob') return jobLabel({ tempo: 'blocked', needs: f.params[1] }).text;
+    if (f.rule === 'dormant') return i18n('ops.s.dormant', [span(f.params[0])]);
+    return i18n('ops.s.' + f.rule, f.params);
+  }
+  function label(f) { return f.session.indexOf('bg:') === 0 ? f.session.slice(3) : f.session.indexOf('job:') === 0 ? f.session.slice(4) : f.session; }
+  var ICON = { ask: '💬', idle: '⏸', job: '🧵', issue: '⚠️', machine: '🖥' };
+  // Which group a finding belongs to.
+  function group(f) {
+    if (f.rule === 'asking') return 'ask';
+    if (f.rule === 'dormant' || f.rule === 'finished') return 'idle';
+    if (f.rule === 'bgjob') return 'job';
+    if (f.rule === 'overload' || f.rule === 'offline' || f.rule === 'lost') return 'machine';
+    return 'issue';
+  }
+
   function row(f, srv) {
-    var r = el('div', 'ops-row ' + f.severity), t = el('div', 'ops-t'), acts = el('div', 'ops-acts');
+    var r = el('div', 'ops-row ' + f.severity), t = el('div', 'ops-t'), acts = el('div', 'ops-acts'), line = el('div', 'ops-line');
     r.append(el('span', 'ops-dot'));
-    var meta = el('small', ''); meta.append(el('span', 'ops-src ' + f.source, i18n('ops.src_' + f.source)), document.createTextNode(' ' + [who(f), srv.name, since(f.since)].filter(Boolean).join(' · ')));
-    t.append(el('b', '', title(f)), meta);
-    if (f.template && data.pack.templates[f.template]) t.append(el('code', 'ops-msg', data.pack.templates[f.template]));
-    r.append(t);
+    var name = label(f) || srv.name;
+    line.append(el('b', 'ops-name', name), el('span', 'ops-status', status(f)));
+    var meta = el('small', 'ops-meta');
+    meta.append(document.createTextNode([f.session ? srv.name : '', since(f.since)].filter(Boolean).join(' · ')));
+    var src = el('span', 'ops-src ' + f.source, i18n('ops.src_' + f.source)); meta.append(src);
+    t.append(line, meta); r.append(t);
     if (inTerminal(f)) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
     if (f.template) {
       var send = button(i18n('ops.gui_nhac'), 'primary', function () {
@@ -51,18 +71,30 @@
         post('/nudge', { server: srv.id, key: f.key }).then(function () { TW.app().say(i18n('ops.da_gui_nhac', [f.session]), true, 2500); load(); })
           .catch(function (e) { TW.app().say(e.message, false, 4000); }).then(function () { busy[f.key] = false; send.disabled = false; });
       });
+      // The message it would type, on hover and for screen readers, instead of a code block on every row.
+      send.title = i18n('ops.se_gui', [data.pack.templates[f.template] || '']); send.setAttribute('aria-label', send.title);
       acts.append(send);
     }
     acts.append(button(i18n('ops.bo_qua'), 'ghost', function () { post('/dismiss', { key: f.key }).then(load); }));
     r.append(acts); return r;
   }
 
+  // Filters: by level (click a count) and by machine; remembered while the page is open.
+  var filt = { sev: '', srv: '' };
   function summary(all) {
     var box = el('div', 'ops-sum'), n = { urgent: 0, warn: 0, info: 0 };
     all.forEach(function (x) { n[x.f.severity]++; });
-    [['urgent', 'ops.can_ban'], ['warn', 'ops.can_xem'], ['info', 'ops.thong_tin']].forEach(function (k) {
-      var c = el('span', 'ops-chip ' + k[0]); c.append(el('b', '', String(n[k[0]])), el('span', '', i18n(k[1]))); box.append(c);
+    [['', 'ops.tat_ca', all.length], ['urgent', 'ops.can_ban'], ['warn', 'ops.can_xem'], ['info', 'ops.thong_tin']].forEach(function (k) {
+      var c = el('button', 'ops-chip ' + (k[0] || 'all')); c.type = 'button'; c.setAttribute('aria-pressed', String(filt.sev === k[0]));
+      c.append(el('b', '', String(k[0] ? n[k[0]] : k[2])), el('span', '', i18n(k[1])));
+      c.onclick = function () { filt.sev = k[0]; draw(); }; box.append(c);
     });
+    if (data.servers.length > 1) {
+      var sel = el('select', 'ops-srv'); sel.setAttribute('aria-label', i18n('ops.loc_may'));
+      var o0 = el('option', '', i18n('ops.moi_may')); o0.value = ''; sel.append(o0);
+      data.servers.forEach(function (v) { var o = el('option', '', v.name); o.value = v.id; if (filt.srv === v.id) o.selected = true; sel.append(o); });
+      sel.onchange = function () { filt.srv = sel.value; draw(); }; box.append(sel);
+    }
     return box;
   }
 
@@ -177,10 +209,17 @@
     tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
     head.append(h, summary(all), tools); page.append(head);
     if (editing) page.append(rulesForm());
-    var list = el('section', 'ops-card ops-list');
-    if (!all.length) list.append(el('p', 'ops-empty ok', i18n('ops.on_ca')));
-    all.forEach(function (x) { list.append(row(x.f, x.s)); });
-    page.append(list, jobList(), evidence(), logList());
+    var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); });
+    var groups = el('div', 'ops-groups');
+    if (!shown.length) { var e = el('section', 'ops-card'); e.append(el('p', 'ops-empty ok', i18n(all.length ? 'ops.khong_co_muc_loc' : 'ops.on_ca'))); groups.append(e); }
+    ['ask', 'idle', 'job', 'issue', 'machine'].forEach(function (g) {
+      var items = shown.filter(function (x) { return group(x.f) === g; }); if (!items.length) return;
+      var box = el('details', 'ops-card ops-group g-' + g), sum = el('summary', 'ops-card-h'); keepOpen(box, 'g-' + g, true);
+      var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', ICON[g]), document.createTextNode(i18n('ops.g.' + g)), el('span', 'ops-count', String(items.length)));
+      sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
+      items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
+    });
+    page.append(groups, jobList(), evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }
