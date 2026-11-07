@@ -83,3 +83,27 @@ test('path rewriting and free names', () => {
   assert.equal(move.rewritePaths('x', 'a"b', '/c').count, 0);
   assert.equal(move.freeName('s', new Set(['s', 's-2'])), 's-3');
 });
+
+test('without a known conversation id the user picks it from the folder\'s recent chats, then it moves', { skip: process.platform === 'win32' }, async () => {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-pick-'))), A = path.join(base, 'a'), B = path.join(base, 'b');
+  try {
+    const dir = path.join(A, 'ws'); fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(path.join(B, 'ws2'), { recursive: true });
+    signIn(A, 'me@x.com'); signIn(B, 'me@x.com');
+    const proj = path.join(A, '.claude', 'projects', dir.replace(/[^A-Za-z0-9]/g, '-')); fs.mkdirSync(proj, { recursive: true });
+    const old = '11111111-2222-4333-8444-555555555555', cur = '66666666-7777-4888-9999-000000000000';
+    fs.writeFileSync(path.join(proj, old + '.jsonl'), JSON.stringify({ type: 'user', message: { role: 'user', content: 'sửa lỗi cũ' } }) + '\n');
+    const past = (Date.now() - 3600e3) / 1000; fs.utimesSync(path.join(proj, old + '.jsonl'), past, past);
+    fs.writeFileSync(path.join(proj, cur + '.jsonl'), JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: 'Thêm test cho ảnh lớn' }] } }) + '\n');
+    const a = machine(A, [{ name: 'SV1', path: dir, cmd: 'claude' }]), b = machine(B, []);   // no aiSessionId: an older Claude
+    const routes = {}, sent = [], fails = [], started = [];
+    move.register({ route: (m, p, h) => { routes[m + p] = h; }, backendOf: (x) => ({ a, b }[x] || null), shq, readJson: async (req) => req.body,
+      send: (res, c, body) => sent.push(body), fail: (res, c, msg) => fails.push(msg), sessions: { start: async (r, o) => started.push(o), stop: async () => true } });
+    await routes['GET/check']({ res: {}, url: new URL('http://x/check?server=a&session=SV1&to=b') });
+    const pick = sent.pop();
+    assert.deepEqual(pick.pick.map((c) => c.id), [cur, old]); assert.equal(pick.pick[0].ask, 'Thêm test cho ảnh lớn'); assert.equal(pick.pick[1].ask, 'sửa lỗi cũ');
+    await routes['GET/check']({ res: {}, url: new URL('http://x/check?server=a&session=SV1&to=b&id=' + cur) });
+    assert.equal(sent.pop().same, true);
+    await routes['POST/run']({ req: { body: { server: 'a', session: 'SV1', to: 'b', dir: path.join(B, 'ws2'), name: 'SV1', id: cur } }, res: {} });
+    assert.deepEqual(fails, []); assert.equal(started[0].resume, cur);
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});

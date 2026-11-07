@@ -1316,5 +1316,9 @@
   "term.keys": "Phím",
   "term.more_keys": "Các phím khác: Tab, ↑ ↓, Ctrl+B, dòng mới, bàn phím",
   "term.commands": "Lệnh mẫu",
-  "term.help_title": "Cách chọn và sao chép chữ trong terminal"
+  "term.help_title": "Cách chọn và sao chép chữ trong terminal",
+  "move.chat": "Cuộc chat",
+  "move.chat_pick": "Chọn cuộc chat…",
+  "move.chat_unknown": "TERMNEST chưa đọc được phiên này đang mở cuộc chat nào (Claude bản cũ không ghi lại). Hãy chọn cuộc chat ở ô trên: mới nhất thường là cuộc đang mở.",
+  "move.chat_none": "Không thấy cuộc chat nào của thư mục này trên máy cũ."
 }

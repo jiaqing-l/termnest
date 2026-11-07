@@ -26,7 +26,10 @@
     function row(label, control) { var r = el('label', 'mv-row'); r.append(el('span', '', label), control); rows.append(r); return r; }
     var target = el('select'); app().servers().filter(function (v) { return v.on && v.id !== x.v.id && v.mode !== 'powershell'; }).forEach(function (v) { var o = el('option', '', v.name); o.value = v.id; target.append(o); });
     var place = el('select'), name = el('input'); name.maxLength = 32; name.autocomplete = 'off'; name.spellcheck = false;
+    var chat = el('select'), chatRow = row(i18n('move.chat'), chat); chatRow.hidden = true; var chosen = '';
     row(i18n('move.to'), target); row(i18n('move.folder'), place); row(i18n('move.name'), name);
+    rows.prepend(chatRow);
+    chat.onchange = function () { chosen = chat.value; survey(); };
     var stop = el('input'), rewrite = el('input'); stop.type = rewrite.type = 'checkbox'; rewrite.checked = true;
     var opts = el('div', 'mv-opts'), o1 = el('label', 'mv-opt'), o2 = el('label', 'mv-opt');
     o1.append(rewrite, el('span', '', i18n('move.rewrite'))); o2.append(stop, el('span', '', i18n('move.stop_old'))); opts.append(o1, o2);
@@ -48,8 +51,16 @@
     function ready() { go.disabled = !(info && info.same && !info.tooLarge && place.value && place.value !== '*' && /^[A-Za-z0-9_-]{1,32}$/.test(name.value)); }
     function survey() {
       var mine = ++seq; info = null; ready(); checks.textContent = ''; err.textContent = ''; check(i18n('move.checking'), 'wait');
-      TW.api('GET', '/api/features/move/check?server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&to=' + encodeURIComponent(target.value)).then(function (r) {
-        if (mine !== seq) return; info = r; checks.textContent = '';
+      TW.api('GET', '/api/features/move/check?server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&to=' + encodeURIComponent(target.value) + (chosen ? '&id=' + encodeURIComponent(chosen) : '')).then(function (r) {
+        if (mine !== seq) return; checks.textContent = '';
+        // The running agent's id is not known: choose the chat from the folder's recent conversations.
+        if (r.pick) {
+          info = null; chatRow.hidden = false; chat.textContent = '';
+          var ph = el('option', '', i18n('move.chat_pick')); ph.value = ''; chat.append(ph);
+          r.pick.forEach(function (c) { var o = el('option', '', new Date(c.at).toLocaleString(i18n('lang.locale'), { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) + ' · ' + (c.ask || '—').slice(0, 70) + ' · ' + mb(c.size)); o.value = c.id; chat.append(o); });
+          check(r.pick.length ? i18n('move.chat_unknown') : i18n('move.chat_none'), r.pick.length ? 'warn' : 'bad'); ready(); return;
+        }
+        info = r;
         var label = tool === 'codex' ? 'Codex' : 'Claude';
         if (r.same) check(i18n('move.same_account', [label, r.from]), 'ok');
         else if (!r.to) check(i18n('move.not_signed', [label]), 'bad');
@@ -71,10 +82,11 @@
       fillPlaces((info && info.places) || [], keep); ready();
     };
     target.onchange = function () { name.value = ''; survey(); };
+    chatRow.hidden = true;
     name.oninput = ready;
     form.onsubmit = function (e) {
       e.preventDefault(); if (go.disabled) return; go.disabled = true; err.textContent = ''; go.textContent = i18n('move.moving');
-      TW.api('POST', '/api/features/move/run', { server: x.v.id, session: x.s.name, to: target.value, dir: place.value, name: name.value, stop: stop.checked, rewrite: rewrite.checked }).then(function (r) {
+      TW.api('POST', '/api/features/move/run', { server: x.v.id, session: x.s.name, to: target.value, dir: place.value, name: name.value, stop: stop.checked, rewrite: rewrite.checked, id: chosen || undefined }).then(function (r) {
         body.textContent = ''; actions.textContent = '';
         var done = el('div', 'mv-done'); done.append(el('b', '', '✓ ' + i18n('move.done', [r.name, target.options[target.selectedIndex].textContent])));
         done.append(el('small', '', r.dir + ' · ' + mb(r.bytes) + (r.rewritten ? ' · ' + i18n('move.rewritten', [r.rewritten]) : '') + (r.kept ? ' · ' + i18n('move.kept') : '') + (r.stopped ? ' · ' + i18n('move.stopped') : '')));
