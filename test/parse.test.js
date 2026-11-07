@@ -919,4 +919,17 @@ test("the agent's own status file reaches the session: Claude status, parked fla
   assert.deepEqual(snap.sessions[0].aiStatus, { tool: 'claude', status: 'idle', at: 1793948461283, waitingFor: '', parked: true });
   assert.deepEqual(snap.sessions[1].aiStatus, { tool: 'codex', status: 'busy', at: 1794029000000, waitingFor: '' });
   assert.deepEqual(snap.bgAgents.map((b) => [b.name, b.status, b.waitingFor]), [['Lỗi nghiệp vụ', 'waiting', 'permission']]);
+  // Every view follows the agent's own status: the parked pane is idle, the busy Codex pane is running.
+  assert.deepEqual(snap.sessions.map((s) => [s.state, s.stateSource]), [['idle', 'status'], ['run', 'status']]);
+});
+
+test('officialState maps the status file onto run / wait / idle and marks the source', () => {
+  const { officialState } = require('../lib/parse');
+  const of = (aiStatus, base = { state: 'run', asking: false }) => { const s = { ...base, aiStatus }; officialState(s); return [s.state, s.asking, s.stateSource]; };
+  assert.deepEqual(of({ status: 'busy' }, { state: 'wait', asking: true }), ['run', false, 'status']);
+  assert.deepEqual(of({ status: 'waiting' }), ['wait', true, 'status']);
+  assert.deepEqual(of({ status: 'idle' }), ['wait', false, 'status']);
+  assert.deepEqual(of({ status: 'aborted' }), ['wait', false, 'status']);
+  assert.deepEqual(of({ status: 'idle', parked: true }), ['idle', false, 'status']);
+  assert.deepEqual(of(undefined), ['run', false, 'screen']);
 });
