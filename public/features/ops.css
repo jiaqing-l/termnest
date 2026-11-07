@@ -58,3 +58,12 @@
 .ops-src.status{background:color-mix(in srgb,#2f80ed 14%,transparent);color:#2f80ed}
 .ops-src.text{background:var(--wait-soft);color:var(--wait)}
 .ops-ev summary{cursor:pointer;list-style:none}.ops-ev summary::-webkit-details-marker{display:none}.ops-ev summary h3::before{content:'▸ ';color:var(--fg-3)}.ops-ev[open] summary h3::before{content:'▾ '}
+.ops-job{display:grid;grid-template-columns:236px minmax(0,1fr);gap:12px;align-items:start;padding:9px 10px}
+.ops-job+.ops-job{border-top:1px solid var(--line)}
+.ops-job .ops-st{justify-self:start;white-space:nowrap}
+.ops-st.run{background:color-mix(in srgb,#2f80ed 16%,transparent);color:#2f80ed}
+.ops-st.wait{background:var(--wait-soft);color:var(--wait)}
+.ops-st.idle{background:var(--surface-2);color:var(--fg-3)}
+.ops-job .ops-msg{white-space:normal}
+@media(max-width:640px){.ops-job{grid-template-columns:1fr;gap:6px}}
+.ops-job .ops-st{white-space:normal;line-height:1.35;padding:3px 8px}

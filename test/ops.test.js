@@ -85,3 +85,25 @@ test('the core pack has no project-specific rule', () => {
   const text = JSON.stringify(ops.DEFAULT_PACK).toLowerCase();
   for (const word of ['xspire', 'crew', 'dotnet', 'gitlab', 'devkit']) assert.ok(!text.includes(word), word);
 });
+
+test('Claude background jobs marked blocked are reported with what Claude says it needs; old or finished ones are not', () => {
+  const day = 86400000, jobs = [
+    { id: 'a1', name: 'Lỗi nghiệp vụ PG cũ', state: 'working', tempo: 'blocked', needs: 'send a prompt to start', at: NOW - 3600000 },
+    { id: 'b2', name: 'Old', state: 'blocked', tempo: 'blocked', needs: 'x', at: NOW - 30 * day },
+    { id: 'c3', name: 'Run', state: 'working', tempo: 'active', needs: '', at: NOW },
+    { id: 'd4', name: 'Done', state: 'done', tempo: 'idle', needs: '', at: NOW },
+  ];
+  const out = run([], { snap: { jobs } });
+  assert.deepEqual(out.map((f) => [f.rule, f.session, f.params[1], f.source]), [['bgjob', 'job:Lỗi nghiệp vụ PG cũ', 'send a prompt to start', 'status']]);
+  assert.equal(run([], { snap: { jobs }, pack: ops.cleanPack({ rules: { bgjob: { days: 60 } } }) }).length, 2);
+});
+
+test('built-in nudge texts follow the reader language; a team template stays as written', () => {
+  const p = ops.cleanPack({ templates: { ship: 'Chạy checklist phát hành.' } });
+  assert.deepEqual(Object.keys(p.templates), ['ship']);
+  const vi = ops.withTemplates(p, { continue: 'Hãy tiếp tục…' });
+  assert.equal(vi.templates.continue, 'Hãy tiếp tục…');
+  assert.equal(vi.templates.ship, 'Chạy checklist phát hành.');
+  assert.equal(ops.withTemplates(p, {}).templates.continue, ops.CORE_TEMPLATES.continue);
+  assert.equal(run([claude('idle', 50)])[0].template, 'continue');
+});

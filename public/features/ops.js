@@ -6,11 +6,34 @@
   var TW = window.TW; if (!TW) return;
   var el = TW.el, page = null, tab = null, data = null, busy = {}, editing = false;
   var SEV = { urgent: 0, warn: 1, info: 2 };
-  var RULES = ['asking', 'finished', 'dormant', 'aborted', 'unknown', 'exited', 'overload', 'lost', 'offline', 'unheard'];
+  // Open/closed state of the collapsible sections, kept across the 10-second redraws (and remembered on this device).
+  var opened = {}; try { opened = JSON.parse(localStorage.getItem('tw-ops-open') || '{}') || {}; } catch (e) { opened = {}; }
+  function keepOpen(box, id, dflt) {
+    box.open = id in opened ? !!opened[id] : dflt;
+    box.addEventListener('toggle', function () { opened[id] = box.open; try { localStorage.setItem('tw-ops-open', JSON.stringify(opened)); } catch (e) { /* optional */ } });
+  }
+  var RULES = ['asking', 'finished', 'dormant', 'aborted', 'unknown', 'bgjob', 'exited', 'overload', 'lost', 'offline', 'unheard'];
 
-  function title(f) { return f.rule === 'custom' ? f.params[0] : i18n('ops.r.' + f.rule, f.params); }
-  function who(f) { return f.session.indexOf('bg:') === 0 ? i18n('ops.phien_nen', [f.session.slice(3)]) : f.session; }
-  function since(sec) { return sec < 60 ? i18n('ops.vua_moi') : sec < 3600 ? i18n('ops.phut', [Math.floor(sec / 60)]) : i18n('ops.gio', [Math.floor(sec / 3600)]); }
+  // Minutes as a readable span: "45 phút", "3 giờ 20 phút", "1 ngày 2 giờ".
+  function span(min) { min = Math.max(0, Math.round(min)); if (min < 60) return i18n('ops.phut', [min]); var h = Math.floor(min / 60); if (h < 24) return i18n('ops.gio_phut', [h, min % 60]); return i18n('ops.ngay_gio', [Math.floor(h / 24), h % 24]); }
+  function title(f) { return f.rule === 'custom' ? f.params[0] : f.rule === 'bgjob' ? i18n('ops.r.bgjob', [f.params[0], jobLabel({ tempo: 'blocked', needs: f.params[1] }).text]) : f.rule === 'dormant' ? i18n('ops.r.dormant', [span(f.params[0])]) : i18n('ops.r.' + f.rule, f.params); }
+  function who(f) { return f.session.indexOf('bg:') === 0 ? i18n('ops.phien_nen', [f.session.slice(3)]) : f.session.indexOf('job:') === 0 ? i18n('ops.viec_nen', [f.session.slice(4)]) : f.session; }
+  function inTerminal(f) { return f.session && f.session.indexOf('bg:') !== 0 && f.session.indexOf('job:') !== 0; }
+  // A Claude background job in plain words, from the state/tempo/needs Claude wrote; `note` is Claude's own text.
+  function jobLabel(j) {
+    var needs = j.needs || '';
+    if (j.tempo === 'active') return { cls: 'run', text: j.tasks ? i18n('ops.job_active_n', [j.tasks]) : i18n('ops.job_active'), note: j.detail };
+    if (j.tempo === 'blocked' || j.state === 'blocked') {
+      if (/send a prompt/i.test(needs)) return { cls: 'wait', text: i18n('ops.job_reply'), note: j.detail };
+      if (/rate limit|hit your .*limit|usage limit/i.test(needs + ' ' + (j.detail || ''))) return { cls: 'bad', text: i18n('ops.job_limit'), note: needs || j.detail };
+      return { cls: 'wait', text: i18n('ops.job_needs'), note: needs || j.detail };
+    }
+    if (j.state === 'done') return { cls: 'ok', text: i18n('ops.job_done'), note: j.detail };
+    if (j.state === 'failed') return { cls: 'bad', text: i18n('ops.job_failed'), note: j.detail };
+    if (j.state === 'stopped') return { cls: 'idle', text: i18n('ops.job_stopped'), note: j.detail };
+    return { cls: 'idle', text: i18n('ops.job_other', [j.state || '—', j.tempo || '—']), note: j.detail };
+  }
+  function since(sec) { return sec < 60 ? i18n('ops.vua_moi') : span(sec / 60); }
   function button(label, cls, fn) { var b = el('button', 'btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; return b; }
   function post(path, body) { return TW.api('POST', '/api/features/ops' + path, body || {}); }
 
@@ -21,7 +44,7 @@
     t.append(el('b', '', title(f)), meta);
     if (f.template && data.pack.templates[f.template]) t.append(el('code', 'ops-msg', data.pack.templates[f.template]));
     r.append(t);
-    if (f.session && f.session.indexOf('bg:') !== 0) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
+    if (inTerminal(f)) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
     if (f.template) {
       var send = button(i18n('ops.gui_nhac'), 'primary', function () {
         if (busy[f.key]) return; busy[f.key] = true; send.disabled = true;
@@ -43,9 +66,30 @@
     return box;
   }
 
+  // Every Claude background job on every machine, as Claude itself reports it.
+  function jobList() {
+    var rows = [];
+    data.servers.forEach(function (srv) { (srv.jobs || []).forEach(function (j) { rows.push({ srv: srv, j: j, l: jobLabel(j) }); }); });
+    var order = { run: 0, wait: 1, bad: 2, ok: 3, idle: 4 };
+    rows.sort(function (a, b) { return (order[a.l.cls] - order[b.l.cls]) || (b.j.at - a.j.at); });
+    var box = el('details', 'ops-card ops-ev ops-jobs'), sum = el('summary', 'ops-card-h'), n = { run: 0, wait: 0 };
+    rows.forEach(function (r) { if (r.l.cls === 'run') n.run++; else if (r.l.cls === 'wait' || r.l.cls === 'bad') n.wait++; });
+    keepOpen(box, 'jobs', rows.length > 0 && rows.length <= 20);
+    sum.append(el('h3', '', i18n('ops.viec_nen_tieu_de', [rows.length])), el('small', 'ops-pack', i18n('ops.viec_nen_tom_tat', [n.run, n.wait, rows.length - n.run - n.wait])));
+    box.append(sum);
+    if (!rows.length) { box.append(el('p', 'ops-empty', i18n('ops.viec_nen_trong'))); return box; }
+    rows.forEach(function (r) {
+      var row = el('div', 'ops-job'), t = el('div', 'ops-t');
+      t.append(el('b', '', r.j.name || r.j.id), el('small', '', r.srv.name + ' · ' + i18n('ops.cap_nhat', [since(Math.max(0, (Date.now() - r.j.at) / 1000))])));
+      if (r.l.note) t.append(el('code', 'ops-msg', i18n('ops.claude_ghi', [r.l.note])));
+      row.append(el('span', 'ops-st ' + r.l.cls, r.l.text), t); box.append(row);
+    });
+    return box;
+  }
+
   // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
   function evidence() {
-    var box = el('details', 'ops-card ops-ev'), rows = [];
+    var box = el('details', 'ops-card ops-ev'), rows = []; keepOpen(box, 'evidence', false);
     data.servers.forEach(function (srv) {
       srv.sessions.forEach(function (s) { if (s.agent || s.ai) rows.push({ srv: srv, name: s.name, ai: s.ai }); });
       (srv.bg || []).forEach(function (b) { rows.push({ srv: srv, name: i18n('ops.phien_nen', [b.name]), ai: { tool: 'claude', status: b.status, at: b.at } }); });
@@ -136,7 +180,7 @@
     var list = el('section', 'ops-card ops-list');
     if (!all.length) list.append(el('p', 'ops-empty ok', i18n('ops.on_ca')));
     all.forEach(function (x) { list.append(row(x.f, x.s)); });
-    page.append(list, evidence(), logList());
+    page.append(list, jobList(), evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }
