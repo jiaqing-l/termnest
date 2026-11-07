@@ -225,3 +225,24 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
   .ops-crew .ops-name{max-width:100%}
   .ops-crew .ops-status{white-space:normal;flex-basis:100%}
 }
+
+/* One look for every section: chevron · line icon · title · count · description; no emoji */
+.ops-ic{display:inline-grid;place-items:center;width:20px;height:20px;flex:none;color:var(--fg-2)}
+.ops-ic svg{width:18px;height:18px}
+.ic-ask{color:var(--bad)}.ic-quota,.ic-job,.ic-issue{color:var(--wait)}
+.ops-page details.ops-card>summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:10px 12px;flex-wrap:nowrap}
+.ops-page details.ops-card>summary::-webkit-details-marker{display:none}
+.ops-page details.ops-card>summary::before{content:'';flex:none;width:6px;height:6px;margin:0 3px 0 2px;border-right:2px solid var(--fg-3);border-bottom:2px solid var(--fg-3);transform:rotate(-45deg);transition:transform .15s}
+.ops-page details.ops-card[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+.ops-page details.ops-card>summary h3{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0;margin:0;font:700 14px var(--round,inherit);white-space:nowrap}
+.ops-page details.ops-card>summary h3::before,.ops-page details.ops-card>summary h3::after{content:none!important}
+.ops-page details.ops-card>summary small{flex:0 1 auto;margin-left:auto;text-align:right;color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-page details.ops-card>summary .btn{flex:none}
+.ops-count{min-width:22px;height:20px;padding:0 7px;border-radius:99px;background:var(--surface-2);color:var(--fg);font:800 11.5px/20px var(--round,inherit);text-align:center}
+.ops-part{margin:6px 2px -2px;font:800 11.5px var(--round,inherit);letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3)}
+.ops-expand{display:inline-flex;gap:2px;padding:2px;border-radius:10px;background:var(--surface-2)}
+.ops-expand .btn{min-height:30px;padding:0 10px;font-size:12.5px}
+.ops-jump .ops-ic{width:18px;height:18px}
+.ops-page .ops-card{border-radius:14px}
+@media(max-width:640px){.ops-page details.ops-card>summary small{display:none}.ops-page details.ops-card>summary h3{white-space:normal}}
+.cp-mr.merged,.cp-ci.success{color:#0f8a57}.cp-mr.closed,.cp-ci.failed{color:var(--bad)}.cp-ci.running{color:#2f80ed}

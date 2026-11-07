@@ -67,7 +67,20 @@
     return out;
   }
   function label(f) { return /^(bg|acc):/.test(f.session) ? f.session.slice(f.session.indexOf(':') + 1) : f.session.indexOf('job:') === 0 ? f.session.slice(4) : f.session; }
-  var ICON = { ask: '💬', idle: '⏸', job: '🧵', quota: '⏳', issue: '⚠️', machine: '🖥' };
+  var PATHS = {
+    ask: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.2"/><path d="M12 16.5h.01"/>',
+    idle: '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+    job: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+    quota: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/>',
+    issue: '<path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4"/><path d="M12 17.5h.01"/>',
+    machine: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+    crew: '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 20a5 5 0 0 1 6.5-4.7"/>',
+    plug: '<path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0V8z"/><path d="M12 17v4"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+    log: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  };
+  function icon(name) { var i = el('span', 'ops-ic ic-' + name); i.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (PATHS[name] || '') + '</svg>'; return i; }
   // Which group a finding belongs to.
   function group(f) {
     if (f.rule === 'asking') return 'ask';
@@ -130,7 +143,8 @@
     var box = el('details', 'ops-card ops-ev ops-jobs'), sum = el('summary', 'ops-card-h'), n = { run: 0, wait: 0 };
     rows.forEach(function (r) { if (r.l.cls === 'run') n.run++; else if (r.l.cls === 'wait' || r.l.cls === 'bad') n.wait++; });
     keepOpen(box, 'jobs', rows.length > 0 && rows.length <= 20);
-    sum.append(el('h3', '', i18n('ops.viec_nen_tieu_de', [rows.length])), el('small', 'ops-pack', i18n('ops.viec_nen_tom_tat', [n.run, n.wait, rows.length - n.run - n.wait])));
+    var jh = el('h3', ''); jh.append(icon('job'), document.createTextNode(i18n('ops.viec_nen_ten')), el('span', 'ops-count', String(rows.length)));
+    sum.append(jh, el('small', 'ops-pack', i18n('ops.viec_nen_tom_tat', [n.run, n.wait, rows.length - n.run - n.wait])));
     box.append(sum);
     if (!rows.length) { box.append(el('p', 'ops-empty', i18n('ops.viec_nen_trong'))); return box; }
     rows.forEach(function (r) {
@@ -149,7 +163,7 @@
   function pluginCard() {
     var box = el('details', 'ops-card ops-ev ops-plug'), sum = el('summary', 'ops-card-h'); keepOpen(box, 'plugins', true);
     var stale = 0; ((plug && plug.servers) || []).forEach(function (v) { stale += v.stale.length; });
-    var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', '🔌'), document.createTextNode(i18n('pl.tieu_de')));
+    var h3 = el('h3', ''); h3.append(icon('plug'), document.createTextNode(i18n('pl.tieu_de')));
     if (stale) h3.append(el('span', 'ops-count warn', String(stale)));
     sum.append(h3, el('small', 'ops-pack', i18n('pl.nguon'))); box.append(sum);
     if (!plug) { box.append(el('p', 'ops-empty', i18n('pl.dang_doc'))); return box; }
@@ -218,7 +232,7 @@
     if (!crew || !crew.servers || !crew.servers.length) return null;
     var box = el('details', 'ops-card ops-ev ops-crew'), sum = el('summary', 'ops-card-h'); keepOpen(box, 'crew', true);
     var n = 0; crew.servers.forEach(function (v) { n += v.findings.filter(function (f) { return f.cat === 'BLOCKER'; }).length; });
-    var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', '🧭'), document.createTextNode(i18n('cp.tieu_de'))); if (n) h3.append(el('span', 'ops-count', String(n)));
+    var h3 = el('h3', ''); h3.append(icon('crew'), document.createTextNode(i18n('cp.tieu_de'))); if (n) h3.append(el('span', 'ops-count', String(n)));
     sum.append(h3, el('small', 'ops-pack', i18n('cp.mo_ta'))); box.append(sum);
     var bar = el('div', 'pl-bar'), lab = el('label', 'pl-auto'), sel = el('select', 'ops-srv cp-sched');
     [0, 2, 4, 8, 24].forEach(function (h) { var o = el('option', '', h ? i18n('cp.moi_gio', [h]) : i18n('cp.lich_tat')); o.value = String(h); if (crew.auditHours === h) o.selected = true; sel.append(o); });
@@ -255,7 +269,7 @@
         sec.append(el('div', 'cp-sub', i18n('cp.theo_orch', [orch.length])));
         orch.forEach(function (name) {
           var o = el('div', 'cp-orch'), oh = el('div', 'cp-orch-h');
-          var on = el('div', 'cp-on'); on.append(el('span', 'ops-gi', '🧑‍✈️'), el('b', '', name), el('small', '', i18n('cp.so_task_mo', [bySession[name].length])));
+          var on = el('div', 'cp-on'); on.append(icon('user'), el('b', '', name), el('small', '', i18n('cp.so_task_mo', [bySession[name].length])));
           oh.append(on, button(i18n('ops.mo'), 'ghost cp-open', function () { TW.app().openSession(v.id, name); })); o.append(oh);
           bySession[name].forEach(function (t) {
             var tr = el('div', 'cp-task'), tt = el('div', 'ops-t'), tk = el('div', 'cp-tracks');
@@ -263,7 +277,14 @@
             tt.append(tl, el('small', 'ops-meta', [t.status, t.id, when(t.updated)].join(' · ')));
             t.tracks.forEach(function (k) {
               var w = (v.workers || []).filter(function (x) { return x.task === t.id && x.track === k.id; })[0];
-              tk.append(el('span', 'cp-tr ' + (w ? 'running' : k.state), k.id + ' · ' + (w ? i18n('cp.worker_chay', [w.kind || 'agent', span(w.elapsed / 60)]) : k.state) + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')));
+              var chipT = el('span', 'cp-tr ' + (w ? 'running' : k.state), k.id + ' · ' + (w ? i18n('cp.worker_chay', [w.kind || 'agent', span(w.elapsed / 60)]) : k.state) + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : ''));
+              var fg = forgeOf[k.remote + '|' + k.branch];
+              if (fg && fg.linked && !fg.error) {
+                if (fg.mr) chipT.append(el('span', 'cp-mr ' + fg.mr.state, ' · ' + (fg.kind === 'github' ? 'PR #' : 'MR !') + fg.mr.number + ' ' + i18n('fg.mr_' + fg.mr.state)));
+                if (fg.ci) chipT.append(el('span', 'cp-ci ' + fg.ci.state, ' · ' + i18n('fg.ci_' + fg.ci.state)));
+              }
+              if (k.branch) chipT.title = k.branch;
+              tk.append(chipT);
             });
             tr.classList.add('cp-otask'); tr.append(tt, tk); o.append(tr);
           });
@@ -303,7 +324,16 @@
     }
     return box;
   }
-  function loadCrew() { return TW.api('GET', '/api/features/crewpack/data').then(function (r) { crew = r; if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { crew = null; }); }
+  // MR / pipeline of open tracks' branches, through the "Kết nối" feature (nothing shown without a connection).
+  var forgeOf = {};
+  function loadForge() {
+    if (!crew || !window.TW_FORGE) return;
+    var items = [];
+    crew.servers.forEach(function (v) { (v.tasks || []).forEach(function (t) { if (!t.session || ['done', 'closed', 'abandoned', 'archived', 'merged'].indexOf(t.status) >= 0) return; t.tracks.forEach(function (k) { if (k.remote && k.branch) items.push({ remote: k.remote, branch: k.branch }); }); }); });
+    if (!items.length) return;
+    window.TW_FORGE.branches(items.slice(0, 40)).then(function (r) { (r.items || []).forEach(function (x, i) { forgeOf[items[i].remote + '|' + items[i].branch] = x; }); draw(); }).catch(function () { /* optional */ });
+  }
+  function loadCrew() { return TW.api('GET', '/api/features/crewpack/data').then(function (r) { crew = r; loadForge(); if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { crew = null; }); }
 
   // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
   function evidence() {
@@ -312,7 +342,8 @@
       srv.sessions.forEach(function (s) { if (s.agent || s.ai) rows.push({ srv: srv, name: s.name, ai: s.ai, bg: s.bgAgents || [] }); });
       (srv.bg || []).forEach(function (b) { rows.push({ srv: srv, name: i18n('ops.phien_nen', [b.name]), ai: { tool: 'claude', status: b.status, at: b.at } }); });
     });
-    var sum = el('summary', 'ops-card-h'); sum.append(el('h3', '', i18n('ops.bang_chung', [rows.length])), el('small', 'ops-pack', i18n('ops.bang_chung_ghi_chu'))); box.append(sum);
+    var sum = el('summary', 'ops-card-h'), eh = el('h3', ''); eh.append(icon('list'), document.createTextNode(i18n('ops.bang_chung_ten')), el('span', 'ops-count', String(rows.length)));
+    sum.append(eh, el('small', 'ops-pack', i18n('ops.bang_chung_ghi_chu'))); box.append(sum);
     rows.forEach(function (r) {
       var row = el('div', 'ops-log'), st = r.ai, label = !st ? i18n('ops.ev_none') : st.tool + ' · ' + st.status + (st.parked ? ' · ' + i18n('ops.ev_parked') : '') + (st.waitingFor ? ' · ' + st.waitingFor : '');
       if (r.bg && r.bg.length) label += ' · ' + i18n('ops.agent_ngam', [r.bg.length, r.bg.map(function (w) { return (w.kind || 'agent') + ' ' + span(w.elapsed / 60); }).join(', ')]);
@@ -324,9 +355,10 @@
   }
 
   function logList() {
-    var box = el('section', 'ops-card'), head = el('div', 'ops-card-h');
-    head.append(el('h3', '', i18n('ops.so_ghi')));
-    if (data.log.length) head.append(button(i18n('ops.xoa_so'), 'ghost', function () { post('/log/clear').then(load); }));
+    var box = el('details', 'ops-card ops-ev ops-log-sec'), head = el('summary', 'ops-card-h'), lh = el('h3', ''); keepOpen(box, 'log', data.log.length > 0);
+    lh.append(icon('log'), document.createTextNode(i18n('ops.so_ghi')), el('span', 'ops-count', String(data.log.length)));
+    head.append(lh);
+    if (data.log.length) { var clr = button(i18n('ops.xoa_so'), 'ghost', function (e) { e.preventDefault(); post('/log/clear').then(load); }); head.append(clr); }
     box.append(head);
     if (!data.log.length) { box.append(el('p', 'ops-empty', i18n('ops.so_trong'))); return box; }
     data.log.slice(0, 20).forEach(function (n) {
@@ -409,9 +441,13 @@
     if (data.dismissed) tools.append(button(i18n('ops.hien_lai', [data.dismissed]), 'ghost', function () { post('/dismiss', { all: true }).then(load); }));
     // Jump to the plugin card (it sits below the groups); its count shows how many sessions run an older plugin.
     var staleN = 0; ((plug && plug.servers) || []).forEach(function (v) { staleN += v.stale.length; });
-    var jump = button('🔌 ' + i18n('pl.tieu_de'), 'ghost ops-jump', function () { var c = page.querySelector('.ops-plug'); if (c) { c.open = true; c.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
-    if (staleN) jump.append(el('span', 'ops-count warn', String(staleN)));
+    var jump = button(i18n('pl.tieu_de'), 'ghost ops-jump', function () { var c = page.querySelector('.ops-plug'); if (c) { c.open = true; c.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+    jump.prepend(icon('plug')); if (staleN) jump.append(el('span', 'ops-count warn', String(staleN)));
     tools.append(jump);
+    // Open or close every section at once (each section remembers its state on this device).
+    function setAll(open) { page.querySelectorAll('details.ops-card').forEach(function (d) { if (d.open !== open) d.open = open; }); }
+    var exp = el('div', 'ops-expand'); exp.append(button(i18n('ops.mo_het'), 'ghost', function () { setAll(true); }), button(i18n('ops.thu_het'), 'ghost', function () { setAll(false); }));
+    tools.append(exp);
     tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
     head.append(h, tools); page.append(head);
     var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);
@@ -422,11 +458,13 @@
     ['ask', 'idle', 'job', 'quota', 'issue', 'machine'].forEach(function (g) {
       var items = shown.filter(function (x) { return group(x.f) === g; }); if (!items.length) return;
       var box = el('details', 'ops-card ops-group g-' + g), sum = el('summary', 'ops-card-h'); keepOpen(box, 'g-' + g, true);
-      var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', ICON[g]), document.createTextNode(i18n('ops.g.' + g)), el('span', 'ops-count', String(items.length)));
+      var h3 = el('h3', ''); h3.append(icon(g), document.createTextNode(i18n('ops.g.' + g)), el('span', 'ops-count', String(items.length)));
       sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
       items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
     });
-    var cc = crewCard(); page.append(groups); if (cc) page.append(cc); page.append(pluginCard(), jobList(), evidence(), logList());
+    var cc = crewCard();
+    page.append(el('div', 'ops-part', i18n('ops.phan_chu_y')), groups, el('div', 'ops-part', i18n('ops.phan_chi_tiet')));
+    if (cc) page.append(cc); page.append(pluginCard(), jobList(), evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }

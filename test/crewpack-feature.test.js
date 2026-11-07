@@ -67,3 +67,11 @@ test('the crew kit version is the commit of scripts/crew, empty when that is not
   const root = fixture(), res = await cp.crewRuntime()({ cwds: [root], days: 3 });
   assert.deepEqual(res.roots[0].kit, { commit: '', at: 0 });
 });
+
+test('a track names its repo, branch and remote from BASE, with any credentials in the remote removed', async () => {
+  const root = fixture(), cp2 = require('node:child_process');
+  const repo = path.join(root, 'repo'); cp2.execFileSync('git', ['init', '-q', repo]); cp2.execFileSync('git', ['-C', repo, 'remote', 'add', 'origin', 'https://bot:SECRET@gitlab.example.com/g/repo.git']);
+  fs.writeFileSync(path.join(root, '_crew', 'tasks', 't-asleep', 'tracks', 'W1', 'BASE'), 'repo=repo\nbase_ref=main\nbranch=crew/t-asleep-w1\n');
+  const res = await cp.crewRuntime()({ cwds: [root], days: 3 }), k = res.roots[0].tasks.find((t) => t.id === 't-asleep').tracks[0];
+  assert.deepEqual([k.repo, k.branch, k.remote], ['repo', 'crew/t-asleep-w1', 'https://gitlab.example.com/g/repo.git']);
+});
