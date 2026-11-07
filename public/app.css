@@ -1414,3 +1414,7 @@ dialog.drop-remote{display:none}
 .file-pick .btn{pointer-events:none;flex:none;min-height:32px}
 .file-pick .fname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-2);font-size:13px}
 .file-pick:focus-within{outline:2px solid color-mix(in srgb,#2f80ed 55%,transparent);outline-offset:1px}
+/* Command templates popover: never wider than the space left of the window edge; long commands stay on one line, cut with … */
+#cmds .pop{width:max-content;max-width:min(560px,calc(100vw - 340px))}
+#cmds .pop .btn{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono,ui-monospace,monospace);font-size:12.5px}
+@media (max-width:760px){#cmds .pop{width:auto;max-width:none}}

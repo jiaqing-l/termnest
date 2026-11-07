@@ -305,7 +305,9 @@
         nt.append(el('b', '', i18n('app.may_chu_nay_chua_co')), el('span', 'mono', v.guidance || 'sudo apt install tmux')); n.append(nt); sec.append(n);
       } else {
         var g = el('div', 'grid');
-        v.sessions.filter(matches).forEach(function (s) {
+        // Grouped by state like the sidebar: waiting for you, then running, then idle (the usual order inside each group).
+        var RANK = { wait: 0, run: 1, idle: 2 };
+        v.sessions.filter(matches).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
           var key = v.id + '/' + s.name, old = previous[key];
           if (old && old.input && (old.input === active || old.input.value)) { var message = old.card.querySelector('.pet-message'); if (message) message.classList.remove('message-arrives'); cardRefs[key] = old; g.append(old.card); signature = '';  }
           else g.append(sessionCard(v, s));
@@ -1045,7 +1047,7 @@
     menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap);
     menu.addEventListener('click', function () { cmdOpen = false; menu.hidden = true; mb.setAttribute('aria-expanded', 'false'); });
     mb.onclick = function (e) { e.stopPropagation(); popToggle(mb, menu); };
-    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; menu.append(b); });
+    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.title = c; b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; menu.append(b); });
   }
   // ---- Effects: Settings → Hiệu ứng. The usual look stays; public/fx.js adds a light layer of particles over it.
   var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]];
