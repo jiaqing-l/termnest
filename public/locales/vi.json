@@ -1323,5 +1323,13 @@
   "move.chat_none": "Không thấy cuộc chat nào của thư mục này trên máy cũ.",
   "look.see_waiting": "Xem {0} phiên đang chờ",
   "app.can_khoi_dong_lai_cap_nhat": "Cần khởi động lại (cập nhật)",
-  "app.can_khoi_dong_lai_title": "Ubuntu đã cài bản cập nhật cần khởi động lại máy mới có hiệu lực. Bấm để xem phiên nào đang chạy rồi mới quyết định."
+  "app.can_khoi_dong_lai_title": "Ubuntu đã cài bản cập nhật cần khởi động lại máy mới có hiệu lực. Bấm để xem phiên nào đang chạy rồi mới quyết định.",
+  "term.interrupt": "Ngắt",
+  "term.interrupt_title": "Gửi Ctrl+C để dừng lệnh đang chạy (không phải sao chép). Sao chép: ⌘C trên Mac, Ctrl+C khi đang chọn chữ trên Windows, hoặc chuột phải → Sao chép.",
+  "term.copy": "Sao chép",
+  "term.paste": "Dán",
+  "term.select_all": "Chọn tất cả",
+  "term.clear": "Xóa màn hình",
+  "term.clear_history": "Xóa lịch sử cuộn",
+  "term.history_cleared": "Đã xóa lịch sử cuộn."
 }

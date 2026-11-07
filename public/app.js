@@ -336,6 +336,36 @@
     renderTabs(); renderDetail(); renderBar();
     sayUndo(say_, i18n('app.hoan_tac'), function () { keys.forEach(function (k) { tabHide.show(k); }); renderTabs(); }, 5000);
   }
+  function termMenu(p, ev) {
+    ev.preventDefault(); ev.stopPropagation();
+    var old = document.querySelector('.tab-menu'); if (old) old.remove();
+    var mac = /Mac/.test(navigator.platform || ''), sel = p.term.getSelection(), x = p.cur && srv(p.cur.id) ? { v: srv(p.cur.id), name: p.cur.name } : null;
+    var menu = el('div', 'tab-menu term-menu'); menu.setAttribute('role', 'menu');
+    function paste() {
+      var got = window.TW_DESKTOP ? window.TW_DESKTOP.paste() : (navigator.clipboard && navigator.clipboard.readText ? navigator.clipboard.readText() : Promise.reject());
+      Promise.resolve(got).then(function (t) { if (t) { p.ime.preparePaste(); p.term.paste(t); } focusTerminal(p); }).catch(function () { say(i18n('app.khong_dan_duoc'), false, 4000); });
+    }
+    function clearHistory() { if (!x) return Promise.resolve(); return api('POST', '/api/servers/' + x.v.id + '/sessions/' + encodeURIComponent(x.name) + '/keys', { clearHistory: true, text: '' }); }
+    [[i18n('term.copy'), mac ? '⌘C' : 'Ctrl+C', function () { copySelection(p); }, !!sel],
+     [i18n('term.paste'), mac ? '⌘V' : 'Ctrl+V', paste, true],
+     [i18n('term.select_all'), mac ? '⌘A' : '', function () { p.term.selectAll(); }, true],
+     null,
+     [i18n('term.clear'), 'Ctrl+L', function () { p.term.clear(); paneSend(p, '\x0c'); clearHistory().catch(function () {}); focusTerminal(p); }, !!x],
+     [i18n('term.clear_history'), '', function () { p.term.clear(); clearHistory().then(function () { say(i18n('term.history_cleared'), true, 2000); }).catch(function (e) { say(e.message, false, 3000); }); }, !!x],
+     null,
+     [i18n('term.interrupt'), 'Ctrl+C', function () { paneSend(p, '\x03'); focusTerminal(p); }, !!x]
+    ].forEach(function (row) {
+      if (!row) { menu.append(el('div', 'term-menu-sep')); return; }
+      var it = el('button', 'tab-menu-item', row[0]); it.setAttribute('role', 'menuitem'); it.disabled = !row[3];
+      if (row[1]) it.append(el('kbd', '', row[1]));
+      it.onclick = function () { menu.remove(); row[2](); }; menu.append(it);
+    });
+    document.body.append(menu);
+    menu.style.left = Math.max(8, Math.min(ev.clientX, innerWidth - menu.offsetWidth - 8)) + 'px'; menu.style.top = Math.max(8, Math.min(ev.clientY, innerHeight - menu.offsetHeight - 8)) + 'px';
+    function gone() { menu.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); }
+    function away(e) { if (!menu.contains(e.target)) gone(); } function esc(e) { if (e.key === 'Escape') gone(); }
+    document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true);
+  }
   function tabContextMenu(x, ev) {
     ev.preventDefault(); ev.stopPropagation();
     var old = document.querySelector('.tab-menu'); if (old) old.remove();
@@ -604,9 +634,12 @@
     function send(d) { paneSend(p, d); }
     scrollbar(p);
     p.ime = window.TerminalIME.attach(p.term, send, { enabled: (function () { var m = ''; try { m = localStorage.getItem('tw-ime') || ''; } catch (e) { /* optional */ } return m === 'on' ? true : m === 'off' ? false : undefined; })(), onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
+    // Right-click menu, like VS Code's terminal: copy, paste, select all, clear the screen, clear the scrollback, interrupt.
+    p.host.addEventListener('contextmenu', function (ev) { termMenu(p, ev); });
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
-      if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
+      // Copy: ⌘C on a Mac; Ctrl+Shift+C anywhere; on Windows/Linux plain Ctrl+C copies while text is selected (else it interrupts).
+      if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey || event.ctrlKey && !event.altKey && !/Mac/.test(navigator.platform || '')) && p.term.getSelection()) {
         event.preventDefault(); copySelection(p);
       }
       // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.

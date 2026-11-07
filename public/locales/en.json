@@ -1340,5 +1340,13 @@
   "move.chat_none": "No chat of this folder was found on the old machine.",
   "look.see_waiting": "See the {0} waiting sessions",
   "app.can_khoi_dong_lai_cap_nhat": "Restart needed (updates)",
-  "app.can_khoi_dong_lai_title": "Ubuntu installed updates that take effect after a restart. Click to see what is running before deciding."
+  "app.can_khoi_dong_lai_title": "Ubuntu installed updates that take effect after a restart. Click to see what is running before deciding.",
+  "term.interrupt": "Interrupt",
+  "term.interrupt_title": "Sends Ctrl+C to stop the running command (not copy). Copy: ⌘C on a Mac, Ctrl+C with text selected on Windows, or right-click → Copy.",
+  "term.copy": "Copy",
+  "term.paste": "Paste",
+  "term.select_all": "Select all",
+  "term.clear": "Clear screen",
+  "term.clear_history": "Clear scrollback",
+  "term.history_cleared": "Scrollback cleared."
 }

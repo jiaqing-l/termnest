@@ -898,3 +898,13 @@ test('servers are added with SSH keys only unless password login is allowed in S
   const k = await h.request('POST', '/api/ssh-key/new', {});
   assert.match(k.body.publicKey, /^ssh-ed25519 /); assert.match(k.body.command, /authorized_keys/); assert.ok(!JSON.stringify(k.body).includes('PRIVATE KEY'));
 });
+
+test('the terminal menu can clear a pane\'s tmux scrollback', async (t) => {
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const id = '77777777-7777-7777-7777-777777777777', cfg = { id }, calls = [];
+  h.vault.data.servers.push(cfg);
+  h.remotes.set(id, { cfg, ready: true, mode: 'native', snapshot: { sessions: [] }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '' }; }, poll: async () => {} });
+  const r = await h.request('POST', `/api/servers/${id}/sessions/SV1/keys`, { clearHistory: true, text: '' });
+  assert.equal(r.code, 200); assert.match(calls[0], /tmux clear-history -t '=SV1:'/);
+});

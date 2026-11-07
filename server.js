@@ -652,6 +652,13 @@ async function screens(req, res, r) {
 
 async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
+  // "Xóa lịch sử cuộn" from the terminal menu: drop tmux's scrollback of the pane (the screen itself stays).
+  if (b.clearHistory === true) {
+    if (!name || name.length > 128 || r.mode === 'powershell') { fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return; }
+    const out = await r.exec(`tmux clear-history -t ${shq(`=${name}:`)}`);
+    if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_noi_dung')); return; }
+    send(res, 200, { ok: true }); return;
+  }
   if (!name || name.length > 128 || typeof b.text !== 'string' || b.text.length > 1000 ||
       BAD_KEYS.test(b.text) || (b.enter !== undefined && typeof b.enter !== 'boolean')) {
     fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return;
