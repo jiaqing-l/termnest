@@ -154,3 +154,15 @@ body{font-size:13.5px}
 .detail .hl-m b{font:500 12.5px var(--sans);color:var(--fg)}
 .detail .hl-m.warn b{color:var(--wait)}
 #app:not(.compact) .detail .detail-actions{margin-top:0}
+.fc .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+/* One server: a single slim row (name · three bars · tags) instead of a tall, mostly empty card. */
+@media (min-width:900px){
+  #fleet:has(>.fc:only-child) .fc{display:grid;grid-template-columns:minmax(220px,max-content) minmax(0,1fr) max-content;align-items:center;column-gap:28px;padding:12px 16px}
+  #fleet:has(>.fc:only-child) .fc-h,#fleet:has(>.fc:only-child) .rings{margin:0}
+  #fleet:has(>.fc:only-child) .fc-h{flex-wrap:wrap;gap:4px 10px}
+  #fleet:has(>.fc:only-child) .tags{margin:0;justify-content:flex-end}
+}
+/* Newer Chromium honours justify-items in block layout: app.css centres the old ring's label with place-items. */
+.fc .rg .d{display:block!important;place-items:normal!important}
+.fc .rg .rg-value{min-height:0!important;line-height:1.3}
+.fc .rings{min-height:0!important}.fc .fc-h{min-height:0}.fc>.tags{min-height:0}
