@@ -22,6 +22,8 @@ const { injectReportLinks } = require('./lib/report-links');
 const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 const { cleanFlags } = require('./lib/agent-flags');
+const { acquireDataLock, unlockFromFile } = require('./lib/service-runtime');
+const opsRuntime = require('./lib/features/ops');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
@@ -693,6 +695,11 @@ async function api(req, res, url) {
       ...(process.env.TW_PACKAGED === '1' ? { packaged: true } : {}) });
     return;
   }
+  if (p === '/api/supervisor/status' && m === 'GET') {
+    const runtime = opsRuntime.runtimeStatus();
+    send(res, 200, { unlocked: vault.unlocked, monitoring: vault.unlocked && !draining && runtime.monitoring, error: runtime.error });
+    return;
+  }
   // First run on a new machine: start from a backup file instead of an empty store. The backup keeps its own password.
   if (p === '/api/setup/restore' && m === 'POST') {
     if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
@@ -1001,10 +1008,11 @@ setInterval(() => {
 }, 30000).unref();
 
 let draining = false;
-const activeWork = () => activeRequests > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
+const activeWork = () => activeRequests > 0 || opsRuntime.runtimeStatus().pending > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
 function drain() {
   if (draining) return;
   draining = true;
+  opsRuntime.stop();
   const wait = () => activeWork() ? setTimeout(wait, 100) : shutdown();
   setImmediate(wait);
 }
@@ -1012,6 +1020,7 @@ let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
+  opsRuntime.stop();
   saveHistory();
   tokenCache.close();
   for (const ws of openTerms) ws.terminate();
@@ -1022,6 +1031,21 @@ function shutdown() {
 process.on('SIGTERM', drain);
 process.on('SIGINT', drain);
 
-server.listen(PORT, HOST, () => { if (!process.argv.includes('--desktop-pipe')) console.log(`Termnest: http://${HOST}:${PORT}`); });
+let dataLock;
+async function boot() {
+  try {
+    dataLock = await acquireDataLock(DATA);
+    if (draining) { dataLock.release(); return; }
+    const headless = unlockFromFile(vault, process.env.TW_PASSWORD_FILE, () => {});
+    server.once('error', () => { console.error('RUNTIME_LISTEN_FAILED'); process.exit(1); });
+    server.listen(PORT, HOST, () => {
+      if (headless) startRemotes();
+      if (!process.argv.includes('--desktop-pipe')) console.log(`Termnest: http://${HOST}:${PORT}`);
+    });
+  } catch (e) {
+    console.error(e.code?.startsWith('RUNTIME_') ? e.code : 'RUNTIME_START_FAILED');
+    process.exit(1);
+  }
+}
 
-if (typeof module !== 'undefined') module.exports = { server, shutdown, activeWork, drain };
+if (typeof module !== 'undefined') { module.exports = { server, shutdown, activeWork, drain }; boot(); }
