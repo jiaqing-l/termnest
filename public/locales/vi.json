@@ -1040,7 +1040,7 @@
   "fileviewer.luu_ten": "Lưu",
   "fileviewer.da_vao_thung_rac": "Đã chuyển “{0}” vào thùng rác.",
   "fileviewer.hoan_tac": "Hoàn tác",
-  "fileviewer.thung_rac_trong": "Thùng rác trống.",
+  "fileviewer.thung_rac_trong": "Thùng rác trống",
   "fileviewer.khoi_phuc": "Khôi phục",
   "fileviewer.da_khoi_phuc": "Đã khôi phục “{0}”.",
   "fileviewer.thung_rac_ghi_chu": "Các mục nằm trong thư mục ẩn .termnest-trash của thư mục phiên (git bỏ qua). Tự dọn theo Cài đặt → Dọn dẹp.",
@@ -1143,7 +1143,7 @@
   "fileviewer.xoa_da_chon": "Xóa đã chọn ({0})",
   "fileviewer.xoa_tat_ca": "Xóa tất cả",
   "fileviewer.xoa_tat_ca_tam_hoi": "Xóa cả {0} file tạm trên máy này?",
-  "fileviewer.file_tam_trong": "Không có file tạm.",
+  "fileviewer.file_tam_trong": "Chưa có file tạm",
   "fileviewer.file_tam_ghi_chu": "Các file nhận qua \"Gửi file\" được lưu ở {0} (chỉ tài khoản của bạn đọc được). Tự xóa theo Cài đặt → Dọn dẹp.",
   "settings.cleanup": "Sao lưu và dọn dẹp",
   "settings.cleanup_hint": "Áp dụng cho mọi máy đang kết nối.",
@@ -1333,5 +1333,13 @@
   "term.clear_history": "Xóa lịch sử cuộn",
   "term.history_cleared": "Đã xóa lịch sử cuộn.",
   "app.xong_luc_cho_tiep": "Đã xong lúc {0}, đang chờ việc tiếp",
-  "app.da_xong_cho_tiep": "Đã xong, đang chờ việc tiếp"
+  "app.da_xong_cho_tiep": "Đã xong, đang chờ việc tiếp",
+  "fileviewer.chu_nho": "Chữ nhỏ hơn",
+  "fileviewer.chu_to": "Chữ to hơn",
+  "fileviewer.thung_rac_trong_sub": "Tệp và thư mục bạn chuyển vào thùng rác sẽ nằm ở đây để khôi phục hoặc xóa hẳn.",
+  "fileviewer.thung_rac_ghi_chu2": "Tự dọn theo Cài đặt → Sao lưu → Dọn dẹp.",
+  "fileviewer.file_tam_trong_sub": "Tệp bạn gửi cho agent bằng \"Gửi file\" sẽ nằm ở đây.",
+  "fileviewer.file_tam_ghi_chu2": "Chỉ tài khoản của bạn đọc được. Tự xóa theo Cài đặt → Sao lưu → Dọn dẹp.",
+  "side.collapse": "Thu gọn thanh bên",
+  "side.expand": "Mở rộng thanh bên"
 }

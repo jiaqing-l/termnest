@@ -109,14 +109,24 @@
     }
     $('shelf').innerHTML = scoped().flatMap(function (v) { return (v.houseSessions || v.sessions).map(function (s) { return { v: v, s: s }; }); }).slice(0, 5).map(function (x) { return pet(petFor(x.v, x.s), x.s.state); }).join('');
   }
+  // Without pets (or in the narrow sidebar) a session shows the first letters of its name instead of an empty tile.
+  function initials(name) { var parts = String(name).split(/[-_\s.]+/).filter(Boolean); return ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : (parts[0] || '').slice(1, 2))).toUpperCase(); }
+  // The sidebar can shrink to a rail of icons (remembered on this device).
+  var sideMini = false; try { sideMini = localStorage.getItem('tw-side-mini') === '1'; } catch (e) { /* optional */ }
+  function applySideMini() { $('app').classList.toggle('side-mini', sideMini); }
+  applySideMini();
   function renderSide() {
     var box = $('side'); box.textContent = '';
+    var tog = el('button', 'btn side-toggle', sideMini ? '»' : '«'); tog.type = 'button';
+    tog.title = i18n(sideMini ? 'side.expand' : 'side.collapse'); tog.setAttribute('aria-label', tog.title); tog.setAttribute('aria-expanded', String(!sideMini));
+    tog.onclick = function () { sideMini = !sideMini; try { localStorage.setItem('tw-side-mini', sideMini ? '1' : ''); } catch (e) { /* optional */ } applySideMini(); renderSide(); if (typeof sizeTerm === 'function') requestAnimationFrame(sizeTerm); };
+    box.append(tog);
     box.append(el('div', 'group', i18n('app.may_chu_2')));
     function row(id, title, sub, count, off) {
       var b = el('button', 'sess srv-row'); b.style.setProperty('--c', off ? '#7a879f' : '#2f80ed');
       b.setAttribute('aria-current', scope === id ? 'true' : 'false');
       var a = el('span', 'ava'); a.innerHTML = SRV_ICON; a.append(el('span', 'flag ' + (off ? 'off' : 'run')));
-      var t = el('span', 'txt'); t.append(el('span', 'n', title), el('span', 's', sub));
+      var t = el('span', 'txt'); t.append(el('span', 'n', title), el('span', 's', sub)); b.title = title;
       b.append(a, t); if (count) b.append(el('span', 'badge', count));
       b.onclick = function () { setScope(id); }; box.append(b);
     }
@@ -131,7 +141,8 @@
       list.forEach(function (x) {
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'flag ' + x.s.state));
+        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
+        b.title = x.s.name + ' · ' + x.v.name;
         var t = el('span', 'txt'); t.append(el('span', 'n', x.s.name), el('span', 's', scope === 'all' ? x.v.name : subOf(x.s)));
         b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
       });

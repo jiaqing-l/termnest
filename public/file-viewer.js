@@ -1,7 +1,20 @@
 'use strict';
 (function(root,factory){if(typeof module==='object')module.exports=factory();else root.FileViewer=factory();})(typeof window==='object'?window:this,function(){
  let renderer;
+ // READMEs often mix HTML into Markdown (centered titles, logos, badges, <br>). Raw HTML is never rendered, so turn the common
+ // tags into Markdown and drop decorative images/badges (they could not load here anyway). Code fences are left untouched.
+ function readmeHtml(text){
+  return String(text).split(/(^```[\s\S]*?^```)/m).map((part,i)=>i%2?part:part
+   .replace(/<(?:picture|source)\b[^>]*>|<\/picture>|<img\b[^>]*>/gi,'')
+   .replace(/<br\s*\/?>/gi,'  \n')
+   .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(m,n,t)=>t.trim()?'\n'+'#'.repeat(+n)+' '+t.replace(/\s+/g,' ').trim()+'\n':'')
+   .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi,(m,h,t)=>t.replace(/<[^>]*>/g,'').trim()?'['+t.replace(/<[^>]*>/g,'').trim()+']('+h+')':'')
+   .replace(/<\/?(?:strong|b)>/gi,'**').replace(/<\/?(?:em|i)>/gi,'*')
+   .replace(/<\/?(?:p|div|center|span|sub|sup|small|details|summary)\b[^>]*>/gi,'\n')
+   .replace(/\n{3,}/g,'\n\n')).join('');
+ }
  function markdown(text){
+  text=readmeHtml(text);
   if(!renderer){
    const MarkdownIt=typeof require==='function'?require('markdown-it'):self.markdownit;
    renderer=new MarkdownIt({html:false,linkify:true});
@@ -122,7 +135,15 @@
   headMenu.className='viewer-headmenu';headMenu.hidden=true;[copy,download,reload].forEach(b=>{b.className='btn viewer-menu-item';headMenu.append(b);});
   moreHead.onclick=e=>{e.stopPropagation();headMenu.hidden=!headMenu.hidden;};headMenu.addEventListener('click',()=>{headMenu.hidden=true;});
   doc.addEventListener('pointerdown',e=>{if(!headMenu.hidden&&!headMenu.contains(e.target)&&e.target!==moreHead)headMenu.hidden=true;},true);
-  head.append(title,back,insert,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
+  // Text size of the viewer (Markdown, text, HTML preview): A− / A+, remembered on this device.
+  let scale=1;try{const v=Number(localStorage.getItem('tw-viewer-scale'));if(v>=0.7&&v<=1.8)scale=v;}catch{/* optional */}
+  const zoom=doc.createElement('span');zoom.className='viewer-zoom';
+  const zMinus=doc.createElement('button'),zPlus=doc.createElement('button');
+  [[zMinus,'A−',-0.1,'fileviewer.chu_nho'],[zPlus,'A+',0.1,'fileviewer.chu_to']].forEach(([b,t,d,k])=>{b.type='button';b.className='btn viewer-tool';b.textContent=t;b.title=i18n(k);b.setAttribute('aria-label',i18n(k));
+   b.onclick=()=>{scale=Math.round(Math.max(0.7,Math.min(1.8,scale+d))*10)/10;applyScale();try{localStorage.setItem('tw-viewer-scale',String(scale));}catch{/* optional */}};});
+  const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';};
+  zoom.append(zMinus,zPlus);applyScale();
+  head.append(title,back,insert,zoom,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
   let generation=0,current=null,worker=null,location=null;
   const cancel=()=>{if(worker){worker.terminate();worker=null;}};
   close.onclick=()=>{generation++;cancel();panel.hidden=true;body.textContent='';current=null;};
@@ -261,6 +282,7 @@
    };
    reset();return box;
   }
+  function emptyState(icon,text,sub){const e=doc.createElement('div');e.className='viewer-empty';const i=doc.createElement('span');i.className='viewer-empty-i';i.textContent=icon;const t=doc.createElement('b');t.textContent=text;const s=doc.createElement('small');s.textContent=sub;e.append(i,t,s);return e;}
   function listHead(title,count,bytes,extra){
    const head=doc.createElement('div');head.className='viewer-list-head';const t=doc.createElement('b');t.textContent=title;
    const n=doc.createElement('small');n.textContent=i18n('fileviewer.so_muc',[count,size(bytes||0)]);head.append(t,n,...extra);return head;
@@ -268,6 +290,7 @@
   function backTo(host,session,dir){const back=doc.createElement('button');back.type='button';back.className='btn';back.textContent=i18n('fileviewer.ve_thu_muc');back.onclick=()=>showBrowser(host,session,dir);return back;}
   // The trash of the session folder, newest first: Restore, Delete for good (item by item, asked first) and Empty trash.
   async function showTrash(host,session,dir,out0){
+   setTitle(i18n('fileviewer.thung_rac'));back.hidden=true;insert.hidden=true;
    body.textContent='';body.append(backTo(host,session,dir));
    const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
    const again=()=>showTrash(host,session,dir,out0),q='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session);
@@ -276,7 +299,7 @@
     wait.remove();
     const empty=r.items.length?[confirmBtn('🧹 '+i18n('fileviewer.don_thung_rac'),i18n('fileviewer.don_thung_rac_hoi',[r.count||r.items.length]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/empty',{server:host,session});await again();},true)]:[];
     body.append(listHead(i18n('fileviewer.thung_rac'),r.count||r.items.length,r.bytes,empty));
-    const list=doc.createElement('div');list.className='viewer-browser';
+    const list=doc.createElement('div');list.className='viewer-browser viewer-list';
     r.items.forEach(it=>{
      const row=doc.createElement('div');row.className='viewer-row';const info=doc.createElement('div');info.className='viewer-trash-info';
      const name=doc.createElement('b');name.textContent=(it.kind==='folder'?'📁 ':'📄 ')+it.name;const where=doc.createElement('small');where.textContent=it.rel+' · '+size(it.bytes||0)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,where);
@@ -285,13 +308,13 @@
      const purge=confirmBtn(i18n('fileviewer.xoa_vinh_vien'),i18n('fileviewer.xoa_vinh_vien_hoi',[it.name]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/purge',{server:host,session,id:it.id});await again();},true);
      row.append(info,rest,purge,msg);list.append(row);
     });
-    if(!r.items.length){const none=doc.createElement('p');none.className='viewer-note';none.textContent=i18n('fileviewer.thung_rac_trong');list.append(none);}
-    body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.thung_rac_ghi_chu');body.append(help);
+    if(!r.items.length)list.append(emptyState('🗑',i18n('fileviewer.thung_rac_trong'),i18n('fileviewer.thung_rac_trong_sub')));
+    body.append(list);const help=doc.createElement('p');help.className='viewer-foot';help.textContent=i18n('fileviewer.thung_rac_ghi_chu2');body.append(help);
    }catch(e){wait.textContent=e.message;}
   }
   // Files "Send file" stored on this machine (its private temp folder), newest first: pick some to delete, or delete them all.
   async function showTemp(host,session,dir){
-   generation++;cancel();location=[host,session,''];current=null;back.hidden=true;backState=null;insert.hidden=true;setTitle(i18n('fileviewer.file_tam_tieu_de'));copy.disabled=download.disabled=reload.disabled=true;
+   generation++;cancel();location=[host,session,''];current=null;back.hidden=true;backState=null;insert.hidden=true;setTitle(i18n('fileviewer.file_tam'));copy.disabled=download.disabled=reload.disabled=true;
    body.textContent='';body.append(backTo(host,session,dir));
    const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
    const again=()=>showTemp(host,session,dir);
@@ -305,7 +328,7 @@
     delSel.onclick=async()=>{delSel.disabled=true;try{await api('POST','/api/features/browse/temp',{server:host,names:[...chosen]});await again();}catch(err){selMsg.textContent=err.message;label();}};
     const all=r.items.length?[delSel,confirmBtn(i18n('fileviewer.xoa_tat_ca'),i18n('fileviewer.xoa_tat_ca_tam_hoi',[r.count]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/temp',{server:host,all:true});await again();},true),selMsg]:[];
     body.append(listHead(i18n('fileviewer.file_tam'),r.count,r.bytes,all));
-    const list=doc.createElement('div');list.className='viewer-browser';
+    const list=doc.createElement('div');list.className='viewer-browser viewer-list';
     r.items.forEach(it=>{
      const row=doc.createElement('label');row.className='viewer-row viewer-pick';const box=doc.createElement('input');box.type='checkbox';
      box.onchange=()=>{if(box.checked)chosen.add(it.name);else chosen.delete(it.name);label();};
@@ -314,8 +337,8 @@
      const meta=doc.createElement('small');meta.textContent=size(it.bytes)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,meta);
      row.append(box,info);list.append(row);
     });
-    if(!r.items.length){const none=doc.createElement('p');none.className='viewer-note';none.textContent=i18n('fileviewer.file_tam_trong');list.append(none);}
-    body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.file_tam_ghi_chu',[r.dir||'']);body.append(help);
+    if(!r.items.length)list.append(emptyState('🗂',i18n('fileviewer.file_tam_trong'),i18n('fileviewer.file_tam_trong_sub')));
+    body.append(list);const help=doc.createElement('p');help.className='viewer-foot';help.textContent=i18n('fileviewer.file_tam_ghi_chu2');help.title=r.dir||'';body.append(help);
    }catch(e){wait.textContent=e.message;}
   }
   // In pick mode a click on a file hands it to the caller instead of opening it.

@@ -1057,7 +1057,7 @@
   "fileviewer.luu_ten": "Save",
   "fileviewer.da_vao_thung_rac": "“{0}” was moved to the trash.",
   "fileviewer.hoan_tac": "Undo",
-  "fileviewer.thung_rac_trong": "The trash is empty.",
+  "fileviewer.thung_rac_trong": "The trash is empty",
   "fileviewer.khoi_phuc": "Restore",
   "fileviewer.da_khoi_phuc": "“{0}” was restored.",
   "fileviewer.thung_rac_ghi_chu": "Items are kept in the hidden .termnest-trash folder inside the session folder (ignored by git). They are cleaned up as set in Settings → Clean-up.",
@@ -1160,7 +1160,7 @@
   "fileviewer.xoa_da_chon": "Delete selected ({0})",
   "fileviewer.xoa_tat_ca": "Delete all",
   "fileviewer.xoa_tat_ca_tam_hoi": "Delete all {0} temp files on this machine?",
-  "fileviewer.file_tam_trong": "No temp files.",
+  "fileviewer.file_tam_trong": "No temp files yet",
   "fileviewer.file_tam_ghi_chu": "Files received with \"Send file\" are kept in {0} (readable by your account only). They are removed as set in Settings → Clean-up.",
   "settings.cleanup": "Backup and clean-up",
   "settings.cleanup_hint": "Applies to every connected machine.",
@@ -1350,5 +1350,13 @@
   "term.clear_history": "Clear scrollback",
   "term.history_cleared": "Scrollback cleared.",
   "app.xong_luc_cho_tiep": "Finished at {0}, waiting for the next task",
-  "app.da_xong_cho_tiep": "Finished, waiting for the next task"
+  "app.da_xong_cho_tiep": "Finished, waiting for the next task",
+  "fileviewer.chu_nho": "Smaller text",
+  "fileviewer.chu_to": "Larger text",
+  "fileviewer.thung_rac_trong_sub": "Files and folders you move to the trash wait here to be restored or deleted for good.",
+  "fileviewer.thung_rac_ghi_chu2": "Cleaned up as set in Settings → Backup → Clean-up.",
+  "fileviewer.file_tam_trong_sub": "Files you send to an agent with \"Send file\" appear here.",
+  "fileviewer.file_tam_ghi_chu2": "Readable by your account only. Removed as set in Settings → Backup → Clean-up.",
+  "side.collapse": "Collapse the sidebar",
+  "side.expand": "Expand the sidebar"
 }
