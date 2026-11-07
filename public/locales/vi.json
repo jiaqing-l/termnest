@@ -1331,5 +1331,7 @@
   "term.select_all": "Chọn tất cả",
   "term.clear": "Xóa màn hình",
   "term.clear_history": "Xóa lịch sử cuộn",
-  "term.history_cleared": "Đã xóa lịch sử cuộn."
+  "term.history_cleared": "Đã xóa lịch sử cuộn.",
+  "app.xong_luc_cho_tiep": "Đã xong lúc {0}, đang chờ việc tiếp",
+  "app.da_xong_cho_tiep": "Đã xong, đang chờ việc tiếp"
 }

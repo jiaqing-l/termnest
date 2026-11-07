@@ -1348,5 +1348,7 @@
   "term.select_all": "Select all",
   "term.clear": "Clear screen",
   "term.clear_history": "Clear scrollback",
-  "term.history_cleared": "Scrollback cleared."
+  "term.history_cleared": "Scrollback cleared.",
+  "app.xong_luc_cho_tiep": "Finished at {0}, waiting for the next task",
+  "app.da_xong_cho_tiep": "Finished, waiting for the next task"
 }

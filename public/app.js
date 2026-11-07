@@ -713,11 +713,17 @@
 
   /* Overview tools */
   // Claude and Codex draw a status bar under the conversation; it is never the question, so skip it when quoting the screen.
-  var CHROME = /auto mode|shift\+tab|for shortcuts|esc to interrupt|bypass permissions|accept edits|ctrl\+[a-z]|⏵⏵|▸▸|^[\s─━═\-_•·|]+$|^\s*[❯>]\s*$/i;
+  // Lines the agents draw themselves (footer, update notices, "✻ Crunched for 1m 45s · done 3:00 PM"): never the question.
+  var CHROME = /auto mode|shift\+tab|for shortcuts|esc to interrupt|bypass permissions|accept edits|ctrl\+[a-z]|⏵⏵|▸▸|^[\s─━═\-_•·|]+$|^\s*[❯>]\s*$|new task\?|\/clear to save|\d+(\.\d+)?k tokens|update installed|restart to (apply|update)|auto-updating|update available|context left|\b[a-z]+ed for (\d+h ?)?(\d+m ?)?\d+s\b|· done\b/i;
+  var DONE_AT = /\b[a-z]+ed for [^·]*·\s*done\s+(?:[A-Za-z]+\s+)?(\d{1,2}:\d{2}(?:\s?[AP]M)?)/i;
   // A line like "──────── Load ảnh màn ────" keeps its words but loses the rule; a bare rule disappears.
   function plain(line) { return line.replace(/[─━═]{2,}/g, ' ').replace(/\s+/g, ' ').trim(); }
   function question(s) {
     var lines = (s.lines || []).filter(function (line) { return line.trim() && !CHROME.test(line); }).map(plain).filter(Boolean);
+    if (s.asking && lines.length) return lines.slice(-1)[0];
+    // Not a question: the agent finished its turn. Say so in plain words (with the time it printed, when there is one).
+    var done = null; (s.lines || []).forEach(function (l) { var m = l.match(DONE_AT); if (m) done = m[1]; });
+    if (!s.asking) return done ? i18n('app.xong_luc_cho_tiep', [done]) : i18n('app.da_xong_cho_tiep');
     return lines.slice(-1)[0] || i18n('app.phien_dang_cho_ban_co');
   }
   // Animal names come from the language files; a character registered with its own label keeps that label.
