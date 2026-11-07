@@ -117,11 +117,12 @@
   applySideMini();
   function renderSide() {
     var box = $('side'); box.textContent = '';
-    var tog = el('button', 'btn side-toggle', sideMini ? '»' : '«'); tog.type = 'button';
+    var tog = el('button', 'btn side-toggle'); tog.type = 'button';
+    tog.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="' + (sideMini ? 'M13 10l2 2-2 2' : 'M16 10l-2 2 2 2') + '"/></svg>';
     tog.title = i18n(sideMini ? 'side.expand' : 'side.collapse'); tog.setAttribute('aria-label', tog.title); tog.setAttribute('aria-expanded', String(!sideMini));
     tog.onclick = function () { sideMini = !sideMini; try { localStorage.setItem('tw-side-mini', sideMini ? '1' : ''); } catch (e) { /* optional */ } applySideMini(); renderSide(); if (typeof sizeTerm === 'function') requestAnimationFrame(sizeTerm); };
     box.append(tog);
-    box.append(el('div', 'group', i18n('app.may_chu_2')));
+    box.append(el('div', 'group g-srv', i18n('app.may_chu_2')));
     function row(id, title, sub, count, off) {
       var b = el('button', 'sess srv-row'); b.style.setProperty('--c', off ? '#7a879f' : '#2f80ed');
       b.setAttribute('aria-current', scope === id ? 'true' : 'false');
@@ -805,8 +806,11 @@
         }
       }
       var tags = el('div', 'tags'), waits = v.sessions.filter(function (s) { return s.state === 'wait'; }).length;
-      tags.append(el('span', 'tg', i18n('app.phien_2', [v.sessions.length])));
-      if (waits) tags.append(el('span', 'tg w', i18n('app.cho_ban_5', [waits])));
+      // One machine in view: the hero already says how many sessions and how many wait, so the card shows only problems.
+      if (scoped().length > 1) {
+        tags.append(el('span', 'tg', i18n('app.phien_2', [v.sessions.length])));
+        if (waits) tags.append(el('span', 'tg w', i18n('app.cho_ban_5', [waits])));
+      }
       if (v.workers.length) tags.append(el('span', 'tg', v.workers.length + ' worker Crew'));
       if (sys && (sys.failed || []).length) tags.append(el('span', 'tg b', i18n('app.dich_vu_loi', [sys.failed.length])));
       if (sys && sys.rebootRequired) {
@@ -818,7 +822,7 @@
         } else tags.append(el('span', 'tg b', i18n('app.can_khoi_dong_lai')));
       }
       if (sys && sys.updates) tags.append(el('span', 'tg w', i18n('app.ban_cap_nhat', [sys.updates])));
-      card.append(tags); box.append(card);
+      if (tags.children.length) card.append(tags); box.append(card);
     });
   }
   function rebootDlg(v) {

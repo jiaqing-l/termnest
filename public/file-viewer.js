@@ -143,6 +143,7 @@
    b.onclick=()=>{scale=Math.round(Math.max(0.7,Math.min(1.8,scale+d))*10)/10;applyScale();try{localStorage.setItem('tw-viewer-scale',String(scale));}catch{/* optional */}};});
   const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';};
   zoom.append(zMinus,zPlus);applyScale();
+  insert.className+=' viewer-insert';close.className+=' viewer-close';
   head.append(title,back,insert,zoom,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
   let generation=0,current=null,worker=null,location=null;
   const cancel=()=>{if(worker){worker.terminate();worker=null;}};

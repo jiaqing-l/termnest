@@ -1,0 +1,56 @@
+.ops-page{max-width:1100px;margin:0 auto}
+.ops-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.ops-title{flex:1 1 260px;min-width:0}
+.ops-title h2{margin:0;font:800 20px var(--round)}
+.ops-title p{margin:2px 0 0;color:var(--fg-3);font-size:12.5px}
+.ops-sum{display:flex;gap:6px;flex-wrap:wrap}
+.ops-chip{display:inline-flex;align-items:baseline;gap:5px;padding:5px 11px;border-radius:99px;background:var(--surface-2);font-size:12px;color:var(--fg-2)}
+.ops-chip b{font:800 14px var(--round)}
+.ops-chip.urgent b{color:var(--bad)}.ops-chip.warn b{color:var(--wait)}.ops-chip.info b{color:var(--fg-3)}
+.ops-tools{display:flex;gap:6px}
+.ops-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px}
+.ops-card-h{display:flex;align-items:center;gap:10px;padding:6px 8px}
+.ops-card-h h3{margin:0;flex:1;font:800 14px var(--round)}
+.ops-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px}
+.ops-row+.ops-row{border-top:1px solid var(--line)}
+.ops-row:hover{background:var(--surface-2)}
+.ops-dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--fg-3)}
+.ops-row.urgent .ops-dot{background:var(--bad)}.ops-row.warn .ops-dot{background:var(--wait)}
+.ops-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ops-t b{font-size:13.5px}
+.ops-t small{color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-msg{margin-top:3px;padding:4px 8px;border-radius:7px;background:var(--surface-2);font-size:11.5px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ops-acts{display:flex;gap:6px;flex:none}
+.ops-acts .btn{min-height:30px;padding:0 11px;font-size:12.5px}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--fg-2)}
+.btn.ghost:hover{background:var(--surface-2)}
+.ops-empty{margin:0;padding:18px;text-align:center;color:var(--fg-3);font-size:13px}
+.ops-empty.ok{color:var(--fg-2)}
+.ops-log{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 10px;font-size:12.5px}
+.ops-log+.ops-log{border-top:1px solid var(--line)}
+.ops-log-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-log time{color:var(--fg-3);font-size:11.5px}
+.ops-st{padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;background:var(--surface-2);color:var(--fg-2)}
+.ops-st.ok{background:color-mix(in srgb,#19c37d 16%,transparent);color:#0f8a57}
+.ops-st.bad{background:var(--bad-soft);color:var(--bad)}
+.ops-badge{margin-left:5px;display:inline-block;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--wait);color:#3b2500;font:800 10.5px/16px var(--round);text-align:center}
+.ops-rules{padding:8px 10px}
+.ops-pack{color:var(--fg-3)}
+.ops-note{margin:0 8px 8px;color:var(--fg-3);font-size:12px}
+.ops-grid{display:grid;grid-template-columns:minmax(0,1fr) 150px 110px;gap:8px 12px;align-items:center;padding:0 8px}
+.ops-rn{display:flex;flex-direction:column;min-width:0}
+.ops-rn b{font-size:13px}.ops-rn small{color:var(--fg-3);font-size:11.5px}
+.ops-grid select,.ops-grid input{min-height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:0 8px;font:inherit;font-size:12.5px;width:100%;box-sizing:border-box}
+.ops-after{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-3)}
+.ops-after input{width:64px}
+.ops-tpl{padding:12px 8px 0;display:flex;flex-direction:column;gap:8px}
+.ops-tpl h4{margin:0;font-size:13px}
+.ops-tpl label{display:grid;grid-template-columns:90px minmax(0,1fr);gap:10px;align-items:start;font-size:12px;color:var(--fg-3)}
+.ops-tpl textarea{border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 8px;font:12.5px var(--mono,monospace);resize:vertical}
+.ops-bar{display:flex;flex-wrap:wrap;gap:6px;padding:12px 8px 4px}
+@media(max-width:640px){
+  .ops-row{flex-wrap:wrap}.ops-acts{width:100%;justify-content:flex-end}
+  .ops-grid{grid-template-columns:minmax(0,1fr) 120px}.ops-after{grid-column:2}
+  .ops-tpl label{grid-template-columns:1fr}
+  .ops-log{grid-template-columns:auto minmax(0,1fr)}.ops-log time{grid-column:2}
+}

@@ -1356,14 +1356,44 @@ dialog.drop-remote{display:none}
 .pets-off .sess .ava .ava-i{display:block}
 .pets-off .sess .ava{background:color-mix(in srgb,var(--c) 18%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 35%,transparent)}
 /* Sidebar toggle and the narrow rail */
-.side-toggle{align-self:flex-end;min-height:26px!important;padding:0 9px!important;margin:4px 6px 2px;font-weight:800;color:var(--fg-3)}
-#app.side-mini .side{width:72px}
-#app.side-mini .side .txt,#app.side-mini .side .group,#app.side-mini .side .add-srv{display:none}
-#app.side-mini .side .sess{justify-content:center;padding:6px 0;position:relative}
-#app.side-mini .side .badge{position:absolute;top:2px;right:8px;transform:scale(.85)}
-#app.side-mini .side .side-toggle{align-self:center;margin:6px 0}
-#app.side-mini .side .ava .ava-i{display:block}
-#app.side-mini .side .ava .pet-art,#app.side-mini .side .ava svg:not(.i){display:none}
-#app.side-mini .side .sess+.group{display:block;height:1px;margin:6px 10px;background:var(--line);font-size:0}
-#app.side-mini .side-foot,#app.side-mini .side .sys-mini{display:none}
-#app.side-mini .health{display:none}
+.side-toggle{align-self:flex-end;width:30px;min-height:30px!important;padding:0!important;margin:6px 8px 0;display:grid;place-items:center;color:var(--fg-3);background:transparent;border-color:transparent}
+.side-toggle:hover{color:var(--fg);background:var(--surface-2)}
+#app.side-mini .side{width:68px}
+#app.side-mini .side .txt,#app.side-mini .side .add-srv,#app.side-mini .side .g-srv{display:none}
+#app.side-mini .side .side-toggle{align-self:center;margin:8px 0 4px}
+#app.side-mini .side .sess{justify-content:center;padding:4px 0;margin-bottom:2px;position:relative;border-radius:12px}
+#app.side-mini .side .sess[aria-current="true"]{background:transparent}
+#app.side-mini .side .sess[aria-current="true"] .ava{box-shadow:0 0 0 2px var(--surface),0 0 0 4px color-mix(in srgb,var(--c) 70%,transparent)}
+#app.side-mini .side .srv-row .ava{width:36px;height:36px;border-radius:11px}
+#app.side-mini .side .badge{position:absolute;top:0;right:8px;min-width:17px;height:17px;padding:0 4px;font-size:10.5px;line-height:17px;box-shadow:0 0 0 2px var(--surface)}
+#app.side-mini .side .group{height:1px;padding:0;margin:8px 16px;background:var(--line);font-size:0;overflow:hidden}
+#app.side-mini .side-foot,#app.side-mini .side .sys-mini,#app.side-mini .health{display:none}
+
+/* One machine in view: a single compact row (title · rings) instead of three rings spread over the full width */
+#fleet:has(> .fc:only-child) .fc{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,520px) 1fr;align-items:center;column-gap:18px;row-gap:6px;padding:10px 14px}
+#fleet:has(> .fc:only-child) .fc-h{grid-column:1;margin:0;min-height:0;flex-direction:column;align-items:flex-start;gap:6px}
+#fleet:has(> .fc:only-child) .rings{grid-column:2;margin:0;min-height:0}
+#fleet:has(> .fc:only-child) .tags{grid-column:3;justify-self:end;margin:0}
+@media(max-width:760px){#fleet:has(> .fc:only-child) .fc{grid-template-columns:minmax(0,1fr)}#fleet:has(> .fc:only-child) .fc>*{grid-column:1!important;justify-self:stretch}}
+
+/* Viewer header: one tidy row — back · title · (A− A+) · insert · ⋯ · close, all right-aligned together; wraps only when narrow */
+.file-viewer{container-type:inline-size}
+.file-viewer header{flex-wrap:nowrap;align-items:center;gap:6px;padding:10px 14px}
+.file-viewer header strong{order:0;flex:1 1 auto;flex-basis:auto;min-width:40px}
+.file-viewer header .viewer-back{order:-1}
+.file-viewer header .viewer-zoom{order:1;margin-left:0;gap:0;padding:2px;border-radius:10px;background:var(--surface-2)}
+.file-viewer header .viewer-zoom .btn{min-height:28px;padding:0 9px;border-color:transparent;background:transparent;font-size:12.5px}
+.file-viewer header .viewer-zoom .btn:hover{background:var(--surface)}
+.file-viewer header .viewer-insert{order:2;white-space:nowrap}
+.file-viewer header .viewer-more{order:3;margin-left:0;width:34px;padding:0!important}
+.file-viewer header .viewer-close{order:4}
+.file-viewer header .btn{min-height:32px}
+@container (max-width:620px){.file-viewer header{flex-wrap:wrap}.file-viewer header strong{flex-basis:100%;order:-2}.file-viewer header .viewer-zoom{margin-left:auto}}
+/* File list: plain rows with a hover tint; the ⋯ sits inside the row instead of a second bordered box */
+.viewer-row{margin:0;gap:2px;border-radius:10px}
+.viewer-row:hover{background:var(--surface-2)}
+.viewer-row .viewer-entry{border-color:transparent;background:transparent;box-shadow:none;min-height:36px}
+.viewer-row .viewer-mini{border-color:transparent;background:transparent;width:32px;min-height:32px}
+.viewer-row .viewer-mini:hover{background:var(--surface)}
+/* One pane: the tabs above already choose the session, so the per-pane session picker is hidden (it only caused misclicks). Split views keep it. */
+#split:not(.two):not(.four) .pane>select{display:none}
