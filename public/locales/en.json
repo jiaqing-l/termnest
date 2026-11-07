@@ -1466,5 +1466,11 @@
   "ops.job_stopped": "Stopped — not running",
   "ops.job_other": "Claude's status: {0} / {1}",
   "ops.tpl.continue": "Please continue the task you were working on. If you are blocked, state exactly what you are waiting for.",
-  "ops.tpl.status": "Give a short status: what is done, what is left, and anything blocking you."
+  "ops.tpl.status": "Give a short status: what is done, what is left, and anything blocking you.",
+  "app.agent_cho_tra_loi": "The agent is waiting for your answer — open the session to see the question",
+  "app.luot_bi_ngat": "The turn was aborted at {0}",
+  "alerts.os_on": "Computer notifications: on — new alerts also appear in the notification centre.",
+  "alerts.os_off": "Computer notifications: off — alerts only show inside TERMNEST.",
+  "alerts.os_turn_on": "Turn on",
+  "app.so_may_chu": "{0} servers"
 }

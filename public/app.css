@@ -1397,3 +1397,14 @@ dialog.drop-remote{display:none}
 .viewer-row .viewer-mini:hover{background:var(--surface)}
 /* One pane: the tabs above already choose the session, so the per-pane session picker is hidden (it only caused misclicks). Split views keep it. */
 #split:not(.two):not(.four) .pane>select{display:none}
+/* Alerts dialog: whether alerts also reach the computer's notification centre */
+.al-os{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:8px 10px;border-radius:10px;background:var(--wait-soft);color:var(--fg-2);font-size:12.5px}
+.al-os.on{background:var(--surface-2)}
+.al-os .btn{min-height:30px;padding:0 12px;font-size:12.5px;flex:none}
+/* Server rows: own icon for "all" and for this computer; the collapsed rail shows each server's short code instead of identical icons */
+.srv-row .ava .srv-code{display:none;font:800 13px var(--round);color:var(--c);letter-spacing:.02em}
+#app.side-mini .side .srv-remote .ava svg.srv-i{display:none}
+#app.side-mini .side .srv-remote .ava .srv-code{display:block}
+#app.side-mini .side .srv-row .ava{background:color-mix(in srgb,var(--c) 14%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent)}
+#app.side-mini .side .srv-all{margin-bottom:6px}
+.srv-row .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

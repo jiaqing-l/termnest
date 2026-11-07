@@ -1,4 +1,5 @@
-.ops-page{max-width:1100px;margin:0 auto}
+/* The whole view scrolls (wheel anywhere on it); the content stays centred at 1100px */
+.ops-page{max-width:none;margin:0;padding-inline:max(14px,calc((100% - 1100px) / 2))}
 .ops-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
 .ops-title{flex:1 1 260px;min-width:0}
 .ops-title h2{margin:0;font:800 20px var(--round)}

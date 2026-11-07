@@ -6,6 +6,8 @@
   var CREW_POLL_MS = 1500;
   var LABEL = { run: i18n('app.dang_chay'), wait: i18n('app.cho_ban'), idle: i18n('app.dang_nghi') };
   var HP = { cpu: ['CPU', '#ff5c7a'], ram: ['RAM', '#8c6dff'], disk: ['Disk', '#0fb5ae'] };
+  var ALL_ICON = '<svg class="i srv-i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>';
+  var PC_ICON = '<svg class="i srv-i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2.5 19h19"/></svg>';
   var SRV_ICON = '<svg class="i srv-i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/></svg>';
   var servers = [], scope = 'all', view = 'over', cur = null, online = true, signature = '', pollTimer = null, tokenTimer = null, firstState = true;
   var cardRefs = {}, delTarget = null, passTarget = null, killTarget = null;
@@ -123,18 +125,22 @@
     tog.onclick = function () { sideMini = !sideMini; try { localStorage.setItem('tw-side-mini', sideMini ? '1' : ''); } catch (e) { /* optional */ } applySideMini(); renderSide(); if (typeof sizeTerm === 'function') requestAnimationFrame(sizeTerm); };
     box.append(tog);
     box.append(el('div', 'group g-srv', i18n('app.may_chu_2')));
-    function row(id, title, sub, count, off) {
-      var b = el('button', 'sess srv-row'); b.style.setProperty('--c', off ? '#7a879f' : '#2f80ed');
+    // Short code shown on the collapsed rail so machines can be told apart: the trailing number ("dev-ubuntu-02" → 02), else initials.
+    function srvCode(name) { var m = String(name || '').match(/(\d{1,3})\s*$/); return m ? m[1] : initials(name); }
+    function row(id, title, sub, count, off, kind) {
+      var b = el('button', 'sess srv-row srv-' + kind); b.style.setProperty('--c', off ? '#7a879f' : kind === 'all' ? '#7c5cff' : kind === 'local' ? '#0fa58a' : '#2f80ed');
       b.setAttribute('aria-current', scope === id ? 'true' : 'false');
-      var a = el('span', 'ava'); a.innerHTML = SRV_ICON; a.append(el('span', 'flag ' + (off ? 'off' : 'run')));
+      var a = el('span', 'ava'); a.innerHTML = kind === 'all' ? ALL_ICON : kind === 'local' ? PC_ICON : SRV_ICON;
+      if (kind === 'remote') a.append(el('span', 'srv-code', srvCode(title)));
+      a.append(el('span', 'flag ' + (off ? 'off' : 'run')));
       var t = el('span', 'txt'); t.append(el('span', 'n', title), el('span', 's', sub)); b.title = title;
       b.append(a, t); if (count) b.append(el('span', 'badge', count));
       b.onclick = function () { setScope(id); }; box.append(b);
     }
     function waitOf(v) { return v.sessions.filter(function (s) { return s.state === 'wait'; }).length; }
     var total = 0; servers.forEach(function (v) { total += waitOf(v); });
-    row('all', i18n('app.tat_ca_may_chu'), i18n('app.tai_khoan', [servers.length]), total, false);
-    servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on); });
+    row('all', i18n('app.tat_ca_may_chu'), i18n('app.so_may_chu', [servers.length]), total, false, 'all');
+    servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
     [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
       var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s); }); if (!list.length) return;
@@ -726,12 +732,20 @@
   /* Overview tools */
   // Claude and Codex draw a status bar under the conversation; it is never the question, so skip it when quoting the screen.
   // Lines the agents draw themselves (footer, update notices, "✻ Crunched for 1m 45s · done 3:00 PM"): never the question.
-  var CHROME = /auto mode|shift\+tab|for shortcuts|esc to interrupt|bypass permissions|accept edits|ctrl\+[a-z]|⏵⏵|▸▸|^[\s─━═\-_•·|]+$|^\s*[❯>]\s*$|new task\?|\/clear to save|\d+(\.\d+)?k tokens|update installed|restart to (apply|update)|auto-updating|update available|context left|\b[a-z]+ed for (\d+h ?)?(\d+m ?)?\d+s\b|· done\b/i;
+  var CHROME = /enter to select|to navigate|esc to cancel|auto mode|shift\+tab|for shortcuts|esc to interrupt|bypass permissions|accept edits|ctrl\+[a-z]|⏵⏵|▸▸|^[\s─━═\-_•·|]+$|^\s*[❯>]\s*$|new task\?|\/clear to save|\d+(\.\d+)?k tokens|update installed|restart to (apply|update)|auto-updating|update available|context left|\b[a-z]+ed for (\d+h ?)?(\d+m ?)?\d+s\b|· done\b/i;
   var DONE_AT = /\b[a-z]+ed for [^·]*·\s*done\s+(?:[A-Za-z]+\s+)?(\d{1,2}:\d{2}(?:\s?[AP]M)?)/i;
   // A line like "──────── Load ảnh màn ────" keeps its words but loses the rule; a bare rule disappears.
   function plain(line) { return line.replace(/[─━═]{2,}/g, ' ').replace(/\s+/g, ' ').trim(); }
   function question(s) {
     var lines = (s.lines || []).filter(function (line) { return line.trim() && !CHROME.test(line); }).map(plain).filter(Boolean);
+    // The agent's own status decides what is said; the screen only supplies the wording of the question itself.
+    var st = s.stateSource === 'status' && s.aiStatus;
+    if (st) {
+      var at = st.at ? new Date(st.at).toLocaleTimeString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+      if (s.asking) { var q = lines.filter(function (l) { return /\?\s*$/.test(l); }).slice(-1)[0]; return q || i18n('app.agent_cho_tra_loi'); }
+      if (st.status === 'aborted') return i18n('app.luot_bi_ngat', [at]);
+      return at ? i18n('app.xong_luc_cho_tiep', [at]) : i18n('app.da_xong_cho_tiep');
+    }
     if (s.asking && lines.length) return lines.slice(-1)[0];
     // Not a question: the agent finished its turn. Say so in plain words (with the time it printed, when there is one).
     var done = null; (s.lines || []).forEach(function (l) { var m = l.match(DONE_AT); if (m) done = m[1]; });
@@ -875,6 +889,10 @@
   function markRead(list) { list.forEach(function (a) { readAlerts[a.id] = 1; }); saveRead(); renderBell(); }
   function renderAlertList() {
     var box = $('al-list'), list = alerts(), fresh = unread(list); box.textContent = '';
+    // Say plainly whether these also reach the computer's notification centre, with the switch right here.
+    var os = el('div', 'al-os' + (browserOn ? ' on' : '')); os.append(el('span', '', i18n(browserOn ? 'alerts.os_on' : 'alerts.os_off')));
+    if (!browserOn) { var turn = el('button', 'btn primary', i18n('alerts.os_turn_on')); turn.type = 'button'; turn.onclick = function () { var c = $('set-browser'); c.checked = true; c.onchange.call(c); setTimeout(renderAlertList, 600); }; os.append(turn); }
+    box.append(os);
     $('al-read').disabled = !fresh.length;
     if (!list.length) box.append(el('p', 'hint', i18n('app.khong_co_canh_bao_nao')));
     else if (!fresh.length) box.append(el('p', 'hint', i18n('app.da_doc_het_canh_bao')));
@@ -1509,7 +1527,13 @@
     if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
     if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
   })();
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  // The desktop app asks macOS / Windows / Linux for permission once, so alerts reach the notification centre by default.
+  function desktopNotifyDefault() {
+    var asked = null; try { asked = localStorage.getItem('tw-notifications'); } catch (e) { /* optional */ }
+    if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
+    var c = $('set-browser'); c.checked = true; c.onchange.call(c);
+  }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });
