@@ -12,13 +12,13 @@
     box.open = id in opened ? !!opened[id] : dflt;
     box.addEventListener('toggle', function () { opened[id] = box.open; try { localStorage.setItem('tw-ops-open', JSON.stringify(opened)); } catch (e) { /* optional */ } });
   }
-  var RULES = ['asking', 'finished', 'dormant', 'aborted', 'unknown', 'bgjob', 'exited', 'overload', 'lost', 'offline', 'unheard'];
+  var RULES = ['asking', 'finished', 'dormant', 'aborted', 'unknown', 'bgjob', 'quota', 'exited', 'overload', 'lost', 'offline', 'unheard'];
 
   // Minutes as a readable span: "45 phút", "3 giờ 20 phút", "1 ngày 2 giờ".
   function span(min) { min = Math.max(0, Math.round(min)); if (min < 60) return i18n('ops.phut', [min]); var h = Math.floor(min / 60); if (h < 24) return i18n('ops.gio_phut', [h, min % 60]); return i18n('ops.ngay_gio', [Math.floor(h / 24), h % 24]); }
   function title(f) { return f.rule === 'custom' ? f.params[0] : f.rule === 'bgjob' ? i18n('ops.r.bgjob', [f.params[0], jobLabel({ tempo: 'blocked', needs: f.params[1] }).text]) : f.rule === 'dormant' ? i18n('ops.r.dormant', [span(f.params[0])]) : i18n('ops.r.' + f.rule, f.params); }
   function who(f) { return f.session.indexOf('bg:') === 0 ? i18n('ops.phien_nen', [f.session.slice(3)]) : f.session.indexOf('job:') === 0 ? i18n('ops.viec_nen', [f.session.slice(4)]) : f.session; }
-  function inTerminal(f) { return f.session && f.session.indexOf('bg:') !== 0 && f.session.indexOf('job:') !== 0; }
+  function inTerminal(f) { return f.session && !/^(bg|job|acc):/.test(f.session); }
   // A Claude background job in plain words, from the state/tempo/needs Claude wrote; `note` is Claude's own text.
   function jobLabel(j) {
     var needs = j.needs || '';
@@ -44,14 +44,30 @@
     if (f.rule === 'dormant') return i18n('ops.s.dormant', [span(f.params[0])]);
     return i18n('ops.s.' + f.rule, f.params);
   }
-  function label(f) { return f.session.indexOf('bg:') === 0 ? f.session.slice(3) : f.session.indexOf('job:') === 0 ? f.session.slice(4) : f.session; }
-  var ICON = { ask: '💬', idle: '⏸', job: '🧵', issue: '⚠️', machine: '🖥' };
+  // AI accounts near a limit, from the token readings TERMNEST already makes (Token AI tab); threshold from the pack.
+  var tokens = null;
+  function loadTokens() { return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)).then(function (r) { tokens = r; }).catch(function () { /* optional */ }); }
+  function quotaFindings() {
+    var rule = data && data.pack.rules.quota, out = [];
+    if (!rule || rule.level === 'off' || !tokens || !tokens.accounts) return out;
+    tokens.accounts.forEach(function (a) {
+      [['session', 'ops.han_5_gio'], ['weekly', 'ops.han_tuan']].forEach(function (w) {
+        var x = a.limits && a.limits[w[0]]; if (!x || !(x.percent >= rule.pct)) return;
+        var name = a.nickname || ((a.tool === 'claude' ? 'Claude' : 'Codex') + (a.email ? ' · ' + a.email : ''));
+        out.push({ key: 'acct/' + a.id + '/' + w[0], rule: 'quota', server: '', session: 'acc:' + name, severity: x.percent >= 100 ? 'urgent' : 'warn', level: 'notify', since: 0, params: [Math.round(x.percent), i18n(w[1])], source: 'machine' });
+      });
+    });
+    return out;
+  }
+  function label(f) { return /^(bg|acc):/.test(f.session) ? f.session.slice(f.session.indexOf(':') + 1) : f.session.indexOf('job:') === 0 ? f.session.slice(4) : f.session; }
+  var ICON = { ask: '💬', idle: '⏸', job: '🧵', quota: '⏳', issue: '⚠️', machine: '🖥' };
   // Which group a finding belongs to.
   function group(f) {
     if (f.rule === 'asking') return 'ask';
     if (f.rule === 'dormant' || f.rule === 'finished') return 'idle';
     if (f.rule === 'bgjob') return 'job';
     if (f.rule === 'overload' || f.rule === 'offline' || f.rule === 'lost') return 'machine';
+    if (f.rule === 'quota') return 'quota';
     return 'issue';
   }
 
@@ -184,6 +200,54 @@
   }
   function loadPlugins() { return TW.api('GET', '/api/features/plugins/data').then(function (r) { plug = r; if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { /* optional */ }); }
 
+  // Optional "Xspire Crew" pack: shown only for machines where a session works under a _crew workspace.
+  var crew = null;
+  var CAT = { BLOCKER: 'urgent', WASTE: 'warn', DRIFT: 'warn', INFO: 'info' };
+  function auditSkillFor(srv, root) {
+    var p = plug && (plug.servers || []).filter(function (v) { return v.id === srv.id; })[0];
+    return !!p && (p.enabledSkills || []).some(function (e) { return (e.cwd === root || e.cwd.indexOf(root + '/') === 0) && e.skills.some(function (k) { return /:xspire-crew-ops-audit$/.test(k); }); });
+  }
+  function crewCard() {
+    if (!crew || !crew.servers || !crew.servers.length) return null;
+    var box = el('details', 'ops-card ops-ev ops-crew'), sum = el('summary', 'ops-card-h'); keepOpen(box, 'crew', true);
+    var n = 0; crew.servers.forEach(function (v) { n += v.findings.filter(function (f) { return f.cat === 'BLOCKER'; }).length; });
+    var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', '🧭'), document.createTextNode(i18n('cp.tieu_de'))); if (n) h3.append(el('span', 'ops-count', String(n)));
+    sum.append(h3, el('small', 'ops-pack', i18n('cp.mo_ta'))); box.append(sum);
+    var bar = el('div', 'pl-bar'), lab = el('label', 'pl-auto'), sel = el('select', 'ops-srv cp-sched');
+    [0, 2, 4, 8, 24].forEach(function (h) { var o = el('option', '', h ? i18n('cp.moi_gio', [h]) : i18n('cp.lich_tat')); o.value = String(h); if (crew.auditHours === h) o.selected = true; sel.append(o); });
+    sel.onchange = function () { TW.api('POST', '/api/features/crewpack/schedule', { hours: Number(sel.value) }).then(loadCrew); };
+    lab.append(el('span', '', i18n('cp.lich_ong_trum')), sel); bar.append(lab); box.append(bar);
+    crew.servers.forEach(function (v) {
+      var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
+      head.append(el('b', '', v.local ? i18n('app.local_name') : v.name), el('small', '', v.roots.map(function (r) { return r.root + ' · ' + i18n('cp.so_task', [r.tasks, r.enrolled]); }).join(' · ')));
+      v.roots.forEach(function (r) {
+        if (!auditSkillFor(v, r.root)) { head.append(el('span', 'ops-src', i18n('cp.chua_co_skill'))); return; }
+        var b = button(v.auditOpen || v.auditPending ? i18n('cp.dang_chay_trum') : i18n('cp.chay_trum'), 'primary', function () {
+          TW.api('POST', '/api/features/crewpack/audit', { server: v.id, root: r.root }).then(function (x) { TW.app().say(i18n('cp.da_mo_trum', [x.session]), true, 4000); TW.app().openSession(v.id, x.session); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
+        });
+        if (v.auditPending) b.disabled = true; head.append(b);
+      });
+      sec.append(head);
+      if (!v.findings.length) sec.append(el('p', 'ops-empty ok', i18n('cp.on')));
+      v.findings.forEach(function (f) {
+        var r = el('div', 'ops-row ' + CAT[f.cat]), t = el('div', 'ops-t'), line = el('div', 'ops-line');
+        line.append(el('span', 'cp-cat ' + f.cat, f.cat), el('b', 'ops-name', f.title || f.task), el('span', 'ops-status', i18n('cp.c.' + f.code, f.params)));
+        var meta = el('small', 'ops-meta'); meta.append(document.createTextNode([f.task, f.session ? i18n('cp.phien', [f.session]) : ''].filter(Boolean).join(' · ')));
+        t.append(line, meta); r.append(el('span', 'ops-dot'), t);
+        var acts = el('div', 'ops-acts'); if (f.session) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(v.id, f.session); }));
+        r.append(acts); sec.append(r);
+      });
+      box.append(sec);
+    });
+    if (crew.audits && crew.audits.length) {
+      var lg = el('div', 'pl-log'); lg.append(el('small', 'ops-pack', i18n('cp.lan_chay')));
+      crew.audits.slice(0, 5).forEach(function (a) { lg.append(el('div', 'pl-log-r', when(a.at) + ' · ' + a.root + ' · ' + i18n('cp.vi_' + a.why))); });
+      box.append(lg);
+    }
+    return box;
+  }
+  function loadCrew() { return TW.api('GET', '/api/features/crewpack/data').then(function (r) { crew = r; if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { crew = null; }); }
+
   // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
   function evidence() {
     var box = el('details', 'ops-card ops-ev'), rows = []; keepOpen(box, 'evidence', false);
@@ -223,17 +287,29 @@
     var grid = el('div', 'ops-grid');
     RULES.forEach(function (id) {
       var r = p.rules[id], name = el('div', 'ops-rn'); name.append(el('b', '', i18n('ops.n.' + id)), el('small', '', i18n('ops.d.' + id)));
-      var lv = el('select'); ['off', 'notify', 'suggest'].forEach(function (v) {
-        if (v === 'suggest' && !r.template) return;
+      var lv = el('select'); ['off', 'notify', 'suggest', 'auto'].forEach(function (v) {
+        if ((v === 'suggest' || v === 'auto') && !r.template) return;
         var o = el('option', '', i18n('ops.lv_' + v)); o.value = v; if (r.level === v) o.selected = true; lv.append(o);
       });
       lv.onchange = function () { r.level = lv.value; };
-      var after = el('input'); after.type = 'number'; after.min = '0'; after.max = '1440'; after.value = r.after; after.setAttribute('aria-label', i18n('ops.sau_phut'));
-      after.oninput = function () { r.after = Number(after.value); };
-      var a = el('label', 'ops-after'); a.append(after, el('span', '', i18n('ops.phut_ngan')));
+      // Most rules wait a number of minutes; the quota rule takes a percentage of the limit instead.
+      var pctRule = 'pct' in r, after = el('input'); after.type = 'number';
+      after.min = pctRule ? '50' : '0'; after.max = pctRule ? '100' : '1440'; after.value = pctRule ? r.pct : r.after;
+      after.setAttribute('aria-label', i18n(pctRule ? 'ops.nguong_phan_tram' : 'ops.sau_phut'));
+      after.oninput = function () { if (pctRule) r.pct = Number(after.value); else r.after = Number(after.value); };
+      var a = el('label', 'ops-after'); a.append(after, el('span', '', pctRule ? '%' : i18n('ops.phut_ngan')));
       grid.append(name, lv, a);
     });
     box.append(grid);
+    // Limits of the automatic level: per session per hour, and the quiet hours when nothing is sent automatically.
+    var au = el('div', 'ops-tpl ops-auto'); au.append(el('h4', '', i18n('ops.tu_dong_tieu_de')), el('p', 'ops-note', i18n('ops.tu_dong_ghi_chu')));
+    var arow = el('div', 'ops-auto-row');
+    function field(label, input) { var l = el('label', 'ops-auto-f'); l.append(el('span', '', label), input); return l; }
+    var ph = el('input'); ph.type = 'number'; ph.min = '1'; ph.max = '10'; ph.value = p.auto.perHour; ph.oninput = function () { p.auto.perHour = Number(ph.value); };
+    var qf = el('input'); qf.type = 'time'; qf.value = p.auto.quietFrom; qf.oninput = function () { p.auto.quietFrom = qf.value; };
+    var qt = el('input'); qt.type = 'time'; qt.value = p.auto.quietTo; qt.oninput = function () { p.auto.quietTo = qt.value; };
+    arow.append(field(i18n('ops.toi_da_moi_gio'), ph), field(i18n('ops.yen_lang_tu'), qf), field(i18n('ops.yen_lang_den'), qt));
+    au.append(arow); box.append(au);
     var tpl = el('div', 'ops-tpl'); tpl.append(el('h4', '', i18n('ops.mau_nhac')));
     Object.keys(p.templates).forEach(function (k) {
       var l = el('label'), ta = el('textarea'); ta.rows = 2; ta.value = p.templates[k]; ta.oninput = function () { p.templates[k] = ta.value; };
@@ -266,6 +342,8 @@
     page.textContent = '';
     var all = [];
     data.servers.forEach(function (s) { s.findings.forEach(function (f) { all.push({ f: f, s: s }); }); });
+    var accts = { id: '', name: i18n('ops.tai_khoan_ai'), sessions: [] };
+    quotaFindings().forEach(function (f) { if (!data.dismissedKeys || data.dismissedKeys.indexOf(f.key) < 0) all.push({ f: f, s: accts }); });
     all.sort(function (a, b) { return (SEV[a.f.severity] - SEV[b.f.severity]) || (b.f.since - a.f.since); });
     var head = el('div', 'ops-head'), h = el('div', 'ops-title');
     h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', i18n('ops.mo_ta', [data.servers.length, data.servers.reduce(function (n, s) { return n + s.sessions.length; }, 0)])));
@@ -283,14 +361,14 @@
     var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); });
     var groups = el('div', 'ops-groups');
     if (!shown.length) { var e = el('section', 'ops-card'); e.append(el('p', 'ops-empty ok', i18n(all.length ? 'ops.khong_co_muc_loc' : 'ops.on_ca'))); groups.append(e); }
-    ['ask', 'idle', 'job', 'issue', 'machine'].forEach(function (g) {
+    ['ask', 'idle', 'job', 'quota', 'issue', 'machine'].forEach(function (g) {
       var items = shown.filter(function (x) { return group(x.f) === g; }); if (!items.length) return;
       var box = el('details', 'ops-card ops-group g-' + g), sum = el('summary', 'ops-card-h'); keepOpen(box, 'g-' + g, true);
       var h3 = el('h3', ''); h3.append(el('span', 'ops-gi', ICON[g]), document.createTextNode(i18n('ops.g.' + g)), el('span', 'ops-count', String(items.length)));
       sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
       items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
     });
-    page.append(groups, pluginCard(), jobList(), evidence(), logList());
+    var cc = crewCard(); page.append(groups); if (cc) page.append(cc); page.append(pluginCard(), jobList(), evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }
@@ -307,6 +385,7 @@
   (function () {
     var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) { page = box; box.classList.add('ops-page'); }, onShow: load });
     if (v) tab = v.tab;
-    load(); loadPlugins(); setInterval(function () { if (!document.hidden) { load(); loadPlugins(); } }, 10000);
+    load(); loadPlugins(); loadTokens(); loadCrew(); setInterval(function () { if (!document.hidden) { load(); loadPlugins(); loadCrew(); } }, 10000);
+    setInterval(function () { if (!document.hidden) loadTokens(); }, 60000);
   })();
 })();

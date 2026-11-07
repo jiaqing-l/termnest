@@ -158,3 +158,22 @@
 .ops-toolbar .ops-srv:focus-visible{outline:2px solid color-mix(in srgb,#2f80ed 55%,transparent);outline-offset:1px}
 .ops-jump{display:inline-flex;align-items:center;gap:6px}
 .ops-tools{flex-wrap:wrap;justify-content:flex-end}
+
+.g-quota .ops-count{background:var(--wait-soft);color:var(--wait)}
+.ops-auto-row{display:flex;flex-wrap:wrap;gap:12px}
+.ops-auto-f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg-2)}
+.ops-auto-f input{min-height:34px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:0 10px;font:inherit;width:130px}
+
+/* Xspire Crew pack card */
+.cp-cat{flex:none;padding:1px 7px;border-radius:6px;font:800 10.5px/16px var(--round,inherit);letter-spacing:.03em}
+.cp-cat.BLOCKER{background:var(--bad-soft);color:var(--bad)}.cp-cat.WASTE{background:var(--wait-soft);color:var(--wait)}
+.cp-cat.DRIFT{background:color-mix(in srgb,#7c5cff 14%,transparent);color:#7c5cff}.cp-cat.INFO{background:var(--surface-2);color:var(--fg-2)}
+.ops-crew .pl-srv-h{flex-wrap:wrap}.ops-crew .pl-srv-h .btn{margin-left:auto;min-height:30px}
+.cp-sched{margin-left:8px}
+.ops-crew>summary h3{display:flex;align-items:center;gap:8px}
+.cp-sched{-webkit-appearance:none;appearance:none;min-height:34px;padding:0 32px 0 12px;border-radius:10px;border:1px solid var(--line);background-color:var(--surface-2);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b879d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;color:var(--fg);font:600 12.5px var(--round,inherit);cursor:pointer;width:auto}
+.ops-grid select{-webkit-appearance:none;appearance:none;padding:0 30px 0 10px;background-color:var(--surface-2);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b879d' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;font-weight:600;cursor:pointer}

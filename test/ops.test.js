@@ -115,3 +115,23 @@ test('a parked pane reports the background conversation it shows, but never offe
   assert.equal(ops.canSend(parked), 'hub');
   assert.deepEqual(rules(run([claude('idle', 1, { st: { parked: true, job: { status: 'waiting', at: NOW } } })])), ['asking']);
 });
+
+test('automatic messages: only for a rule with a message, inside the limits, once per idle period, never in quiet hours', () => {
+  const p = ops.cleanPack({ rules: { dormant: { level: 'auto' }, asking: { level: 'auto' } }, auto: { perHour: 2, quietFrom: '23:00', quietTo: '07:00' } });
+  assert.equal(p.rules.asking.level, 'notify');
+  const s = claude('idle', 50);
+  const f = run([s], { pack: p })[0];
+  assert.deepEqual([f.rule, f.level, f.template], ['dormant', 'auto', 'continue']);
+  const at = (h) => new Date(2026, 10, 7, h, 0).getTime();
+  const sess = { ...s, aiStatus: { ...s.aiStatus, at: at(14) - 50 * 60000 } };
+  assert.equal(ops.autoGate(f, sess, p, [], at(14)), '');
+  assert.equal(ops.autoGate(f, sess, p, [], at(23)), 'quiet');
+  assert.equal(ops.autoGate(f, sess, p, [], at(3)), 'quiet');
+  // one message per idle period: a send after the period began holds back the next one
+  assert.equal(ops.autoGate(f, sess, p, [{ server: 'm1', session: 'a', at: at(14) - 60000, why: 'auto' }], at(14)), 'once');
+  assert.equal(ops.autoGate(f, { ...sess, aiStatus: { ...sess.aiStatus, status: 'busy' } }, p, [], at(14)), 'busy');
+  assert.equal(ops.autoGate(f, { ...sess, aiStatus: { ...sess.aiStatus, status: 'waiting' } }, p, [], at(14)), 'asking');
+  assert.equal(ops.autoGate({ ...f, level: 'suggest' }, sess, p, [], at(14)), 'not-auto');
+  assert.equal(ops.cleanPack({ auto: { perHour: 99, quietFrom: '25:00' } }).auto.perHour, 10);
+  assert.equal(ops.cleanPack({ auto: { quietFrom: '25:00' } }).auto.quietFrom, '23:00');
+});
