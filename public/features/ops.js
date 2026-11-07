@@ -43,6 +43,23 @@
     return box;
   }
 
+  // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
+  function evidence() {
+    var box = el('details', 'ops-card ops-ev'), rows = [];
+    data.servers.forEach(function (srv) {
+      srv.sessions.forEach(function (s) { if (s.agent || s.ai) rows.push({ srv: srv, name: s.name, ai: s.ai }); });
+      (srv.bg || []).forEach(function (b) { rows.push({ srv: srv, name: i18n('ops.phien_nen', [b.name]), ai: { tool: 'claude', status: b.status, at: b.at } }); });
+    });
+    var sum = el('summary', 'ops-card-h'); sum.append(el('h3', '', i18n('ops.bang_chung', [rows.length])), el('small', 'ops-pack', i18n('ops.bang_chung_ghi_chu'))); box.append(sum);
+    rows.forEach(function (r) {
+      var row = el('div', 'ops-log'), st = r.ai, label = !st ? i18n('ops.ev_none') : st.tool + ' · ' + st.status + (st.parked ? ' · ' + i18n('ops.ev_parked') : '') + (st.waitingFor ? ' · ' + st.waitingFor : '');
+      row.append(el('span', 'ops-st ' + (!st ? 'bad' : st.status === 'waiting' ? 'wait' : 'ok'), st ? st.status : '—'), el('span', 'ops-log-t', r.name + ' · ' + r.srv.name + ' — ' + label),
+        el('time', '', st && st.at ? new Date(st.at).toLocaleString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { dateStyle: 'short', timeStyle: 'short' }) : ''));
+      box.append(row);
+    });
+    return box;
+  }
+
   function logList() {
     var box = el('section', 'ops-card'), head = el('div', 'ops-card-h');
     head.append(el('h3', '', i18n('ops.so_ghi')));
@@ -119,7 +136,7 @@
     var list = el('section', 'ops-card ops-list');
     if (!all.length) list.append(el('p', 'ops-empty ok', i18n('ops.on_ca')));
     all.forEach(function (x) { list.append(row(x.f, x.s)); });
-    page.append(list, logList());
+    page.append(list, evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }

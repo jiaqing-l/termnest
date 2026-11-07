@@ -57,3 +57,4 @@
 .ops-src{display:inline-block;padding:0 6px;border-radius:6px;font-size:10.5px;font-weight:700;background:var(--surface-2);color:var(--fg-2)}
 .ops-src.status{background:color-mix(in srgb,#2f80ed 14%,transparent);color:#2f80ed}
 .ops-src.text{background:var(--wait-soft);color:var(--wait)}
+.ops-ev summary{cursor:pointer;list-style:none}.ops-ev summary::-webkit-details-marker{display:none}.ops-ev summary h3::before{content:'▸ ';color:var(--fg-3)}.ops-ev[open] summary h3::before{content:'▾ '}

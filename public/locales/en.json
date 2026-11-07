@@ -1440,5 +1440,9 @@
   "ops.src_process": "Process",
   "ops.src_machine": "Measured",
   "ops.src_text": "Text match",
-  "srv.ops.khong_gui_unknown": "The agent's own status is not readable, so TERMNEST will not send."
+  "srv.ops.khong_gui_unknown": "The agent's own status is not readable, so TERMNEST will not send.",
+  "ops.bang_chung": "Status of each agent session ({0})",
+  "ops.bang_chung_ghi_chu": "Exactly what TERMNEST read from the agent's files",
+  "ops.ev_none": "no status file read",
+  "ops.ev_parked": "moved to background"
 }

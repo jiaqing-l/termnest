@@ -1423,5 +1423,9 @@
   "ops.src_process": "Tiến trình",
   "ops.src_machine": "Đo máy",
   "ops.src_text": "Khớp chữ",
-  "srv.ops.khong_gui_unknown": "Chưa đọc được trạng thái chính thức của agent nên TERMNEST không gửi."
+  "srv.ops.khong_gui_unknown": "Chưa đọc được trạng thái chính thức của agent nên TERMNEST không gửi.",
+  "ops.bang_chung": "Trạng thái từng phiên agent ({0})",
+  "ops.bang_chung_ghi_chu": "Đúng giá trị TERMNEST đọc được từ tệp của agent",
+  "ops.ev_none": "không đọc được tệp trạng thái",
+  "ops.ev_parked": "đã chuyển xuống nền"
 }
