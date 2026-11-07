@@ -1623,5 +1623,19 @@
   "fg.dang_kiem": "Đang kiểm tra với {0}…",
   "srv.forge.qua_lau": "Không tới được {0} trong 10 giây — máy này có cần VPN / mạng nội bộ để vào GitLab đó không?",
   "srv.forge.khong_tim_thay_may": "Không tìm thấy máy {0} (tên miền không phân giải được).",
-  "srv.forge.khong_ket_noi_duoc_may": "Không kết nối được tới {0} ({1})."
+  "srv.forge.khong_ket_noi_duoc_may": "Không kết nối được tới {0} ({1}).",
+  "cp.cho_ngoai": "Chờ việc ngoài (WAITING_ON / BLOCKED_BY trên crew-board)",
+  "cp.dang_doc_board": "Đang đọc crew-board…",
+  "cp.can_ket_noi": "Cần kết nối GitLab {0} (Cài đặt → Kết nối) để đọc crew-board.",
+  "cp.khong_cho": "Không có tin chờ nào còn mở cho các task đang mở.",
+  "cp.dang_cho": "đang chờ {0} · {1} · {2}",
+  "cp.tu": "gửi từ {0}",
+  "cp.mo_issue": "Mở issue",
+  "cp.lease_giu": "Lease đang giữ ({0})",
+  "srv.forge.duong_dan_khong_cho_phep": "Chỉ được đọc issue và ghi chú của một dự án.",
+  "srv.forge.chuyen_huong_ngoai": "{0} chuyển hướng sang địa chỉ khác — TERMNEST không gửi token theo.",
+  "cp.cho_ngoai_board": "Chờ việc ngoài · crew-board {0}",
+  "cp.can_nguoi": "cần người quyết · {1} · {2}",
+  "cp.nhom_cho": "cũ nhất {0} · {1}",
+  "cp.so_tin": "{0} tin còn mở"
 }

@@ -242,6 +242,7 @@
     [1, 3, 7, 14].forEach(function (d) { var o = el('option', '', i18n('cp.ngay', [d])); o.value = String(d); if (crew.days === d) o.selected = true; ds.append(o); });
     ds.onchange = function () { TW.api('POST', '/api/features/crewpack/days', { days: Number(ds.value) }).then(function () { setTimeout(loadCrew, 1500); }); };
     dl.append(el('span', '', i18n('cp.xet_task')), ds); bar.append(dl); box.append(bar);
+    var bb = boardBlock(); if (bb) box.append(bb);
     crew.servers.forEach(function (v) {
       var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
       var hl = el('div', 'cp-hl'), pills = el('div', 'cp-pills');
@@ -309,7 +310,11 @@
         s2.textContent = i18n('cp.tat_ca_task', [v.tasks.length, crew.days]); all.append(s2);
         v.tasks.forEach(function (t) {
           var row = el('div', 'cp-task'), tr = el('div', 'cp-tracks');
-          t.tracks.forEach(function (k) { var c = el('span', 'cp-tr ' + k.state, k.id + ' · ' + k.state + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')); tr.append(c); });
+          t.tracks.forEach(function (k) {
+            var c = el('span', 'cp-tr ' + k.state, k.id + ' · ' + k.state + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')), fg = forgeOf[k.remote + '|' + k.branch];
+            if (fg && fg.linked && !fg.error) { if (fg.mr) c.append(el('span', 'cp-mr ' + fg.mr.state, ' · ' + (fg.kind === 'github' ? 'PR #' : 'MR !') + fg.mr.number + ' ' + i18n('fg.mr_' + fg.mr.state))); if (fg.ci) c.append(el('span', 'cp-ci ' + fg.ci.state, ' · ' + i18n('fg.ci_' + fg.ci.state))); }
+            if (k.branch) c.title = k.branch; tr.append(c);
+          });
           var tt = el('div', 'ops-t'); tt.append(el('b', 'ops-name', t.title || t.id), el('small', 'ops-meta', [t.id, when(t.updated), t.session ? i18n('cp.phien', [t.session]) : ''].filter(Boolean).join(' · ')));
           row.append(el('span', 'cp-st ' + t.status, t.status || '—'), tt, tr); all.append(row);
         });
@@ -329,11 +334,96 @@
   function loadForge() {
     if (!crew || !window.TW_FORGE) return;
     var items = [];
-    crew.servers.forEach(function (v) { (v.tasks || []).forEach(function (t) { if (!t.session || ['done', 'closed', 'abandoned', 'archived', 'merged'].indexOf(t.status) >= 0) return; t.tracks.forEach(function (k) { if (k.remote && k.branch) items.push({ remote: k.remote, branch: k.branch }); }); }); });
+    crew.servers.forEach(function (v) { (v.tasks || []).forEach(function (t) { if (['done', 'closed', 'abandoned', 'archived', 'merged'].indexOf(t.status) >= 0) return; t.tracks.forEach(function (k) { if (k.remote && k.branch) items.push({ remote: k.remote, branch: k.branch }); }); }); });
     if (!items.length) return;
     window.TW_FORGE.branches(items.slice(0, 40)).then(function (r) { (r.items || []).forEach(function (x, i) { forgeOf[items[i].remote + '|' + items[i].branch] = x; }); draw(); }).catch(function () { /* optional */ });
   }
-  function loadCrew() { return TW.api('GET', '/api/features/crewpack/data').then(function (r) { crew = r; loadForge(); if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { crew = null; }); }
+  // Waits (WAITING_ON / BLOCKED_BY) and leases from crew-upstream's board on GitLab, read through "Kết nối". A wait is open while
+  // no ACK / DECLINE / HANDOFF / INFO answers it (reply_to = its note id) and no person wrote after it — the board's own rule.
+  var board = {}, boardAt = 0;
+  function gl(host, path) { return TW.api('POST', '/api/features/forge/gitlab', { host: host, path: path }); }
+  function crewMsg(body) {
+    var m = /^```crew-msg\r?\n([\s\S]*?)\r?\n```/.exec(String(body || '')); if (!m) return null;
+    var f = {}; m[1].split(/\r?\n/).forEach(function (l) { var x = /^([a-z_]+):\s?(.*)$/.exec(l); if (x) f[x[1]] = x[2]; });
+    return f.type ? f : null;
+  }
+  // One read per board (it is shared by every machine): the open task issues changed in the last 7 days, their notes, and the
+  // open lease issues. Types that need someone: WAITING_ON, BLOCKED_BY, HUMAN-NEEDED, CONFLICT.
+  var WAIT_TYPES = ['WAITING_ON', 'BLOCKED_BY', 'HUMAN-NEEDED', 'CONFLICT'];
+  function loadBoard() {
+    if (!crew || Date.now() - boardAt < 120000) return;
+    var seen = {};
+    crew.servers.forEach(function (v) {
+      var hosts = {}; (v.tasks || []).forEach(function (t) { t.tracks.forEach(function (k) { var h = /^(?:\w+:\/\/)?(?:[^@/]+@)?([\w.-]+)[:/]/.exec(k.remote || ''); if (h) hosts[h[1]] = 1; }); });
+      (v.boards || []).forEach(function (bd) {
+        Object.keys(hosts).forEach(function (host) {
+          if (!bd.board || seen[host + '|' + bd.board]) return; seen[host + '|' + bd.board] = 1; boardAt = Date.now();   // only once there is a board to read
+          var proj = encodeURIComponent(bd.board), key = host + '|' + bd.board, res = { host: host, board: bd.board, waits: [], leases: [], error: '' };
+          var since = new Date(Date.now() - 7 * 86400000).toISOString();
+          Promise.all([
+            gl(host, '/projects/' + proj + '/issues?labels=crew-task&state=opened&order_by=updated_at&per_page=40&updated_after=' + encodeURIComponent(since)),
+            gl(host, '/projects/' + proj + '/issues?labels=crew-lease&state=opened&per_page=100'),
+          ]).then(function (r) {
+            if (!r[0].linked) { res.error = 'nolink'; return; }
+            if (r[0].error) { res.error = r[0].error; return; }
+            if (!Array.isArray(r[0].json)) { res.error = 'nolink'; return; }
+            (r[1].json || []).forEach(function (i) { var m = /<!-- crew-lease:([\w-]+) -->/.exec(i.description || ''); res.leases.push({ resource: m ? m[1] : '', title: i.title || '', at: Date.parse(i.created_at) || 0, url: i.web_url || '' }); });
+            var issues = r[0].json.map(function (i) { var m = /^<!-- crew-task:([\w-]+) -->$/m.exec(i.description || ''); return { task: m ? m[1] : '', iid: i.iid, url: i.web_url }; }).filter(function (i) { return i.task; });
+            return Promise.all(issues.map(function (i) {
+              return gl(host, '/projects/' + proj + '/issues/' + i.iid + '/notes?sort=asc&per_page=100').then(function (n) {
+                var notes = n.json || [];
+                notes.forEach(function (note, idx) {
+                  var msg = crewMsg(note.body); if (!msg || WAIT_TYPES.indexOf(msg.type) < 0) return;
+                  var later = notes.slice(idx + 1), answered = later.some(function (x) { var r2 = crewMsg(x.body); return r2 && r2.reply_to === String(note.id) && ['ACK', 'DECLINE', 'HANDOFF', 'INFO'].indexOf(r2.type) >= 0; });
+                  var human = later.some(function (x) { return !x.system && !crewMsg(x.body); });
+                  if (!answered && !human) res.waits.push({ task: i.task, type: msg.type, from: msg.from || '', to: msg.to || '', ref: msg.ref || '', at: Date.parse(note.created_at) || 0, url: i.url });
+                });
+              });
+            }));
+          }).catch(function (e) { res.error = e.message; }).then(function () { board[key] = res; draw(); });
+        });
+      });
+    });
+  }
+  // Which machine follows a task (its session enrolled in nudge.conf), for the board's lines.
+  function whereTask(id) { var at = ''; (crew.servers || []).forEach(function (v) { (v.tasks || []).forEach(function (t) { if (t.id === id) at = (v.local ? i18n('app.local_name') : v.name) + (t.session ? ' · ' + t.session : ''); }); }); return at; }
+  function boardBlock() {
+    // A board lives on one GitLab: hosts that have no link (e.g. github.com remotes) are dropped once another host answered.
+    var keys = Object.keys(board), okBoards = {};
+    keys.forEach(function (k) { if (board[k].error !== 'nolink') okBoards[board[k].board] = 1; });
+    keys = keys.filter(function (k) { return board[k].error !== 'nolink' || !okBoards[board[k].board]; });
+    var shown = {}; keys = keys.filter(function (k) { if (board[k].error !== 'nolink') return true; if (shown[board[k].board]) return false; shown[board[k].board] = 1; return true; });
+    if (!keys.length) return null;
+    var wrap = el('div', 'cp-wait cp-board');
+    keys.forEach(function (key) {
+      var b = board[key];
+      wrap.append(el('div', 'cp-sub', i18n('cp.cho_ngoai_board', [b.board]) + (b.waits.length ? ' · ' + i18n('cp.so_tin', [b.waits.length]) : '')));
+      if (b.error === 'nolink') { wrap.append(el('p', 'ops-note', i18n('cp.can_ket_noi', [b.host]))); return; }
+      if (b.error) { wrap.append(el('p', 'ops-note', b.error)); return; }
+      if (!b.waits.length) wrap.append(el('p', 'ops-note', i18n('cp.khong_cho')));
+      // One line per task and message type (a task with 12 open CONFLICT notes is one line), people-needed first, oldest first.
+      var groups = {}, order = { 'HUMAN-NEEDED': 0, 'BLOCKED_BY': 1, 'WAITING_ON': 2, 'CONFLICT': 3 };
+      b.waits.forEach(function (w) { var g = groups[w.task + '|' + w.type] = groups[w.task + '|' + w.type] || { task: w.task, type: w.type, at: w.at, n: 0, refs: [], url: w.url }; g.n++; if (w.at < g.at) g.at = w.at; var ref = w.ref || w.from; if (ref && g.refs.indexOf(ref) < 0) g.refs.push(ref); });
+      var list = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (x, y) { return (order[x.type] - order[y.type]) || (x.at - y.at); });
+      var more = !!crewMore['board|' + key], showList = more ? list : list.slice(0, 8);
+      showList.forEach(function (g) {
+        var mins = Math.round((Date.now() - g.at) / 60000), hot = g.type === 'HUMAN-NEEDED' || g.type === 'BLOCKED_BY' || mins >= 120;
+        var r = el('div', 'ops-row ' + (hot ? 'urgent' : 'warn')), t = el('div', 'ops-t'), line = el('div', 'ops-line');
+        line.append(el('span', 'cp-cat ' + (hot ? 'BLOCKER' : 'INFO'), g.type + (g.n > 1 ? ' ×' + g.n : '')), el('b', 'ops-name', g.task),
+          el('span', 'ops-status', i18n('cp.nhom_cho', [span(mins), g.refs.slice(0, 3).join(', ') + (g.refs.length > 3 ? ' …' : '')])));
+        t.append(line); var where = whereTask(g.task); if (where) t.append(el('small', 'ops-meta', where));
+        var a = el('a', 'btn ghost', i18n('cp.mo_issue')); a.href = g.url; a.target = '_blank'; a.rel = 'noopener';
+        r.append(el('span', 'ops-dot'), t, a); wrap.append(r);
+      });
+      if (list.length > 8) wrap.append(button(more ? i18n('cp.thu_gon') : i18n('cp.xem_them', [list.length - 8]), 'ghost cp-more', function () { crewMore['board|' + key] = !more; draw(); }));
+      if (b.leases.length) {
+        wrap.append(el('div', 'cp-sub', i18n('cp.lease_giu', [b.leases.length])));
+        b.leases.forEach(function (l) { var r = el('div', 'cp-lease'); r.append(el('b', '', l.resource || '—'), el('span', '', l.title + ' · ' + span((Date.now() - l.at) / 60000))); wrap.append(r); });
+      }
+    });
+    return wrap;
+  }
+  function loadCrew() { return TW.api('GET', '/api/features/crewpack/data').then(function (r) { crew = r; loadForge(); loadBoard(); if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { crew = null; }); }
 
   // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
   function evidence() {

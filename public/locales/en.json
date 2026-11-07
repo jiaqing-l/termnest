@@ -1640,5 +1640,19 @@
   "fg.dang_kiem": "Checking with {0}…",
   "srv.forge.qua_lau": "Could not reach {0} within 10 seconds — does this computer need a VPN / the internal network for it?",
   "srv.forge.khong_tim_thay_may": "Host {0} not found (the name does not resolve).",
-  "srv.forge.khong_ket_noi_duoc_may": "Could not connect to {0} ({1})."
+  "srv.forge.khong_ket_noi_duoc_may": "Could not connect to {0} ({1}).",
+  "cp.cho_ngoai": "Waiting on others (WAITING_ON / BLOCKED_BY on the crew board)",
+  "cp.dang_doc_board": "Reading the crew board…",
+  "cp.can_ket_noi": "Needs a GitLab connection to {0} (Settings → Connections) to read the crew board.",
+  "cp.khong_cho": "No open waits for the open tasks.",
+  "cp.dang_cho": "waiting for {0} · {1} · {2}",
+  "cp.tu": "sent by {0}",
+  "cp.mo_issue": "Open issue",
+  "cp.lease_giu": "Leases held ({0})",
+  "srv.forge.duong_dan_khong_cho_phep": "Only a project's issues and notes can be read.",
+  "srv.forge.chuyen_huong_ngoai": "{0} redirects to another address — TERMNEST does not send the token there.",
+  "cp.cho_ngoai_board": "Waiting on others · crew board {0}",
+  "cp.can_nguoi": "needs a person · {1} · {2}",
+  "cp.nhom_cho": "oldest {0} · {1}",
+  "cp.so_tin": "{0} open messages"
 }
