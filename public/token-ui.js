@@ -87,16 +87,27 @@ window.TokenUI = function (hooks) {
       // Every card says when this refresh ran; the quota's own time is shown only when it is older, with the reason.
       // Claude's quota is asked at most once per 5 minutes, and Codex only records it while a session runs.
       const clock=t=>new Date(t).toLocaleTimeString(i18n('lang.locale'),{hour:'2-digit',minute:'2-digit',hour12:false});
-      if(updatedAt!=null)c.append(node('p','token-help',i18n('tokenui.da_kiem_tra_luc', [clock(updatedAt)])));
-      if(a.limits.observedAt&&(updatedAt==null||updatedAt-a.limits.observedAt>120000))c.append(node('p','token-help',i18n('tokenui.quota_ghi_nhan_luc', [clock(a.limits.observedAt), (a.tool==='codex'?i18n('tokenui.codex_chi_ghi_quota_khi'):i18n('tokenui.quota_claude_chi_hoi_lai'))])));
+      // One quiet line per card: when it was checked, with the technical notes (when quota was recorded and why) behind ⓘ.
+      if(updatedAt!=null){
+        const line=node('p','token-help token-checked',i18n('tokenui.da_kiem_tra_luc', [clock(updatedAt)]));
+        if(a.limits.observedAt&&(updatedAt==null||updatedAt-a.limits.observedAt>120000)){
+          const more=i18n('tokenui.quota_ghi_nhan_luc', [clock(a.limits.observedAt), (a.tool==='codex'?i18n('tokenui.codex_chi_ghi_quota_khi'):i18n('tokenui.quota_claude_chi_hoi_lai'))]);
+          const info=node('button','token-info','ⓘ');info.type='button';info.title=more;info.setAttribute('aria-label',more);
+          const tip=node('span','token-tip',more);tip.hidden=true;info.onclick=()=>{tip.hidden=!tip.hidden;};line.append(' ',info,tip);
+        }
+        c.append(line);
+      }
       if(a.threshold&&a.today>=a.threshold){c.classList.add('token-hot');c.append(node('small','',i18n('tokenui.da_vuot_nguong_hom_nay')));}
       cards.append(c);
     });
     mini.textContent='';
     const readable=accounts.filter(a=>a.hasGoodQuota||a.today!=null||a.limits.session||a.limits.weekly);
     rows.filter(a=>readable.includes(a)).forEach(a=>{
-      const w=a.limits.session || a.limits.weekly,chip=node('span','token-mini-item');
-      chip.textContent=(label(a))+' '+(w?Math.round(w.percent)+'%':'—');mini.append(chip);
+      // A short chip: a dot coloured by how much is used, the account's short name and the percentage (full label on hover).
+      const w=a.limits.session || a.limits.weekly,chip=node('span','token-mini-item'),pct=w?Math.round(w.percent):null;
+      const short=(a.nickname||'').trim()||String(a.email||'').split('@')[0]||label(a);
+      chip.dataset.level=pct==null?'none':pct>=95?'hot':pct>=80?'warm':'ok';chip.title=label(a);
+      chip.append(node('i','token-dot'),node('b','',(a.tool==='codex'?'Codex · ':'')+short),node('span','',pct==null?'—':pct+'%'));mini.append(chip);
     });
     visibleHosts.forEach(h=>cards.append(node('div','token-host-unavailable',h.hostName+(h.state==='reading'?i18n('tokenui.dang_doc_3'):i18n('tokenui.chua_doc_duoc', [h.reason.replace(/^Không đọc được: /,'')])))));
     const reasons=accounts.map(a=>(a.tool==='claude'?'Claude':'Codex')+' · '+(a.email||a.hostName||'')+' · '+[a.reason,a.limits.reason,...(a.sourceWarnings || [])].filter(Boolean).join('; ')).join('\n')||readError;

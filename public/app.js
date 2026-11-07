@@ -666,6 +666,9 @@
   function openSession(id, name) { if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
+  $('key-more-btn').onclick = function (e) { e.stopPropagation(); popToggle(this, $('key-more')); };
+  $('key-more').addEventListener('click', function () { this.hidden = true; $('key-more-btn').setAttribute('aria-expanded', 'false'); });
+  $('term-help-btn').onclick = function () { var h = $('term-help'); h.hidden = !h.hidden; this.setAttribute('aria-expanded', String(!h.hidden)); };
   function detach() { toggleSheet(false); if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say(i18n('app.da_roi_viec_van_chay', [n]), true, 2800); setView('over'); }
 
   /* Overview tools */
@@ -943,10 +946,27 @@
     });
     $('recent').textContent = ''; prefs.recentDirs.forEach(function (dir) { var b = el('button', 'btn', dir); b.type = 'button'; b.onclick = function () { $('n-dir').value = dir; }; $('recent').append(b); });
   }
+  // Small menus above the terminal bar ("Phím", "Lệnh mẫu"): one open at a time, closed by a click elsewhere or Esc.
+  function popToggle(btn, menu) {
+    var open = menu.hidden;
+    document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; });
+    document.querySelectorAll('.term-tools .key-more-btn').forEach(function (x) { x.setAttribute('aria-expanded', 'false'); });
+    menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    cmdOpen = menu.id === 'cmd-pop' && open;
+  }
+  var cmdOpen = false;
+  document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.key-more-wrap')) { cmdOpen = false; document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); });
   function renderCommands() {
     var box = $('command-list'); box.textContent = '';
-    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
-    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
+    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), '⊞ ' + n); b.title = i18n('app.o', [n]); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
+    // Saved commands live in one "Lệnh mẫu ▾" menu instead of a row of chips.
+    var wrap = el('span', 'key-more-wrap'), mb = el('button', 'btn key-more-btn', '⚡ ' + i18n('term.commands') + ' ▾'), menu = el('span', 'key-more pop');
+    // Redrawn on every poll: the menu stays open across redraws until a click elsewhere closes it.
+    menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap);
+    menu.addEventListener('click', function () { cmdOpen = false; menu.hidden = true; mb.setAttribute('aria-expanded', 'false'); });
+    mb.onclick = function (e) { e.stopPropagation(); popToggle(mb, menu); };
+    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; menu.append(b); });
   }
   // ---- Effects: Settings → Hiệu ứng. The usual look stays; public/fx.js adds a light layer of particles over it.
   var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]];

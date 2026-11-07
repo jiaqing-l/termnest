@@ -1256,3 +1256,58 @@ dialog.drop-remote{display:none}
   .main-top .seg button{white-space:nowrap;flex:1 0 auto;padding:4px 9px}
 }
 @media (max-width:760px) and (min-width:340px){.token-windows{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Terminal tools: one bar (keys left, layout/text right); rare keys and saved commands in small menus; help behind "?" */
+.term-tools{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface);border-top:1px solid var(--line);flex:none;min-width:0}
+.term-tools .keybar{display:flex!important;padding:0;background:transparent;overflow:visible;flex:none;gap:6px}
+.term-tools .keybar .btn,.term-tools #cmds .btn{min-height:32px;padding:3px 10px;font:600 12.5px var(--mono)}
+.term-tools #cmds{flex:1;min-width:0;border-top:0;padding:0;background:transparent;overflow:visible;justify-content:flex-end}
+.term-tools #command-list{display:flex;gap:6px;align-items:center;margin-right:auto}
+.key-more-wrap{position:relative;display:inline-flex}
+.pop{position:absolute;bottom:calc(100% + 6px);left:0;z-index:30;display:flex;flex-direction:column;gap:4px;min-width:170px;max-height:60vh;overflow:auto;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px -16px rgba(10,20,50,.45)}
+.pop[hidden]{display:none}
+.pop .btn{justify-content:flex-start;text-align:left;width:100%;min-height:34px}
+#cmds .pop{left:0}
+.terminal-copy-help[hidden]{display:none}
+.tmux-bar[hidden]{display:none!important}
+@media (max-width:760px){.term-tools{flex-wrap:wrap;overflow-x:auto}.term-tools #cmds{flex-basis:100%;justify-content:flex-start;overflow-x:auto}.pop{position:fixed;left:10px!important;right:10px;bottom:76px;min-width:0}}
+/* Quick notices float as a small toast at the bottom instead of a full-width bar that pushed the page down */
+#banner{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);z-index:95;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--fg);box-shadow:0 18px 40px -18px rgba(10,20,50,.5);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;display:block!important}
+#banner.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#banner.good{background:var(--surface);color:var(--fg);border-left:4px solid var(--ok)}
+#banner.show:not(.good){border-left:4px solid var(--wait-line,#e39b00)}
+#banner.text-hint{left:auto;right:14px;bottom:105px;transform:none}
+@media (max-width:760px){#banner{bottom:calc(78px + env(safe-area-inset-bottom,0px))}}
+/* Header: AI accounts as small chips (dot + short name + %), no long dark strip; the server picker only where the sidebar is hidden */
+.token-mini{background:transparent!important;color:var(--fg)!important;border:0!important;box-shadow:none!important;display:inline-flex;gap:6px;align-items:center;padding:0!important;max-width:46vw;overflow:hidden}
+.token-mini-item{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--surface-2,#eef2f8);border:1px solid var(--line);font-size:12px;white-space:nowrap;margin:0!important}
+.token-mini-item b{font-weight:700}.token-mini-item span{color:var(--fg-2);font-variant-numeric:tabular-nums}
+.token-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;flex:none}
+.token-mini-item[data-level=warm] .token-dot{background:#e39b00}.token-mini-item[data-level=hot] .token-dot{background:#dc2626}.token-mini-item[data-level=none] .token-dot{background:#9aa3b5}
+@media (min-width:1000px){.top select.host{display:none}}
+@media (max-width:760px){.token-mini-item:not(:first-child){display:none}}
+/* Token AI first read: skeleton tiles */
+.us-tile.us-skel{min-height:74px}
+.us-tile.us-skel i,.us-tile.us-skel div{display:block;border-radius:10px;background:linear-gradient(90deg,var(--line) 0%,var(--surface-2,#f3f6fb) 50%,var(--line) 100%);background-size:200% 100%;animation:us-sk 1.2s linear infinite}
+.us-tile.us-skel i{width:40px;height:40px;flex:none}.us-tile.us-skel div{flex:1;height:30px}
+@keyframes us-sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.us-tile.us-skel i,.us-tile.us-skel div{animation:none}}
+.token-info{all:unset;cursor:pointer;color:var(--fg-3);font-size:12px;padding:0 3px;border-radius:6px}.token-info:hover,.token-info:focus-visible{color:var(--primary);outline:1px solid var(--line)}
+.token-tip{display:block;margin-top:4px;padding:6px 8px;border-radius:8px;background:var(--surface-2,#f3f6fb);color:var(--fg-2);font-size:11.5px}.token-tip[hidden]{display:none}
+/* Overview: a waiting session still shows its last lines like the others (the question and reply box follow below) */
+#v-over .card.wait .mini{display:flex}
+/* Server cards share the row: one or two machines fill it instead of leaving the right side empty */
+#fleet{grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))}
+/* Phones: the hero is one compact block (title + chips); the machine illustration is left for wider screens */
+@media (max-width:640px){
+  .hero{padding:12px 14px;gap:8px;min-height:0}
+  .hero .scene,.hero .hero-wx{display:none}
+  .hero h1{font-size:19px;margin:0}
+}
+#banner{top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;transform:translate(-50%,-8px)}
+#banner.show{transform:translate(-50%,0)}
+@media (max-width:760px){#banner{top:calc(64px + env(safe-area-inset-top,0px));bottom:auto}}
+.term-tools{flex-wrap:wrap;row-gap:6px}
+.term-tools #cmds{flex:1 1 auto;justify-content:space-between;overflow:visible;flex-wrap:wrap;row-gap:6px}
+.term-tools .pane-opt{padding:3px 8px!important}
+.term-tools #command-list{overflow:visible!important}
+.term-tools #command-list{-webkit-mask-image:none;mask-image:none;flex:0 1 auto}

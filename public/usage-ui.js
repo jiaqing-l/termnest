@@ -70,6 +70,9 @@ window.UsageUI = function (hooks) {
 
   function renderTiles(rows) {
     tiles.textContent = '';
+    // First read still running: grey placeholders, not zeros that look like real numbers.
+    tiles.classList.toggle('us-loading', loading && !data);
+    if (loading && !data) { for (let i = 0; i < 4; i++) { const c = node('div', 'us-tile us-skel'); c.append(node('i'), node('div')); tiles.append(c); } return; }
     const t = rows.reduce((a, r) => { a.tok += sumTokens(r.d.models); a.cost += r.d.cost; a.cr += r.d.models.reduce((n, m) => n + m.cacheRead, 0); a.out += r.d.models.reduce((n, m) => n + m.output, 0); a.days.add(r.d.day); return a; }, { tok: 0, cost: 0, cr: 0, out: 0, days: new Set() });
     const hit = t.tok ? Math.round(t.cr / t.tok * 100) : 0;
     const tile = (em, bg, label, value, sub) => { const c = node('div', 'us-tile'), i = node('div', 'us-em', em), b = node('div'); i.style.background = bg; b.append(node('small', '', label), node('b', '', value), node('span', 'us-sub', sub)); c.append(i, b); return c; };

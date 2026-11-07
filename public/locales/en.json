@@ -1329,5 +1329,9 @@
   "look.theme_pets": "Pets",
   "look.theme_pets_d": "Pets in the sidebar, session cards and playground",
   "look.theme_clean": "Clean",
-  "look.theme_clean_d": "No pets, coloured status dots; suits a work setting"
+  "look.theme_clean_d": "No pets, coloured status dots; suits a work setting",
+  "term.keys": "Keys",
+  "term.more_keys": "More keys: Tab, ↑ ↓, Ctrl+B, new line, keyboard",
+  "term.commands": "Commands",
+  "term.help_title": "How to select and copy text in the terminal"
 }

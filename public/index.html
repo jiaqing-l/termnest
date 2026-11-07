@@ -103,14 +103,16 @@
           <div class="term-wrap" id="term-wrap">
             <div id="wall" class="wall" hidden data-i18n-attrs="aria-label:wall.aria"></div>
             <div id="split" class="one"></div>
-            <div id="cmds" data-i18n-attrs="aria-label:html.lenh_mau_va_chia_man"><div id="command-list"></div><div class="text-controls" role="group" data-i18n-attrs="aria-label:html.co_chu_va_toan_man">
-              <button class="btn" id="mouse-mode" aria-pressed="true" data-i18n="app.chon_chu"></button><button class="btn" id="copy-sel" data-i18n-attrs="title:html.sao_chep_doan_chu_dang" data-i18n="html.sao_chep"></button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" data-i18n-attrs="aria-label:viewcontrols.toan_man_hinh;title:viewcontrols.toan_man_hinh">⛶</button>
-            </div></div>
-            <div class="terminal-copy-help" data-i18n="html.keo_chuot_de_chon_chu"></div>
-            <div class="tmux-bar"><span id="bar-s"></span><span id="bar-h"></span></div>
+            <div class="term-tools">
             <div class="keybar" data-i18n-attrs="aria-label:html.phim_nhanh">
-              <button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" data-i18n-attrs="title:html.bat_tat_ban_phim_tren" data-i18n="html.ban_phim"></button><button class="btn" id="open-file" data-k="file" data-i18n-attrs="title:html.mo_file_trong_thu_muc" data-i18n="html.mo_file"></button><button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" data-i18n-attrs="title:html.xuong_dong_trong_o_soan" data-i18n="html.dong_moi"></button>
+              <button class="btn" id="open-file" data-k="file" data-i18n-attrs="title:html.mo_file_trong_thu_muc" data-i18n="html.mo_file"></button><button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><span class="key-more-wrap"><button type="button" class="btn key-more-btn" id="key-more-btn" aria-expanded="false" data-i18n-attrs="title:term.more_keys"><span data-i18n="term.keys"></span> ▾</button><span class="key-more pop" id="key-more" hidden><button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" data-i18n-attrs="title:html.bat_tat_ban_phim_tren" data-i18n="html.ban_phim"></button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" data-i18n-attrs="title:html.xuong_dong_trong_o_soan" data-i18n="html.dong_moi"></button></span></span>
             </div>
+            <div id="cmds" data-i18n-attrs="aria-label:html.lenh_mau_va_chia_man"><div id="command-list"></div><div class="text-controls" role="group" data-i18n-attrs="aria-label:html.co_chu_va_toan_man">
+              <button class="btn" id="mouse-mode" aria-pressed="true" data-i18n="app.chon_chu"></button><button class="btn" id="copy-sel" data-i18n-attrs="title:html.sao_chep_doan_chu_dang" data-i18n="html.sao_chep"></button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-help-btn" type="button" aria-expanded="false" data-i18n-attrs="title:term.help_title">?</button><button class="btn" id="term-fullscreen" data-i18n-attrs="aria-label:viewcontrols.toan_man_hinh;title:viewcontrols.toan_man_hinh">⛶</button>
+            </div></div>
+            </div>
+            <div class="terminal-copy-help" id="term-help" hidden data-i18n="html.keo_chuot_de_chon_chu"></div>
+            <div class="tmux-bar" hidden><span id="bar-s"></span><span id="bar-h"></span></div>
           </div>
           <aside class="detail" id="detail" data-i18n-attrs="aria-label:html.chi_tiet_phien"></aside>
           <div id="sheet-backdrop" hidden></div>
