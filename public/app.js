@@ -1027,7 +1027,7 @@
     table($('dt-disks'), sys ? (sys.disks || []).map(function (d) { return [d.mount, number(d.usedGb) + '/' + number(d.totalGb) + ' GB · ' + number(d.pct) + '%']; }) : [[i18n('app.so_lieu'), i18n('app.dang_cho')]]);
     table($('dt-top'), sys ? (sys.top || []).map(function (p) { return [p.cmd, number(p.cpu) + '% · ' + number(p.memGb) + ' GB']; }) : [[i18n('app.so_lieu'), i18n('app.dang_cho')]]);
     var rows = [[i18n('app.ket_noi'), v.on ? i18n('app.da_ket_noi') : i18n('app.mat_ket_noi_3')]];
-    if (sys) rows = rows.concat([[i18n('app.he_dieu_hanh'), sys.os], [i18n('app.thoi_gian_chay'), span(sys.uptimeSec)], [i18n('app.dich_vu_loi_3'), (sys.failed || []).join(', ') || i18n('app.khong_co')], [i18n('app.khoi_dong_lai'), sys.rebootRequired ? i18n('app.can_khoi_dong_lai') : i18n('app.chua_can')], [i18n('app.ban_cap_nhat_2'), sys.updates == null ? i18n('app.chua_co_so_lieu') : sys.updates]]);
+    if (sys) rows = rows.concat([[i18n('app.he_dieu_hanh'), sys.os], [i18n('app.thoi_gian_chay'), span(sys.uptimeSec)], [i18n('app.dich_vu_loi_3'), (sys.failed || []).join(', ') || i18n('app.khong_co')], [i18n('app.khoi_dong_lai'), sys.rebootRequired ? i18n('app.can_khoi_dong_lai') : i18n('app.chua_can')], [i18n('app.ban_cap_nhat_2'), sys.updates == null ? i18n('app.chua_co_so_lieu') : sys.updates], [i18n('app.tai_1_phut'), number(sys.load1) + ' / ' + sys.cores], ['Swap', number(sys.swapUsedGb) + ' / ' + number(sys.swapTotalGb) + ' GB'], [i18n('app.mang'), '↓' + number(sys.downMBs) + ' ↑' + number(sys.upMBs) + ' MB/s']]);
     var kw = $('dt-key'); kw.textContent = ''; kw.hidden = !(!v.local && v.auth === 'password');
     if (!kw.hidden) {
       var go = el('button', 'btn primary sm', i18n('ssh.switch')); go.type = 'button'; go.disabled = !v.on;

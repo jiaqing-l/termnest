@@ -115,3 +115,42 @@ body{font-size:13.5px}
 #app.compact .more-keys{display:contents}
 #app.fs .tool-row{padding:3px 6px}
 #app.wall-on .tool-row{display:none!important}
+
+/* Server cards (mockup 33): name + system on one line, three bars, the busy-process list and extra rows move to the
+   server's detail dialog (click the card). Cards share the row and grow with it. */
+#fleet{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))!important}
+.fc-h{align-items:center;margin-bottom:8px}
+.fc-h .t{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fc-h .t b::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:7px;vertical-align:1px}
+.fc.off .fc-h .t b::before{background:var(--bad)}
+.fc-h small{font-size:12px}
+.fc .rings{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}
+.fc .rg{display:flex;flex-direction:column;text-align:left;font-size:12px;color:var(--fg-3)}
+.fc .rg .rg-name{order:-1;min-height:0;font-size:12px}
+.fc .rg .rg-value{min-height:0;font-size:11px;color:var(--fg-3);order:2}
+.fc .rg .d{width:auto!important;height:auto!important;margin:2px 0 0!important;border-radius:0;display:block;padding-bottom:12px;
+  background:linear-gradient(var(--c),var(--c)) left bottom/calc(var(--v)*1%) 6px no-repeat,linear-gradient(var(--surface-3),var(--surface-3)) left bottom/100% 6px no-repeat}
+.fc .rg .d i{display:block;width:auto!important;height:auto!important;background:none!important;border-radius:0;font:700 13px var(--sans)!important;color:var(--fg)}
+.fc .rg.hot .d i{color:var(--bad)}
+#app:not(.compact) .fc-rows,#app:not(.compact) .fc-top{display:none}
+.fc .tags{margin-top:2px}
+
+/* Terminal (mockup 33): the terminal and the detail panel sit as two cards on the page background. */
+#app:not(.compact) .focus-body{gap:14px;padding:0 14px 14px;background:var(--bg)}
+#app:not(.compact) .term-wrap{border-radius:var(--r);overflow:hidden}
+#app:not(.compact) .tabs{padding:8px 14px 0}
+#split.one .pane{border-color:transparent}
+.pane select{background:transparent;color:var(--term-dim);border-bottom:1px solid var(--term-line);padding:7px 12px}
+.tmux-bar{background:rgba(255,255,255,.04);color:var(--term-dim);font-weight:500;border-top:1px solid var(--term-line)}
+#app:not(.compact) .detail{border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.detail .who{display:grid;grid-template-columns:auto minmax(0,1fr);justify-items:start;align-items:center;gap:2px 10px;padding:0;background:none;text-align:left}
+.detail .who .pet-slot{grid-row:span 2;width:44px;height:44px}
+.detail .who .pet-slot svg,.detail .who svg{width:44px;height:44px}
+.detail .who b{font:700 15px var(--sans)}
+.detail .kv dd{font-family:var(--sans)}
+.detail .hl-grid{grid-template-columns:auto minmax(0,1fr);gap:5px 12px;margin-top:6px}
+.detail .hl-m{display:contents}
+.detail .hl-m small{font-size:12.5px;color:var(--fg-3)}
+.detail .hl-m b{font:500 12.5px var(--sans);color:var(--fg)}
+.detail .hl-m.warn b{color:var(--wait)}
+#app:not(.compact) .detail .detail-actions{margin-top:0}
