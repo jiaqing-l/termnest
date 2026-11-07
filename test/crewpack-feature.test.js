@@ -56,3 +56,9 @@ test('the .NET / crew watchdog rules run only where the crew pack saw a _crew wo
   detect.mark('m1', true); assert.equal(detect.has('m1'), true);
   detect.mark('m1', false); assert.equal(detect.has('m1'), false);
 });
+
+test('several failed tracks of one task are one finding that names them', () => {
+  const crew = { roots: [{ root: '/w', nudge: [], tasks: [{ id: 't', title: 'T', status: 'executing', blocked: '', maxFix: 0, heartbeat: {}, tracks: ['A', 'B', 'C'].map((id) => ({ id, state: 'failed', fixRounds: 0 })) }] }] };
+  const out = cp.classify(crew, [], Date.now()).filter((f) => f.code === 'track_failed');
+  assert.deepEqual(out.map((f) => f.params), [['A, B, C', 3]]);
+});

@@ -201,7 +201,7 @@
   function loadPlugins() { return TW.api('GET', '/api/features/plugins/data').then(function (r) { plug = r; if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { /* optional */ }); }
 
   // Optional "Xspire Crew" pack: shown only for machines where a session works under a _crew workspace.
-  var crew = null;
+  var crew = null, crewMore = {};
   var CAT = { BLOCKER: 'urgent', WASTE: 'warn', DRIFT: 'warn', INFO: 'info' };
   function auditSkillFor(srv, root) {
     var p = plug && (plug.servers || []).filter(function (v) { return v.id === srv.id; })[0];
@@ -216,7 +216,11 @@
     var bar = el('div', 'pl-bar'), lab = el('label', 'pl-auto'), sel = el('select', 'ops-srv cp-sched');
     [0, 2, 4, 8, 24].forEach(function (h) { var o = el('option', '', h ? i18n('cp.moi_gio', [h]) : i18n('cp.lich_tat')); o.value = String(h); if (crew.auditHours === h) o.selected = true; sel.append(o); });
     sel.onchange = function () { TW.api('POST', '/api/features/crewpack/schedule', { hours: Number(sel.value) }).then(loadCrew); };
-    lab.append(el('span', '', i18n('cp.lich_ong_trum')), sel); bar.append(lab); box.append(bar);
+    lab.append(el('span', '', i18n('cp.lich_ong_trum')), sel); bar.append(lab);
+    var dl = el('label', 'pl-auto'), ds = el('select', 'ops-srv cp-sched');
+    [1, 3, 7, 14].forEach(function (d) { var o = el('option', '', i18n('cp.ngay', [d])); o.value = String(d); if (crew.days === d) o.selected = true; ds.append(o); });
+    ds.onchange = function () { TW.api('POST', '/api/features/crewpack/days', { days: Number(ds.value) }).then(function () { setTimeout(loadCrew, 1500); }); };
+    dl.append(el('span', '', i18n('cp.xet_task')), ds); bar.append(dl); box.append(bar);
     crew.servers.forEach(function (v) {
       var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
       head.append(el('b', '', v.local ? i18n('app.local_name') : v.name), el('small', '', v.roots.map(function (r) { return r.root + ' · ' + i18n('cp.so_task', [r.tasks, r.enrolled]); }).join(' · ')));
@@ -229,7 +233,9 @@
       });
       sec.append(head);
       if (!v.findings.length) sec.append(el('p', 'ops-empty ok', i18n('cp.on')));
-      v.findings.forEach(function (f) {
+      if (v.findings.length) sec.append(el('div', 'cp-sub', i18n('cp.bat_thuong', [v.findings.length])));
+      var more = !!(crewMore[v.id]), list = more ? v.findings : v.findings.slice(0, 10);
+      list.forEach(function (f) {
         var r = el('div', 'ops-row ' + CAT[f.cat]), t = el('div', 'ops-t'), line = el('div', 'ops-line');
         line.append(el('span', 'cp-cat ' + f.cat, f.cat), el('b', 'ops-name', f.title || f.task), el('span', 'ops-status', i18n('cp.c.' + f.code, f.params)));
         var meta = el('small', 'ops-meta'); meta.append(document.createTextNode([f.task, f.session ? i18n('cp.phien', [f.session]) : ''].filter(Boolean).join(' · ')));
@@ -237,6 +243,19 @@
         var acts = el('div', 'ops-acts'); if (f.session) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(v.id, f.session); }));
         r.append(acts); sec.append(r);
       });
+      if (v.findings.length > 10) sec.append(button(more ? i18n('cp.thu_gon') : i18n('cp.xem_them', [v.findings.length - 10]), 'ghost cp-more', function () { crewMore[v.id] = !more; draw(); }));
+      // Every recent task: status and tracks by state, as the MANIFEST says.
+      if ((v.tasks || []).length) {
+        var all = el('details', 'cp-all'), s2 = el('summary', 'cp-sub'); keepOpen(all, 'crew-all-' + v.id, false);
+        s2.textContent = i18n('cp.tat_ca_task', [v.tasks.length, crew.days]); all.append(s2);
+        v.tasks.forEach(function (t) {
+          var row = el('div', 'cp-task'), tr = el('div', 'cp-tracks');
+          t.tracks.forEach(function (k) { var c = el('span', 'cp-tr ' + k.state, k.id + ' · ' + k.state + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')); tr.append(c); });
+          var tt = el('div', 'ops-t'); tt.append(el('b', 'ops-name', t.title || t.id), el('small', 'ops-meta', [t.id, when(t.updated), t.session ? i18n('cp.phien', [t.session]) : ''].filter(Boolean).join(' · ')));
+          row.append(el('span', 'cp-st ' + t.status, t.status || '—'), tt, tr); all.append(row);
+        });
+        sec.append(all);
+      }
       box.append(sec);
     });
     if (crew.audits && crew.audits.length) {
