@@ -5,6 +5,7 @@
 (function () {
   var TW = window.TW; if (!TW) return;
   var el = TW.el, page = null, tab = null, data = null, busy = {}, editing = false;
+  var pluginPage = null, pluginTab = null;
   var SEV = { urgent: 0, warn: 1, info: 2 };
   // Open/closed state of the collapsible sections, kept across the 10-second redraws (and remembered on this device).
   var opened = {}; try { opened = JSON.parse(localStorage.getItem('tw-ops-open') || '{}') || {}; } catch (e) { opened = {}; }
@@ -221,210 +222,6 @@
   }
   function loadPlugins() { return TW.api('GET', '/api/features/plugins/data').then(function (r) { plug = r; if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { /* optional */ }); }
 
-  // Optional "Xspire Crew" pack: shown only for machines where a session works under a _crew workspace.
-  var crew = null, crewMore = {};
-  var CAT = { BLOCKER: 'urgent', WASTE: 'warn', DRIFT: 'warn', INFO: 'info' };
-  function auditSkillFor(srv, root) {
-    var p = plug && (plug.servers || []).filter(function (v) { return v.id === srv.id; })[0];
-    return !!p && (p.enabledSkills || []).some(function (e) { return (e.cwd === root || e.cwd.indexOf(root + '/') === 0) && e.skills.some(function (k) { return /:xspire-crew-ops-audit$/.test(k); }); });
-  }
-  function crewCard() {
-    if (!crew || !crew.servers || !crew.servers.length) return null;
-    var box = el('details', 'ops-card ops-ev ops-crew'), sum = el('summary', 'ops-card-h'); keepOpen(box, 'crew', true);
-    var n = 0; crew.servers.forEach(function (v) { n += v.findings.filter(function (f) { return f.cat === 'BLOCKER'; }).length; });
-    var h3 = el('h3', ''); h3.append(icon('crew'), document.createTextNode(i18n('cp.tieu_de'))); if (n) h3.append(el('span', 'ops-count', String(n)));
-    sum.append(h3, el('small', 'ops-pack', i18n('cp.mo_ta'))); box.append(sum);
-    var bar = el('div', 'pl-bar'), lab = el('label', 'pl-auto'), sel = el('select', 'ops-srv cp-sched');
-    [0, 2, 4, 8, 24].forEach(function (h) { var o = el('option', '', h ? i18n('cp.moi_gio', [h]) : i18n('cp.lich_tat')); o.value = String(h); if (crew.auditHours === h) o.selected = true; sel.append(o); });
-    sel.onchange = function () { TW.api('POST', '/api/features/crewpack/schedule', { hours: Number(sel.value) }).then(loadCrew); };
-    lab.append(el('span', '', i18n('cp.lich_ong_trum')), sel); bar.append(lab);
-    var dl = el('label', 'pl-auto'), ds = el('select', 'ops-srv cp-sched');
-    [1, 3, 7, 14].forEach(function (d) { var o = el('option', '', i18n('cp.ngay', [d])); o.value = String(d); if (crew.days === d) o.selected = true; ds.append(o); });
-    ds.onchange = function () { TW.api('POST', '/api/features/crewpack/days', { days: Number(ds.value) }).then(function () { setTimeout(loadCrew, 1500); }); };
-    dl.append(el('span', '', i18n('cp.xet_task')), ds); bar.append(dl); box.append(bar);
-    var bb = boardBlock(); if (bb) box.append(bb);
-    crew.servers.forEach(function (v) {
-      var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
-      var hl = el('div', 'cp-hl'), pills = el('div', 'cp-pills');
-      hl.append(el('b', '', v.local ? i18n('app.local_name') : v.name));
-      v.roots.forEach(function (r) { var m = el('small', 'cp-root', r.root.split('/').filter(Boolean).pop() + ' · ' + i18n('cp.so_task', [r.tasks, r.enrolled])); m.title = r.root; hl.append(m); });
-      head.append(hl, pills);
-      // Crew kit version (commit of scripts/crew); marked when machines run different versions.
-      (v.kit || []).forEach(function (k) {
-        var others = []; crew.servers.forEach(function (o) { (o.kit || []).forEach(function (x) { if (x.commit) others.push(x.commit); }); });
-        var differs = k.commit && others.some(function (c) { return c !== k.commit; });
-        pills.append(el('span', 'ops-src' + (differs ? ' cp-kit-diff' : ''), k.commit ? i18n(differs ? 'cp.kit_khac' : 'cp.kit', [k.commit, when(k.at)]) : i18n('cp.kit_khong_ro')));
-      });
-      v.roots.forEach(function (r) {
-        if (!auditSkillFor(v, r.root)) { pills.append(el('span', 'ops-src', i18n('cp.chua_co_skill'))); return; }
-        var b = button(v.auditOpen || v.auditPending ? i18n('cp.dang_chay_trum') : i18n('cp.chay_trum'), 'primary', function () {
-          TW.api('POST', '/api/features/crewpack/audit', { server: v.id, root: r.root }).then(function (x) { TW.app().say(i18n('cp.da_mo_trum', [x.session]), true, 4000); TW.app().openSession(v.id, x.session); }).catch(function (e) { TW.app().say(e.message, false, 4000); });
-        });
-        if (v.auditPending) b.disabled = true; b.classList.add('cp-audit'); head.append(b);
-      });
-      sec.append(head);
-      // Board per orchestrator: each session enrolled in nudge.conf, its open tasks, their tracks, and the workers running them.
-      var bySession = {}; (v.tasks || []).forEach(function (t) { if (t.session && ['done', 'closed', 'abandoned', 'archived', 'merged'].indexOf(t.status) < 0) (bySession[t.session] = bySession[t.session] || []).push(t); });
-      var orch = Object.keys(bySession);
-      if (orch.length) {
-        sec.append(el('div', 'cp-sub', i18n('cp.theo_orch', [orch.length])));
-        orch.forEach(function (name) {
-          var o = el('div', 'cp-orch'), oh = el('div', 'cp-orch-h');
-          var on = el('div', 'cp-on'); on.append(icon('user'), el('b', '', name), el('small', '', i18n('cp.so_task_mo', [bySession[name].length])));
-          oh.append(on, button(i18n('ops.mo'), 'ghost cp-open', function () { TW.app().openSession(v.id, name); })); o.append(oh);
-          bySession[name].forEach(function (t) {
-            var tr = el('div', 'cp-task'), tt = el('div', 'ops-t'), tk = el('div', 'cp-tracks');
-            var tl = el('div', 'cp-tl'); tl.append(el('span', 'cp-dot ' + t.status), el('b', 'ops-name', t.title || t.id));
-            tt.append(tl, el('small', 'ops-meta', [t.status, t.id, when(t.updated)].join(' · ')));
-            t.tracks.forEach(function (k) {
-              var w = (v.workers || []).filter(function (x) { return x.task === t.id && x.track === k.id; })[0];
-              var chipT = el('span', 'cp-tr ' + (w ? 'running' : k.state), k.id + ' · ' + (w ? i18n('cp.worker_chay', [w.kind || 'agent', span(w.elapsed / 60)]) : k.state) + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : ''));
-              var fg = forgeOf[k.remote + '|' + k.branch];
-              if (fg && fg.linked && !fg.error) {
-                if (fg.mr) chipT.append(el('span', 'cp-mr ' + fg.mr.state, ' · ' + (fg.kind === 'github' ? 'PR #' : 'MR !') + fg.mr.number + ' ' + i18n('fg.mr_' + fg.mr.state)));
-                if (fg.ci) chipT.append(el('span', 'cp-ci ' + fg.ci.state, ' · ' + i18n('fg.ci_' + fg.ci.state)));
-              }
-              if (k.branch) chipT.title = k.branch;
-              tk.append(chipT);
-            });
-            tr.classList.add('cp-otask'); tr.append(tt, tk); o.append(tr);
-          });
-          sec.append(o);
-        });
-      } else sec.append(el('p', 'ops-note', i18n('cp.khong_orch')));
-      if (v.findings.length) sec.append(el('div', 'cp-sub', i18n('cp.bat_thuong', [v.findings.length])));
-      else sec.append(el('p', 'ops-empty ok', i18n('cp.on')));
-      var more = !!(crewMore[v.id]), list = more ? v.findings : v.findings.slice(0, 10);
-      list.forEach(function (f) {
-        var r = el('div', 'ops-row ' + CAT[f.cat]), t = el('div', 'ops-t'), line = el('div', 'ops-line');
-        line.append(el('span', 'cp-cat ' + f.cat, f.cat), el('b', 'ops-name', f.title || f.task), el('span', 'ops-status', i18n('cp.c.' + f.code, f.params)));
-        var meta = el('small', 'ops-meta'); meta.append(document.createTextNode([f.task, f.session ? i18n('cp.phien', [f.session]) : ''].filter(Boolean).join(' · ')));
-        t.append(line, meta); r.append(el('span', 'ops-dot'), t);
-        var acts = el('div', 'ops-acts'); if (f.session) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(v.id, f.session); }));
-        r.append(acts); sec.append(r);
-      });
-      if (v.findings.length > 10) sec.append(button(more ? i18n('cp.thu_gon') : i18n('cp.xem_them', [v.findings.length - 10]), 'ghost cp-more', function () { crewMore[v.id] = !more; draw(); }));
-      // Every recent task: status and tracks by state, as the MANIFEST says.
-      if ((v.tasks || []).length) {
-        var all = el('details', 'cp-all'), s2 = el('summary', 'cp-sub'); keepOpen(all, 'crew-all-' + v.id, false);
-        s2.textContent = i18n('cp.tat_ca_task', [v.tasks.length, crew.days]); all.append(s2);
-        v.tasks.forEach(function (t) {
-          var row = el('div', 'cp-task'), tr = el('div', 'cp-tracks');
-          t.tracks.forEach(function (k) {
-            var c = el('span', 'cp-tr ' + k.state, k.id + ' · ' + k.state + (k.fixRounds ? ' · ' + i18n('cp.vong_sua', [k.fixRounds]) : '')), fg = forgeOf[k.remote + '|' + k.branch];
-            if (fg && fg.linked && !fg.error) { if (fg.mr) c.append(el('span', 'cp-mr ' + fg.mr.state, ' · ' + (fg.kind === 'github' ? 'PR #' : 'MR !') + fg.mr.number + ' ' + i18n('fg.mr_' + fg.mr.state))); if (fg.ci) c.append(el('span', 'cp-ci ' + fg.ci.state, ' · ' + i18n('fg.ci_' + fg.ci.state))); }
-            if (k.branch) c.title = k.branch; tr.append(c);
-          });
-          var tt = el('div', 'ops-t'); tt.append(el('b', 'ops-name', t.title || t.id), el('small', 'ops-meta', [t.id, when(t.updated), t.session ? i18n('cp.phien', [t.session]) : ''].filter(Boolean).join(' · ')));
-          row.append(el('span', 'cp-st ' + t.status, t.status || '—'), tt, tr); all.append(row);
-        });
-        sec.append(all);
-      }
-      box.append(sec);
-    });
-    if (crew.audits && crew.audits.length) {
-      var lg = el('div', 'pl-log'); lg.append(el('small', 'ops-pack', i18n('cp.lan_chay')));
-      crew.audits.slice(0, 5).forEach(function (a) { lg.append(el('div', 'pl-log-r', when(a.at) + ' · ' + a.root + ' · ' + i18n('cp.vi_' + a.why))); });
-      box.append(lg);
-    }
-    return box;
-  }
-  // MR / pipeline of open tracks' branches, through the "Kết nối" feature (nothing shown without a connection).
-  var forgeOf = {};
-  function loadForge() {
-    if (!crew || !window.TW_FORGE) return;
-    var items = [];
-    crew.servers.forEach(function (v) { (v.tasks || []).forEach(function (t) { if (['done', 'closed', 'abandoned', 'archived', 'merged'].indexOf(t.status) >= 0) return; t.tracks.forEach(function (k) { if (k.remote && k.branch) items.push({ remote: k.remote, branch: k.branch }); }); }); });
-    if (!items.length) return;
-    window.TW_FORGE.branches(items.slice(0, 40)).then(function (r) { (r.items || []).forEach(function (x, i) { forgeOf[items[i].remote + '|' + items[i].branch] = x; }); draw(); }).catch(function () { /* optional */ });
-  }
-  // Waits (WAITING_ON / BLOCKED_BY) and leases from crew-upstream's board on GitLab, read through "Kết nối". A wait is open while
-  // no ACK / DECLINE / HANDOFF / INFO answers it (reply_to = its note id) and no person wrote after it — the board's own rule.
-  var board = {}, boardAt = 0;
-  function gl(host, path) { return TW.api('POST', '/api/features/forge/gitlab', { host: host, path: path }); }
-  function crewMsg(body) {
-    var m = /^```crew-msg\r?\n([\s\S]*?)\r?\n```/.exec(String(body || '')); if (!m) return null;
-    var f = {}; m[1].split(/\r?\n/).forEach(function (l) { var x = /^([a-z_]+):\s?(.*)$/.exec(l); if (x) f[x[1]] = x[2]; });
-    return f.type ? f : null;
-  }
-  // One read per board (it is shared by every machine): the open task issues changed in the last 7 days, their notes, and the
-  // open lease issues. Types that need someone: WAITING_ON, BLOCKED_BY, HUMAN-NEEDED, CONFLICT.
-  var WAIT_TYPES = ['WAITING_ON', 'BLOCKED_BY', 'HUMAN-NEEDED', 'CONFLICT'];
-  function loadBoard() {
-    if (!crew || Date.now() - boardAt < 120000) return;
-    var seen = {};
-    crew.servers.forEach(function (v) {
-      var hosts = {}; (v.tasks || []).forEach(function (t) { t.tracks.forEach(function (k) { var h = /^(?:\w+:\/\/)?(?:[^@/]+@)?([\w.-]+)[:/]/.exec(k.remote || ''); if (h) hosts[h[1]] = 1; }); });
-      (v.boards || []).forEach(function (bd) {
-        Object.keys(hosts).forEach(function (host) {
-          if (!bd.board || seen[host + '|' + bd.board]) return; seen[host + '|' + bd.board] = 1; boardAt = Date.now();   // only once there is a board to read
-          var proj = encodeURIComponent(bd.board), key = host + '|' + bd.board, res = { host: host, board: bd.board, waits: [], leases: [], error: '' };
-          var since = new Date(Date.now() - 7 * 86400000).toISOString();
-          Promise.all([
-            gl(host, '/projects/' + proj + '/issues?labels=crew-task&state=opened&order_by=updated_at&per_page=40&updated_after=' + encodeURIComponent(since)),
-            gl(host, '/projects/' + proj + '/issues?labels=crew-lease&state=opened&per_page=100'),
-          ]).then(function (r) {
-            if (!r[0].linked) { res.error = 'nolink'; return; }
-            if (r[0].error) { res.error = r[0].error; return; }
-            if (!Array.isArray(r[0].json)) { res.error = 'nolink'; return; }
-            (r[1].json || []).forEach(function (i) { var m = /<!-- crew-lease:([\w-]+) -->/.exec(i.description || ''); res.leases.push({ resource: m ? m[1] : '', title: i.title || '', at: Date.parse(i.created_at) || 0, url: i.web_url || '' }); });
-            var issues = r[0].json.map(function (i) { var m = /^<!-- crew-task:([\w-]+) -->$/m.exec(i.description || ''); return { task: m ? m[1] : '', iid: i.iid, url: i.web_url }; }).filter(function (i) { return i.task; });
-            return Promise.all(issues.map(function (i) {
-              return gl(host, '/projects/' + proj + '/issues/' + i.iid + '/notes?sort=asc&per_page=100').then(function (n) {
-                var notes = n.json || [];
-                notes.forEach(function (note, idx) {
-                  var msg = crewMsg(note.body); if (!msg || WAIT_TYPES.indexOf(msg.type) < 0) return;
-                  var later = notes.slice(idx + 1), answered = later.some(function (x) { var r2 = crewMsg(x.body); return r2 && r2.reply_to === String(note.id) && ['ACK', 'DECLINE', 'HANDOFF', 'INFO'].indexOf(r2.type) >= 0; });
-                  var human = later.some(function (x) { return !x.system && !crewMsg(x.body); });
-                  if (!answered && !human) res.waits.push({ task: i.task, type: msg.type, from: msg.from || '', to: msg.to || '', ref: msg.ref || '', at: Date.parse(note.created_at) || 0, url: i.url });
-                });
-              });
-            }));
-          }).catch(function (e) { res.error = e.message; }).then(function () { board[key] = res; draw(); });
-        });
-      });
-    });
-  }
-  // Which machine follows a task (its session enrolled in nudge.conf), for the board's lines.
-  function whereTask(id) { var at = ''; (crew.servers || []).forEach(function (v) { (v.tasks || []).forEach(function (t) { if (t.id === id) at = (v.local ? i18n('app.local_name') : v.name) + (t.session ? ' · ' + t.session : ''); }); }); return at; }
-  function boardBlock() {
-    // A board lives on one GitLab: hosts that have no link (e.g. github.com remotes) are dropped once another host answered.
-    var keys = Object.keys(board), okBoards = {};
-    keys.forEach(function (k) { if (board[k].error !== 'nolink') okBoards[board[k].board] = 1; });
-    keys = keys.filter(function (k) { return board[k].error !== 'nolink' || !okBoards[board[k].board]; });
-    var shown = {}; keys = keys.filter(function (k) { if (board[k].error !== 'nolink') return true; if (shown[board[k].board]) return false; shown[board[k].board] = 1; return true; });
-    if (!keys.length) return null;
-    var wrap = el('div', 'cp-wait cp-board');
-    keys.forEach(function (key) {
-      var b = board[key];
-      wrap.append(el('div', 'cp-sub', i18n('cp.cho_ngoai_board', [b.board]) + (b.waits.length ? ' · ' + i18n('cp.so_tin', [b.waits.length]) : '')));
-      if (b.error === 'nolink') { wrap.append(el('p', 'ops-note', i18n('cp.can_ket_noi', [b.host]))); return; }
-      if (b.error) { wrap.append(el('p', 'ops-note', b.error)); return; }
-      if (!b.waits.length) wrap.append(el('p', 'ops-note', i18n('cp.khong_cho')));
-      // One line per task and message type (a task with 12 open CONFLICT notes is one line), people-needed first, oldest first.
-      var groups = {}, order = { 'HUMAN-NEEDED': 0, 'BLOCKED_BY': 1, 'WAITING_ON': 2, 'CONFLICT': 3 };
-      b.waits.forEach(function (w) { var g = groups[w.task + '|' + w.type] = groups[w.task + '|' + w.type] || { task: w.task, type: w.type, at: w.at, n: 0, refs: [], url: w.url }; g.n++; if (w.at < g.at) g.at = w.at; var ref = w.ref || w.from; if (ref && g.refs.indexOf(ref) < 0) g.refs.push(ref); });
-      var list = Object.keys(groups).map(function (k) { return groups[k]; }).sort(function (x, y) { return (order[x.type] - order[y.type]) || (x.at - y.at); });
-      var more = !!crewMore['board|' + key], showList = more ? list : list.slice(0, 8);
-      showList.forEach(function (g) {
-        var mins = Math.round((Date.now() - g.at) / 60000), hot = g.type === 'HUMAN-NEEDED' || g.type === 'BLOCKED_BY' || mins >= 120;
-        var r = el('div', 'ops-row ' + (hot ? 'urgent' : 'warn')), t = el('div', 'ops-t'), line = el('div', 'ops-line');
-        line.append(el('span', 'cp-cat ' + (hot ? 'BLOCKER' : 'INFO'), g.type + (g.n > 1 ? ' ×' + g.n : '')), el('b', 'ops-name', g.task),
-          el('span', 'ops-status', i18n('cp.nhom_cho', [span(mins), g.refs.slice(0, 3).join(', ') + (g.refs.length > 3 ? ' …' : '')])));
-        t.append(line); var where = whereTask(g.task); if (where) t.append(el('small', 'ops-meta', where));
-        var a = el('a', 'btn ghost', i18n('cp.mo_issue')); a.href = g.url; a.target = '_blank'; a.rel = 'noopener';
-        r.append(el('span', 'ops-dot'), t, a); wrap.append(r);
-      });
-      if (list.length > 8) wrap.append(button(more ? i18n('cp.thu_gon') : i18n('cp.xem_them', [list.length - 8]), 'ghost cp-more', function () { crewMore['board|' + key] = !more; draw(); }));
-      if (b.leases.length) {
-        wrap.append(el('div', 'cp-sub', i18n('cp.lease_giu', [b.leases.length])));
-        b.leases.forEach(function (l) { var r = el('div', 'cp-lease'); r.append(el('b', '', l.resource || '—'), el('span', '', l.title + ' · ' + span((Date.now() - l.at) / 60000))); wrap.append(r); });
-      }
-    });
-    return wrap;
-  }
-  function loadCrew() { return TW.api('GET', '/api/features/crewpack/data').then(function (r) { crew = r; loadForge(); loadBoard(); if (!(editing && page && page.contains(document.activeElement))) draw(); }).catch(function () { crew = null; }); }
-
   // What was actually read for every agent session, so any verdict (or its absence) can be checked against the source.
   function evidence() {
     var box = el('details', 'ops-card ops-ev'), rows = []; keepOpen(box, 'evidence', false);
@@ -518,6 +315,9 @@
   }
 
   function draw() {
+    if (pluginPage) { pluginPage.textContent = ''; pluginPage.append(pluginCard()); }
+    var stale = plug ? plug.servers.reduce(function (n, v) { return n + v.stale.length; }, 0) : 0;
+    if (pluginTab) { pluginTab.textContent = i18n('pl.tieu_de'); if (stale) pluginTab.append(el('span', 'ops-badge', String(stale))); }
     if (!page || !data) return;
     page.textContent = '';
     var all = [];
@@ -529,9 +329,9 @@
     h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', i18n('ops.mo_ta', [data.servers.length, data.servers.reduce(function (n, s) { return n + s.sessions.length; }, 0)])));
     var tools = el('div', 'ops-tools');
     if (data.dismissed) tools.append(button(i18n('ops.hien_lai', [data.dismissed]), 'ghost', function () { post('/dismiss', { all: true }).then(load); }));
-    // Jump to the plugin card (it sits below the groups); its count shows how many sessions run an older plugin.
+    // Open the separate plugin view; count sessions running an older plugin.
     var staleN = 0; ((plug && plug.servers) || []).forEach(function (v) { staleN += v.stale.length; });
-    var jump = button(i18n('pl.tieu_de'), 'ghost ops-jump', function () { var c = page.querySelector('.ops-plug'); if (c) { c.open = true; c.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+    var jump = button(i18n('pl.tieu_de'), 'ghost ops-jump', function () { TW.app().setView('plugins'); });
     jump.prepend(icon('plug')); if (staleN) jump.append(el('span', 'ops-count warn', String(staleN)));
     tools.append(jump);
     // Open or close every section at once (each section remembers its state on this device).
@@ -552,9 +352,8 @@
       sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
       items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
     });
-    var cc = crewCard();
     page.append(el('div', 'ops-part', i18n('ops.phan_chu_y')), groups, el('div', 'ops-part', i18n('ops.phan_chi_tiet')));
-    if (cc) page.append(cc); page.append(pluginCard(), jobList(), evidence(), logList());
+    page.append(jobList(), evidence(), logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }
@@ -571,7 +370,9 @@
   (function () {
     var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) { page = box; box.classList.add('ops-page'); }, onShow: load });
     if (v) tab = v.tab;
-    load(); loadPlugins(); loadTokens(); loadCrew(); setInterval(function () { if (!document.hidden) { load(); loadPlugins(); loadCrew(); } }, 10000);
+    var pv = TW.addView({ id: 'plugins', label: i18n('pl.tieu_de'), mount: function (box) { pluginPage = box; box.classList.add('ops-page'); }, onShow: loadPlugins });
+    if (pv) pluginTab = pv.tab;
+    load(); loadPlugins(); loadTokens(); setInterval(function () { if (!document.hidden) { load(); loadPlugins(); } }, 10000);
     setInterval(function () { if (!document.hidden) loadTokens(); }, 60000);
   })();
 })();

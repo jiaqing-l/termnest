@@ -253,3 +253,22 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .cp-board .ops-name{word-break:break-all}
 .cp-lease{display:grid;grid-template-columns:minmax(110px,auto) minmax(0,1fr);gap:4px 12px}
 @media(max-width:640px){.cp-lease{grid-template-columns:1fr}.cp-board .ops-status{-webkit-line-clamp:3}}
+
+/* Separate Crew and plugin views; track details stay compact until expanded. */
+.main-top .seg{max-width:100%;min-width:0;overflow-x:auto}
+.main-top .seg button{white-space:nowrap;flex-shrink:0}
+.cp-track-details{min-width:0;max-width:100%}
+.cp-track-details>summary{cursor:pointer;white-space:normal}
+.cp-track-details[open]{grid-column:1 / -1}
+.cp-track-details .cp-tracks{justify-content:flex-start;padding:6px 8px}
+.cp-task .ops-t b,.cp-task .ops-t small{white-space:normal;overflow-wrap:anywhere}
+.cp-task .cp-tl{flex-wrap:wrap}
+.cp-unassigned{margin-top:12px}
+
+.cp-technical,.cp-help,.cp-lease-records{margin:8px;border:1px solid var(--line);border-radius:10px;padding:4px}
+.cp-technical>summary,.cp-help>summary,.cp-lease-records>summary{cursor:pointer}
+.cp-technical .cp-pills{padding:6px 8px;flex-wrap:wrap}
+.cp-command{white-space:pre-wrap;overflow-wrap:anywhere;padding:10px;background:var(--surface-2);border-radius:8px;font:12px var(--mono)}
+.cp-record-note{color:var(--fg-3);white-space:normal!important}
+.cp-lease .ops-t small{white-space:normal}
+.cp-lease .btn{flex-shrink:0}
