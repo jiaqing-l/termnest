@@ -6,6 +6,7 @@
   var LINES = 14, EVERY = 2500, FILTERS = ['all', 'wait', 'run', 'idle'];
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   var COLOR = { wait: '#e8a62c', run: '#2fa463', idle: '#7b879d' };   // the colour tells the state, nothing else
+  var RANK = { wait: 0, run: 1, idle: 2 };
   var COLS = ['auto', '2', '3', '4'], FONT = { min: 9, max: 17, step: 1, dflt: 11.5 };
   function load(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) { /* optional */ } }
@@ -123,6 +124,8 @@
       observe();
       var list = opts.items(); filters(list);
       var want = list.filter(function (x) { return filter === 'all' || stateOf(x.s) === filter; }), seen = new Set(), order = [];
+      // Grouped by state — waiting for you, then running, then idle — keeping the usual order inside each group.
+      want = want.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return ((RANK[stateOf(a.x.s)] || 0) - (RANK[stateOf(b.x.s)] || 0)) || a.i - b.i; }).map(function (o) { return o.x; });
       want.forEach(function (x) {
         var k = key(x), t = tiles.get(k); seen.add(k);
         if (!t) { t = make(x); tiles.set(k, t); if (io) io.observe(t.node); }
@@ -130,7 +133,9 @@
       });
       tiles.forEach(function (t, k) { if (!seen.has(k)) { if (io) io.unobserve(t.node); t.node.remove(); tiles.delete(k); visible.delete(k); } });
       // Keep the DOM order equal to the list order without rebuilding the tiles.
-      order.forEach(function (node, i) { if (grid.children[i] !== node) grid.insertBefore(node, grid.children[i] || null); });
+      // Not while the person is typing in a tile: moving it would drop the focus and what they are typing.
+      var typing = root.document.activeElement && grid.contains(root.document.activeElement);
+      if (!typing || grid.children.length !== order.length) order.forEach(function (node, i) { if (grid.children[i] !== node) grid.insertBefore(node, grid.children[i] || null); });
       empty.textContent = want.length ? '' : opts.emptyText(); empty.hidden = !!want.length;
     }
     function tick() {
