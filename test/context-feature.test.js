@@ -1,4 +1,5 @@
 'use strict';
+const { paneCommand } = require('./helpers/tmux-fixture');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -78,7 +79,7 @@ test('sessions sharing one folder each get the log that matches their screen; an
   const A = ['Alpha session discusses the pipeline migration gate', 'Alpha also reviewed the host mapping rules again'], B = ['Beta session builds the notes reminder feature', 'Beta wrote the tests for the reminder scheduler'];
   const log = (lines, cache) => lines.map((t) => line({ type: 'assistant', message: { model: 'claude-opus-5-5', content: t, usage: { input_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: cache } } })).join('');
   fs.writeFileSync(path.join(proj, 'a.jsonl'), log(A, 111000)); fs.writeFileSync(path.join(proj, 'b.jsonl'), log(B, 55000));
-  const sock = 'twctx' + process.pid, say = (name, lines) => cpc.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', name, '-x', '200', '-y', '40', `printf '%s\\n' ${lines.map((l) => `'${l}'`).join(' ')}; sleep 30`]);
+  const sock = 'twctx' + process.pid, say = (name, lines) => cpc.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', name, '-x', '200', '-y', '40', paneCommand(lines)]);
   try {
     say('sa', A); say('sb', B); say('sc', ['Nothing that any log contains, just some filler text here', 'Another unrelated line that matches no transcript at all']);
     await new Promise((r) => setTimeout(r, 500));

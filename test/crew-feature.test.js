@@ -1,4 +1,5 @@
 'use strict';
+const { paneCommand } = require('./helpers/tmux-fixture');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -93,7 +94,7 @@ test('needles are read from the live tmux scrollback of the named session', { sk
   fs.writeFileSync(path.join(proj, 'a.jsonl'), lines.join(' ') + ' bash scripts/crew/crew-task.sh status 20261103-idle-pending\n');
   fs.writeFileSync(path.join(proj, 'b.jsonl'), 'talking about bash scripts/crew/crew-task.sh status 20261102-sv-perf only\n');
   try {
-    cpx.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 'sess1', '-x', '200', '-y', '40', `printf '%s\\n' ${lines.map((l) => `'${l}'`).join(' ')}; sleep 30`]);
+    cpx.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 'sess1', '-x', '200', '-y', '40', paneCommand(lines)]);
     await new Promise((r) => setTimeout(r, 500));
     const out = await crew.crewRuntime()({ cwd, home, session: 'sess1', socket: sock });
     assert.equal(out.linked, 'match'); assert.deepEqual(out.tasks.filter((t) => t.mentioned).map((t) => t.task), ['20261103-idle-pending']);
