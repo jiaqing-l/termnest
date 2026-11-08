@@ -43,6 +43,10 @@ unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 if (( ! dry )); then
   [[ "$(uname -s)" = Linux ]] || { echo RUNTIME_LINUX_REQUIRED >&2; exit 2; }
   command -v systemctl >/dev/null || { echo RUNTIME_SYSTEMD_REQUIRED >&2; exit 2; }
+  # Check before creating secrets, directories or units. Enabling linger is an explicit owner/admin decision.
+  command -v loginctl >/dev/null || { echo RUNTIME_LINGER_UNKNOWN >&2; exit 2; }
+  runtime_linger="$(loginctl show-user "$(id -u)" --property=Linger --value 2>/dev/null)" || { echo RUNTIME_LINGER_UNKNOWN >&2; exit 2; }
+  [[ "$runtime_linger" = yes ]] || { echo RUNTIME_LINGER_REQUIRED >&2; exit 2; }
   if [[ ! -e "$password_file" && ! -L "$password_file" ]]; then
     [[ -t 0 ]] || { echo RUNTIME_PASSWORD_FILE_REQUIRED >&2; exit 2; }
     umask 077
@@ -115,5 +119,5 @@ if (( ! dry )); then
   systemctl --user daemon-reload
   systemctl --user enable --now termnest-supervisor.service
   # enable --now is idempotent and leaves an already-running backend in place. Apply changed config via an explicit restart.
-  echo 'RUNTIME_SERVICE_INSTALLED'
+  echo 'RUNTIME_SERVICE_INSTALLED_LINGER_VERIFIED'
 fi

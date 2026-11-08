@@ -27,7 +27,7 @@ function fixture(t, options = {}) {
   readJson: async req => req, send: (res, status, body) => Object.assign(res, { status, body }),
   fail: (res, status, error, extra) => Object.assign(res, { status, body: { error, ...extra } }), log: line => logs.push(line) };
   const clock = { now: () => now, setInterval: (fn, ms) => { assert.equal(ms, 15000); timer = fn; return { unref() { f.unref = true; } }; }, clearInterval() {} };
-  const f = { r, s, host, calls, saves, logs, unref: false, status: () => controller.status(),
+  const f = { r, s, host, calls, saves, logs, unref: false, status: () => controller.status(), stop: () => controller.stop(),
     snapshot: () => snapshot(r), tick: () => timer(), advance(ms) { now += ms; }, refresh() { r.lastPoll = now; },
     locked(value) { locked = value; }, setSend(fn) { send = fn; }, failSave(value) { failSave = value; }, onSave(fn) { onSave = fn; },
     data: () => clone(data), async route(method, path, req = {}) { const res = {}; await routes.get(method + ' ' + path)({ req, res }); return res; },
@@ -193,7 +193,13 @@ test('log clear cannot reset rate limits; shipped defaults keep dormant suggest 
 test('drain stops new backend sends while an accepted asynchronous send remains pending', async t => {
   const pending = deferred(), f = fixture(t, { send: () => pending.promise });
   f.snapshot(); assert.equal(f.status().pending, 1);
-  feature.stop(); assert.equal(f.status().monitoring, false); assert.equal(f.status().pending, 1);
+  f.stop(); assert.equal(f.status().monitoring, false); assert.equal(f.status().pending, 1);
   f.s.created++; f.snapshot(); f.tick(); assert.equal(f.calls.length, 1);
   pending.resolve({ code: 0 }); await settle(); assert.equal(f.status().pending, 0);
+});
+
+test('stopping one feature host does not stop another backend instance', async t => {
+  const first = fixture(t), second = fixture(t); first.stop();
+  assert.equal(first.status().monitoring, false); assert.equal(second.status().monitoring, true);
+  first.tick(); second.tick(); await settle(); assert.equal(first.calls.length, 0); assert.equal(second.calls.length, 1);
 });

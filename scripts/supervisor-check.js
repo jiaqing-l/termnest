@@ -9,10 +9,11 @@ if (args.length) {
 }
 if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) { console.error('RUNTIME_PORT_INVALID'); process.exit(2); }
 let finished = false;
-function report(unlocked, monitoring, error) {
+function report(unlocked, monitoring, error, health = {}) {
   if (finished) return;
   finished = true;
-  console.log(JSON.stringify({ state: error ? 'error' : monitoring ? 'monitoring' : unlocked ? 'unlocked' : 'locked', unlocked, monitoring, error }));
+  console.log(JSON.stringify({ state: error ? 'error' : monitoring ? 'monitoring' : unlocked ? 'unlocked' : 'locked', unlocked, monitoring, error,
+    processAlive: health.processAlive === true, observationsFresh: health.observationsFresh === true, validatedAuditCompletion: health.validatedAuditCompletion === true }));
   process.exitCode = !error && monitoring ? 0 : 1;
 }
 const req = http.get({ host: '127.0.0.1', port: Number(port), path: '/api/supervisor/status', timeout: 3000, agent: false }, res => {
@@ -23,7 +24,7 @@ const req = http.get({ host: '127.0.0.1', port: Number(port), path: '/api/superv
     try {
       const v = JSON.parse(text);
       if (res.statusCode !== 200 || !['unlocked', 'monitoring', 'error'].every(k => typeof v[k] === 'boolean')) throw Error();
-      report(v.unlocked, v.monitoring, v.error);
+      report(v.unlocked, v.monitoring, v.error, v);
     } catch { report(false, false, true); }
   });
   res.on('error', () => report(false, false, true));

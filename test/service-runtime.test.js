@@ -188,11 +188,19 @@ async function freePort() {
 // Exercise real server startup without touching tmux, SSH, agents or account directories.
 const serverProgram = `
 const Module = require('node:module'), load = Module._load;
+if(process.env.TW_FIXTURE_FAST_TIMERS==='1'){
+ const native=setInterval, clock=Date.now()+2*3600000;
+ global.setInterval=(fn,ms,...args)=>{
+  process.send?.({event:'timer',ms});
+  return native(ms===15000?()=>{Date.now=()=>clock;fn(...args);}:fn,ms===15000?30:ms,...args);
+ };
+}
 Module._load = function(name, parent, main) {
  if (name === './lib/backends' && parent.filename.endsWith('server.js')) {
   const real = load.apply(this, arguments);
   return {...real, createBackend: cfg => ({cfg, ready:false, snapshot:null, longHistory:[], lost:[], canAutoConnect:true,
-   async connect(){this.ready=true;process.send?.({event:'connect',id:cfg.id});}, async poll(){},
+   async connect(){this.ready=true;process.send?.({event:'connect',id:cfg.id});},
+   async poll(){if(process.env.TW_FIXTURE_FAST_TIMERS==='1')process.send?.({event:'poll',id:cfg.id,at:Date.now()});},
    scheduleRetry(){}, close(){this.ready=false;}})};
  }
  return load.apply(this, arguments);
@@ -225,14 +233,26 @@ test('boot existing vault unlocks and connects without creating any browser cook
   await waitFor(() => c.events.filter(e => e.event === 'connect').length === 2, c);
   const response = await fetch(`http://127.0.0.1:${port}/api/supervisor/status`);
   assert.equal(response.headers.get('set-cookie'), null);
-  assert.deepEqual(await response.json(), { unlocked: true, monitoring: true, error: false });
+  assert.deepEqual(await response.json(), { processAlive: true, unlocked: true, monitoring: true, error: false, observationsFresh: false, validatedAuditCompletion: false });
   assert.equal((await (await fetch(`http://127.0.0.1:${port}/api/status`)).json()).authed, false);
   assert.equal((await fetch(`http://127.0.0.1:${port}/api/state`)).status, 401);
   const result = await execFile(process.execPath, ['scripts/supervisor-check.js', '--port', String(port)], { cwd: ROOT });
-  assert.deepEqual(JSON.parse(result.stdout), { state: 'monitoring', unlocked: true, monitoring: true, error: false });
+  assert.deepEqual(JSON.parse(result.stdout), { state: 'monitoring', unlocked: true, monitoring: true, error: false, processAlive: true, observationsFresh: false, validatedAuditCompletion: false });
   assert.doesNotMatch(c.output + result.stdout, new RegExp(SECRET));
   c.kill('SIGTERM'); assert.equal((await c.done)[0], 0);
   assert.equal(fs.existsSync(path.join(f.dir, 'service.lock')), false);
+});
+
+test('enabled unattended server polls on its 15s schedule past browser inactivity with injected timer/clock and no HTTP requests', async t => {
+  const f = fixture(t), before = Date.now();
+  new Vault(path.join(f.dir, 'vault.json')).create(SECRET, { servers: [{ id: 'fixture-remote', auth: 'key' }], features: { crewpack: { enabled: true } } });
+  const c = child(t, f, { TW_FIXTURE_FAST_TIMERS: '1' });
+  const unattended = () => c.events.filter(e => e.event === 'poll' && e.at - before >= 3600000);
+  await waitFor(() => unattended().length >= 4, c);
+  assert.ok(c.events.filter(e => e.event === 'timer' && e.ms === 15000).length >= 2);
+  assert.ok(unattended().length >= 4, 'repeated polls run after lastSeen is long stale');
+  assert.deepEqual(new Set(unattended().map(e => e.id)), new Set([require('../lib/backends').LOCAL_ID, 'fixture-remote']));
+  c.kill('SIGTERM'); assert.equal((await c.done)[0], 0); assert.doesNotMatch(c.output, new RegExp(SECRET));
 });
 
 test('boot wrong credential, corrupt primary or missing credential fails closed, without a listener or connection', async t => {
@@ -253,7 +273,7 @@ test('no password-file env retains the interactive locked API and health behavio
   const c = child(t, f, { TW_PASSWORD_FILE: undefined, TW_PORT: String(port) });
   await waitFor(() => c.output.includes('Termnest:'), c);
   assert.equal(c.events.length, 0);
-  assert.deepEqual(await (await fetch(`http://127.0.0.1:${port}/api/supervisor/status`)).json(), { unlocked: false, monitoring: false, error: false });
+  assert.deepEqual(await (await fetch(`http://127.0.0.1:${port}/api/supervisor/status`)).json(), { processAlive: true, unlocked: false, monitoring: false, error: false, observationsFresh: false, validatedAuditCompletion: false });
   const login = await fetch(`http://127.0.0.1:${port}/api/login`, { method: 'POST', body: JSON.stringify({ password: SECRET }) });
   assert.equal(login.status, 200); assert.match(login.headers.get('set-cookie'), /tw_sid=/);
   await waitFor(() => c.events.length === 1, c);
@@ -314,6 +334,7 @@ test('installer repeated writes preserve vault and secret and refuse unmanaged u
   const vault = path.join(data, 'vault.json'); fs.writeFileSync(vault, 'encrypted-fixture', { mode: 0o600 });
   fs.writeFileSync(path.join(bin, 'uname'), "#!/bin/sh\nprintf '%s\\n' Linux\n", { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'systemctl'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'loginctl'), '#!/bin/sh\nprintf "yes\\n"\n', { mode: 0o700 });
   // Only the temporary fake user manager is ever called; this is not a VM installation.
   const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, 'config'), XDG_STATE_HOME: path.join(home, 'state'), PATH: bin + path.delimiter + process.env.PATH };
   const args = ['scripts/install-supervisor.sh', '--password-file', f.file, '--data-dir', data];
@@ -326,6 +347,22 @@ test('installer repeated writes preserve vault and secret and refuse unmanaged u
   fs.writeFileSync(unit, '# someone else owns this');
   await assert.rejects(execFile('bash', args, { cwd: ROOT, env }), e => e.stderr.includes('RUNTIME_EXISTING_UNIT_UNMANAGED'));
   assert.equal(fs.readFileSync(unit, 'utf8'), '# someone else owns this');
+});
+
+test('installer refuses Linger=no or unverifiable linger before any mutation; dry-run does not query the user manager', { skip: process.platform === 'win32' }, async t => {
+  const f = fixture(t), bin = path.join(f.dir, 'fake-bin'), home = path.join(f.dir, 'home'), marker = path.join(f.dir, 'login-called');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'uname'), '#!/bin/sh\nprintf "Linux\\n"\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'systemctl'), '#!/bin/sh\nexit 99\n', { mode: 0o700 });
+  const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, 'config'), XDG_STATE_HOME: path.join(home, 'state'), PATH: bin + path.delimiter + process.env.PATH };
+  const args = ['scripts/install-supervisor.sh', '--password-file', f.file, '--data-dir', path.join(home, 'data')];
+  fs.writeFileSync(path.join(bin, 'loginctl'), '#!/bin/sh\nprintf "called" > ' + JSON.stringify(marker) + '\nprintf "no\\n"\n', { mode: 0o700 });
+  await execFile('bash', [...args, '--dry-run'], { cwd: ROOT, env }); assert.equal(fs.existsSync(marker), false); assert.equal(fs.existsSync(home), false);
+  await assert.rejects(execFile('bash', args, { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_LINGER_REQUIRED');
+  assert.equal(fs.existsSync(marker), true); assert.equal(fs.existsSync(home), false);
+  fs.writeFileSync(path.join(bin, 'loginctl'), '#!/bin/sh\nexit 1\n', { mode: 0o700 });
+  await assert.rejects(execFile('bash', args, { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_LINGER_UNKNOWN');
+  assert.equal(fs.existsSync(home), false); assert.equal(fs.readFileSync(f.file, 'utf8'), SECRET + '\n');
 });
 
 test('simultaneous fresh processes elect exactly one backend per DATA', async t => {
@@ -375,7 +412,7 @@ test('health CLI reports only fixed states for disconnected or invalid backend r
   const port = server.address().port;
   await assert.rejects(execFile(process.execPath, ['scripts/supervisor-check.js', '--port', String(port)], { cwd: ROOT }), e => {
     assert.equal(e.code, 1); assert.equal(e.stderr, '');
-    assert.deepEqual(JSON.parse(e.stdout), { state: 'error', unlocked: false, monitoring: false, error: true });
+    assert.deepEqual(JSON.parse(e.stdout), { state: 'error', unlocked: false, monitoring: false, error: true, processAlive: false, observationsFresh: false, validatedAuditCompletion: false });
     assert.doesNotMatch(e.stdout, new RegExp(SECRET)); return true;
   });
   const absent = await freePort();
