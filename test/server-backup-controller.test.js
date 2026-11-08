@@ -142,3 +142,83 @@ test('a reconnect waiting behind another host catches up immediately even after 
   f.controller.tick(); assert.equal(f.controller.pending(), 1); await finish(f.controller);
   assert.equal(f.controller.store.snapshots('vm').length, 2); assert.notEqual(f.controller.store.snapshots('vm')[0].id, first.id);
 });
+
+test('control accepts all status rows after host deletion without enrolling stored-only history', async t => {
+  const f = fixture(t); f.write('.codex/sessions/a.jsonl', 'original offline conversation'); f.write('project/.env', 'original working file');
+  const roots = [path.join(f.home, 'project')];
+  await f.request('POST', '/control', { enabled: true, servers: [{ serverId: 'vm', roots, includeChats: true }] });
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
+  const good = f.controller.store.snapshots('vm')[0], file = f.controller.store.manifest('vm', good.id).entries.find(e => e.kind === 'chat');
+  f.vault.data.servers = [{ id: 'current', name: 'Current VM' }]; f.vault.save(); f.remotes.clear(); f.remotes.set('current', { cfg: { id: 'current' }, ready: true });
+  const status = () => f.request('GET', '/status').then(r => r.body);
+  // Match the UI's complete-list request, including the deleted VM row.
+  const uiRequest = s => ({ enabled: s.enabled, intervalMinutes: s.intervalMinutes, retention: s.retention,
+    servers: s.servers.map(row => ({ serverId: row.id, roots: row.roots, includeChats: row.includeChats })) });
+  const body = uiRequest(await status()); body.servers.find(c => c.serverId === 'current').roots = roots;
+  const changed = await f.request('POST', '/control', body); assert.equal(changed.status, 200);
+  assert.deepEqual(changed.body.servers.find(s => s.id === 'current').roots, roots);
+  assert.deepEqual(changed.body.servers.find(s => s.id === 'vm').roots, roots);
+  // An explicit complete list omits the deleted scope; its stored copy remains visible.
+  const current = body.servers.filter(c => c.serverId === 'current');
+  assert.equal((await f.request('POST', '/control', { enabled: true, servers: current })).status, 200);
+  let stored = (await status()).servers.find(s => s.id === 'vm'); assert.equal(stored.configured, false); assert.equal(stored.hasSnapshot, true);
+  assert.equal((await f.request('POST', '/control', uiRequest(await status()))).status, 200);
+  stored = (await status()).servers.find(s => s.id === 'vm'); assert.equal(stored.configured, false); assert.equal(stored.includeChats, false); assert.deepEqual(stored.roots, []);
+  assert.ok(!f.controller.config().servers.some(c => c.serverId === 'vm'));
+  const before = JSON.stringify(f.vault.data.features['server-backup']);
+  const unknown = uiRequest(await status()); unknown.servers.push({ serverId: 'unknown', roots: [], includeChats: false });
+  assert.equal((await f.request('POST', '/control', unknown)).status, 400); assert.equal(JSON.stringify(f.vault.data.features['server-backup']), before);
+  // Even a stale connection for the deleted ID must not schedule it.
+  f.remotes.get('current').ready = false; f.remotes.set('vm', { cfg: { id: 'vm' }, ready: true }); f.controller.tick(); assert.equal(f.controller.pending(), 0);
+  const preview = await f.request('GET', `/preview?server=vm&snapshot=${good.id}&file=${file.id}`);
+  assert.equal(preview.status, 200); assert.equal(preview.body.text, 'original offline conversation');
+  assert.equal((await f.request('GET', '/snapshots?server=vm')).body.snapshots[0].id, good.id);
+});
+
+test('manual failures and partial results remain visible with automatic backups OFF, and retries clear stale reasons', async t => {
+  const f = fixture(t); const original = f.controller.options.transport;
+  const chat = f.write('.codex/sessions/a.jsonl', 'old good conversation');
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
+  const good = f.controller.store.snapshots('vm')[0], file = f.controller.store.manifest('vm', good.id).entries[0];
+  await f.request('POST', '/control', { enabled: false });
+  f.controller.options.transport = async function* () { throw Object.assign(Error('private transport detail'), { code: 'source_unavailable' }); };
+  assert.equal((await f.request('POST', '/run', { serverId: 'vm' })).status, 202);
+  let status = (await f.request('GET', '/status')).body; assert.equal(status.enabled, false); assert.equal(status.servers[0].phase, 'running'); assert.equal(status.servers[0].reason, '');
+  await finish(f.controller);
+  status = (await f.request('GET', '/status')).body;
+  assert.equal(status.enabled, false); assert.equal(status.servers[0].phase, 'error'); assert.equal(status.servers[0].reason, 'source_unavailable');
+  assert.equal(status.servers[0].lastSuccessAt, good.at); assert.equal(status.servers[0].hasSnapshot, true);
+  assert.equal(f.controller.store.snapshots('vm')[0].id, good.id);
+  assert.equal((await f.request('GET', `/preview?server=vm&snapshot=${good.id}&file=${file.id}`)).body.text, 'old good conversation');
+  f.controller.options.transport = original;
+  const link = path.join(path.dirname(chat), 'link.jsonl'); fs.symlinkSync(chat, link);
+  assert.equal((await f.request('POST', '/run', { serverId: 'vm' })).status, 202);
+  assert.equal((await f.request('GET', '/status')).body.servers[0].reason, ''); await finish(f.controller);
+  status = (await f.request('GET', '/status')).body; assert.equal(status.enabled, false); assert.equal(status.servers[0].phase, 'partial'); assert.equal(status.servers[0].reason, 'symlink_skipped');
+  assert.equal(status.servers[0].lastSuccessAt, good.at);
+  fs.unlinkSync(link);
+  assert.equal((await f.request('POST', '/run', { serverId: 'vm' })).status, 202);
+  status = (await f.request('GET', '/status')).body; assert.equal(status.servers[0].phase, 'running'); assert.equal(status.servers[0].reason, '');
+  await finish(f.controller);
+  status = (await f.request('GET', '/status')).body; assert.equal(status.enabled, false); assert.equal(status.servers[0].phase, 'paused'); assert.equal(status.servers[0].reason, '');
+});
+
+test('six-minute jobs fairly visit every due VM before repeating while preserving the global gate', async t => {
+  const f = fixture(t), ids = ['vm', 'second', 'third'], starts = [], original = f.controller.options.transport;
+  f.write('.codex/sessions/a.jsonl', 'synthetic conversation');
+  f.vault.data.servers = ids.map(id => ({ id, name: id })); f.vault.save();
+  for (const id of ids) f.remotes.set(id, { cfg: { id }, ready: true });
+  let now = Date.now(); t.mock.method(Date, 'now', () => now);
+  f.controller.options.transport = async function* (backend, ...args) {
+    starts.push(backend.cfg.id);
+    for await (const m of original(backend, ...args)) { if (m.t === 'done') now += 6 * 60000; yield m; }
+  };
+  for (const id of [...ids, ...ids]) {
+    f.controller.tick(); assert.equal(f.controller.job?.serverId, id);
+    const job = f.controller.job; f.controller.tick(); assert.equal(f.controller.job, job); assert.equal(f.controller.pending(), 1);
+    assert.equal((await f.request('POST', '/run', { serverId: ids.find(other => other !== id) })).status, 409);
+    await finish(f.controller); assert.equal(f.controller.pending(), 0);
+    assert.equal((await f.request('GET', '/status')).body.servers.find(s => s.id === id).phase, 'current');
+  }
+  assert.deepEqual(starts, [...ids, ...ids]);
+});

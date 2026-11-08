@@ -57,6 +57,11 @@ test('real server boots locked, authenticates every saved route, enforces Host/O
   assert.equal(JSON.parse(state.bytes).servers[0].hasSnapshot, true); assert.ok(!state.bytes.includes(Buffer.from(key.toString('base64'))));
   assert.equal((await request(port, 'GET', '/api/features/server-backup/status', { cookie, host: 'attacker.invalid' })).status, 403);
   assert.equal((await request(port, 'POST', '/api/features/server-backup/control', { cookie, origin: 'http://attacker.invalid', body: { enabled: true } })).status, 403);
+  const initial = JSON.parse(state.bytes), control = { enabled: initial.enabled,
+    servers: initial.servers.map(s => ({ serverId: s.id, roots: s.roots, includeChats: s.includeChats })) };
+  const controlled = await request(port, 'POST', '/api/features/server-backup/control', { cookie, body: control }); assert.equal(controlled.status, 200);
+  assert.equal(JSON.parse(controlled.bytes).servers[0].configured, false);
+  assert.equal((await request(port, 'POST', '/api/features/server-backup/control', { cookie, body: { enabled: true, servers: [{ serverId: 'unknown', roots: [], includeChats: false }] } })).status, 400);
   for (const route of routes) assert.equal((await request(port, 'GET', '/api/features/server-backup' + route, { cookie })).status, 200, route);
   const downloaded = await request(port, 'GET', '/api/features/server-backup' + routes[4], { cookie }); assert.deepEqual(downloaded.bytes, data);
   const exported = await request(port, 'GET', '/api/features/server-backup' + routes[5], { cookie }); assert.ok(exported.bytes.includes(data));
