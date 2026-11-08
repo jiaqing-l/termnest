@@ -38,13 +38,27 @@ const backup = { enabled: true, storage: { host: 'fixture-store', path: '/encryp
  { id: 'removed', name: 'Removed source', online: false, configured: false, roots: [], includeChats: true, phase: 'offline', hasSnapshot: true, lastSuccessAt: now - 86400000, lastAttemptAt: now - 86400000 },
  { id: 'first', name: 'First connection', online: false, configured: true, roots: [], includeChats: true, phase: 'never', hasSnapshot: false }
  ] };
+// Real sessions and discovered workers coexist; presentation must never promote workers to sessions.
+const appSessions = ['dormant', 'asking', 'busy', 'ordinary'].map((name, i) => ({
+ name, created: i + 1, state: name === 'asking' ? 'wait' : name === 'busy' ? 'run' : 'idle',
+ cmd: 'claude', path: '/work/one', lines: ['Normal session ' + name], activityAge: 10, attached: false
+}));
+const appWorkers = [
+ { task: 'internal-live-task', track: 'W1', kind: 'codex', elapsed: 120, lines: ['private live worker log'] },
+ { task: 'internal-finished-task', track: 'W3', kind: 'codex', elapsed: 60, finishedAt: now - 1000, result: 'DONE', lines: ['private finished worker log'] },
+ { task: 'internal-owned-task', track: 'W4', kind: 'codex', elapsed: 30, owner: { name: 'dormant', created: 1 }, lines: ['private owned worker log'] }
+];
+const appState = { servers: [
+ { id: 'vm1', name: 'Build machine', host: 'fixture-online', user: 'fixture', on: true, hasTmux: true, sessions: appSessions, workers: appWorkers, lost: [] },
+ { id: 'vm2', name: 'Other machine', host: 'fixture-offline', user: 'fixture', on: false, hasTmux: true, sessions: [], workers: appWorkers.slice(0, 2), lost: [], error: 'Offline fixture' }
+] };
 let failBoard = false, failSupervision = false, failPost = false, mismatch = false, slow = false, nudgeMode = 'delivered', failRuleRead = false, folder = '/work/new';
 let releaseNudge;
 const originalSupervision = structuredClone(supervision), originalBackup = structuredClone(backup);
 const prefs = { limits: { cpu: 95, ram: 90, disk: 90 }, templates: [], commands: [], recentDirs: [], backupMinutes: 60, petsEnabled: false };
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8').replace('<head>', `<head><script>
 window.__ticks=[];window.setInterval=(fn,ms)=>{__ticks.push({fn,ms});return __ticks.length};window.clearInterval=()=>{};
-window.__refresh=()=>__ticks.filter(t=>t.ms===10000).forEach(t=>t.fn());
+window.__refresh=()=>__ticks.filter(t=>t.ms===10000||t.ms===2500).forEach(t=>t.fn());
 </script>`);
 const server = http.createServer(async (req, res) => {
  try {
@@ -57,7 +71,7 @@ const server = http.createServer(async (req, res) => {
   let body; if (req.method === 'POST') { let b=''; for await (const c of req) b+=c; body=b?JSON.parse(b):{}; }
   if (u.pathname === '/api/status') return send({ authed: true, packaged: false });
   if (u.pathname === '/api/prefs') return send(prefs);
-  if (u.pathname === '/api/state') return send({ servers: [{ id: 'vm1', name: 'Build machine', user: 'fixture', on: true, hasTmux: true, sessions: [], workers: [], lost: [] }] });
+  if (u.pathname === '/api/state') return send(appState);
   if (u.pathname === '/api/features') return send({ modules: [{ name: 'server-backup', css: true }, { name: 'ops', css: true }] }); // Deliberately backup first.
   if (u.pathname === '/api/features/ops/board') { if (failBoard) { res.statusCode=503; return send({}); } return send(board); }
   if (u.pathname === '/api/features/ops/pack') {
@@ -158,6 +172,35 @@ let chrome, ws, closeBrowser, chromeError='';
  await send('Page.navigate',{url:'http://127.0.0.1:'+server.address().port+'/?lang=vi'});
  await until('!!window.TW && !!TW.app() && !!document.querySelector("[name=save]") && !!document.querySelector(".backup-card")','full app feature load');
  assert.equal(await evaluate('document.querySelector("#tab-ops").getAttribute("aria-pressed")'),'false');
+ // Initial Overview, polling and Terminal use discovered worker data without rendering Crew UI.
+ const assertNoCrew = async label => {
+  assert.equal(await evaluate('document.querySelectorAll(".crew,.crew-row,.meeting-room,.crew-band").length'),0,label+' has no worker nodes');
+  assert.equal(await evaluate('document.querySelectorAll("#tab-crew").length'),0,label+' has no Crew tab');
+  assert.equal(await evaluate('document.querySelector("#crew-panel").hidden'),true,label+' has no worker log popup');
+  assert.equal(await evaluate('document.querySelector("#v-over").textContent.includes("Crew") || document.querySelector("#v-focus").textContent.includes("worker Crew")'),false,label+' has no Crew summary');
+  assert.equal(await evaluate('Array.from(document.querySelectorAll("#grid,#detail,#tabs,#chips,#fleet")).some(n=>/internal-(live|finished|owned)-task|private .* worker log|W1|W3|W4/.test(n.textContent))'),false,label+' has no internal worker details');
+ };
+ assert.equal(await evaluate('document.querySelector("#v-over").classList.contains("on")'),true);
+ for(const name of appSessions.map(s=>s.name))assert.ok(await evaluate('Array.from(document.querySelectorAll("#grid .card .n")).some(n=>n.textContent==='+JSON.stringify(name)+')'),'real Overview session '+name);
+ await assertNoCrew('initial Overview');
+ appWorkers[0].elapsed+=120;await refresh();await assertNoCrew('refreshed Overview including offline host');
+ assert.equal(await evaluate('document.querySelectorAll("#grid .card .n").length'),appSessions.length,'real sessions remain after refresh');
+ assert.equal(await evaluate('TW.app().servers().find(v=>v.id==="vm1").workers.length'),3,'worker discovery is preserved');
+ for(const width of [1440,390]){
+  await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});await delay(80);
+  await screenshot('overview-without-crew-'+width);
+  await evaluate('Array.from(document.querySelectorAll("#grid .card")).find(n=>n.querySelector(".n")?.textContent==="dormant").click()');
+  await until('document.querySelector("#v-focus").classList.contains("on") && !!document.querySelector("#detail .who")','real Terminal');
+  assert.equal(await evaluate('document.querySelector("#detail .who b").textContent'),'dormant');
+  assert.equal(await evaluate('document.querySelectorAll("#detail .detail-actions button").length'),2,'detach and stop controls retained');
+  assert.ok(await evaluate('!!document.querySelector("#split .xterm") && !document.querySelector("#h-kill").disabled && !document.querySelector("#h-detach").disabled'),'normal Terminal and controls retained');
+  await evaluate('document.querySelector("#h-info").click()');
+  await assertNoCrew('Terminal '+width);await refresh();await assertNoCrew('refreshed Terminal '+width);
+  await screenshot('terminal-without-crew-'+width);
+  await evaluate('document.querySelector("#tab-over").click()');
+ }
+ assert.ok(!requests.some(r=>r.method==='DELETE'||r.method==='POST'),'presentation navigation does not mutate workers or sessions');
+ await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
  // Use the normal Settings button before ever visiting Operations.
  await evaluate('document.querySelector("#set").click()');await settingsTab('backup');
  assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);
@@ -324,8 +367,9 @@ let chrome, ws, closeBrowser, chromeError='';
  assert.deepEqual(errors,[]);
  assert.ok(!requests.some(r=>/\/api\/servers\/.*\/(keys|sessions)$/.test(r.url)&&r.method==='POST'),'no arbitrary typing or new session path');
  assert.ok(!requests.some(r=>/\/api\/features\/(crew|crewpack)/.test(r.url)),'no Crew polling');
+ assert.ok(!requests.some(r=>r.method==='DELETE'||/crew-log/.test(r.url)),'no process/task removal or worker log requests');
  fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,chrome:executable,chromeVersion,requests,posts,controls,nudges,accountChecks,downloads,rulePosts,errors},null,2));
- console.log('PASS: actual index/app Settings shell BEFORE Ops, backup-first feature loading, native folder/saved dialogs and focus, offline/removed saved reads and originals/export, pending full-list scope readback, real candidates/task checkboxes, account proof/expiry/readback, drafts through nav/poll, guarded nudge exact delivered/pending/uncertain/reload, owner row/badge dedupe, 1440/390. Artifacts: '+output);
+ console.log('PASS: actual index/app Settings shell BEFORE Ops, backup-first feature loading, native folder/saved dialogs and focus, offline/removed saved reads and originals/export, pending full-list scope readback, real candidates/task checkboxes, account proof/expiry/readback, drafts through nav/poll, guarded nudge exact delivered/pending/uncertain/reload, owner row/badge dedupe, 1440/390; Overview/Terminal Crew removal with live, finished, owned and offline workers. Artifacts: '+output);
  async function screenshot(name){const r=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(output,name+'.png'),Buffer.from(r.data,'base64'));}
  function originalDormant(){return {session:'dormant',rule:'dormant',severity:'warn',level:'suggest',template:'continue',params:[60],since:3600,source:'status'};}
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{

@@ -70,7 +70,6 @@
   }
   function matches(s) { return (filter === 'all' || s.state === filter) && (!query || (s.name + ' ' + s.path + ' ' + (s.lines || []).join(' ')).toLowerCase().indexOf(query) >= 0); }
   function cnt(st) { return vis().filter(function (x) { return x.s.state === st; }).length; }
-  function workers() { var n = 0; scoped().forEach(function (v) { n += v.workers.length; }); return n; }
   function curItem() {
     if (!cur) return null;
     var v = srv(cur.id), s = v && v.sessions.filter(function (x) { return x.name === cur.name; })[0];
@@ -91,12 +90,11 @@
     sel.value = scope;
   }
   function renderHero() {
-    var w = cnt('wait'), r = cnt('run'), on = servers.filter(function (v) { return v.on; }).length, n = workers();
-    $('hero-t').textContent = !servers.length ? i18n('app.them_may_chu_dau_tien') : w ? (i18n('app.co_viec_dang_cho_ban', [w])) : (r || n) ? i18n('app.moi_viec_dang_chay_tot') : i18n('app.chua_co_viec_nao_dang');
+    var w = cnt('wait'), r = cnt('run'), on = servers.filter(function (v) { return v.on; }).length;
+    $('hero-t').textContent = !servers.length ? i18n('app.them_may_chu_dau_tien') : w ? (i18n('app.co_viec_dang_cho_ban', [w])) : r ? i18n('app.moi_viec_dang_chay_tot') : i18n('app.chua_co_viec_nao_dang');
     var box = $('chips'); box.textContent = '';
     function chip(num, t, c) { var e = el('span', 'chip ' + (c || '')); e.append(el('b', '', num), t); box.append(e); }
     chip(on + '/' + servers.length, i18n('app.may_chu')); chip(vis().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
-    if (n) chip(n, 'worker Crew');
     if (w) chip(w, i18n('app.cho_ban_2'), 'alert');
     box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
     // The first session waiting for you gets a reply button right in the summary.
@@ -177,7 +175,7 @@
     var h = el('div', 'card-head'); h.append(petSlot(v, s));
     var t = el('div', 't'), sub = el('span', 's', subOf(s)); t.append(el('span', 'n', s.name), sub); h.append(t, el('span', 'pill ' + s.state, LABEL[s.state]));
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
-    var f = el('div', 'card-foot'); band(v,s,f);f.append(ref.foot, ref.path);
+    var f = el('div', 'card-foot'); f.append(ref.foot, ref.path);
     c.append(h, ref.mini, f); fillCard(ref, s); cardRefs[v.id + '/' + s.name] = ref;
     if (window.TW) window.TW.decorateCard(c, v, s);
     c.setAttribute('role', 'button'); c.tabIndex = 0;
@@ -234,48 +232,8 @@
     catch (e) { /* decoration is optional */ }
   }
   function petEvent(id, name, type) { try { if (window.PetScene) window.PetScene.event(id, name, type); } catch (e) { /* optional */ } }
-  function owned(v, s) { return v.workers.filter(function (w) { return w.owner && w.owner.name === s.name && w.owner.created === s.created; }); }
   function petSlot(v, s) {
     var n = el('div', 'pet-slot'); n.dataset.key = v.id + '/' + s.name + '/' + s.created; return n;
-  }
-  function band(v, s, node) { var count = owned(v, s).length; if (count) node.append(el('span', 'crew-band', '🎽 ' + count)); }
-  function renderWorkers(v, sec, session) {
-    var list = session ? owned(v, session) : v.workers.filter(function (w) { return !w.owner || !v.sessions.some(function (s) { return w.owner.name === s.name && w.owner.created === s.created; }); });
-    if (!list.length) return;
-    var box = el('div', 'crew');
-    box.append(el('div', 'crew-t', (session ? i18n('app.crew_dang_chay') : i18n('app.tong_quan_crew')) + list.length));
-    if (session) {
-      var tasks = Array.from(new Set(list.map(function (w) { return w.task; })));
-      tasks.forEach(function (task) {
-        var celebrating = list.some(function (w) { return w.task === task && w.finishedAt && w.result === 'DONE' && window.PetState && Date.now() - w.resultAt < window.PetState.LIMITS.effect; });
-        var room = el('div', 'meeting-room' + (celebrating ? ' meeting-celebrate' : '')); room.title = task; room.append(el('b', 'meeting-table', 'Crew'));
-        list.filter(function (w) { return w.task === task; }).forEach(function (w) {
-          var member = el('button', 'meeting-member' + (w.finishedAt ? ' meeting-left' : '') + (w.finishedAt && window.PetState && Date.now() - w.finishedAt < window.PetState.LIMITS.effect ? ' meeting-departing' : ''));
-          member.innerHTML = pet(petOf(w.track), w.finishedAt ? 'idle' : 'run'); member.append(el('span', 'crew-band', '🎽 ' + w.track), el('small', '', w.finishedAt ? i18n('app.da_roi_ban', [w.result]) : i18n('app.dang_lam')));
-          member.onclick = function () { openCrew(v, w); }; room.append(member);
-        }); box.append(room);
-      });
-    }
-    list.forEach(function (w) {
-      var r = el(session ? 'button' : 'div', 'crew-row' + (session ? ' crew-worker-button' : ''));
-      if (session) { r.type = 'button'; r.title = (w.lines || []).join('\n'); }
-      if (w.task && w.track) {
-        r.onclick = function () { openCrew(v, w); };
-        if (!session) r.append(el('button', 'btn', i18n('app.xem_log')));
-      }
-      var mascot = el('span', 'crew-pet' + (w.finishedAt && w.result === 'DONE' && window.PetState && Date.now() - w.resultAt < window.PetState.LIMITS.effect ? ' high-five' : ''));
-      mascot.innerHTML = pet('fox', w.finishedAt ? 'idle' : 'run') + pet('cat', w.finishedAt ? 'idle' : 'run');
-      mascot.append(el('span', 'team-band', 'CREW')); if (!session) r.append(mascot);
-      var head = el('div', 'crew-h');
-      head.append(el('span', 'pill run', w.finishedAt ? (w.result === 'unknown' ? i18n('app.da_ket_thuc_chua_ro') : w.result) : (session ? i18n('app.dang_chay') : (w.kind || 'worker'))));
-      head.append(el('b', '', w.track ? w.track + (session ? '' : ' · ' + w.task) : (w.cwd || i18n('app.khong_ro_thu_muc'))));
-      head.append(el('span', 'crew-time', span(w.elapsed)));
-      if (!session) head.append(el('span', '', w.owner ? i18n('app.phien_da_dong', [w.owner.name]) : i18n('app.chua_ro_phien')));
-      r.append(head);
-      if (!session && w.lines && w.lines.length) { var m = el('div', 'crew-log'); w.lines.forEach(function (l) { m.append(el('div', '', l)); }); r.append(m); }
-      box.append(r);
-    });
-    sec.append(box);
   }
   function renderGrid() {
     var active = document.activeElement, selection = active && active.tagName === 'INPUT' ? [active.selectionStart, active.selectionEnd] : null;
@@ -298,7 +256,7 @@
       if (!v.on) {
         var o = el('div', 'off-tile'), r = el('button', 'btn primary', i18n('app.ket_noi_lai')), tx = el('div');
         tx.append(el('b', '', v.error || i18n('app.khong_vao_duoc_may_chu')), el('span', '', i18n('app.viec_tren_may_chu_khong')));
-        r.onclick = function () { connectAgain(v, r); }; o.append(tx, r); sec.append(o); renderWorkers(v, sec); box.append(sec); return;
+        r.onclick = function () { connectAgain(v, r); }; o.append(tx, r); sec.append(o); box.append(sec); return;
       }
       if (!v.hasTmux) {
         var n = el('div', 'off-tile'), nt = el('div');
@@ -316,7 +274,6 @@
         add.setAttribute('aria-label', i18n('app.tao_phien_moi_tren', [v.name])); add.onclick = function () { newDlg(v.id); }; g.append(add);
         sec.append(g);
       }
-      renderWorkers(v, sec);
       box.append(sec);
     });
     if (active && active.isConnected && selection) { active.focus({ preventScroll: true }); active.setSelectionRange(selection[0], selection[1]); }
@@ -413,7 +370,7 @@
     vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name); band(x.v, x.s, b);
+      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name);
       if (tabHide) {
         var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', i18n('app.dong_tab', [x.s.name])); close.title = i18n('app.dong_tab_phien_van_chay');
         close.onclick = function (e) { e.stopPropagation(); closeTab(x); }; b.append(close);
@@ -441,10 +398,9 @@
   var detailSignature = '';
   function renderDetail() {
     var box = $('detail'), x = curItem();
-    var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], owned(x.v,x.s).map(function(w) { return [w.task,w.track,w.owner,w.finishedAt,w.result,w.resultAt,span(w.elapsed),w.lines]; }), prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
+    var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
     if (nextSignature === detailSignature) return;
     detailSignature = nextSignature; box.textContent = ''; if (!x) return;
-    renderWorkers(x.v, box, x.s);
     var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s));
     w.append(el('b', '', x.s.name), el('span', 'pill ' + x.s.state, LABEL[x.s.state]));
     var a = el('div'); a.append(el('h3', '', i18n('app.thong_tin')));
@@ -827,7 +783,6 @@
         tags.append(el('span', 'tg', i18n('app.phien_2', [v.sessions.length])));
         if (waits) tags.append(el('span', 'tg w', i18n('app.cho_ban_5', [waits])));
       }
-      if (v.workers.length) tags.append(el('span', 'tg', v.workers.length + ' worker Crew'));
       if (sys && (sys.failed || []).length) tags.append(el('span', 'tg b', i18n('app.dich_vu_loi', [sys.failed.length])));
       if (sys && sys.rebootRequired) {
         if (!v.local) {
@@ -1433,7 +1388,7 @@
     var t = e.target;
     if (t && t.classList && t.scrollTop && $('app').classList.contains('compact') && (t.id === 'app' || t.id === 'v-focus' || t.classList.contains('main') || t.classList.contains('focus-body') || t.classList.contains('term-wrap'))) t.scrollTop = 0;
   }, true);
-  // Phone: the detail column is hidden, so a button opens it as a bottom sheet (context window, tokens, Crew of this session).
+  // Phone: the detail column is hidden, so a button opens it as a bottom sheet (context window and tokens).
   function toggleSheet(on) {
     var d = $('detail'), b = $('sheet-backdrop'); if (!d || !b) return;
     on = on === undefined ? !d.classList.contains('sheet') : on;
