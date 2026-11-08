@@ -266,10 +266,12 @@ test('native macOS source installer executes a real universal PATH Node and expl
       ? universalMacho([{ cpu: bytes.readUInt32LE(4), bytes }], { align: 14 }) : bytes;
     assert.ok([0xcafebabe, 0xcafebabf, 0xbebafeca, 0xbfbafeca].includes(universal.readUInt32BE(0)));
     const node = path.join(bin, 'node'); fs.writeFileSync(node, universal, { mode: 0o700 });
+    // First execution of the copied Node can require Rosetta translation on macOS.
+    // Bound this native integration fixture without changing production timeouts.
     const run = (args, context) => {
       const script = [path.join(app, 'scripts/install-supervisor-macos.sh'), '--dry-run', ...args];
       return execFileSync(context ? '/usr/bin/arch' : '/bin/bash', context ? [context, '/bin/bash', ...script] : script,
-        { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: bin + ':/usr/bin:/bin' }, encoding: 'utf8', timeout: 15000 });
+        { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: bin + ':/usr/bin:/bin' }, encoding: 'utf8', timeout: 60000 });
     };
     // A real kernel execution and own-identity probe, not a mocked Darwin header result.
     for (const args of [[], ['--node-path', node]]) {
