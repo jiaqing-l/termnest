@@ -1,4 +1,5 @@
 'use strict';
+const { paneCommand } = require('./helpers/tmux-fixture');
 const assert = require('node:assert/strict');
 const cp = require('node:child_process');
 const fs = require('node:fs');
@@ -76,7 +77,7 @@ test('without a repo the git block is empty and nothing throws', async () => {
 test('the last message ignores Codex and Claude footer lines (needs tmux to read a screen)', { skip: process.platform === 'win32' || cp.spawnSync('tmux', ['-V']).status !== 0 }, async () => {
   const sock = 'twho' + process.pid, dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-ho-screen-'));
   try {
-    cp.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 's1', '-x', '160', '-y', '30', `printf '%s\\n' 'Đã sửa xong hai file và chạy test thành công.' 'Bạn muốn làm phần nào tiếp theo?' '› Ask Codex to do anything' 'GPT-6.1-Sol medium · ~/work/proj' '2 shells still running'; sleep 30`]);
+    cp.execFileSync('tmux', ['-L', sock, 'new-session', '-d', '-s', 's1', '-x', '160', '-y', '30', paneCommand(['Đã sửa xong hai file và chạy test thành công.', 'Bạn muốn làm phần nào tiếp theo?', '› Ask Codex to do anything', 'GPT-6.1-Sol medium · ~/work/proj', '2 shells still running'])]);
     await new Promise((r) => setTimeout(r, 500));
     const out = await h.factsRuntime()({ cwd: dir, session: 's1', socket: sock, home: dir });
     assert.equal(out.screen.last, 'Đã sửa xong hai file và chạy test thành công. Bạn muốn làm phần nào tiếp theo?'); assert.equal(out.screen.shells, 2);
