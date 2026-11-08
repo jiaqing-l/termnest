@@ -185,7 +185,7 @@
       input.onchange = function () { supervisionDraft[key] = input.checked; renderSupervision(); };
       return field(i18n(label), input);
     }
-    form.append(check('enabled', 'ops.super.enable'), check('autoRecovery', 'ops.super.recovery'), el('p', 'ops-note', i18n('ops.super.scope')));
+    form.append(check('enabled', 'ops.super.enable'), check('autoRecovery', 'ops.super.recovery'));
     var interval = el('input'); interval.type = 'number'; interval.name = 'intervalMinutes'; interval.min = '1'; interval.max = '1440'; interval.required = true; interval.value = supervisionDraft.intervalMinutes;
     interval.oninput = function () { supervisionDraft.intervalMinutes = Number(interval.value); };
     form.append(field(i18n('ops.super.interval'), interval));
@@ -205,7 +205,7 @@
     leader.onchange = renderSupervision;
     var tasks = el('input'); tasks.name = 'taskIds'; tasks.type = 'text';
     var confirm = el('input'); confirm.type = 'checkbox'; confirm.name = 'confirmLeader'; confirm.onchange = renderSupervision;
-    form.append(field(i18n('ops.super.register_leader'), leader), field(i18n('ops.super.task_ids'), tasks), field(i18n('ops.super.confirm_leader'), confirm), el('p', 'ops-note', i18n('ops.super.identity_help')));
+    form.append(field(i18n('ops.super.register_leader'), leader), field(i18n('ops.super.task_ids'), tasks), field(i18n('ops.super.confirm_leader'), confirm));
     var save = button(i18n('ops.super.save'), 'primary', function () {}); save.type = 'submit'; save.name = 'save';
     form.append(save);
     form.onsubmit = function (e) {
@@ -254,46 +254,18 @@
     if (!supervision) {
       supervisionStatus.append(el('p', 'ops-super-alert', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading'))); return;
     }
-    var servers = list(supervision.servers), teams = [];
-    servers.forEach(function (s) { list(s.teams).forEach(function (t) { teams.push({ server: s, team: t }); }); });
-    supervisionStatus.append(el('p', '', i18n(supervision.enabled ? 'ops.super.enabled' : 'ops.super.disabled') + ' · ' + i18n('ops.super.observed', [teams.length])));
-    var runtime = supervision.runtime || {}, ready = runtime.ready === true && !Object.keys(runtime).some(function (k) { return runtime[k] === false; });
-    supervisionStatus.append(el('p', 'ops-note', i18n(ready ? 'ops.super.ready' : 'ops.super.readiness_unknown')));
-    ['unlocked', 'monitoring', 'observationsFresh', 'validatedAuditCompletion', 'sshReady', 'auditReady', 'linger', 'registrationReady', 'recoveryReady'].forEach(function (k) {
-      if (typeof runtime[k] === 'boolean') supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.runtime_' + k) + ': ' + i18n(runtime[k] ? 'ops.super.confirmed' : 'ops.super.needs_setup')));
-    });
-    list(runtime.reasons).concat(list(supervision.errors)).forEach(function (r) { supervisionStatus.append(el('p', 'ops-super-alert', explanation(r))); });
-    list(runtime.passwordOnlyAccounts).concat(list(supervision.auditReadiness)).forEach(function (r) { supervisionStatus.append(el('p', 'ops-super-alert', text(r.serverId) + ' · ' + text(r.root) + ': ' + explanation(r))); });
-    if (runtime.platform) supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.platform') + ': ' + explanation(runtime.platform.code || runtime.platform.startupCode)));
-    if (runtime.code) supervisionStatus.append(el('p', 'ops-note', explanation(runtime.code)));
-    if (!recoveryReady()) supervisionStatus.append(el('p', 'ops-super-alert', i18n('ops.super.registration')));
-    supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.wait_valid')));
-    var all = el('details', 'ops-super-teams'); keepOpen(all, 'super-teams', false); all.append(el('summary', '', i18n('ops.super.teams', [teams.length])));
-    function teamRow(x) {
-      var s = x.server, t = x.team, row = el('div', 'ops-super-row');
-      var stale = !hostFresh(s);
-      var state = teamState(s, t);
-      row.append(el('b', '', text(s.name || s.id) + ' · ' + text(t.session || t.id)), el('span', 'ops-super-state', i18n('ops.super.state_' + state)));
-      row.append(el('p', '', stale ? i18n('ops.super.stale') : state === 'unknown' && t.status === 'progressing' ? i18n('ops.super.no_evidence') : explanation(t.reason)));
-      if (t.requiresOwner) row.append(el('p', 'ops-super-alert', i18n('ops.super.owner_action')));
-      row.append(el('small', '', i18n('ops.super.evidence', [stamp(t.lastProgressAt)])));
-      if (t.lastAction) row.append(el('p', 'ops-note', i18n('ops.super.last_action') + ': ' + explanation(t.lastAction) + ' · ' + stamp(t.lastAction.at)));
-      if (typeof t.session === 'string' && t.session && s.online === true) row.append(button(i18n('ops.super.open'), 'ghost', function () { TW.app().openSession(s.id, t.session); }));
-      return row;
-    }
-    var attention = teams.filter(function (x) { return x.team.requiresOwner || !['progressing', 'completed'].includes(teamState(x.server, x.team)); });
-    supervisionStatus.append(el('h4', '', i18n('ops.super.attention', [attention.length])));
-    attention.forEach(function (x) { supervisionStatus.append(teamRow(x)); });
-    teams.forEach(function (x) { all.append(teamRow(x)); }); supervisionStatus.append(all);
-    servers.forEach(function (s) {
-      supervisionStatus.append(el('p', 'ops-note', text(s.name || s.id) + ' · ' + i18n(s.online === true ? 'ops.super.observed_at' : 'ops.super.offline', [stamp(s.observedAt)])));
-      list(s.errors).forEach(function (r) { supervisionStatus.append(el('p', 'ops-super-alert', explanation(r))); });
-      list(s.audits).slice(-3).forEach(function (a) {
-        var reported = a.phase === 'completed' && a.verification === 'reported';
-        supervisionStatus.append(el('p', reported ? 'ops-note' : 'ops-super-alert', text(s.name || s.id) + ' · ' + i18n(reported ? 'ops.super.audit_reported' : 'ops.super.audit_unverified') + ': ' + explanation(a.reason)));
+    supervisionStatus.append(el('p', '', i18n(supervision.enabled ? 'ops.super.enabled' : 'ops.super.disabled')));
+    if (!supervision.enabled) return;
+    list(supervision.servers).forEach(function (server) {
+      list(server.teams).filter(function (team) { return team.requiresOwner && server.online === true; }).forEach(function (team) {
+        var row = el('div', 'ops-super-row');
+        row.append(el('b', '', text(server.name || server.id) + ' · ' + text(team.session)), el('p', '', i18n('ops.super.owner_action')));
+        if (team.session) row.append(button(i18n('ops.super.open'), '', function () { TW.app().openSession(server.id, team.session); }));
+        supervisionStatus.append(row);
       });
     });
   }
+
   function loadSupervision(force) {
     if ((!force && supervisionFetching) || (supervisionPending && !force)) return Promise.resolve();
     var revision = ++supervisionRevision; supervisionFetching = true;
@@ -368,7 +340,13 @@
     meta.append(document.createTextNode([f.session ? srv.name : '', since(f.since)].filter(Boolean).join(' · ')));
     var src = el('span', 'ops-src ' + f.source, i18n('ops.src_' + f.source)); meta.append(src);
     t.append(line, meta); r.append(t);
-    if (inTerminal(f)) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
+    if (f.rule === 'offline') {
+      var reconnect = button(i18n('ops.reconnect'), '', function () {
+        if (busy[srv.id]) return; busy[srv.id] = true; reconnect.disabled = true;
+        TW.api('POST', '/api/servers/' + encodeURIComponent(srv.id) + '/connect', {}).then(load).catch(function () { TW.app().say(i18n('ops.connect_failed'), false, 4000); }).finally(function () { busy[srv.id] = false; reconnect.disabled = false; });
+      }); acts.append(reconnect);
+    }
+    if (inTerminal(f) && f.rule !== 'offline') acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
     if (f.template) {
       var send = button(i18n('ops.gui_nhac'), 'primary', function () {
         if (busy[f.key]) return; busy[f.key] = true; send.disabled = true;
@@ -587,30 +565,23 @@
     if (pluginTab) { pluginTab.textContent = i18n('pl.tieu_de'); if (stale) pluginTab.append(el('span', 'ops-badge', String(stale))); }
     if (!page || !data) return;
     var previousRules = editing && page.querySelector('.ops-rules');
+    if (supervisionForm) supervisionForm.querySelectorAll('.ops-edit-rules,.ops-rules').forEach(function (node) { node.remove(); });
     if (supervisionBox) supervisionBox.remove();
+    var backup = TW.serverBackupCard && TW.serverBackupCard(); if (backup) backup.remove();
     page.textContent = '';
     var all = [];
-    data.servers.forEach(function (s) { s.findings.forEach(function (f) { all.push({ f: f, s: s }); }); });
+    data.servers.forEach(function (s) { s.findings.forEach(function (f) { if (['finished', 'dormant', 'unknown', 'unheard'].indexOf(f.rule) < 0) all.push({ f: f, s: s }); }); });
     var accts = { id: '', name: i18n('ops.tai_khoan_ai'), sessions: [] };
     quotaFindings().forEach(function (f) { if (!data.dismissedKeys || data.dismissedKeys.indexOf(f.key) < 0) all.push({ f: f, s: accts }); });
     all.sort(function (a, b) { return (SEV[a.f.severity] - SEV[b.f.severity]) || (b.f.since - a.f.since); });
     var head = el('div', 'ops-head'), h = el('div', 'ops-title');
-    h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', i18n('ops.mo_ta', [data.servers.length, data.servers.reduce(function (n, s) { return n + s.sessions.length; }, 0)])));
+    h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', i18n('ops.connections', [data.servers.length, data.servers.filter(function (s) { return s.online === true || s.connected === true; }).length])));
     var tools = el('div', 'ops-tools');
     if (data.dismissed) tools.append(button(i18n('ops.hien_lai', [data.dismissed]), 'ghost', function () { post('/dismiss', { all: true }).then(load); }));
-    // Open the separate plugin view; count sessions running an older plugin.
-    var staleN = 0; ((plug && plug.servers) || []).forEach(function (v) { staleN += v.stale.length; });
-    var jump = button(i18n('pl.tieu_de'), 'ghost ops-jump', function () { TW.app().setView('plugins'); });
-    jump.prepend(icon('plug')); if (staleN) jump.append(el('span', 'ops-count warn', String(staleN)));
-    tools.append(jump);
-    // Open or close every section at once (each section remembers its state on this device).
-    function setAll(open) { page.querySelectorAll('details.ops-card').forEach(function (d) { if (d.open !== open) d.open = open; }); }
-    var exp = el('div', 'ops-expand'); exp.append(button(i18n('ops.mo_het'), 'ghost', function () { setAll(true); }), button(i18n('ops.thu_het'), 'ghost', function () { setAll(false); }));
-    tools.append(exp);
-    tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
-    head.append(h, tools); page.append(head, supervisionCard());
+    head.append(h, tools); page.append(head, supervisionCard()); if (backup) page.append(backup);
     var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);
-    if (editing) page.append(previousRules || rulesForm());
+    supervisionForm.append(button(i18n('ops.chinh_luat'), 'ops-edit-rules', function () { editing = !editing; draw(); }));
+    if (editing) supervisionForm.append(previousRules || rulesForm());
     var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); });
     var groups = el('div', 'ops-groups');
     if (!shown.length) { var e = el('section', 'ops-card'); e.append(el('p', 'ops-empty ok', i18n(all.length ? 'ops.khong_co_muc_loc' : 'ops.on_ca'))); groups.append(e); }
@@ -618,11 +589,11 @@
       var items = shown.filter(function (x) { return group(x.f) === g; }); if (!items.length) return;
       var box = el('details', 'ops-card ops-group g-' + g), sum = el('summary', 'ops-card-h'); keepOpen(box, 'g-' + g, true);
       var h3 = el('h3', ''); h3.append(icon(g), document.createTextNode(i18n('ops.g.' + g)), el('span', 'ops-count', String(items.length)));
-      sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
+      sum.append(h3); box.append(sum);
       items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
     });
     page.append(el('div', 'ops-part', i18n('ops.phan_chu_y')), groups, el('div', 'ops-part', i18n('ops.phan_chi_tiet')));
-    page.append(jobList(), evidence(), logList());
+    page.append(logList());
     var n = all.filter(function (x) { return x.f.severity !== 'info'; }).length;
     if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
   }
@@ -642,6 +613,7 @@
     if (v) tab = v.tab;
     var pv = TW.addView({ id: 'plugins', label: i18n('pl.tieu_de'), mount: function (box) { pluginPage = box; box.classList.add('ops-page'); }, onShow: loadPlugins });
     if (pv) pluginTab = pv.tab;
+    TW.on('ready', draw);
     load(); loadPlugins(); loadTokens(); setInterval(function () { if (!document.hidden) { load(); loadPlugins(); } }, 10000);
     setInterval(function () { if (!document.hidden) loadTokens(); }, 60000);
   })();

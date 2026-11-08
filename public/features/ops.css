@@ -289,3 +289,5 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .ops-super-row p,.ops-super-row small{flex-basis:100%;overflow-wrap:anywhere}
 .ops-super-state{color:var(--fg-2)}.ops-super-teams{margin-top:12px}
 @media(max-width:640px){.ops-super-form label{align-items:flex-start}.ops-super-row .btn{max-width:100%}}
+/* Daily monitoring stays on one line; setup retains its persistent forms. */
+.ops-super{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}.ops-super>h3{margin:0}.ops-super-status{grid-column:1;grid-row:2}.ops-super-settings{grid-column:2;grid-row:1 / 3;border:0;margin:0;padding:0}.ops-super-settings[open]{grid-column:1 / -1;grid-row:3}.ops-super-status p{margin:0}.ops-super-settings[open] summary{margin-bottom:12px}
