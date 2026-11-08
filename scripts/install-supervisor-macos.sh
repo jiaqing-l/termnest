@@ -198,14 +198,21 @@ for (const v of [app, data, password, file, node]) if (!path.isAbsolute(v) || /[
 if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) fail('RUNTIME_PORT_INVALID');
 const xml = v => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const string = v => `<string>${xml(v)}</string>`;
+const runtimeNode = fs.realpathSync(node);
+// launchd has a minimal PATH. Match the desktop's Homebrew support and include
+// the selected runtime plus system tools, without inheriting shell environment.
+// A colon cannot represent a single PATH entry; omit that optional runtime dir.
+const toolPath = [...new Set([path.dirname(runtimeNode), '/opt/homebrew/bin', '/usr/local/bin',
+  '/usr/bin', '/bin', '/usr/sbin', '/sbin'].filter(v => path.isAbsolute(v) && v.length <= 4096 && !/[:\x00-\x1f\x7f]/.test(v)))].join(':');
 const text = `<?xml version="1.0" encoding="UTF-8"?>
 ${marker}
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key>${string('io.termnest.supervisor')}
-<key>ProgramArguments</key><array>${string(fs.realpathSync(node))}${string(path.join(app, 'server.js'))}</array>
+<key>ProgramArguments</key><array>${string(runtimeNode)}${string(path.join(app, 'server.js'))}</array>
 <key>WorkingDirectory</key>${string(app)}
 <key>EnvironmentVariables</key><dict>
+<key>PATH</key>${string(toolPath)}
 <key>TW_DATA</key>${string(data)}<key>TW_PASSWORD_FILE</key>${string(password)}<key>TW_PORT</key>${string(port)}
 </dict>
 <key>RunAtLoad</key><true/>
