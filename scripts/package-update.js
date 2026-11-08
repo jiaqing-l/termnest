@@ -13,7 +13,8 @@ function safeEntry(name) {
   return !path.posix.isAbsolute(name) && !/[\x00-\x1f\\]/.test(name) && !parts.some(p =>
     !p || p === '..' || p === '.' || p.startsWith('.') || /^(node_modules|data|vault|credentials?|secrets?|implementation)$/i.test(p)) &&
     !/\.(?:tar|tgz|gz|zip|7z|exe|dll|dylib|so|node|pem|key|p12|pfx|env)$/i.test(name) &&
-    !/(?:^|\/)(?:vault|credentials?|secrets?|password|id_rsa|id_ed25519)(?:[._-]|$)/i.test(name);
+    // This audited implementation module is required by server.js; vault DATA stays excluded.
+    (name === 'lib/vault.js' || !/(?:^|\/)(?:vault|credentials?|secrets?|password|id_rsa|id_ed25519)(?:[._-]|$)/i.test(name));
 }
 function build({ source = path.resolve(__dirname, '..'), output = path.join(source, 'implementation', 'termnest-update-test.tar.gz'), tar = 'tar' } = {}) {
   source = path.resolve(source); output = path.resolve(output);
