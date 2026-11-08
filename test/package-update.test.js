@@ -77,7 +77,7 @@ test('real extracted source archive boots on loopback with pinned dependencies a
     const identity = await request('/__app'); assert.equal(identity.status, 200);
     assert.equal((await identity.json()).app, 'tmux-dev');
     const health = await request('/api/supervisor/status'); assert.equal(health.status, 200);
-    assert.deepEqual(await health.json(), { unlocked: false, monitoring: false, error: false });
+    assert.deepEqual(await health.json(), { processAlive: true, unlocked: false, monitoring: false, error: false, observationsFresh: false, validatedAuditCompletion: false });
     assert.equal(health.headers.get('set-cookie'), null);
     assert.deepEqual(await (await request('/api/status')).json(), { setup: false, authed: false });
     const protectedResponse = await request('/api/state'); assert.equal(protectedResponse.status, 401); await protectedResponse.text();
