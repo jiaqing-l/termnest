@@ -48,3 +48,51 @@ test('fallback-only turns retain their position among response items', () => {
     { type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Response answer' }] } }
   ])), [{ role: 'user', text: 'Fallback question' }, { role: 'assistant', text: 'Response answer' }]);
 });
+
+test('unknown and unheard findings render a neutral empty state without fake urgency in both languages', () => {
+  const fs = require('node:fs'), vm = require('node:vm');
+  const source = fs.readFileSync(require.resolve('../public/features/ops.js'), 'utf8');
+  // Run the production draw function with a small DOM adapter; do not duplicate its finding filter.
+  const drawSource = source.slice(source.indexOf('  function draw() {'), source.indexOf('  function load() {'));
+  function element(tag, className = '', text = '') {
+    return {
+      tag, className, children: [], value: text,
+      append(...nodes) { this.children.push(...nodes); },
+      querySelector() { return null; }, querySelectorAll() { return []; },
+      get textContent() { return this.value + this.children.map(n => typeof n === 'string' ? n : n.textContent).join(''); },
+      set textContent(value) { this.value = value; this.children = []; }
+    };
+  }
+  for (const [lang, expected] of [['vi', 'Chưa có mục cần thao tác'], ['en', 'No items need action']]) {
+    const locale = require('../public/locales/' + lang + '.json');
+    const context = {
+      pluginPage: null, plug: null, pluginTab: null, supervisionBox: null, editing: false,
+      page: element('main'), tab: element('button'), supervisionForm: element('details'),
+      data: { servers: [{ id: 'vm1', online: true, findings: [] }] },
+      TW: {}, el: element, SEV: { urgent: 0, warn: 1, info: 2 }, filt: {},
+      i18n: key => locale[key] || key, quotaFindings: () => [],
+      supervisionCard: () => element('section'), summary: () => element('div'),
+      button: label => element('button', '', label), logList: () => element('div'),
+      keepOpen: () => {}, group: () => 'issue', icon: () => element('span'),
+      row: finding => element('div', 'finding', finding.rule),
+      document: { createTextNode: text => text }
+    };
+    vm.createContext(context); vm.runInContext(drawSource, context);
+    for (const rules of [['unknown'], ['unheard'], ['unknown', 'unheard']]) {
+      context.data.servers[0].findings = rules.map(rule => ({ rule, severity: 'urgent' }));
+      context.draw();
+      const groups = context.page.children.find(n => n.className === 'ops-groups');
+      assert.equal(groups.textContent, expected, lang + ': ' + rules.join(','));
+      assert.equal(groups.children.length, 1);
+      assert.equal(groups.children[0].tag, 'section', 'no actionable finding group');
+      assert.equal(context.tab.children.length, 0, 'no urgent badge for unreadable status');
+      assert.doesNotMatch(groups.textContent, /Mọi phiên đều ổn|All sessions look fine/i);
+    }
+    context.data.servers[0].findings.push({ rule: 'aborted', severity: 'urgent' });
+    context.draw();
+    const groups = context.page.children.find(n => n.className === 'ops-groups');
+    assert.equal(groups.children[0].tag, 'details', 'real actionable finding still appears');
+    assert.match(groups.textContent, /aborted/);
+    assert.equal(context.tab.children[0].textContent, '1', 'badge counts only the actionable finding');
+  }
+});

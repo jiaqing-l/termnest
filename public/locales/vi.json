@@ -1350,7 +1350,7 @@
   "ops.thong_tin": "thông tin",
   "ops.chinh_luat": "Chỉnh quy tắc",
   "ops.hien_lai": "Hiện lại {0} mục đã bỏ qua",
-  "ops.on_ca": "Mọi phiên đều ổn, chưa có gì cần bạn.",
+  "ops.on_ca": "Chưa có mục cần thao tác",
   "ops.mo": "Mở",
   "ops.gui_nhac": "Gửi nhắc",
   "ops.bo_qua": "Bỏ qua",

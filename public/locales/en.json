@@ -1367,7 +1367,7 @@
   "ops.thong_tin": "info",
   "ops.chinh_luat": "Edit rules",
   "ops.hien_lai": "Show {0} dismissed",
-  "ops.on_ca": "All sessions look fine. Nothing needs you.",
+  "ops.on_ca": "No items need action",
   "ops.mo": "Open",
   "ops.gui_nhac": "Send nudge",
   "ops.bo_qua": "Dismiss",
