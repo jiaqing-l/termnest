@@ -38,6 +38,147 @@ function appFixture(dir, name) {
   return app;
 }
 
+function machoSlice(cpu, platform = 1) {
+  const b = Buffer.alloc(56);
+  [0xfeedfacf, cpu, 0, 2, 1, 24, 0, 0, 50, 24, platform, 0, 0, 0].forEach((v, i) => b.writeUInt32LE(v, i * 4));
+  return b;
+}
+function universalMacho(slices, { little = false, wide = false, align = 8 } = {}) {
+  const step = 2 ** align, entry = wide ? 32 : 20;
+  let end = Math.ceil((8 + slices.length * entry) / step) * step;
+  const offsets = slices.map(({ bytes }) => { const offset = end; end = Math.ceil((end + bytes.length) / step) * step; return offset; });
+  const b = Buffer.alloc(end), word = (p, value) => b[little ? 'writeUInt32LE' : 'writeUInt32BE'](value, p);
+  word(0, wide ? 0xcafebabf : 0xcafebabe); word(4, slices.length);
+  slices.forEach(({ cpu, bytes }, i) => {
+    const p = 8 + i * entry;
+    word(p, cpu); word(p + 4, bytes.readUInt32LE(8));
+    if (wide) {
+      b[little ? 'writeBigUInt64LE' : 'writeBigUInt64BE'](BigInt(offsets[i]), p + 8);
+      b[little ? 'writeBigUInt64LE' : 'writeBigUInt64BE'](BigInt(bytes.length), p + 16);
+    } else { word(p + 8, offsets[i]); word(p + 12, bytes.length); }
+    word(p + (wide ? 24 : 16), align);
+    bytes.copy(b, offsets[i]);
+  });
+  return b;
+}
+
+// Mock Darwin only for binary parsing; stop before executing ANY synthetic Mach-O.
+function macBinaryFixture(t) {
+  const dir = fixture(t), app = appFixture(dir, 'Termnest Việt.app/Contents/Resources/app & spaces');
+  const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
+  fs.symlinkSync('/usr/bin/dirname', path.join(bin, 'dirname'));
+  const installer = path.join(app, 'scripts/install-supervisor-macos.sh');
+  const seam = '# Linux dry-run is a generation-only development fixture.';
+  const source = fs.readFileSync(installer, 'utf8'); assert.ok(source.includes(seam));
+  const arch = path.join(bin, 'arch-probe');
+  fs.writeFileSync(installer, source.replaceAll('/usr/bin/arch', '"' + arch + '"')
+    .replace(seam, 'printf \'%s\\n\' "$node_bin"; exit 0\n' + seam));
+  const node = path.join(bin, 'node');
+  const put = (file, bytes) => { fs.writeFileSync(file, bytes, { mode: 0o700 }); fs.chmodSync(file, 0o700); };
+  const run = (cpu, args = [], translated = false) => {
+    put(path.join(bin, 'uname'), `#!/bin/sh\ncase "$1" in -m) echo ${cpu} ;; *) echo Darwin ;; esac\n`);
+    put(arch, `#!/bin/sh\nprintf '%s\\n' "$1" >> "$HOME.arch-probes"\nexit ${translated ? 0 : 1}\n`);
+    return spawnSync('/bin/bash', [installer, '--dry-run', ...args],
+      { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: bin }, encoding: 'utf8', timeout: 10000 });
+  };
+  return { dir, app, node, put, run };
+}
+
+test('mock universal Mach-O accepts bounded FAT32/FAT64 tables in both byte orders for PATH, override and bundle',
+  { skip: process.platform === 'win32' ? 'POSIX binary parser fixtures; no synthetic executable runs' : false }, t => {
+    const { dir, app, node, put, run } = macBinaryFixture(t);
+    for (const little of [false, true]) for (const wide of [false, true]) {
+      const fat = universalMacho([{ cpu: 0x1000007, bytes: machoSlice(0x1000007) }, { cpu: 0x100000c, bytes: machoSlice(0x100000c) }], { little, wide });
+      put(node, fat);
+      for (const [arch, suffix] of [['arm64', 'arm64'], ['x86_64', 'x64']]) {
+        let r = run(arch); assert.equal(r.status, 0, r.stderr); assert.equal(r.stdout.trim(), node);
+        const override = path.join(dir, 'universal Node Việt & space'); put(override, fat);
+        r = run(arch, ['--node-path', override]); assert.equal(r.status, 0, r.stderr); assert.equal(r.stdout.trim(), override);
+        const bundled = path.join(app, 'node-' + suffix); put(bundled, fat);
+        r = run(arch); assert.equal(r.status, 0, r.stderr); assert.equal(r.stdout.trim(), bundled);
+        fs.unlinkSync(bundled);
+      }
+    }
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+    assert.equal(fs.existsSync(path.join(dir, 'absent.arch-probes')), false);
+  });
+
+test('mock universal Mach-O refuses corrupt tables, CPU mismatches, foreign platforms and out-of-slice commands before execution',
+  { skip: process.platform === 'win32' ? 'POSIX binary parser fixtures; no synthetic executable runs' : false }, t => {
+    const { dir, node, put, run } = macBinaryFixture(t);
+    const valid = options => universalMacho([{ cpu: 0x1000007, bytes: machoSlice(0x1000007) }, { cpu: 0x100000c, bytes: machoSlice(0x100000c) }], options);
+    // All numeric corruption is relative to the actual on-disk byte order and record width.
+    for (const little of [false, true]) for (const wide of [false, true]) {
+      const write = (b, p, v) => b[little ? 'writeUInt32LE' : 'writeUInt32BE'](v, p);
+      const read = (b, p) => b[little ? 'readUInt32LE' : 'readUInt32BE'](p);
+      const entry = wide ? 32 : 20, offsetWord = 16 + (wide && !little ? 4 : 0);
+      const sizeWord = wide ? 24 + (!little ? 4 : 0) : 20, alignmentWord = wide ? 32 : 24;
+      const good = valid({ little, wide }), start = read(good, offsetWord), second = read(good, offsetWord + entry);
+      const corruptions = {
+        'zero entries': b => write(b, 4, 0),
+        'excessive entries': b => write(b, 4, 65),
+        'offset into table': b => write(b, offsetWord, 8),
+        'offset past EOF': b => write(b, offsetWord, 0xfffffff0),
+        'size past EOF': b => write(b, sizeWord, good.length),
+        'truncated slice': b => write(b, sizeWord, 40),
+        'overlapping slices': b => write(b, offsetWord + entry, start),
+        'misaligned offset': b => write(b, offsetWord, start + 1),
+        'unbounded alignment': b => write(b, alignmentWord, 31),
+        'duplicate CPU': b => write(b, 8 + entry, 0x1000007),
+        'wrong CPU': b => write(b, 8, 7),
+        'slice CPU mismatch': b => b.writeUInt32LE(0x100000c, start + 4),
+        'slice subtype mismatch': b => b.writeUInt32LE(3, start + 8),
+        'wrong Mach-O endian': b => b.writeUInt32BE(0xfeedfacf, start),
+        'ELF slice': b => b.writeUInt32BE(0x7f454c46, start),
+        'PE slice': b => b.writeUInt32LE(0x5a4d, start),
+        'dylib slice': b => b.writeUInt32LE(6, start + 12),
+        'missing command': b => b.writeUInt32LE(2, start + 16),
+        'unbounded commands': b => b.writeUInt32LE(257, start + 16),
+        'unbounded load area': b => b.writeUInt32LE(1048584, start + 20),
+        'unaligned command': b => b.writeUInt32LE(23, start + 36),
+        'command past slice': b => b.writeUInt32LE(32, start + 36),
+        'no platform command': b => b.writeUInt32LE(1, start + 32),
+        'build tools past command': b => b.writeUInt32LE(1, start + 52),
+        'iOS preferred slice': b => b.writeUInt32LE(2, second + 40),
+        'iOS alternate slice': b => b.writeUInt32LE(2, start + 40),
+        'iOS legacy command': b => b.writeUInt32LE(37, start + 32),
+      };
+      if (wide) {
+        corruptions['64-bit offset overflow'] = b => write(b, 16 + (little ? 4 : 0), 1);
+        corruptions['64-bit size overflow'] = b => write(b, 24 + (little ? 4 : 0), 1);
+        corruptions['nonzero reserved'] = b => write(b, 36, 1);
+      }
+      for (const [name, corrupt] of Object.entries(corruptions)) {
+        const b = Buffer.from(good); corrupt(b); put(node, b);
+        const r = run('arm64'); assert.equal(r.status, 2, `${name} ${little}/${wide}: ${r.stderr}`);
+        assert.match(r.stderr, /RUNTIME_NODE_INCOMPATIBLE/, name);
+      }
+      put(node, good.subarray(0, 12));
+      assert.equal(run('arm64').status, 2, 'truncated architecture table');
+    }
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+    assert.equal(fs.existsSync(path.join(dir, 'absent.arch-probes')), false);
+  });
+
+test('mock source Node architecture translation requires the native loader; incompatible bundled Node never falls back',
+  { skip: process.platform === 'win32' ? 'POSIX binary and loader fixtures' : false }, t => {
+    const { dir, app, node, put, run } = macBinaryFixture(t);
+    for (const universal of [false, true]) for (const [context, other, cpu] of [['arm64', 'x64', 0x1000007], ['x86_64', 'arm64', 0x100000c]]) {
+      const bytes = machoSlice(cpu);
+      const candidate = universal ? universalMacho([{ cpu, bytes }]) : bytes;
+      put(node, candidate);
+      let r = run(context, [], false); assert.equal(r.status, 2); assert.match(r.stderr, /RUNTIME_NODE_INCOMPATIBLE/);
+      r = run(context, [], true); assert.equal(r.status, 0, r.stderr); assert.equal(r.stdout.trim(), node);
+      const bundle = path.join(app, 'node-' + (context === 'arm64' ? 'arm64' : 'x64')); put(bundle, candidate);
+      r = run(context, [], true); assert.equal(r.status, 2); assert.match(r.stderr, /RUNTIME_NODE_INCOMPATIBLE/);
+      // An explicit compatible source override still precedes an incompatible adjacent payload.
+      r = run(context, ['--node-path', node], true); assert.equal(r.status, 0, r.stderr);
+      fs.unlinkSync(bundle);
+      assert.match(fs.readFileSync(path.join(dir, 'absent.arch-probes'), 'utf8'), other === 'x64' ? /-x86_64/ : /-arm64/);
+    }
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+  });
+
 test('source macOS adapter accepts an explicit runtime with spaces and Unicode and never invokes PATH node',
   { skip: process.platform === 'win32' ? 'POSIX adapter; native Windows equivalent below' : false }, t => {
     const dir = fixture(t), app = appFixture(dir, 'source app & Việt'), bin = path.join(dir, 'bin');
@@ -110,6 +251,39 @@ test('native macOS packaged installer runs its adjacent Node without global Node
       assert.equal(plist.ProgramArguments[0], fs.realpathSync(expected));
       assert.equal(plist.ProgramArguments[1], path.join(app, 'server.js'));
       assert.equal(plist.EnvironmentVariables.TW_DATA, path.join(dir, 'absent/Library/Application Support/Termnest'));
+    }
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+  });
+
+test('native macOS source installer executes a real universal PATH Node and explicit universal override without mutations',
+  { skip: process.platform !== 'darwin' ? 'requires real macOS FAT loader; synthetic parser tests never execute fixtures' : false }, t => {
+    const dir = fixture(t), app = appFixture(dir, 'source app Việt & spaces'), bin = path.join(dir, 'bin');
+    fs.mkdirSync(bin);
+    const bytes = fs.readFileSync(process.execPath);
+    // Wrap the actual selected Node in a conventional single-slice FAT32 container.
+    // An already universal process.execPath is retained verbatim, including its valid signatures.
+    const universal = bytes.readUInt32LE(0) === 0xfeedfacf
+      ? universalMacho([{ cpu: bytes.readUInt32LE(4), bytes }], { align: 14 }) : bytes;
+    assert.ok([0xcafebabe, 0xcafebabf, 0xbebafeca, 0xbfbafeca].includes(universal.readUInt32BE(0)));
+    const node = path.join(bin, 'node'); fs.writeFileSync(node, universal, { mode: 0o700 });
+    const run = (args, context) => {
+      const script = [path.join(app, 'scripts/install-supervisor-macos.sh'), '--dry-run', ...args];
+      return execFileSync(context ? '/usr/bin/arch' : '/bin/bash', context ? [context, '/bin/bash', ...script] : script,
+        { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: bin + ':/usr/bin:/bin' }, encoding: 'utf8', timeout: 15000 });
+    };
+    // A real kernel execution and own-identity probe, not a mocked Darwin header result.
+    for (const args of [[], ['--node-path', node]]) {
+      const text = run(args);
+      const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '-'], { input: text, encoding: 'utf8' }));
+      assert.equal(plist.ProgramArguments[0], fs.realpathSync(node));
+      assert.equal(plist.ProgramArguments[1], path.join(app, 'server.js'));
+    }
+    for (const context of ['-arm64', '-x86_64']) {
+      const probe = spawnSync('/usr/bin/arch', [context, '/usr/bin/true'], { timeout: 3000 });
+      if (probe.status !== 0) { t.diagnostic(`${context} execution context unavailable on this runner; no translation validation claimed`); continue; }
+      // Exercises a different valid PATH Node CPU under Rosetta when available.
+      // The context is an execution capability and does not identify physical hardware.
+      assert.match(run([], context), /<key>ProgramArguments<\/key>/);
     }
     assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
   });
@@ -189,7 +363,10 @@ test('macOS plist dry-run escapes paths, preserves workers and creates no files 
       execFileSync('/usr/bin/plutil', ['-lint', '-'], { input: a });
       const json = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '-'], { input: a, encoding: 'utf8' }));
       assert.equal(json.EnvironmentVariables.TW_DATA, data);
-      assert.deepEqual(json.ProgramArguments, [fs.realpathSync(process.execPath), path.join(ROOT, 'server.js')]);
+      // The source fallback uses PATH, which may be a universal or translated Node
+      // different from the bundled thin Node running this test suite.
+      const selected = execFileSync('/bin/bash', ['-c', 'command -v node'], { encoding: 'utf8' }).trim();
+      assert.deepEqual(json.ProgramArguments, [fs.realpathSync(selected), path.join(ROOT, 'server.js')]);
     }
     assert.match(macDry(dir, ['--status']), /RUNTIME_DRY_RUN_STATUS/);
     assert.match(macDry(dir, ['--uninstall']), /RUNTIME_DRY_RUN_UNINSTALL/);
