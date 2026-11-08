@@ -23,7 +23,6 @@ const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 const { cleanFlags } = require('./lib/agent-flags');
 const { acquireDataLock, unlockFromFile } = require('./lib/service-runtime');
-const opsRuntime = require('./lib/features/ops');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
@@ -696,8 +695,11 @@ async function api(req, res, url) {
     return;
   }
   if (p === '/api/supervisor/status' && m === 'GET') {
-    const runtime = opsRuntime.runtimeStatus();
-    send(res, 200, { unlocked: vault.unlocked, monitoring: vault.unlocked && !draining && runtime.monitoring, error: runtime.error });
+    const runtime = features.service('ops-runtime')?.status() || { monitoring: false, error: true, pending: 0 };
+    const supervision = features.service('supervision');
+    const status = supervision?.enabled() ? supervision.health() : null;
+    send(res, 200, { processAlive: true, unlocked: vault.unlocked, monitoring: vault.unlocked && !draining && runtime.monitoring, error: runtime.error,
+      observationsFresh: status?.observationsFresh === true, validatedAuditCompletion: status?.validatedAuditCompletion === true });
     return;
   }
   // First run on a new machine: start from a backup file instead of an empty store. The backup keeps its own password.
@@ -997,6 +999,11 @@ setInterval(() => {
   if (vault.unlocked) for (const r of remotes.values()) r.poll();
 }, 60000).unref();
 
+// Enabled supervision samples well inside the 60s freshness budget without browser/lastSeen activity.
+setInterval(() => {
+  require('./lib/supervision-state').pollUnattended(remotes.values(), vault.unlocked, features.service('supervision')?.enabled());
+}, 15000).unref();
+
 setInterval(saveHistory, 5 * 60000).unref();
 
 setInterval(() => {
@@ -1008,11 +1015,12 @@ setInterval(() => {
 }, 30000).unref();
 
 let draining = false;
-const activeWork = () => activeRequests > 0 || opsRuntime.runtimeStatus().pending > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
+const activeWork = () => activeRequests > 0 || features.service('ops-runtime')?.status().pending > 0 || features.service('supervision')?.pending() > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
 function drain() {
   if (draining) return;
   draining = true;
-  opsRuntime.stop();
+  features.service('ops-runtime')?.stop();
+  features.service('supervision')?.stop();
   const wait = () => activeWork() ? setTimeout(wait, 100) : shutdown();
   setImmediate(wait);
 }
@@ -1020,7 +1028,7 @@ let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
-  opsRuntime.stop();
+  features.service('ops-runtime')?.stop();
   saveHistory();
   tokenCache.close();
   for (const ws of openTerms) ws.terminate();

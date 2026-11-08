@@ -7,6 +7,7 @@ const test = require('node:test');
 const cp = require('../lib/features/crewpack');
 const wd = require('../lib/features/watchdog');
 const detect = require('../lib/crew-detect');
+const { liveIdentity } = require('../lib/supervision-state');
 
 const fixtureRoots = [];
 test.after(() => { for (const root of fixtureRoots) fs.rmSync(root, { recursive: true, force: true }); });
@@ -88,7 +89,8 @@ function featureHost(t, options = {}) {
   const vault = { features: { crewpack: { enabled: false, ...options.settings }, ops: { keep: 'untouched' } }, other: 'preserved' };
   const routes = new Map(), timers = [], sent = [], opened = [];
   const remote = { cfg: { id: 'vm', name: 'VM', local: true }, ready: true, lastPoll: clock,
-    snapshot: { bootId: 'boot', sessions: [{ id: '$1', name: 'team', created: 3, path: root, paneIds: ['%7'], aiStatus: { tool: 'claude', status: 'busy', at: clock } }] },
+    snapshot: { bootId: 'boot', workers: [], sessions: [{ id: '$1', name: 'team', created: 3, path: root, paneIds: ['%7'], aiPid: 701,
+      aiStatus: { tool: 'claude', status: 'busy', at: clock, cfg: '.claude', startedAt: 10 } }] },
     exec: async (command) => { sent.push(command); return { code: 0, out: '' }; } };
   const host = {
     settings: { get: () => { if (options.locked) throw Error('locked'); return JSON.parse(JSON.stringify(vault.features.crewpack)); }, set: (s) => { vault.features.crewpack = s; } },
@@ -97,7 +99,17 @@ function featureHost(t, options = {}) {
     readJson: async (req) => req.body, send: (res, code, data) => Object.assign(res, { code, data }), fail: (res, code, error) => Object.assign(res, { code, error }),
     sessions: { start: async (r, { name, dir, run }) => { opened.push({ name, dir, run }); r.snapshot.sessions.push({ id: '$9', name, created: 7, path: dir, paneIds: ['%90'], aiStatus: { tool: 'claude', status: 'idle', at: clock } }); } },
   };
-  const running = cp.register(host, { now: () => clock, newId: () => 'tn-' + (++serial).toString(16).padStart(32, '0'), setInterval: (fn, ms) => { timers.push({ fn, ms }); return { unref() {} }; }, clearInterval() {} });
+  vault.features.crewpack.leaders ||= [{ serverId: 'vm', root, session: 'team', taskIds: ['t-asleep'], identity: { ...liveIdentity(remote, remote.snapshot.sessions[0]), processStart: '1' } }];
+  const guard = async (r, a) => {
+    if (a.op === 'lease') return { code: 'coordination_owner', token: { coordinatorId: a.coordinatorId, epoch: 1 } };
+    if (a.op === 'inspect') return { code: 'identity_valid', processStart: '1' };
+    if (a.op === 'revoke') return { code: 'coordination_revoked' };
+    if (a.op === 'readiness') return { code: 'audit_ready' };
+    if (a.kind === 'audit_open') await host.sessions.start(r, { name: a.session, dir: a.root, run: 'claude' });
+    else sent.push(a);
+    return { code: 'action_delivered' };
+  };
+  const running = cp.register(host, { guard, now: () => clock, newId: () => 'tn-' + (++serial).toString(16).padStart(32, '0'), setInterval: (fn, ms) => { timers.push({ fn, ms }); return { unref() {} }; }, clearInterval() {} });
   t.after(() => running.stop());
   return { root, vault, remote, host, sent, opened, timers, running,
     async route(method, url, body) { const res = {}; assert.ok(routes.has(method + ' ' + url)); await routes.get(method + ' ' + url)({ req: { body }, res }); return res; },
@@ -127,7 +139,7 @@ test('the backend feature timer opens then sends to an idle audit without an HTT
   const f = featureHost(t, { settings: { enabled: true } });
   await f.tick(); assert.equal(f.opened.length, 1); assert.equal(f.sent.length, 0);
   await f.tick(); assert.equal(f.sent.length, 1);
-  assert.ok(f.sent[0].includes("-t '%90'")); assert.ok(f.sent[0].includes('/xspire-devkit:xspire-crew-ops-audit'));
+  assert.equal(f.sent[0].identity.pane, '%90'); assert.ok(f.sent[0].prompt.includes('/xspire-devkit:xspire-crew-ops-audit'));
   await f.host.snapshot(f.remote); await f.tick(); assert.equal(f.sent.length, 1);
   const status = (await f.route('GET', '/status')).data;
   assert.equal(status.servers[0].audits[0].verification, 'unverified');
@@ -200,4 +212,15 @@ test('round evidence observes the tail after large legacy history and ignores to
   fs.appendFileSync(file, '1501\t2026-11-02T01:00:00Z\t2026-11-02T02:00:00Z\t60\t1\t100\tfix\tcodex\tm\thigh\ttooling\n');
   result = await scan(); k = result.roots[0].tasks.find((t) => t.id === 't-asleep').tracks[0];
   assert.equal(k.lastRound.round, '1501'); assert.equal(k.lastRound.result, '1');
+});
+
+test('local readiness/action helper uses an asynchronous isolated exec transport instead of blocking the backend event loop', async t => {
+  const clock = Date.now(), commands = [];
+  const remote = { cfg: { id: 'local', local: true }, ready: true, lastPoll: clock, snapshot: { sessions: [] },
+    exec: async command => { commands.push(command); return { code: 0, out: JSON.stringify({ code: 'audit_account_required', quota: 'unknown' }) }; } };
+  const host = { settings: { get: () => ({ enabled: false, workspaces: [{ serverId: 'local', root: '/synthetic-workspace' }] }), set() {} },
+    remotes: () => [remote], onSnapshot() {}, route() {}, log() {} };
+  const running = cp.register(host, { setInterval: () => ({ unref() {} }), clearInterval() {} }); t.after(() => running.stop());
+  const status = await running.facade.status(); assert.equal(status.auditReadiness[0].code, 'audit_account_required');
+  assert.equal(commands.length, 1); assert.ok(commands[0].startsWith('node -e ')); assert.ok(commands[0].includes('coordination_platform_unavailable'));
 });

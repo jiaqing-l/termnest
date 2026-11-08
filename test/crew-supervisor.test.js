@@ -5,23 +5,29 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { CrewSupervisor, reportRuntime, validateReport, auditPrompt, auditSession, identity, TIMEOUT_MS, STALL_MS, HISTORY_MAX } = require('../lib/crew-supervisor');
+const { liveIdentity } = require('../lib/supervision-state');
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 function task(id = 't', state = 'running') {
   return { id, title: id, status: 'executing', updated: 1, blocked: '', maxFix: 3, heartbeat: {}, tracks: [{ id: 'W1', state, rounds: 1, fixRounds: 0, lastRound: { round: '1', endedAt: '', result: '', kind: 'new' } }] };
 }
 function session(name, pane, root, status = 'idle', extra = {}) {
-  return { id: '$' + pane, created: 5, name, path: root, paneIds: ['%' + pane], aiStatus: { tool: 'claude', status, at: 1 }, ...extra };
+  return { id: '$' + pane, created: 5, name, path: root, paneIds: ['%' + pane], aiPid: 1000 + pane,
+    aiStatus: { tool: 'claude', status, at: 1, startedAt: 10, cfg: '.claude' }, ...extra };
 }
 function fixture({ hosts = 1, teams = 1, roots = 1, initial = {}, io = {} } = {}) {
   let clock = 1800000000000, serial = 0, disk = { enabled: true, intervalMinutes: 1, ...initial }, failSave = false;
   const calls = { scan: [], open: [], send: [], report: [] }, reports = new Map();
   const remotes = Array.from({ length: hosts }, (_, host) => ({ cfg: { id: 'vm' + host, name: 'VM ' + host }, ready: true, lastPoll: clock,
-    snapshot: { bootId: 'boot', sessions: Array.from({ length: teams }, (_, i) => session('leader' + i, i + 1, '/work' + (i % roots), 'busy')) } }));
+    snapshot: { bootId: 'boot', workers: [], sessions: Array.from({ length: teams }, (_, i) => session('leader' + i, i + 1, '/work' + (i % roots), 'busy')) } }));
+  disk.leaders ||= remotes.flatMap(r => r.snapshot.sessions.map((s, i) => ({ serverId: r.cfg.id, session: s.name, root: s.path,
+    taskIds: ['t' + i], identity: { ...liveIdentity(r, s), processStart: '1' } })));
   const data = new Map(remotes.map((r) => [r.cfg.id, { roots: Array.from({ length: roots }, (_, root) => ({ root: '/work' + root,
     nudge: Array.from({ length: teams }, (_, i) => i % roots === root ? ['%' + (i + 1), 't' + i] : null).filter(Boolean),
     tasks: Array.from({ length: teams }, (_, i) => i % roots === root ? task('t' + i) : null).filter(Boolean) })) }]));
   const adapters = {
+    coordinate: async () => ({ code: 'coordination_owner', token: { epoch: 1 } }),
+    validateLeader: async () => ({ processStart: '1' }), auditReady: async () => ({ code: 'audit_ready' }),
     scan: async (r, config) => { calls.scan.push({ id: r.cfg.id, config: copy(config) }); return copy(data.get(r.cfg.id)); },
     open: async (r, run) => { calls.open.push(copy(run)); r.snapshot.sessions.push(session(run.session, 80, run.root)); },
     send: async (r, s, prompt) => { calls.send.push({ id: r.cfg.id, session: copy(s), prompt }); },
@@ -211,6 +217,7 @@ test('task evidence, rather than mtime/heartbeat/tokens/busy, measures progress 
   const t = f.data.get('vm0').roots[0].tasks[0]; t.updated++; t.heartbeat = { alive: true, at: f.now }; t.tokens = 200;
   // A bounded legacy counter can shift when a token column changes width; the actual latest record is identical.
   t.tracks[0].rounds = 99;
+  t.tracks[0].lastRound.endedAt = '2099-01-01T00:00:00Z';
   f.advance(30000); await f.tick(); assert.equal(f.core.status(f.remotes).servers[0].teams[0].lastProgressAt, null);
   t.tracks[0].state = 'review'; f.advance(30000); await f.tick();
   team = f.core.status(f.remotes).servers[0].teams[0]; assert.equal(team.lastProgressAt, f.now); assert.equal(team.status, 'progressing');
@@ -220,10 +227,11 @@ test('task evidence, rather than mtime/heartbeat/tokens/busy, measures progress 
 
 test('same-name owners are grouped by actual pane/session identity, and unowned work has no invented leader', async () => {
   const f = fixture({ teams: 3 }); f.remotes[0].snapshot.sessions.forEach((s) => { s.name = 'same'; });
+  f.disk.leaders.forEach(l => { l.session = 'same'; }); f.disk.leaders.pop();
   f.data.get('vm0').roots[0].nudge.pop(); await f.tick();
   const teams = f.core.status(f.remotes).servers[0].teams;
   assert.equal(new Set(teams.map((t) => t.id)).size, 3);
-  const unknown = teams.find((t) => t.session === ''); assert.deepEqual(unknown.taskIds, ['t2']); assert.equal(unknown.reason.code, 'owner_missing');
+  const unknown = teams.find((t) => t.session === ''); assert.deepEqual(unknown.taskIds, ['t2']); assert.equal(unknown.reason.code, 'registration_required');
 });
 
 test('all seven team states distinguish owner waits, blocks, stale and completion', async () => {
@@ -302,7 +310,10 @@ test('off wins overlapping asynchronous controls without a transient enabled emi
   await enable;
   assert.equal(f.core.enabled(), false);
   while (releases.length < 1) await new Promise((r) => setImmediate(r));
-  releases.shift()(); await disable; await f.tick(); assert.equal(f.calls.open.length, 0);
+  releases.shift()();
+  // The second durable phase marks remote policy reconfiguration complete. OFF is suppressed throughout both saves.
+  while (releases.length < 1) await new Promise((r) => setImmediate(r));
+  assert.equal(f.core.enabled(), false); releases.shift()(); await disable; await f.tick(); assert.equal(f.calls.open.length, 0);
 });
 
 test('a changed boot identity during durable send intent is rejected before typing', async () => {
