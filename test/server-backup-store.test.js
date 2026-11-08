@@ -8,6 +8,11 @@ const crypto = require('node:crypto');
 const { Writable } = require('node:stream');
 const { execFileSync } = require('node:child_process');
 const { SnapshotStore, LIMITS, safePath } = require('../lib/server-backup-store');
+async function within(promise, label, ms = 5000) {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('fixture timeout: ' + label)), ms); })]); }
+  finally { clearTimeout(timer); }
+}
 function fixture(t, limits) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-backup-store-')); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const key = crypto.randomBytes(32), store = new SnapshotStore(dir, key, limits); return { dir, key, store };
@@ -39,7 +44,7 @@ test('encrypted durable incremental objects retain old files/deletions and exact
   // Exercise a separate system tar implementation, including PAX Unicode/long paths.
   if (process.platform !== 'win32') {
     const extracted = path.join(dir, 'extracted'); fs.mkdirSync(extracted);
-    execFileSync('tar', ['-xf', '-', '-C', extracted], { input: tar.bytes });
+    execFileSync('tar', ['-xf', '-', '-C', extracted], { input: tar.bytes, timeout: 5000 });
     assert.deepEqual(fs.readFileSync(path.join(extracted, file.path)), binary);
   }
   assert.ok(tar.bytes.subarray(-1024).equals(Buffer.alloc(1024)));
@@ -77,8 +82,14 @@ test('a blocked download stays byte-exact while later commits expire its snapsho
   const file = store.manifest('vm1', first.id).entries[0]; let resume, started;
   const ready = new Promise(r => { started = r; });
   const res = new Response(); res._write = (chunk, enc, cb) => { res.parts.push(Buffer.from(chunk)); if (!resume) { resume = cb; started(); } else setImmediate(cb); };
-  const download = store.stream(res, 'vm1', first.id, file.id); await ready;
-  save(store, 'v2', { retention: 2 }); save(store, 'v3', { retention: 2 }); assert.equal(store.readers, 1); resume(); await download;
+  const download = store.stream(res, 'vm1', first.id, file.id);
+  try {
+    await within(Promise.race([ready, download.then(() => { throw Error('download ended before first write'); })]), 'download started');
+    save(store, 'v2', { retention: 2 }); save(store, 'v3', { retention: 2 }); assert.equal(store.readers, 1);
+  } finally {
+    if (resume) resume(); else res.destroy();
+    await within(download, 'download completion');
+  }
   assert.deepEqual(res.bytes, bytes); assert.equal(store.readers, 0); store.gc();
 });
 
@@ -112,7 +123,7 @@ test('process termination after fsync but before catalog rename leaves old publi
     const rename=fs.renameSync; fs.renameSync=(from,to)=>{if(to.endsWith('catalog.enc'))process.exit(23);return rename(from,to);};
     s.commit(tx);
   `;
-  assert.throws(() => execFileSync(process.execPath, ['-e', program, require.resolve('../lib/server-backup-store'), dir, key.toString('base64')], { stdio: 'pipe' }), { status: 23 });
+  assert.throws(() => execFileSync(process.execPath, ['-e', program, require.resolve('../lib/server-backup-store'), dir, key.toString('base64')], { stdio: 'pipe', timeout: 5000 }), { status: 23 });
   assert.ok(fs.readdirSync(store.root).some(n => n.startsWith('tmp-')));
   const restarted = new SnapshotStore(dir, key); assert.deepEqual(restarted.snapshots('vm1').map(s => s.id), [good.id]); assert.deepEqual(content(restarted, good), Buffer.from('last complete copy'));
   restarted.begin('vm1', 'VM'); assert.ok(!fs.readdirSync(store.root).some(n => n.startsWith('tmp-')));
