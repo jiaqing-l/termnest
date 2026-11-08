@@ -291,3 +291,30 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 @media(max-width:640px){.ops-super-form label{align-items:flex-start}.ops-super-row .btn{max-width:100%}}
 /* Daily monitoring stays on one line; setup retains its persistent forms. */
 .ops-super{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}.ops-super>h3{margin:0}.ops-super-status{grid-column:1;grid-row:2}.ops-super-settings{grid-column:2;grid-row:1 / 3;border:0;margin:0;padding:0}.ops-super-settings[open]{grid-column:1 / -1;grid-row:3}.ops-super-status p{margin:0}.ops-super-settings[open] summary{margin-bottom:12px}
+
+/* Persistent Settings pane; daily Operations owns only session rows. */
+#ops-settings-mount{min-width:0}
+#ops-settings-mount .ops-super{display:block;margin:0;padding:0;border:0;box-shadow:none}
+#ops-settings-mount .ops-super-settings{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+#ops-settings-mount .ops-super-form{max-width:100%}
+#ops-settings-mount input:not([type=checkbox]),#ops-settings-mount select{box-sizing:border-box;max-width:100%;min-width:0;min-height:36px}
+#ops-settings-mount select{width:100%;text-overflow:ellipsis}
+#ops-settings-mount details>summary{white-space:normal;overflow-wrap:anywhere}
+.ops-scopes,.ops-task-choices{display:grid;gap:8px;min-width:0}
+.ops-scope-row{display:flex;gap:10px;align-items:center;min-width:0}
+.ops-scope-row>span{flex:1;overflow-wrap:anywhere;min-width:0}
+.ops-scope-row .btn{flex-shrink:0}
+.ops-task-choices label{padding:6px 0}.ops-task-choices label span{overflow-wrap:anywhere}
+.ops-delivery{display:block;white-space:normal;color:var(--fg-2);margin-top:4px;overflow-wrap:anywhere}
+.ops-log-sec .ops-st{white-space:normal;max-width:240px}
+#ops-settings-mount .ops-grid{grid-template-columns:minmax(0,1fr) minmax(90px,120px) 95px}
+#ops-settings-mount .ops-rules{padding:10px 0;border:0;box-shadow:none}
+@media(max-width:640px){#ops-settings-mount .ops-grid{grid-template-columns:minmax(0,1fr) 90px}.ops-grid .ops-rn{grid-column:1 / -1}.ops-scope-row{flex-wrap:wrap}.ops-log-sec .ops-log{display:flex;flex-wrap:wrap}.ops-log-sec .ops-st{max-width:100%}}
+.ops-t .ops-delivery{white-space:normal;overflow-wrap:anywhere}
+#ops-settings-mount .ops-super-form label{flex-direction:row;align-items:center;justify-content:space-between}
+#ops-settings-mount input[type=checkbox]{appearance:auto;width:18px;height:18px;min-height:18px;max-width:18px;padding:0;margin:0;flex:0 0 18px}
+.ops-reminder-settings{margin:12px 0;padding:12px 0;border-block:1px solid var(--line)}
+.ops-reminder-settings>summary{cursor:pointer;font-weight:600}
+#ops-settings-mount .ops-after{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0}
+#ops-settings-mount .ops-after input{width:60px;min-width:0;max-width:60px}
+#ops-settings-mount .ops-after span{white-space:nowrap;flex:none}

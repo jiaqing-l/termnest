@@ -1168,12 +1168,13 @@
     });
   })();
   // Settings tabs: one pane at a time, the last one used comes back next time.
+  var settingsReturnFocus = null;
   var setTab = 'look'; try { setTab = localStorage.getItem('tw-set-tab') || 'look'; } catch (e) { /* optional */ }
   function showSetTab(tab) {
     var tabs = document.querySelectorAll('#dlg-set .set-tab'), panes = document.querySelectorAll('#dlg-set .set-pane');
     if (![].some.call(tabs, function (t) { return t.dataset.tab === tab; })) tab = 'look';
     setTab = tab; try { localStorage.setItem('tw-set-tab', tab); } catch (e) { /* optional */ }
-    [].forEach.call(tabs, function (t) { var on = t.dataset.tab === tab; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; });
+    [].forEach.call(tabs, function (t) { var on = t.dataset.tab === tab; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; if (on) t.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
     [].forEach.call(panes, function (p) { p.hidden = p.dataset.pane !== tab; });
     var box = document.querySelector('#dlg-set .set-panes'); if (box) box.scrollTop = 0;
     if (tab === 'backup') { renderBackup(); renderTransfer(); }
@@ -1256,7 +1257,18 @@
   };
   $('mv2-retry').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/transfer/retry').then(function (r) { mvWaiting(r.waiting); refresh(true); }).catch(bkError).finally(function () { b.disabled = false; }); };
   $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(function (r) { bkShow(Object.assign(r, { suggestions: bkData && bkData.suggestions })); }).catch(bkError).finally(function () { b.disabled = false; }); };
-  $('set').onclick = function () { renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(setTab); $('dlg-set').showModal(); };
+  function openSettings(tab) {
+    var dlg = $('dlg-set');
+    renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(tab || setTab);
+    if (!dlg.open) { settingsReturnFocus = document.activeElement; dlg.showModal(); }
+    var selected = dlg.querySelector('.set-tab[aria-selected="true"]'); if (selected) { selected.focus(); selected.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  }
+  $('set').onclick = function () { openSettings(); };
+  $('dlg-set').addEventListener('close', function () {
+    var target = settingsReturnFocus;
+    if (!target || !target.isConnected || target.closest('#dlg-set') || !target.getClientRects().length) target = $('set');
+    settingsReturnFocus = null; target.focus();
+  });
   document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });
   $('dt-see').onclick = function () { $('dlg-detail').close(); setScope(detailId); setView('over'); };
   document.querySelectorAll('#dt-range button').forEach(function (b) { b.onclick = function () { loadHistory(Number(b.dataset.r.replace('h', ''))); }; });
@@ -1531,7 +1543,7 @@
     if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
     var c = $('set-browser'); c.checked = true; c.onchange.call(c);
   }
-  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSettings: openSettings, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });

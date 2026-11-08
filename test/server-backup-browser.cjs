@@ -13,10 +13,10 @@ const status={enabled:true,intervalMinutes:5,retention:32,storage:{host:'backup-
 const pack={name:'core',custom:[],rules:{},auto:{},templates:{}};
 const chat=[{type:'user',message:{role:'user',content:'<img src=x onerror="window.__xss=1"> Hello 🦉'}},{type:'assistant',message:{role:'assistant',content:[{type:'text',text:'Claude reply'},{type:'tool_use',name:'hidden-tool'}]}},{type:'event_msg',payload:{type:'agent_message',message:'Codex reply'}},{type:'response_item',payload:{type:'message',role:'assistant',content:[{type:'output_text',text:'Codex reply'}]}}].map(x=>JSON.stringify(x)).join('\n');
 const longName='/saved/'+('tên-dài-🦉'.repeat(35))+'.jsonl';
-const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/features/ops.css"><link rel="stylesheet" href="/features/server-backup.css"><style>body{overflow:auto}.view.on{display:block}.main-top{position:static}</style></head><body><div class="main-top"><div class="seg"><button>Tổng quan</button><button>Terminal</button><button>Token AI</button><button>Ghi chú</button></div></div><section id="v-token"></section><script src="/features-host.js"></script><script>
+const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/features/ops.css"><link rel="stylesheet" href="/features/server-backup.css"><style>body{overflow:auto}.view.on{display:block}.main-top{position:static}</style></head><body><div class="main-top"><div class="seg"><button>Tổng quan</button><button>Terminal</button><button>Token AI</button><button>Ghi chú</button></div></div><section id="v-token"></section><dialog id="dlg-fixture-settings"><div id="ops-settings-mount"></div><div id="server-backup-settings-mount"></div></dialog><script src="/features-host.js"></script><script>
 const locale=${fs.readFileSync(path.join(publicDir,'locales/vi.json'),'utf8')};window.i18n=(key,args=[])=>String(locale[key]||key).replace(/\\{(\\d+)\\}/g,(_,n)=>args[n]);
 window.__lang='vi';window.TW_I18N={lang:()=>__lang};window.__ticks=[];window.setInterval=(fn,ms)=>{__ticks.push({fn,ms});return __ticks.length};window.__refresh=()=>__ticks.filter(x=>x.ms===10000).forEach(x=>x.fn());
-window.__picks=[];TW.attach({api:async(method,url,body)=>{const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});if(!r.ok)throw Error('fixture');return r.json()},setView:id=>TW.setView(id),say:()=>{},servers:()=>[],openSession:()=>{},browseDir:(id,start,cb)=>{__picks.push({id,start});window.__pick=cb;}});
+window.__picks=[];TW.attach({api:async(method,url,body)=>{const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});if(!r.ok)throw Error('fixture');return r.json()},setView:id=>TW.setView(id),say:()=>{},openSettings:()=>document.querySelector("#dlg-fixture-settings").showModal(),servers:()=>[],openSession:()=>{},browseDir:(id,start,cb)=>{__picks.push({id,start});window.__pick=cb;}});
 </script><script src="/features/ops.js"></script><script src="/features/server-backup.js"></script></body></html>`;
 const server=http.createServer(async(req,res)=>{
  const u=new URL(req.url,'http://fixture');
@@ -49,7 +49,7 @@ const server=http.createServer(async(req,res)=>{
  const p=path.resolve(publicDir,'.'+u.pathname);if(!p.startsWith(publicDir+path.sep)||!fs.existsSync(p)){res.statusCode=404;return res.end()}
  res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':'text/css');res.end(fs.readFileSync(p));
 });
-let chrome,ws,chromeError = '';
+let chrome,ws,closeBrowser,chromeError = '';
 
 (async()=>{
  const executable = [process.env.CHROME_BIN,'/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser','/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].filter(Boolean).find(p=>fs.existsSync(p));
@@ -66,6 +66,7 @@ let chrome,ws,chromeError = '';
  let seq=0;const pending=new Map(),errors=[];
  ws.on('message',b=>{const m=JSON.parse(b);if(m.id){const p=pending.get(m.id);if(p){clearTimeout(p.timer);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result);pending.delete(m.id)}}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.text)});
  const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;const timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method))},10000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))});
+ closeBrowser=()=>send('Browser.close');
  const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});assert.ok(!r.exceptionDetails,JSON.stringify(r.exceptionDetails));return r.result.value};
  const until=async(expression,label)=>{for(let i=0;i<100;i++){if(await evaluate(expression))return;await delay(50)}assert.fail('Timed out: '+label)};
  const refresh=async()=>{const count=requests.filter(r=>r.url==='/api/features/server-backup/status').length;await evaluate('__refresh()');await until('true','tick');for(let i=0;i<100&&requests.filter(r=>r.url==='/api/features/server-backup/status').length===count;i++)await delay(20);await delay(80)};
@@ -78,8 +79,8 @@ let chrome,ws,chromeError = '';
  await evaluate('document.querySelector("#tab-ops").click()');
  assert.equal(await evaluate('document.querySelectorAll("#tab-server-backup,#tab-crew,.ops-super-teams").length'),0);
  assert.ok((await evaluate('document.querySelector(".ops-title").textContent')).includes('Máy: 3 · Đã kết nối: 2'));
- assert.equal(await evaluate('document.querySelectorAll(".ops-group .ops-row").length'),1,'ordinary finished/idle findings excluded');
- assert.equal(await evaluate('document.querySelectorAll(".ops-group .ops-row button").length'),2,'offline reconnect and dismiss');
+ assert.equal(await evaluate('document.querySelectorAll(".g-attention .ops-row").length'),1,'ordinary idle rows remain in a collapsed routine list');
+ assert.equal(await evaluate('document.querySelectorAll(".g-attention .ops-row button").length'),2,'offline reconnect and dismiss');
  assert.ok((await text()).includes('Chỉ chat'));
  assert.equal(await evaluate('document.querySelector(".backup-destination").textContent'),'Máy lưu: backup-host');
  assert.equal(await evaluate('document.querySelector(".backup-settings").open'),false);
@@ -93,7 +94,8 @@ let chrome,ws,chromeError = '';
   assert.equal(await evaluate(row('vm3')+'.querySelector("p").textContent'),'Bản sao gần nhất: '+expected);
  }
  await evaluate('window.__lang="vi"');await refresh();
- assert.equal(await evaluate('document.querySelectorAll(".ops-expand,.ops-jump,.ops-tools button,.ops-group summary small").length'),0);
+ assert.equal(await evaluate('document.querySelectorAll(".ops-tools button").length'),1);
+ await evaluate('document.querySelector("#dlg-fixture-settings").showModal()');
  assert.ok(await evaluate(row('vm2')+'.textContent.includes("Chưa có bản sao lưu")'));
  assert.equal(await evaluate('Array.from('+row('vm3')+'.querySelectorAll("button")).find(b=>b.textContent==="Sao lưu ngay").disabled'),true);
  const offlineCopy=structuredClone(status.servers[2]);status.servers[2].hasSnapshot=false;status.servers[2].lastSuccessAt=null;await refresh();
@@ -158,14 +160,29 @@ let chrome,ws,chromeError = '';
  // Final daily screenshots: three machines, monitoring OFF, offline last-good, no theory/Crew.
  for(const width of [1440,390]){
   await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});
-  await evaluate('document.querySelectorAll(".backup-scope,.backup-settings,.ops-super-settings").forEach(d=>d.open=false);document.querySelector("#tab-plugins").click();document.querySelector("#tab-ops").click();document.querySelector("#tab-ops").scrollIntoView({block:"start",inline:"nearest"})');await delay(100);
+  await evaluate('document.querySelector("#dlg-fixture-settings").close();document.querySelectorAll(".backup-scope,.backup-settings,.ops-super-settings").forEach(d=>d.open=false);document.querySelector("#tab-plugins").click();document.querySelector("#tab-ops").click();document.querySelector("#tab-ops").scrollIntoView({block:"start",inline:"nearest"})');await delay(100);
   assert.equal(await evaluate('document.querySelector("#tab-ops").getAttribute("aria-pressed")'),'true');
   assert.ok(await evaluate('var r=document.querySelector("#tab-ops").getBoundingClientRect();r.left>=0&&r.right<=innerWidth+1'),'selected tab visible '+width);
   assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),'daily page fits '+width);
+  await evaluate('document.querySelector("#dlg-fixture-settings").showModal()');
   const shot=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(output,'backups-'+width+'.png'),Buffer.from(shot.data,'base64'));
  }
  assert.ok(requests.filter(r=>r.url.includes('/api/features/server-backup/')).every(r=>!r.url.includes('/source/')));
  assert.deepEqual(errors,[]);
  fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,chrome:executable,requests,controls,runs,errors},null,2));
- console.log('PASS: actual Chrome backup UI; 3 VMs/1 offline, OFF concise, normal idle excluded; saved chat/text/XSS/binary, pagination/search, original/export URLs, missing/corrupt/error/partial/prior states, queue 202, rejected and mismatched settings readback, pending dedupe, explicit picker and all server scopes preserved, 1440/390 screenshots. Artifacts: '+output);
-})().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{if(ws)ws.close();if(chrome){chrome.kill();await new Promise(r=>{if(chrome.exitCode!==null||chrome.signalCode!==null)return r();chrome.once('exit',r)})}server.close();fs.rmSync(path.join(output,'profile'),{recursive:true,force:true})});
+ console.log('PASS: actual Chrome backup UI; 3 VMs/1 offline, OFF concise, normal idle in collapsed routine list; saved chat/text/XSS/binary, pagination/search, original/export URLs, missing/corrupt/error/partial/prior states, queue 202, rejected and mismatched settings readback, pending dedupe, explicit picker and all server scopes preserved, 1440/390 screenshots. Artifacts: '+output);
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{
+ if(closeBrowser&&chrome&&chrome.exitCode===null){try{await closeBrowser()}catch{chrome.kill()}}
+ if(ws)ws.close();
+ if(chrome)await new Promise(resolve=>{
+  if(chrome.exitCode!==null||chrome.signalCode!==null)return resolve();
+  const timer=setTimeout(()=>chrome.kill(),5000);
+  chrome.once('exit',()=>{clearTimeout(timer);resolve()});
+ });
+ await new Promise(resolve=>server.close(resolve));
+ // Chrome can finish an atomic profile rename just after exiting. Retry the whole traversal.
+ for(let attempt=0;attempt<10;attempt++){
+  try{fs.rmSync(path.join(output,'profile'),{recursive:true,force:true});break}
+  catch(error){if(error.code!=='ENOTEMPTY'||attempt===9)throw error;await new Promise(resolve=>setTimeout(resolve,100))}
+ }
+});

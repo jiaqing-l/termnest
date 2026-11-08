@@ -1,0 +1,294 @@
+'use strict';
+// Actual index.html, app.js, native Settings dialogs and feature loader; all IO is synthetic.
+const fs = require('node:fs'), path = require('node:path'), http = require('node:http'), os = require('node:os'), assert = require('node:assert/strict');
+const { spawn } = require('node:child_process');
+const WebSocket = require('ws');
+const publicDir = path.join(__dirname, '../public');
+const output = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-ops-settings-'));
+const requests = [], posts = [], controls = [], nudges = [], accountChecks = [], downloads = [], rulePosts = [], tokenAccounts = [];
+const now = Date.now(), accountRef = 'a'.repeat(64);
+const identity = { bootId: 'fixture-boot', sessionId: '$1', created: 1, pane: '%1', agentPid: 123, agentStartedAt: 1, config: '.claude-audit' };
+const supervision = { enabled: false, autoRecovery: false, intervalMinutes: 30,
+ workspaces: [{ serverId: 'vm1', root: '/work/one', auditConfig: '.claude-audit', auditAccount: 'b'.repeat(64), futureOptional: 'preserve' }, { serverId: 'vm2', root: '/work/two', auditConfig: '.claude-other', auditAccount: 'c'.repeat(64) }],
+ leaders: [], registrationCandidates: [{ serverId: 'vm1', session: 'dormant', root: '/work/one', identity }],
+ runtime: { registrationReady: false }, servers: [
+  { id: 'vm1', name: 'Build machine', online: true, observedAt: now, freshness: { snapshotFresh: true, taskEvidenceFresh: true, maxAgeMs: 120000 }, teams: [{ id: 'scope1', root: '/work/one', session: '', status: 'unknown', requiresOwner: true, reason: { code: 'registration_required' }, taskIds: ['task-one', 'task-two'] }] },
+  { id: 'vm2', name: 'Other machine', online: false, observedAt: now - 600000, teams: [] }
+ ] };
+const pack = require('../lib/ops').withTemplates(require('../lib/ops').cleanPack({}), {});
+const board = { servers: [
+ { id: 'vm1', name: 'Build machine', online: true, sessions: [
+  { name: 'dormant', agent: true, ai: { status: 'idle', at: now - 3600000 } },
+  { name: 'asking', agent: true, ai: { status: 'waiting', at: now - 10000 } },
+  { name: 'busy', agent: true, ai: { status: 'busy', at: now - 10000 } },
+  { name: 'unknown', agent: true, ai: null },
+  { name: 'parked', agent: true, ai: { status: 'idle', parked: true, at: now - 3600000 } },
+  { name: 'ordinary', agent: true, ai: { status: 'idle', at: now - 10000 } }
+ ], findings: [
+  { key: 'dormant', session: 'dormant', rule: 'dormant', severity: 'warn', level: 'suggest', template: 'continue', params: [60], since: 3600, source: 'status' },
+  { key: 'asking', session: 'asking', rule: 'asking', severity: 'urgent', params: [], since: 10, source: 'status' },
+  { key: 'ordinary', session: 'ordinary', rule: 'finished', severity: 'info', params: [], since: 10, source: 'status' },
+  { key: 'parked', session: 'parked', rule: 'dormant', severity: 'warn', level: 'notify', params: [60], since: 3600, source: 'status' }
+ ] },
+ { id: 'vm2', name: 'Other machine', online: false, sessions: [{ name: 'stale', agent: true, ai: { status: 'idle', at: now - 3600000 } }], findings: [{ key: 'offline', rule: 'offline', session: '', severity: 'warn', params: [], since: 60, source: 'machine' }] }
+ ], log: [], pack, dismissed: 0, dismissedKeys: [] };
+const backup = { enabled: true, storage: { host: 'fixture-store', path: '/encrypted/fixture-store/server-backups' }, servers: [
+ { id: 'vm1', name: 'Build machine', online: true, configured: true, roots: ['/work/one'], includeChats: true, phase: 'current', hasSnapshot: true, lastSuccessAt: now - 60000, lastAttemptAt: now - 60000 },
+ { id: 'vm2', name: 'Other machine', online: false, configured: true, roots: ['/work/two'], includeChats: true, phase: 'offline', hasSnapshot: true, lastSuccessAt: now - 86400000, lastAttemptAt: now - 86400000 },
+ { id: 'removed', name: 'Removed source', online: false, configured: false, roots: [], includeChats: true, phase: 'offline', hasSnapshot: true, lastSuccessAt: now - 86400000, lastAttemptAt: now - 86400000 },
+ { id: 'first', name: 'First connection', online: false, configured: true, roots: [], includeChats: true, phase: 'never', hasSnapshot: false }
+ ] };
+let failBoard = false, failSupervision = false, failPost = false, mismatch = false, slow = false, nudgeMode = 'delivered', failRuleRead = false, folder = '/work/new';
+const originalSupervision = structuredClone(supervision), originalBackup = structuredClone(backup);
+const prefs = { limits: { cpu: 95, ram: 90, disk: 90 }, templates: [], commands: [], recentDirs: [], backupMinutes: 60, petsEnabled: false };
+const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8').replace('<head>', `<head><script>
+window.__ticks=[];window.setInterval=(fn,ms)=>{__ticks.push({fn,ms});return __ticks.length};window.clearInterval=()=>{};
+window.__refresh=()=>__ticks.filter(t=>t.ms===10000).forEach(t=>t.fn());
+</script>`);
+const server = http.createServer(async (req, res) => {
+ try {
+ const u = new URL(req.url, 'http://fixture');
+ const send = value => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(value)); };
+ if (u.pathname === '/') { res.setHeader('Content-Type', 'text/html'); return res.end(html); }
+ if (u.pathname === '/locales.js') { res.setHeader('Content-Type', 'application/javascript'); return res.end('window.TW_LOCALES='+JSON.stringify({ vi: require('../public/locales/vi.json'), en: require('../public/locales/en.json') })+';'); }
+ if (u.pathname.startsWith('/api/')) {
+  requests.push({ method: req.method, url: req.url });
+  let body; if (req.method === 'POST') { let b=''; for await (const c of req) b+=c; body=b?JSON.parse(b):{}; }
+  if (u.pathname === '/api/status') return send({ authed: true, packaged: false });
+  if (u.pathname === '/api/prefs') return send(prefs);
+  if (u.pathname === '/api/state') return send({ servers: [{ id: 'vm1', name: 'Build machine', user: 'fixture', on: true, hasTmux: true, sessions: [], workers: [], lost: [] }] });
+  if (u.pathname === '/api/features') return send({ modules: [{ name: 'server-backup', css: true }, { name: 'ops', css: true }] }); // Deliberately backup first.
+  if (u.pathname === '/api/features/ops/board') { if (failBoard) { res.statusCode=503; return send({}); } return send(board); }
+  if (u.pathname === '/api/features/ops/pack') {
+   if(req.method==='POST'){rulePosts.push(body);if(slow)await new Promise(r=>setTimeout(r,250));const saved=require('../lib/ops').cleanPack(body.reset?{}:body.pack);Object.assign(pack,require('../lib/ops').withTemplates(saved,{}));return send(saved);}
+   if(failRuleRead){res.statusCode=503;return send({error:'Rule readback unavailable'});}return send(pack);
+  }
+  if (u.pathname === '/api/features/ops/supervision/account') { accountChecks.push(body); return send({ ...body, accountRef, label: 'Verified audit owner', code: 'audit_account_registration_required', observedAt: Date.now(), quota: 'unknown' }); }
+  if (u.pathname === '/api/features/ops/supervision') {
+   if (req.method === 'POST') {
+    posts.push(body); if (slow) await new Promise(r=>setTimeout(r,250));
+    if (failPost) { res.statusCode=409; return send({error:'Rejected fixture policy'}); }
+    if (!mismatch) { Object.assign(supervision,body); if (body.leaders) supervision.runtime.registrationReady=true; }
+   }
+   if (failSupervision) { res.statusCode=503; return send({}); }
+   return send(supervision);
+  }
+  if (u.pathname === '/api/features/ops/nudge') {
+   nudges.push(body); await new Promise(r=>setTimeout(r,180));
+   if (nudgeMode === 'uncertain') {
+    board.log.unshift({ server: body.server, session: 'dormant', rule: 'dormant', at: Date.now(), delivery:'uncertain', code:'OPS_DELIVERY_UNCERTAIN' });
+    board.servers[0].findings.push({ key:'unheard',session:'dormant',rule:'unheard',severity:'urgent',code:'OPS_DELIVERY_UNCERTAIN',params:[],since:0 });
+    res.statusCode=409; return send({ error:'Delivery uncertain', code:'OPS_DELIVERY_UNCERTAIN' });
+   }
+   board.log.unshift({ server: body.server, session:'dormant',rule:'dormant',at:Date.now(),idleAt:board.servers[0].sessions[0].ai.at,delivery:nudgeMode,verified:null,responded:null });
+   res.statusCode=nudgeMode==='pending'?202:200; return send({ ok:true,delivery:nudgeMode,responded:null,progress:'unknown' });
+  }
+  if (u.pathname === '/api/features/ops/dismiss') { board.dismissed++; board.servers.forEach(s=>s.findings=s.findings.filter(f=>f.key!==body.key)); return send({ok:true}); }
+  if (u.pathname === '/api/features/plugins/data') return send({ servers:[],autoReload:false });
+  if (u.pathname === '/api/features/server-backup/status') return send(backup);
+  if (u.pathname === '/api/features/server-backup/control') {
+   controls.push(body); if (slow) await new Promise(r=>setTimeout(r,250));
+   if (failPost) {res.statusCode=409;return send({error:'Rejected fixture backup'});}
+   if (!mismatch) { if ('enabled' in body) backup.enabled=body.enabled; if (body.servers) body.servers.forEach(c=>{const s=backup.servers.find(s=>s.id===c.serverId);Object.assign(s,{roots:c.roots,includeChats:c.includeChats});}); }
+   return send(backup);
+  }
+  if (u.pathname === '/api/features/server-backup/snapshots') return send({snapshots:[{id:'saved',at:now-86400000,complete:true},{id:'older',at:now-172800000,complete:false}]});
+  if (u.pathname === '/api/features/server-backup/files') return send({files:[{id:'chat',path:'/saved/conversation.jsonl',kind:'chat'}],nextCursor:null});
+  if (u.pathname === '/api/features/server-backup/preview') return send({kind:'chat',text:JSON.stringify({message:{role:'assistant',content:'Readable offline fixture conversation'}})});
+  if (['/api/features/server-backup/download','/api/features/server-backup/export'].includes(u.pathname)) { downloads.push(req.url); res.setHeader('Content-Type','application/octet-stream'); return res.end('full synthetic original'); }
+  if (/\/api\/servers\/[^/]+\/dirs$/.test(u.pathname)) return send({path:folder,parent:'/work',dirs:[],truncated:false});
+  if (u.pathname === '/api/backup') return send({lastAt:now,dir:'/fixture/vault-backups',extraDir:'',suggestions:[]});
+  if (u.pathname === '/api/transfer') return send({waiting:[]});
+  if (u.pathname === '/api/tokens') return send({accounts:tokenAccounts,hosts:[]});
+  return send({});
+ }
+ const vendor = { '/vendor/xterm.js':'@xterm/xterm/lib/xterm.js', '/vendor/xterm.css':'@xterm/xterm/css/xterm.css', '/vendor/addon-fit.js':'@xterm/addon-fit/lib/addon-fit.js', '/vendor/markdown-it.js':'markdown-it/dist/markdown-it.min.js' };
+ const p = vendor[u.pathname] ? path.join(__dirname,'../node_modules',vendor[u.pathname]) : path.resolve(publicDir,'.'+u.pathname);
+ if ((!p.startsWith(publicDir+path.sep)&&!vendor[u.pathname])||!fs.existsSync(p)||fs.statSync(p).isDirectory()) {res.statusCode=404;return res.end();}
+ res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(fs.readFileSync(p));
+ } catch (e) { res.statusCode=500;res.end(JSON.stringify({error:e.message})); }
+});
+let chrome, ws, closeBrowser, chromeError='';
+(async()=>{
+ const executable=[process.env.CHROME_BIN,'/usr/bin/google-chrome','/usr/bin/chromium','/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].filter(Boolean).find(p=>fs.existsSync(p));
+ assert.ok(executable,'Actual Chrome required; set CHROME_BIN');
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ chrome=spawn(executable,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+path.join(output,'profile'),'about:blank'],{stdio:['ignore','ignore','pipe']});chrome.stderr.on('data',b=>chromeError=(chromeError+b).slice(-4000));
+ const delay=ms=>new Promise(r=>setTimeout(r,ms)),portFile=path.join(output,'profile/DevToolsActivePort');
+ for(let i=0;i<150&&!fs.existsSync(portFile)&&chrome.exitCode===null;i++)await delay(100);
+ assert.ok(fs.existsSync(portFile),'Chrome started: '+chromeError);
+ const port=fs.readFileSync(portFile,'utf8').split('\n')[0],target=(await(await fetch('http://127.0.0.1:'+port+'/json')).json()).find(x=>x.type==='page');
+ ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.on('open',r);ws.on('error',j)});
+ let chromeVersion;
+ let seq=0;const pending=new Map(),errors=[];
+ ws.on('message',b=>{const m=JSON.parse(b);if(m.id){const p=pending.get(m.id);if(p){clearTimeout(p.timer);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result);pending.delete(m.id)}}else if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails)});
+ const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq,timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method))},10000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))});
+ closeBrowser=()=>send('Browser.close');
+ const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});assert.ok(!r.exceptionDetails,JSON.stringify(r.exceptionDetails));return r.result.value};
+ const until=async(expression,label)=>{for(let i=0;i<100;i++){if(await evaluate(expression))return;await delay(50)}assert.fail('Timed out: '+label+'; browser errors='+JSON.stringify(errors))};
+ const refresh=async()=>{await evaluate('__refresh()');await delay(120)};
+ const select=async(name,value)=>evaluate('document.querySelector('+JSON.stringify('[name='+name+']')+').value='+JSON.stringify(value)+';document.querySelector('+JSON.stringify('[name='+name+']')+').dispatchEvent(new Event("change"))');
+ const backupRow=id=>'document.querySelector('+JSON.stringify('.backup-row[data-server="'+id+'"]')+')';
+ const sessionRow=name=>'document.querySelector('+JSON.stringify('#v-ops .ops-row[data-session="'+name+'"]')+')';
+ const clickText=async(root,label)=>evaluate('Array.from('+root+'.querySelectorAll("button")).find(b=>b.textContent==='+JSON.stringify(label)+').click()');
+ const settingsTab=async tab=>evaluate('document.querySelector('+JSON.stringify('#dlg-set [data-tab="'+tab+'"]')+').click()');
+ const closeSettings=async()=>evaluate('document.querySelector("#dlg-set [data-close]").click()');
+ chromeVersion=await send('Browser.getVersion');await send('Runtime.enable');await send('Page.enable');
+ await send('Page.navigate',{url:'http://127.0.0.1:'+server.address().port+'/?lang=vi'});
+ await until('!!window.TW && !!TW.app() && !!document.querySelector("[name=save]") && !!document.querySelector(".backup-card")','full app feature load');
+ assert.equal(await evaluate('document.querySelector("#tab-ops").getAttribute("aria-pressed")'),'false');
+ // Use the normal Settings button before ever visiting Operations.
+ await evaluate('document.querySelector("#set").click()');await settingsTab('backup');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);
+ assert.equal(await evaluate('document.querySelector("#dlg-set .set-tab[aria-selected=true]").dataset.tab'),'backup');
+ assert.equal(await evaluate('document.querySelector("#v-ops").contains(document.querySelector(".backup-card"))'),false);
+ assert.equal(await evaluate('document.querySelector("#dlg-set [data-pane=backup]").contains(document.querySelector(".backup-card"))'),true);
+ assert.ok(await evaluate('document.querySelector("#dlg-set [data-pane=backup]").textContent.includes("Cấu hình Termnest")'));
+ assert.equal(await evaluate('document.querySelectorAll("#v-ops form,#v-ops input,#v-ops .ops-super,#v-ops .backup-card").length'),0);
+ await refresh();assert.deepEqual(supervision,originalSupervision,'relocation and polling do not alter policy');assert.deepEqual(backup,originalBackup,'relocation does not alter backup config');assert.equal(posts.length+controls.length+nudges.length,0);
+ // Stored reads for offline and removed hosts use the saved store and return to Settings on close/Escape.
+ for(const id of ['vm2','removed']){
+  await clickText(backupRow(id),'Xem chat');await until('document.querySelectorAll(".backup-file-list button").length===1','saved files '+id);
+  await evaluate('document.querySelector(".backup-file-list button").click()');await until('document.querySelector(".backup-preview").textContent.includes("Readable offline")','saved chat '+id);
+  assert.equal(await evaluate('fetch(document.querySelector(".backup-preview a").href).then(r=>r.text())'),'full synthetic original');
+  assert.equal(await evaluate('fetch(document.querySelector(".backup-dialog a").href).then(r=>r.text())'),'full synthetic original');
+  assert.ok(downloads.at(-1).includes('server='+id));
+  if(id==='removed')await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});else await evaluate('document.querySelector(".backup-dialog button").click()');
+  await until('!document.querySelector(".backup-dialog")','saved dialog closed');assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'Settings stays open after '+id);
+  assert.ok(await evaluate('document.activeElement.closest("#dlg-set")!==null'),'focus returns to Settings');
+ }
+ assert.equal(await evaluate('Array.from('+backupRow('first')+'.querySelectorAll("button")).find(b=>b.textContent==="Xem chat").disabled'),true,'first offline connection has no fabricated saved copy');
+ // Native folder picker above Settings; persistent backup scope/focus and complete-list preservation.
+ await evaluate(backupRow('vm1')+'.querySelector(".backup-scope").open=true');
+ await clickText(backupRow('vm1'),'Chọn thư mục trên máy');await until('document.querySelector("#dlg-dir").open&&!document.querySelector("#dir-ok").disabled','native folder dialog');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);await evaluate('document.querySelector("#dir-ok").click()');await delay(30);
+ assert.ok(await evaluate(backupRow('vm1')+'.textContent.includes("/work/new")'));
+ await evaluate(backupRow('vm1')+'.querySelector(".backup-scope input").focus()');await refresh();assert.equal(await evaluate('document.activeElement.closest(".backup-scope")!==null'),true,'backup draft focus survives polling');
+ await settingsTab('sessions');await settingsTab('backup');assert.ok(await evaluate(backupRow('vm1')+'.textContent.includes("/work/new")'));
+ slow=true;await clickText(backupRow('vm1'),'Lưu lựa chọn');await clickText(backupRow('vm1'),'Lưu lựa chọn');
+ await until('!Array.from(document.querySelectorAll(".backup-scope button")).some(b=>b.textContent==="Lưu lựa chọn"&&b.disabled)','backup readback');slow=false;
+ assert.equal(controls.length,1);assert.deepEqual(controls[0].servers.map(x=>x.serverId),['vm1','vm2','removed','first']);
+ assert.deepEqual(controls[0].servers[1],{serverId:'vm2',roots:['/work/two'],includeChats:true});assert.equal(backup.servers[2].configured,false,'removed source remains unconfigured');
+ // Real session/task chooser has no task ID/UUID text input and no blind enrollment.
+ await settingsTab('sessions');assert.equal(await evaluate('document.querySelectorAll("[name=workspaces],[name=taskIds]").length'),0);
+ assert.equal(await evaluate('document.querySelector("[name=workspaceMachine]").options[0].textContent'),'Build machine');
+ await select('leader','0');assert.equal(await evaluate('document.querySelectorAll("[name=taskScope]").length'),2);assert.equal(await evaluate('document.querySelectorAll("[name=taskScope]:checked").length'),0);
+ await evaluate('document.querySelector("[name=taskScope]").click();document.querySelector("[name=confirmLeader]").click();document.querySelector("[name=intervalMinutes]").value="45";document.querySelector("[name=intervalMinutes]").dispatchEvent(new Event("input"));document.querySelector("[name=intervalMinutes]").focus()');
+ await refresh();assert.equal(await evaluate('document.activeElement.name'),'intervalMinutes');
+ await settingsTab('backup');await settingsTab('sessions');assert.equal(await evaluate('document.querySelector("[name=intervalMinutes]").value'),'45');assert.equal(await evaluate('document.querySelectorAll("[name=taskScope]:checked").length'),1);
+ const beforeIdentity=posts.length;supervision.registrationCandidates[0].identity={...identity,agentPid:999};await refresh();await evaluate('document.querySelector("[name=save]").click()');await delay(80);assert.equal(posts.length,beforeIdentity,'stale candidate cannot enroll');
+ supervision.registrationCandidates[0].identity=identity;await refresh();slow=true;await evaluate('document.querySelector("[name=save]").click();document.querySelector("[name=save]").click()');
+ await until('!document.querySelector("[name=save]").disabled','registration readback');slow=false;
+ assert.equal(posts.length,1);assert.deepEqual(posts[0].leaders,[{serverId:'vm1',root:'/work/one',session:'dormant',taskIds:['task-one'],identity}]);
+ assert.deepEqual(supervision.workspaces,originalSupervision.workspaces);assert.equal(supervision.enabled,false,'registration does not enable crew');assert.equal(supervision.autoRecovery,false);
+ // Browse adds one scope and only explicit removal removes a scope; saved identity metadata is preserved.
+ await evaluate('document.querySelector("[name=browseWorkspace]").click()');await until('document.querySelector("#dlg-dir").open&&!document.querySelector("#dir-ok").disabled','monitoring folder dialog');await evaluate('document.querySelector("#dir-ok").click()');await delay(30);
+ await evaluate('document.querySelector("[name=save]").click()');await until('!document.querySelector("[name=save]").disabled','new workspace readback');
+ assert.equal(supervision.workspaces.length,3);assert.deepEqual(supervision.workspaces.slice(0,2),originalSupervision.workspaces);
+ await evaluate('document.querySelectorAll(".ops-scopes button")[2].click();document.querySelector("[name=save]").click()');await until('!document.querySelector("[name=save]").disabled','scope removal readback');assert.deepEqual(supervision.workspaces,originalSupervision.workspaces);
+ // Safe guided account chooser, explicit proof and readback; unrelated policy and registrations survive.
+ supervision.servers[0].freshness.taskEvidenceFresh=false;await refresh();
+ assert.ok(await evaluate('document.querySelector(".ops-super-account").textContent.includes("API chưa liệt kê mọi tài khoản")'));
+ assert.equal(await evaluate('document.querySelector("[name=accountChoice]").value'),'.claude-audit');
+ await evaluate('document.querySelector("[name=checkAccount]").click()');await until('!document.querySelector("[name=confirmAccount]").disabled','identity proof');
+ assert.equal(accountChecks.length,1);assert.deepEqual(accountChecks[0],{serverId:'vm1',root:'/work/one',auditConfig:'.claude-audit'});
+ await closeSettings();await refresh();await evaluate('TW.app().openSettings("sessions")');assert.equal(await evaluate('document.querySelector("[name=confirmAccount]").disabled'),false,'valid proof survives Settings navigation');
+ const beforeAccount=structuredClone(supervision);await evaluate('document.querySelector("[name=intervalMinutes]").value="88";document.querySelector("[name=intervalMinutes]").dispatchEvent(new Event("input"));document.querySelector("[name=confirmAccount]").click()');
+ await until('document.querySelector(".ops-super-account").textContent.includes("Đã lưu tài khoản")','account readback');
+ assert.equal(supervision.intervalMinutes,beforeAccount.intervalMinutes);assert.deepEqual(supervision.workspaces[1],beforeAccount.workspaces[1]);assert.deepEqual(supervision.leaders,beforeAccount.leaders);assert.equal(supervision.workspaces[0].auditAccount,accountRef);assert.equal(await evaluate('document.querySelector("[name=intervalMinutes]").value'),'88');
+ // Failed readback is never displayed as saved; proof expires even while navigating.
+ await evaluate('document.querySelector("[name=checkAccount]").click()');await until('!document.querySelector("[name=confirmAccount]").disabled','second proof');
+ await evaluate('window.__now=Date.now;Date.now=()=>__now()+61000');await refresh();assert.equal(await evaluate('document.querySelector("[name=confirmAccount]").disabled'),true);await evaluate('Date.now=__now');
+ await evaluate('document.querySelector(".ops-reminder-settings").open=true;document.querySelector(".ops-edit-rules").click()');
+ await evaluate('document.querySelector(".ops-rules textarea").value="Keep this actual Settings draft";document.querySelector(".ops-rules textarea").dispatchEvent(new Event("input"));document.querySelector(".ops-rules textarea").focus()');
+ await refresh();assert.equal(await evaluate('document.activeElement.closest(".ops-rules")!==null'),true);
+ await settingsTab('backup');await settingsTab('sessions');assert.equal(await evaluate('document.querySelector(".ops-rules textarea").value'),'Keep this actual Settings draft');
+ // Rules remain independent of crew status, and writes need a matching GET with duplicate clicks disabled.
+ failSupervision=true;await refresh();assert.equal(await evaluate('document.querySelector(".ops-edit-rules").disabled'),false);failSupervision=false;await refresh();
+ const ruleSave='Array.from(document.querySelectorAll(".ops-rules button")).find(b=>b.textContent===i18n("ops.luu"))';
+ failRuleRead=true;await evaluate(ruleSave+'.click()');await until('document.querySelector("#banner").textContent.includes("Rule readback unavailable")','rule readback failure');assert.equal(await evaluate('document.querySelector(".ops-rules textarea").value'),'Keep this actual Settings draft');
+ failRuleRead=false;slow=true;const beforeRules=rulePosts.length;await evaluate(ruleSave+'.click();'+ruleSave+'.click()');assert.equal(await evaluate(ruleSave+'.disabled'),true);await until('document.querySelector("#banner").textContent===i18n("ops.da_luu")','rules saved after readback');slow=false;assert.equal(rulePosts.length,beforeRules+1);
+ assert.equal(pack.rules.dormant.level,'suggest','saving drafts does not enable automatic reminders');
+ // Operations contains one row per session and never types into asking, busy, unknown or background board.
+ await closeSettings();await evaluate('window.__opened=[];var realOpen=TW.app().openSession;TW.app().openSession=function(id,name){__opened.push({id,name});return realOpen(id,name)};document.querySelector("#tab-ops").click()');await refresh();
+ assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-session=dormant]").length'),1);
+ assert.equal(await evaluate('document.querySelectorAll("#v-ops form,#v-ops input,#v-ops .backup-card,#tab-crew").length'),0);
+ for(const name of ['asking','busy','unknown','parked','stale'])assert.equal(await evaluate('Array.from('+sessionRow(name)+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false,name+' cannot nudge');
+ await clickText(sessionRow('asking'),'Mở phiên');await delay(30);assert.equal(nudges.length,0);assert.deepEqual(await evaluate('__opened.at(-1)'),{id:'vm1',name:'asking'});await evaluate('document.querySelector("#tab-ops").click()');
+ slow=true;await clickText(sessionRow('dormant'),'Nhắc tiếp');assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).find(b=>b.textContent==="Nhắc tiếp").disabled'),true);
+ await refresh();await until(sessionRow('dormant')+'.textContent.includes("Đã gửi nhắc")','delivered reminder');slow=false;
+ assert.equal(nudges.length,1);assert.ok(await evaluate(sessionRow('dormant')+'.closest(".g-waiting")!==null'),'delivery never moves session to Working');
+ assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false);
+ await refresh();assert.equal(nudges.length,1);
+ board.servers[0].sessions[0].ai={status:'busy',at:Date.now()};board.servers[0].findings=board.servers[0].findings.filter(f=>f.key!=='dormant');board.log[0].verified=board.log[0].responded=true;await refresh();
+ assert.ok(await evaluate(sessionRow('dormant')+'.closest(".g-running")!==null'),'only a new observed busy state moves the row');
+ assert.ok(await evaluate('document.querySelector(".ops-log-sec").textContent.includes("tiến độ chưa xác minh")'));
+ // Exact current response handling: accepted/pending cannot claim delivered. Uncertain is visible and never resent, even after reload.
+ board.servers[0].sessions[0].ai={status:'idle',at:Date.now()-100};board.servers[0].findings.push({...originalDormant(),key:'dormant-new'});board.log=[];nudgeMode='pending';await refresh();
+ await clickText(sessionRow('dormant'),'Nhắc tiếp');await until(sessionRow('dormant')+'.textContent.includes("Đang chờ xác nhận gửi")','202 pending');assert.ok(!await evaluate(sessionRow('dormant')+'.textContent.includes("Đã gửi nhắc")'));assert.equal(nudges.length,2);
+ // Fresh page clears client state; server uncertainty remains authoritative.
+ nudgeMode='uncertain';board.servers[0].sessions[0].ai.at=Date.now()-3600000;board.log=[];
+ await send('Page.reload');await until('!!document.querySelector("[name=save]")','reloaded app');await evaluate('document.querySelector("#tab-ops").click()');await clickText(sessionRow('dormant'),'Nhắc tiếp');
+ await until(sessionRow('dormant')+'.textContent.includes("Chưa rõ lời nhắc đã đến")','uncertain outcome');assert.equal(nudges.length,3);await refresh();
+ assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false);
+ await send('Page.reload');await until('!!document.querySelector("[name=save]")','reload uncertain app');await evaluate('document.querySelector("#tab-ops").click()');await refresh();
+ assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false);assert.equal(nudges.length,3);
+ // Owner findings deduplicate session rows and badges. Stale task evidence remains a visible issue.
+ supervision.enabled=true;supervision.servers[0].teams=[{id:'owner',session:'asking',root:'/work/one',requiresOwner:true,reason:{code:'task_evidence_stale'},taskIds:['task-one']},{id:'stale-evidence',session:'busy',root:'/work/one',requiresOwner:true,reason:{code:'task_evidence_stale'},taskIds:['task-two']}];await refresh();
+ assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-session=asking]").length'),1);assert.equal(await evaluate(sessionRow('asking')+'.dataset.rule'),'asking');assert.ok(await evaluate(sessionRow('busy')+'.textContent.includes("Bằng chứng công việc thiếu hoặc đã cũ")'));
+ assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-rule=offline]").length'),1);assert.ok(!await evaluate('document.querySelector("#v-ops").textContent.includes("Mọi phiên đều ổn")'));
+ const actionCount=await evaluate('document.querySelectorAll("#v-ops .g-attention .ops-row,#v-ops .g-waiting .ops-row").length');assert.equal(await evaluate('Number(document.querySelector("#tab-ops .ops-badge").textContent)'),actionCount);
+ // A proven failed/exhausted delivery must not become a fabricated three-minute no-response event.
+ board.log[0].delivery='exhausted';board.servers[0].findings.find(f=>f.key==='unheard').code='OPS_NOT_SENT';await refresh();
+ assert.ok(await evaluate(sessionRow('dormant')+'.textContent.includes("Chưa gửi được")'));assert.ok(!await evaluate(sessionRow('dormant')+'.textContent.includes("sau 3 phút")'));assert.equal(nudges.length,3);
+ // No-response is a verification outcome after the existing three-minute window, never task progress.
+ board.log[0]={...board.log[0],delivery:'delivered',verified:false,responded:false,at:Date.now()-181000};board.servers[0].findings.find(f=>f.key==='unheard').code='OPS_NO_RESPONSE';await refresh();
+ assert.ok(await evaluate(sessionRow('dormant')+'.textContent.includes("sau 3 phút")'));assert.equal(nudges.length,3);
+ tokenAccounts.push({id:'one-account',tool:'claude',nickname:'Fixture account',limits:{session:{percent:95},weekly:{percent:99}}});
+ await evaluate('__ticks.filter(t=>t.ms===60000).forEach(t=>t.fn())');await delay(100);await refresh();
+ assert.equal(await evaluate(`document.querySelectorAll('#v-ops .ops-row[data-session="acc:Fixture account"]').length`),1,'quota is counted once per account across both limits');
+ failBoard=true;await refresh();assert.ok(await evaluate('document.querySelector("#v-ops").textContent.includes("Không đọc được phiên mới")'));failBoard=false;await refresh();
+ // Backup/board online flags can disagree while a snapshot is stale: show only the one host issue.
+ backup.servers[1].online=true;backup.servers[1].phase='error';await refresh();assert.equal(await evaluate('document.querySelectorAll("#v-ops .backup-issue").length'),0);
+ backup.servers[0].phase='partial';await refresh();assert.equal(await evaluate('document.querySelectorAll("#v-ops .backup-issue").length'),1);
+ await evaluate('document.querySelector("#v-ops .backup-issue").click()');assert.equal(await evaluate('document.querySelector("#dlg-set .set-tab[aria-selected=true]").dataset.tab'),'backup');await closeSettings();
+ backup.servers[1].online=false;backup.servers[1].phase='offline';backup.servers[0].phase='current';await refresh();
+ // Actual shell keyboard tab navigation/focus and both viewport sizes, including persistent rules.
+ for(const width of [1440,390]){
+  await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});await delay(80);
+  await evaluate('document.querySelector("#tab-ops").scrollIntoView({block:"nearest",inline:"nearest"})');
+  assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),'daily width '+width);
+  await screenshot('operations-'+width);
+  await evaluate('TW.app().openSettings("sessions")');
+  assert.equal(await evaluate('document.activeElement.dataset.tab'),'sessions');
+  assert.ok(await evaluate('var d=document.querySelector("#dlg-set");d.scrollWidth<=d.clientWidth+1'),'settings width '+width);
+  await screenshot('monitoring-'+width);
+  await evaluate('document.querySelector(".ops-scopes").scrollIntoView({block:"start"})');await screenshot('scopes-'+width);
+  await evaluate('document.querySelector(".ops-super-account").scrollIntoView({block:"start"})');await screenshot('account-'+width);
+  await evaluate('document.querySelector(".ops-reminder-settings").open=true;if(!document.querySelector(".ops-rules"))document.querySelector(".ops-edit-rules").click();document.querySelector(".ops-rules").scrollIntoView({block:"start"})');assert.ok(await evaluate('var d=document.querySelector("#dlg-set .set-panes");d.scrollWidth<=d.clientWidth+1'),'rules fit '+width);await screenshot('rules-'+width);
+  await settingsTab('backup');assert.ok(await evaluate('var t=document.querySelector("#dlg-set .set-tab[aria-selected=true]").getBoundingClientRect();t.left>=0&&t.right<=innerWidth+1'),'selected backup tab visible '+width);assert.ok(await evaluate('var d=document.querySelector("#dlg-set .set-panes");d.scrollWidth<=d.clientWidth+1'),'backup pane width '+width);await screenshot('backup-'+width);await evaluate('document.querySelector(".backup-scope").open=true');assert.ok(await evaluate('document.querySelector(".backup-scope input").getBoundingClientRect().width<=24'));await screenshot('backup-scope-'+width);
+  await settingsTab('sessions');await evaluate('document.querySelector("#dlg-set [data-tab=sessions]").focus()');await send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39});assert.equal(await evaluate('document.activeElement.dataset.tab'),'backup');
+  await closeSettings();await until('!document.querySelector("#dlg-set").open && !document.activeElement.closest("#dlg-set")','close returns focus outside Settings');
+ }
+ assert.deepEqual(errors,[]);
+ assert.ok(!requests.some(r=>/\/api\/servers\/.*\/(keys|sessions)$/.test(r.url)&&r.method==='POST'),'no arbitrary typing or new session path');
+ assert.ok(!requests.some(r=>/\/api\/features\/(crew|crewpack)/.test(r.url)),'no Crew polling');
+ fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,chrome:executable,chromeVersion,requests,posts,controls,nudges,accountChecks,downloads,rulePosts,errors},null,2));
+ console.log('PASS: actual index/app Settings shell BEFORE Ops, backup-first feature loading, native folder/saved dialogs and focus, offline/removed saved reads and originals/export, pending full-list scope readback, real candidates/task checkboxes, account proof/expiry/readback, drafts through nav/poll, guarded nudge exact delivered/pending/uncertain/reload, owner row/badge dedupe, 1440/390. Artifacts: '+output);
+ async function screenshot(name){const r=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(output,name+'.png'),Buffer.from(r.data,'base64'));}
+ function originalDormant(){return {session:'dormant',rule:'dormant',severity:'warn',level:'suggest',template:'continue',params:[60],since:3600,source:'status'};}
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{
+ if(closeBrowser&&chrome&&chrome.exitCode===null){try{await closeBrowser()}catch{chrome.kill()}}
+ if(ws)ws.close();
+ if(chrome)await new Promise(resolve=>{
+  if(chrome.exitCode!==null||chrome.signalCode!==null)return resolve();
+  const timer=setTimeout(()=>chrome.kill(),5000);
+  chrome.once('exit',()=>{clearTimeout(timer);resolve()});
+ });
+ await new Promise(resolve=>server.close(resolve));
+ // Chrome can finish an atomic profile rename just after exiting. Retry the whole traversal.
+ for(let attempt=0;attempt<10;attempt++){
+  try{fs.rmSync(path.join(output,'profile'),{recursive:true,force:true});break}
+  catch(error){if(error.code!=='ENOTEMPTY'||attempt===9)throw error;await new Promise(resolve=>setTimeout(resolve,100))}
+ }
+});
