@@ -68,6 +68,23 @@ test('growing files are deferred, partial snapshots retain good history, and fai
   assert.equal(f.store.snapshots('vm')[0].id, second.id);
 });
 
+test('selected tooling source preserves bin/obj/target and environment folders in offline copies', { skip: process.platform !== 'linux' }, async t => {
+  const f = fixture(t), ssh = fakeSSH(f.home); t.after(ssh.close);
+  const root = path.join(f.home, 'tooling', 'xspire-crew'), expected = new Map();
+  for (const rel of ['bin/crew.sh', 'obj/model.txt', 'target/source.rs', 'venv/activate', '.venv/note', '.claude/commands/task.md', '.git/objects/history', '.env']) {
+    const bytes = Buffer.from('OWNER-SOURCE ' + rel); expected.set(rel, bytes); f.write('tooling/xspire-crew/' + rel, bytes);
+  }
+  for (const dir of ['node_modules', '__pycache__', '.next', '.cache', '.termnest-trash']) f.write('tooling/xspire-crew/' + dir + '/generated', 'CACHE-EXCLUDED');
+  const snap = await collect(f.store, ssh.backend, { ...config(f), roots: [root], includeChats: false });
+  assert.equal(snap.complete, true); assert.equal(snap.files, expected.size); assert.equal(ssh.count(), 1);
+  ssh.backend.ready = false; fs.rmSync(f.home, { recursive: true });
+  const manifest = f.store.manifest('vm', snap.id);
+  for (const [rel, bytes] of expected) {
+    const file = manifest.entries.find(e => e.path === 'files/1-xspire-crew/' + rel); assert.ok(file, rel);
+    assert.deepEqual(Buffer.concat([...f.store.fileBytes(file)]), bytes, rel);
+  }
+});
+
 test('selected-folder links/oversize/special files are explicit partial; broad roots and source replacement fail closed', async t => {
   const f = fixture(t, { fileBytes: 50 }); f.write('project/good', 'safe'); f.write('project/huge', 'x'.repeat(100));
   const outside = f.write('outside-secret', 'do not follow'); fs.symlinkSync(outside, path.join(f.project, 'escape')); fs.linkSync(outside, path.join(f.project, 'hardlink'));
