@@ -19,7 +19,7 @@ const payloads = {'/api/features/ops/board':{servers:supervision.servers.map(s=>
 let accountFailure = false, accountMode = '', accountSlow = false, accountReadbackMismatch = false;
 const accountRef = 'a'.repeat(64);
 let getFailure = false, postFailure = false, rereadFailure = false, slowPost = false;
-const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/features/ops.css"><style>body{overflow:auto}.view.on{display:block}.feature-page{padding-top:16px}.main-top{position:static}</style></head><body><div class="main-top"><div class="seg"><button>Tổng quan</button><button>Terminal</button><button>Token AI</button><button>Ghi chú</button></div></div><section id="v-token"></section><dialog id="dlg-fixture-settings"><div id="ops-settings-mount"></div></dialog><script src="/features-host.js"></script><script>
+const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/features/ops.css"><style>body{overflow:auto}.view.on{display:block}.feature-page{padding-top:16px}.main-top{position:static}</style></head><body><div class="main-top"><div class="seg"><button>Tổng quan</button><button>Terminal</button><button>Token AI</button><button>Ghi chú</button></div></div><section id="v-token"></section><dialog id="dlg-fixture-settings"><div id="ops-settings-mount"></div><div id="plugins-settings-mount"></div></dialog><script src="/features-host.js"></script><script>
 const locale=${fs.readFileSync(path.join(publicDir,'locales/vi.json'),'utf8')};
 window.i18n=(key,args=[])=>String(locale[key]||key).replace(/\\{(\\d+)\\}/g,(_,n)=>args[n]);
 window.__ticks=[];window.setInterval=(fn,ms)=>{__ticks.push({fn,ms});return __ticks.length};
@@ -80,7 +80,7 @@ let chrome,ws,closeBrowser,chromeError = '';
  await until('!!document.querySelector("#v-ops .ops-head") && !!document.querySelector(".ops-super-form")','Ops mounted with supervision data');
  assert.equal(await evaluate('document.querySelectorAll("#tab-crew,#v-crew,.ops-crew,.cp-board,.crew-detail").length'),0);
  assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-plug").length'),0);
- assert.equal(await evaluate('document.querySelectorAll("#v-plugins .ops-plug").length'),1);
+ assert.equal(await evaluate('document.querySelectorAll("#plugins-settings-mount .ops-plug").length'),1);
  assert.equal(await evaluate('const detail=document.createElement("div");TW.renderDetail(detail,{});detail.children.length'),0);
  await evaluate('document.querySelector("#tab-ops").click()');
  await until('document.querySelector("#v-ops").classList.contains("on")','Ops selected');
@@ -237,7 +237,7 @@ let chrome,ws,closeBrowser,chromeError = '';
  }
  for(const width of [1440,390]){
   await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});await delay(100);
-  await evaluate('document.querySelector("#dlg-fixture-settings").close();document.querySelector("#tab-plugins").click();document.querySelector("#tab-ops").click()');await delay(60);
+  await evaluate('document.querySelector("#dlg-fixture-settings").close();document.querySelector("#tab-ops").click()');await delay(60);
   assert.equal(await evaluate('document.querySelector("#tab-ops").getAttribute("aria-pressed")'),'true');
   assert.ok(await evaluate('var t=document.querySelector("#tab-ops").getBoundingClientRect(),s=t.width; t.left>=0 && t.right<=innerWidth+1 && s>0'),'selected tab visible at '+width);
   assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'no page overflow at '+width);
@@ -249,7 +249,7 @@ let chrome,ws,closeBrowser,chromeError = '';
   await evaluate('document.querySelector(".ops-super-account").scrollIntoView({block:"start"})');
   const account=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(output,'account-'+width+'.png'),Buffer.from(account.data,'base64'));
  }
- await evaluate('document.querySelector("#tab-plugins").click()');assert.equal(await evaluate('document.querySelector("#v-plugins").classList.contains("on")'),true);
+ assert.equal(await evaluate('document.querySelectorAll("#tab-plugins,#v-plugins").length'),0);
  assert.ok(!requests.some(r=>/\/api\/features\/(crew|crewpack)(\/|$)/.test(r.url)), 'no Crew API polling');
  assert.ok(requests.filter(r=>r.method==='POST').every(r=>['/api/features/ops/supervision','/api/features/ops/supervision/account'].includes(r.url)),'no unrelated backend control actions');
  assert.deepEqual(errors,[]);
