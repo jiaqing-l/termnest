@@ -7,8 +7,8 @@ const move = require('../lib/features/move');
 const shq = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
 // A "machine": its own HOME; commands run through a real shell, stdin carries uploaded bytes.
 function machine(home, sessions, extra = {}) {
-  return { ready: true, mode: 'native', cfg: { id: path.basename(home) }, snapshot: { sessions },
-    exec: async (cmd, t, m, input) => { const r = cp.spawnSync('sh', ['-c', cmd], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: '', CODEX_HOME: '' }, input, maxBuffer: 256 * 1024 * 1024 }); return { code: r.status, out: String(r.stdout), err: String(r.stderr) }; }, ...extra };
+  return { ready: true, mode: 'native', cfg: { id: path.basename(home) }, snapshot: { sessions }, launches: [],
+    exec: async function (cmd, t, m, input) { if (cmd.includes('function verifyRuntime()')) return { code: 0, out: JSON.stringify({ verified: true }) }; if (cmd.startsWith('tmux send-keys ')) { this.launches.push(cmd); return { code: 0, out: '' }; } const r = cp.spawnSync('sh', ['-c', cmd], { env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: '', CODEX_HOME: '' }, input, maxBuffer: 256 * 1024 * 1024 }); return { code: r.status, out: String(r.stdout), err: String(r.stderr) }; }, ...extra };
 }
 function signIn(home, email) { fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ oauthAccount: { emailAddress: email } })); }
 function repo(dir, origin) { fs.mkdirSync(path.join(dir, '.git'), { recursive: true }); fs.writeFileSync(path.join(dir, '.git', 'config'), `[core]\n\tbare = false\n[remote "origin"]\n\turl = ${origin}\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n`); }
@@ -46,8 +46,9 @@ test('a Claude chat moves to a machine where the same repository lives at anothe
     const text = fs.readFileSync(landed, 'utf8');
     assert.ok(!text.includes(srcRepo)); assert.ok(text.includes(path.join(dstRepo, 'README.md')));
     if (process.platform !== 'win32') assert.equal(fs.statSync(landed).mode & 0o077, 0);
-    assert.deepEqual(started, [['b', { name: 'SV1-2', dir: path.join(dstRepo, 'docs'), run: 'claude', restoring: true, resume: id }]]);
+    assert.deepEqual(started, [['b', { name: 'SV1-2', dir: path.join(dstRepo, 'docs'), run: 'shell', restoring: true }]]);
     assert.deepEqual(stopped, [['a', 'SV1']]);
+    assert.ok(b.launches[0].includes('--resume')); assert.ok(b.launches[0].includes(id)); assert.ok(b.launches[0].includes('env -u CLAUDE_CONFIG_DIR'));
     // a second move never shortens a longer copy that the target went on with
     fs.appendFileSync(landed, JSON.stringify({ message: 'continued on b' }) + '\n');
     b.snapshot.sessions.push({ name: 'SV1-2', path: dstRepo, cmd: 'claude' });
@@ -74,7 +75,7 @@ test('a Codex chat keeps its dated place under the target\'s own sessions folder
     await routes['POST/run']({ req: { body: { server: 'a', session: 'cx', to: 'b', dir: path.join(B, 'w'), name: 'cx' } }, res: {} });
     assert.deepEqual(fails, []);
     assert.equal(fs.readFileSync(path.join(B, '.codex', 'sessions', rel), 'utf8'), '{"a":1}\n');
-    assert.equal(started[0].run, 'codex'); assert.equal(started[0].resume, id);
+    assert.equal(started[0].run, 'shell'); assert.ok(b.launches[0].includes('CODEX_HOME=')); assert.ok(b.launches[0].includes('codex resume')); assert.ok(b.launches[0].includes(id));
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
 
@@ -104,6 +105,6 @@ test('without a known conversation id the user picks it from the folder\'s recen
     await routes['GET/check']({ res: {}, url: new URL('http://x/check?server=a&session=SV1&to=b&id=' + cur) });
     assert.equal(sent.pop().same, true);
     await routes['POST/run']({ req: { body: { server: 'a', session: 'SV1', to: 'b', dir: path.join(B, 'ws2'), name: 'SV1', id: cur } }, res: {} });
-    assert.deepEqual(fails, []); assert.equal(started[0].resume, cur);
+    assert.deepEqual(fails, []); assert.equal(started[0].run, 'shell'); assert.ok(b.launches[0].includes(cur));
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
