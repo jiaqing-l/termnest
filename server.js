@@ -916,7 +916,7 @@ let activeRequests = 0;
 const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'), publicDir: path.join(PUB, 'features'),
   deps: { remotes: () => remotes, backendOf: (id) => { const r = remotes.get(id); return r?.ready ? r : null; }, send, fail, readJson, shq,
     startSession: async (r, o) => { await startSession(r, o); await r.poll(); }, stopSession: async (r, name) => { const ok = await stopSession(r, name); if (ok) await r.poll(); return ok; },
-    vault: () => vault, save: () => saveVault() } });
+    vault: () => vault, save: () => saveVault(), dataDir: DATA } });
 features.load();
 
 const server = http.createServer(async (req, res) => {
@@ -1015,10 +1015,11 @@ setInterval(() => {
 }, 30000).unref();
 
 let draining = false;
-const activeWork = () => activeRequests > 0 || features.service('ops-runtime')?.status().pending > 0 || features.service('supervision')?.pending() > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
+const activeWork = () => activeRequests > 0 || features.service('ops-runtime')?.status().pending > 0 || features.service('supervision')?.pending() > 0 || features.service('server-backup')?.pending() > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
 function drain() {
   if (draining) return;
   draining = true;
+  features.service('server-backup')?.stop();
   features.service('ops-runtime')?.stop();
   features.service('supervision')?.stop();
   const wait = () => activeWork() ? setTimeout(wait, 100) : shutdown();
@@ -1028,6 +1029,7 @@ let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
+  features.service('server-backup')?.stop();
   features.service('ops-runtime')?.stop();
   saveHistory();
   tokenCache.close();

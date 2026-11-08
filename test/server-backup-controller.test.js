@@ -1,0 +1,144 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { Writable } = require('node:stream');
+const { Vault } = require('../lib/vault');
+const { createFeatures } = require('../lib/features');
+const { BackupController } = require('../lib/server-backup-controller');
+const { SnapshotStore } = require('../lib/server-backup-store');
+const { sourceRuntime } = require('../lib/server-backup-source');
+function fixture(t, locked = false) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-backup-controller-')); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const vault = new Vault(path.join(root, 'vault.json')), libDir = path.join(root, 'lib'), home = path.join(root, 'source'); fs.mkdirSync(libDir); fs.mkdirSync(home);
+  fs.writeFileSync(path.join(libDir, 'server-backup.js'), `module.exports=require(${JSON.stringify(require.resolve('../lib/features/server-backup'))});`);
+  if (!locked) vault.create('synthetic-password', { servers: [{ id: 'vm', name: 'Synthetic VM' }] });
+  const remotes = new Map([['vm', { cfg: { id: 'vm' }, ready: true }]]), logs = [];
+  const deps = { dataDir: root, vault: () => vault, save: () => vault.save(), remotes: () => remotes, backendOf: id => remotes.get(id),
+    readJson: async req => req.body, send: (res, status, body) => { res.status = status; res.body = body; }, fail: (res, status, message) => { res.status = status; res.body = { error: message }; } };
+  const features = createFeatures({ libDir, publicDir: root, deps, log: { log: m => logs.push(m), error: m => logs.push(m) } }); features.load();
+  const controller = features.service('server-backup'); controller.stop(); controller.stopped = false;
+  controller.options.transport = async function* (b, config, signal) {
+    const msgs = []; await sourceRuntime({ ...config, home }, async m => msgs.push(m));
+    for (const m of msgs) { if (signal?.aborted) throw Object.assign(Error('cancelled'), { code: 'cancelled' }); yield m; }
+  };
+  t.after(() => controller.stop());
+  const request = async (method, route, body) => { const res = {}; await features.handle({ method, body }, res, new URL('/api/features/server-backup' + route, 'http://localhost')); return res; };
+  const write = (p, bytes) => { const file = path.join(home, p); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, bytes); return file; };
+  return { root, vault, home, remotes, features, controller, logs, request, write };
+}
+async function finish(controller) { const job = controller.job; if (job) await job.promise; }
+
+test('locked registration/status are safe and read-only; saved SSH hosts default to automatic all-chat scope', async t => {
+  const f = fixture(t, true); assert.deepEqual(f.features.names(), ['server-backup']);
+  const before = fs.readdirSync(f.root); const status = await f.request('GET', '/status'); assert.equal(status.status, 200); assert.equal(status.body.enabled, false); assert.deepEqual(fs.readdirSync(f.root), before);
+  assert.equal((await f.request('GET', '/snapshots?server=vm')).status, 401);
+  f.vault.create('synthetic-password', { servers: [{ id: 'vm', name: 'Synthetic VM' }] });
+  const ready = await f.request('GET', '/status'); assert.equal(ready.body.enabled, true); assert.equal(ready.body.intervalMinutes, 5); assert.equal(ready.body.retention, 32);
+  assert.deepEqual(ready.body.servers[0].roots, []); assert.equal(ready.body.servers[0].includeChats, true); assert.equal(ready.body.servers[0].hasSnapshot, false); assert.equal(ready.body.servers[0].lastSuccessAt, null);
+  assert.equal(fs.existsSync(path.join(f.root, 'server-backups')), false); assert.equal(f.vault.data.features, undefined);
+});
+
+test('end-to-end auto chat -> forced encrypted key backup -> offline restart/password change -> saved routes', async t => {
+  const f = fixture(t), text = 'SECRET-CONTENT-no-plaintext user/assistant', binary = crypto.randomBytes(900000);
+  f.write('.claude/projects/a/session.jsonl', JSON.stringify({ type: 'user', message: { content: text } }) + '\n');
+  f.write('.codex/archived_sessions/s.jsonl', text); f.write('project/.env', 'PRIVATE_ENV=' + text); f.write('project/blob.bin', binary);
+  await f.request('POST', '/control', { enabled: true, servers: [{ serverId: 'vm', roots: [path.join(f.home, 'project')], includeChats: true }] });
+  f.controller.tick(); assert.equal(f.controller.pending(), 1); assert.equal((await f.request('POST', '/run', { serverId: 'vm' })).status, 409); await finish(f.controller);
+  const status = (await f.request('GET', '/status')).body; assert.equal(status.servers[0].phase, 'current'); assert.equal(status.servers[0].files, 4); assert.ok(status.servers[0].lastSuccessAt);
+  const key = f.vault.data.features['server-backup'].contentKey; assert.equal(Buffer.from(key, 'base64').length, 32); assert.ok(f.vault.info().count);
+  const copied = Vault.read(fs.readFileSync(path.join(f.vault.info().dir, `vault-${f.vault.info().lastAt}.json`), 'utf8'), 'synthetic-password'); assert.equal(copied.features['server-backup'].contentKey, key);
+  f.remotes.clear(); f.vault.data.servers = []; f.vault.create('changed-synthetic-password', f.vault.data);
+  const reopened = new Vault(f.vault.file); assert.ok(reopened.unlock('changed-synthetic-password')); assert.equal(reopened.data.features['server-backup'].contentKey, key);
+  // Discard the in-memory cache to exercise the disk path after a backend restart.
+  f.controller.store = null; f.controller.storeKey = null;
+  const snapshots = (await f.request('GET', '/snapshots?server=vm')).body.snapshots; assert.equal(snapshots.length, 1);
+  const sid = snapshots[0].id, files = (await f.request('GET', '/files?server=vm&snapshot=' + sid)).body.files;
+  assert.equal(files.length, 4); assert.ok(files.every(f => /^[a-f0-9]{64}$/.test(f.id) && !f.chunks));
+  const chat = files.find(f => f.kind === 'chat'), preview = (await f.request('GET', `/preview?server=vm&snapshot=${sid}&file=${chat.id}`)).body; assert.ok(preview.text.includes(text));
+  const binaryEntry = files.find(f => f.path.endsWith('blob.bin')), binaryPreview = (await f.request('GET', `/preview?server=vm&snapshot=${sid}&file=${binaryEntry.id}`)).body; assert.equal(binaryPreview.binary, true);
+  class Response extends Writable { constructor() { super(); this.parts = []; this.headers = {}; } setHeader(k, v) { this.headers[k] = v; } _write(c, e, cb) { this.parts.push(Buffer.from(c)); cb(); } }
+  const download = new Response(); await f.features.handle({ method: 'GET' }, download, new URL(`/api/features/server-backup/download?server=vm&snapshot=${sid}&file=${binaryEntry.id}`, 'http://localhost')); assert.deepEqual(Buffer.concat(download.parts), binary);
+  const archive = new Response(); await f.features.handle({ method: 'GET' }, archive, new URL(`/api/features/server-backup/export?server=vm&snapshot=${sid}`, 'http://localhost')); assert.equal(archive.headers['Content-Type'], 'application/x-tar'); assert.ok(Buffer.concat(archive.parts).includes(binary));
+  const offline = (await f.request('GET', '/status')).body; assert.equal(offline.servers[0].hasSnapshot, true); assert.equal(offline.servers[0].phase, 'offline'); assert.equal(offline.storage.host, os.hostname());
+  assert.doesNotMatch(JSON.stringify(status) + JSON.stringify(offline) + JSON.stringify(f.logs), new RegExp(key.replace(/[+/$]/g, '\\$&')));
+  for (const dir of [path.join(f.root, 'server-backups'), f.vault.info().dir]) for (const name of fs.readdirSync(dir)) assert.equal(fs.readFileSync(path.join(dir, name)).includes(Buffer.from(text)), false);
+});
+
+test('OFF cancels before publication, manual runs while paused are explicit, settings replacement and global dedupe', async t => {
+  const f = fixture(t); f.write('.codex/sessions/s.jsonl', 'saved conversation');
+  const first = await f.request('POST', '/run', { serverId: 'vm' }); assert.equal(first.status, 202); assert.deepEqual(first.body, { queued: true, serverId: 'vm' });
+  await f.request('POST', '/control', { enabled: false }); await finish(f.controller);
+  assert.equal((await f.request('GET', '/snapshots?server=vm')).body.snapshots.length, 0);
+  f.controller.tick(); assert.equal(f.controller.pending(), 0);
+  assert.equal((await f.request('POST', '/run', { serverId: 'vm' })).status, 202); await finish(f.controller);
+  assert.equal((await f.request('GET', '/status')).body.servers[0].phase, 'paused');
+  const good = (await f.request('GET', '/snapshots?server=vm')).body.snapshots[0];
+  assert.equal((await f.request('POST', '/control', { enabled: true, servers: [] })).status, 200);
+  assert.equal((await f.request('POST', '/run', { serverId: 'vm' })).status, 409);
+  assert.equal((await f.request('GET', '/snapshots?server=vm')).body.snapshots[0].id, good.id);
+  for (const bad of [{ enabled: true, intervalMinutes: 1 }, { enabled: true, retention: 1 }, { enabled: true, servers: [{ serverId: 'vm', roots: ['/'], includeChats: true }] }, { enabled: true, servers: [{ serverId: 'unknown', roots: [], includeChats: true }] }]) assert.equal((await f.request('POST', '/control', bad)).status, 400);
+});
+
+test('failed forced vault backup prevents the first snapshot; missing/corrupt keys never reset existing stores', async t => {
+  const f = fixture(t); f.write('.codex/sessions/a.jsonl', 'backup content'); const original = f.vault.copy.bind(f.vault); f.vault.copy = () => {};
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller); assert.equal((await f.request('GET', '/status')).body.servers[0].reason, 'vault_backup_failed'); assert.equal(fs.existsSync(path.join(f.root, 'server-backups')), false);
+  f.vault.copy = original; await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
+  const catalog = fs.readFileSync(path.join(f.root, 'server-backups', 'catalog.enc'));
+  const s = f.vault.data.features['server-backup']; delete s.contentKey; f.vault.save(); f.controller.store = null;
+  const status = (await f.request('GET', '/status')).body; assert.equal(status.servers[0].reason, 'key_lost');
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller); assert.deepEqual(fs.readFileSync(path.join(f.root, 'server-backups', 'catalog.enc')), catalog);
+});
+
+test('reconnect catches up, shutdown cancels, changing backend identity cannot publish, and cross-host IDs fail', async t => {
+  const f = fixture(t); f.write('.codex/sessions/a.jsonl', 'backup content');
+  f.remotes.get('vm').ready = false; f.controller.tick(); assert.equal(f.controller.pending(), 0); f.remotes.get('vm').ready = true; f.controller.tick(); await finish(f.controller);
+  const good = f.controller.store.snapshots('vm')[0]; assert.ok(good);
+  f.remotes.get('vm').ready = false; f.controller.tick(); f.remotes.get('vm').ready = true; f.controller.tick(); assert.equal(f.controller.pending(), 1); f.controller.stop(); await finish(f.controller); assert.equal(f.controller.store.snapshots('vm').length, 1);
+  f.controller.stopped = false;
+  const original = f.controller.options.transport;
+  f.controller.options.transport = async function* (...args) { for await (const m of original(...args)) { if (m.t === 'done') f.remotes.set('vm', { ready: true }); yield m; } };
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller); assert.equal(f.controller.store.snapshots('vm').length, 1);
+  const file = f.controller.store.manifest('vm', good.id).entries[0];
+  assert.equal((await f.request('GET', `/preview?server=other&snapshot=${good.id}&file=${file.id}`)).status, 404);
+  assert.equal((await f.request('GET', `/preview?server=vm&snapshot=${good.id}&file=../../vault.json`)).status, 404);
+});
+
+test('live cached metadata corruption is explicit, and GET never initializes crash remnants', async t => {
+  const f = fixture(t); f.write('.codex/sessions/a.jsonl', 'synthetic backup content');
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
+  const catalogPath = path.join(f.root, 'server-backups', 'catalog.enc'); fs.writeFileSync(catalogPath, 'corrupted ciphertext');
+  assert.equal((await f.request('GET', '/status')).body.servers[0].reason, 'corrupt_store');
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller); assert.equal(fs.readFileSync(catalogPath, 'utf8'), 'corrupted ciphertext');
+  for (const n of fs.readdirSync(path.dirname(catalogPath))) fs.unlinkSync(path.join(path.dirname(catalogPath), n));
+  fs.writeFileSync(path.join(path.dirname(catalogPath), 'tmp-abc'), 'encrypted remnant', { mode: 0o600 });
+  f.controller.store = null;
+  const before = fs.readdirSync(path.dirname(catalogPath));
+  assert.equal((await f.request('GET', '/status')).body.servers[0].reason, 'catalog_missing'); assert.deepEqual(fs.readdirSync(path.dirname(catalogPath)), before);
+});
+
+test('scope OFF during a suspended read aborts late publication and leaves the previous copy usable', async t => {
+  const f = fixture(t); f.write('.codex/sessions/a.jsonl', 'original'); await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
+  const good = f.controller.store.snapshots('vm')[0], original = f.controller.options.transport;
+  f.write('.codex/sessions/a.jsonl', 'new changed conversation'); let release, entered;
+  const gate = new Promise(r => { release = r; }), reading = new Promise(r => { entered = r; });
+  f.controller.options.transport = async function* (...args) { for await (const m of original(...args)) { if (m.t === 'chunk') { entered(); await gate; } yield m; } };
+  await f.request('POST', '/run', { serverId: 'vm' }); await reading;
+  await f.request('POST', '/control', { enabled: false }); release(); await finish(f.controller);
+  assert.equal(f.controller.store.snapshots('vm')[0].id, good.id); const file = f.controller.store.manifest('vm', good.id).entries[0]; assert.equal(f.controller.store.preview('vm', good.id, file.id).text, 'original');
+});
+
+test('a reconnect waiting behind another host catches up immediately even after a recent successful attempt', async t => {
+  const f = fixture(t); f.write('.codex/sessions/a.jsonl', 'recent conversation');
+  await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
+  const first = f.controller.store.snapshots('vm')[0];
+  f.remotes.get('vm').ready = false; f.controller.tick();
+  // The global gate is held while this host reconnects. Catch-up must survive that busy tick.
+  f.controller.job = { serverId: 'other-host', abort: new AbortController() };
+  f.remotes.get('vm').ready = true; f.controller.tick(); f.controller.job = null;
+  f.controller.tick(); assert.equal(f.controller.pending(), 1); await finish(f.controller);
+  assert.equal(f.controller.store.snapshots('vm').length, 2); assert.notEqual(f.controller.store.snapshots('vm')[0].id, first.id);
+});
