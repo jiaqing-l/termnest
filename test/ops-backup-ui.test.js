@@ -73,15 +73,65 @@ test('actual board sessions are deduplicated by actionable priority and keep unk
   assert.equal(rows.filter(x => x.f.rule === 'observed_unknown').length, 3, 'cached sessions remain accessible with truthful state');
 });
 
-test('supervisor owner requirements join existing sessions and preserve genuine unmatched issues', () => {
+test('fresh supervisor owner waits, blocks and stalls join sessions and preserve unmatched legitimate issues', () => {
   const { opsSessionRows } = require('../public/features/ops');
-  const rows = opsSessionRows({ servers: [{ id: 'vm1', online: true, sessions: [{ name: 'leader', ai: { status: 'busy' } }], findings: [] }] }, {
-    enabled: true, servers: [{ id: 'vm1', teams: [{ id: 'one', session: 'leader', requiresOwner: true, reason: { code: 'task_evidence_stale' } }, { id: 'two', session: '', requiresOwner: true, root: '/work/unmatched' }], audits: [{ runId: 'audit', teamSession: 'leader', requiresOwner: true }] }]
-  });
-  assert.equal(rows.length, 2);
+  const board = { servers: [{ id: 'vm1', online: true, sessions: ['leader', 'blocked', 'stalled'].map(name => ({ name, ai: { status: 'busy' } })), findings: [] }] };
+  const host = { id: 'vm1', online: true, observedAt: Date.now(), freshness: { snapshotFresh: true, taskEvidenceFresh: true }, teams: [
+    { id: 'one', session: 'leader', requiresOwner: true, status: 'waiting_owner', reason: { code: 'owner_decision' } },
+    { id: 'two', session: 'blocked', requiresOwner: true, status: 'blocked', reason: { code: 'task_blocked' } },
+    { id: 'three', session: 'stalled', requiresOwner: true, status: 'stalled', reason: { code: 'no_task_progress' } },
+    { id: 'unmatched', session: '', root: '/work/unmatched', requiresOwner: true, status: 'blocked', reason: { code: 'task_blocked' } }
+  ], audits: [{ runId: 'audit', teamSession: 'leader', active: true, requiresOwner: true, reason: { code: 'audit_timeout' } }] };
+  const rows = opsSessionRows(board, { enabled: true, servers: [host] });
+  assert.equal(rows.length, 4);
   assert.equal(rows.filter(x => x.f.session === 'leader').length, 1);
-  assert.equal(rows[0].f.reason.code, 'task_evidence_stale');
-  assert.equal(rows[1].f.settings, true);
+  assert.deepEqual(rows.map(x => x.f.ownerKind), ['wait', 'blocked', 'stalled', 'blocked']);
+  assert.equal(rows[3].f.settings, true);
+  board.servers[0].findings.push({ session: 'leader', rule: 'asking', severity: 'urgent' });
+  assert.equal(opsSessionRows(board, { enabled: true, servers: [host] })[0].f.rule, 'asking');
+});
+
+test('unknown, stale and configuration supervisor flags never promote measured busy sessions or urgent counts', () => {
+  const { opsSessionRows } = require('../public/features/ops');
+  const board = { servers: [{ id: 'vm1', online: true, sessions: [{ name: 'leader', ai: { status: 'busy' } }], findings: [] }] };
+  const host = { id: 'vm1', online: true, observedAt: Date.now(), freshness: { snapshotFresh: true, taskEvidenceFresh: true }, teams: [], audits: [],
+    coordination: [{ root: '/work', code: 'coordination_unvalidated', requiresOwner: true }], errors: [{ code: 'task_evidence_stale' }] };
+  const supervision = { enabled: true, servers: [host], auditReadiness: [{ serverId: 'vm1', requiresOwner: true, code: 'account_missing' }] };
+  function observedOnly() {
+    const rows = opsSessionRows(board, supervision);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].f.rule, 'observed_busy');
+    assert.equal(rows.filter(x => x.f.severity === 'urgent').length, 0);
+  }
+  for (const code of ['task_evidence_stale', 'registration_required', 'workspace_only', 'awaiting_task_progress', 'managed_task_missing', 'future_reason']) {
+    host.teams = [{ id: 'one', session: 'leader', requiresOwner: true, status: 'unknown', reason: { code } }];
+    observedOnly();
+  }
+  host.teams = [{ id: 'one', session: 'leader', requiresOwner: true, status: 'waiting_owner', reason: { code: 'owner_decision' } }];
+  host.freshness.taskEvidenceFresh = false; observedOnly();
+  host.freshness.taskEvidenceFresh = true; host.freshness.snapshotFresh = false; observedOnly();
+  host.freshness.snapshotFresh = true; host.observedAt = Date.now() - 600000; observedOnly();
+  host.observedAt = Date.now(); host.online = false; observedOnly();
+  delete host.observedAt; host.online = true; observedOnly();
+});
+
+test('current unresolved supervisor delivery remains actionable without task evidence; resolved history and stale hosts do not', () => {
+  const { opsSessionRows } = require('../public/features/ops');
+  const board = { servers: [{ id: 'vm1', online: true, sessions: [{ name: 'leader', ai: { status: 'busy' } }], findings: [] }] };
+  const audit = { runId: 'audit', teamSession: 'leader', active: true, requiresOwner: true, reason: { code: 'send_uncertain' } };
+  const host = { id: 'vm1', online: true, observedAt: Date.now(), freshness: { snapshotFresh: true, taskEvidenceFresh: false }, teams: [], audits: [audit] };
+  const supervision = { enabled: true, servers: [host] };
+  assert.equal(opsSessionRows(board, supervision)[0].f.ownerKind, 'uncertain');
+  audit.reason.code = 'transport_error'; audit.phase = 'uncertain'; audit.deliveryUncertain = true;
+  assert.equal(opsSessionRows(board, supervision)[0].f.ownerKind, 'uncertain', 'explicit current delivery outcome survives an adapter-specific reason');
+  audit.active = false;
+  assert.equal(opsSessionRows(board, supervision)[0].f.rule, 'observed_busy');
+  host.teams = [{ id: 'recovery', session: 'leader', status: 'unknown', requiresOwner: true, reason: { code: 'task_evidence_stale' }, recovery: { requiresOwner: true, code: 'recovery_uncertain' } }];
+  assert.equal(opsSessionRows(board, supervision)[0].f.ownerKind, 'uncertain');
+  host.teams[0].recovery = { requiresOwner: true, code: 'action_duplicate', delivery: 'uncertain' };
+  assert.equal(opsSessionRows(board, supervision)[0].f.ownerKind, 'uncertain', 'duplicate remote receipt with uncertain delivery remains visible');
+  host.freshness.snapshotFresh = false;
+  assert.equal(opsSessionRows(board, supervision)[0].f.rule, 'observed_busy');
 });
 
 test('production backup reason resolver translates actual API codes to relevant actions in both languages', () => {

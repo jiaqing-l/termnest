@@ -24,19 +24,30 @@ function opsSessionRows(board, supervision) {
     });
     if (online && supervision && supervision.enabled) {
       var host = (supervision.servers || []).find(function (v) { return v.id === srv.id; });
-      function owner(item, key) {
-        if (!item.requiresOwner) return;
+      var at = host && new Date(host.observedAt || 0).getTime(), freshness = host && host.freshness || {}, maxAge = freshness.maxAgeMs;
+      var fresh = host && host.online === true && freshness.snapshotFresh !== false && at > 0 && at <= Date.now() + 5000 && Date.now() - at <= (Number.isFinite(maxAge) && maxAge > 0 ? maxAge : 120000);
+      function owner(item, key, audit) {
+        if (!fresh || !item.requiresOwner || audit && item.active !== true) return;
+        var code = typeof item.reason === 'string' ? item.reason : item.reason && item.reason.code || item.code;
+        var recovery = item.recovery, unresolved = recovery && recovery.requiresOwner ? recovery.code : code;
+        var uncertain = audit ? item.deliveryUncertain === true || ['uncertain', 'opening'].indexOf(item.phase) >= 0 : recovery && recovery.requiresOwner && recovery.delivery === 'uncertain';
+        var kind = uncertain || /^(action_uncertain|recovery_uncertain|delivery_uncertain|send_uncertain|prompt_send_uncertain|open_uncertain)$/.test(unresolved) ? 'uncertain' : /^(recovery_no_progress|audit_timeout)$/.test(unresolved) ? 'noresponse' : '';
+        // Setup and missing/stale task evidence do not override a measured session state.
+        if (!kind && freshness.taskEvidenceFresh === true && !audit) {
+          if (item.status === 'waiting_owner' && code === 'owner_decision') kind = 'wait';
+          if (item.status === 'blocked' && /^(task_blocked|session_parked)$/.test(code)) kind = 'blocked';
+          if (item.status === 'stalled' && code === 'no_task_progress') kind = 'stalled';
+        }
+        if (!kind && audit && code === 'audit_waiting_owner') kind = 'wait';
+        if (!kind) return;
         var names = host ? Array.from(new Set((host.teams || []).filter(function (t) { return item.root && t.root === item.root && t.session; }).map(function (t) { return t.session; }))) : [];
         var ownerSession = item.session || item.teamSession || (names.length === 1 ? names[0] : '');
-        add({ key: 'super/' + srv.id + '/' + key, rule: 'owner', session: ownerSession, root: item.root || '', reason: item.reason || { code: item.code }, severity: 'urgent', settings: !ownerSession });
+        add({ key: 'super/' + srv.id + '/' + key, rule: 'owner', session: ownerSession, ownerKind: kind, reason: item.reason || { code: item.code }, severity: 'urgent', settings: !ownerSession });
       }
       if (host) {
         (host.teams || []).forEach(function (t) { owner(t, t.id); });
-        (host.audits || []).forEach(function (a) { owner(a, a.runId || a.root || 'audit'); });
-        (host.coordination || []).forEach(function (c) { owner(c, 'coordination/' + c.root); });
-        (host.errors || []).forEach(function (e, i) { owner({ requiresOwner: true, reason: e }, 'error/' + i); });
+        (host.audits || []).forEach(function (a) { owner(a, a.runId || a.root || 'audit', true); });
       }
-      (supervision.auditReadiness || []).filter(function (a) { return a.serverId === srv.id; }).forEach(function (a) { owner(a, 'account/' + a.root); });
     }
     rows.forEach(function (r) { out.push(r); }); issues.forEach(function (r) { out.push(r); });
   });
@@ -365,7 +376,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
 
   // Short status for the second half of a row ("<session> — <status>"); the session or job name is the first half.
   function status(f) {
-    if (f.rule === 'owner') return explanation(f.reason);
+    if (f.rule === 'owner') return i18n('ops.owner_' + f.ownerKind);
     if (f.rule.indexOf('observed_') === 0) return i18n('ops.s.' + f.rule);
     if (f.rule === 'unheard') return i18n(f.code === 'OPS_NOT_SENT' ? 'ops.delivery_failed' : f.code && f.code !== 'OPS_NO_RESPONSE' ? 'ops.delivery_uncertain' : 'ops.delivery_noresponse');
     if (f.rule === 'custom') return f.params[0];
@@ -428,8 +439,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var name = label(f) || srv.name;
     line.append(el('b', 'ops-name', name), el('span', 'ops-status', status(f)));
     var meta = el('small', 'ops-meta');
-    meta.append(document.createTextNode([f.session ? srv.name : '', f.root || '', f.since ? since(f.since) : ''].filter(Boolean).join(' · ')));
-    var src = el('span', 'ops-src ' + f.source, i18n('ops.src_' + f.source)); meta.append(src);
+    meta.append(document.createTextNode([f.session ? srv.name : '', f.since ? since(f.since) : ''].filter(Boolean).join(' · ')));
     t.append(line, meta); r.append(t);
     if (f.rule === 'offline') {
       var reconnect = button(i18n('ops.reconnect'), '', function () {
@@ -438,21 +448,27 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       }); acts.append(reconnect);
     }
     if (inTerminal(f) && f.rule !== 'offline') acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(srv.id, f.session); }));
+    if (f.rule === 'quota') acts.append(button(i18n('ops.view_accounts'), '', function () { TW.app().setView('token'); }));
     if (f.settings) acts.append(button(i18n('ops.settings_shortcut'), '', function () { TW.app().openSettings('sessions'); }));
     var session = (srv.sessions || []).find(function (s) { return s.name === f.session; }), ai = session && session.ai;
     var recent = (data.log || []).find(function (n) { return n.server === srv.id && n.session === f.session; }), receipt = localDelivery[f.key];
     var reserved = receipt || recent && (['pending', 'uncertain', 'exhausted'].indexOf(recent.delivery) >= 0 || recent.delivery === 'delivered' && ai && (recent.idleAt === ai.at || recent.at >= ai.at));
-    if (reserved && f.rule !== 'unheard') t.append(el('small', 'ops-delivery', deliveryLabel(receipt || recent)));
+    if (reserved && f.rule !== 'unheard' && !(f.rule === 'owner' && ['uncertain', 'noresponse'].indexOf(f.ownerKind) >= 0)) t.append(el('small', 'ops-delivery', deliveryLabel(receipt || recent)));
     if (!boardError && f.rule === 'dormant' && f.template && ['suggest', 'auto'].indexOf(f.level) >= 0 && srv.online === true && ai && ai.status === 'idle' && !ai.parked && Number.isFinite(ai.at) && ai.at > 0 && ai.at <= Date.now() && (!reserved || busy[f.key])) {
       var send = button(i18n('ops.gui_nhac'), 'primary', function () {
         if (busy[f.key]) return; busy[f.key] = true; send.disabled = true;
         var intent = { delivery: 'pending', server: srv.id, session: f.session, idleAt: ai.at, requestedAt: Date.now() }; localDelivery[f.key] = intent;
         post('/nudge', { server: srv.id, key: f.key }).then(function (r) {
-          intent.delivery = (r && r.delivery === 'delivered') || intent.delivery === 'delivered' ? 'delivered' : 'pending';
-          TW.app().say(deliveryLabel(localDelivery[f.key]), true, 3000);
+          if (localDelivery[f.key] && localDelivery[f.key] !== intent) return;
+          if (r && r.delivery === 'delivered') intent.delivery = 'delivered';
+          TW.app().say(deliveryLabel(intent), true, 3000);
         }).catch(function (e) {
+          if (localDelivery[f.key] && localDelivery[f.key] !== intent) return;
+          if (intent.delivery === 'delivered' || intent.responded === true || intent.verified === true) {
+            TW.app().say(deliveryLabel(intent), true, 3000); return;
+          }
           // An HTTP rejection with a known non-delivery code may be retried after a fresh board read.
-          if (e.code && ['OPS_DELIVERY_UNCERTAIN', 'OPS_ONCE', 'OPS_INFLIGHT'].indexOf(e.code) < 0) delete localDelivery[f.key];
+          if (e.code && ['OPS_DELIVERY_UNCERTAIN', 'OPS_ONCE', 'OPS_INFLIGHT'].indexOf(e.code) < 0 && localDelivery[f.key] === intent) delete localDelivery[f.key];
           else if (intent.delivery !== 'delivered') intent.delivery = 'uncertain';
           TW.app().say(e.message || i18n('ops.delivery_uncertain'), false, 4000);
         }).finally(function () { busy[f.key] = false; load(); });
