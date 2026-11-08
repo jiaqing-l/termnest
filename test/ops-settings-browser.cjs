@@ -252,7 +252,7 @@ let chrome, ws, closeBrowser, chromeError='';
  assert.ok(await evaluate('document.querySelector(".ops-log-sec").textContent.includes(i18n("ops.delivery_responded"))'), 'observed response uses the current localized label');
  releaseNudge();releaseNudge=null;
  await until('__notices.length===1','late POST response after receipt cleanup');
- assert.deepEqual(await evaluate('__notices'),[{message:'Đã quan sát phản hồi; tiến độ chưa xác minh',ok:true}],'successful receipt survives early GET cleanup without false failure');
+ assert.deepEqual(await evaluate('__notices'),[{message:await evaluate('i18n("ops.delivery_responded")'),ok:true}],'successful receipt survives early GET cleanup without false failure');
  assert.equal(nudges.length,1,'late POST never resends');
  // Exact current response handling: accepted/pending cannot claim delivered. Uncertain is visible and never resent, even after reload.
  board.servers[0].sessions[0].ai={status:'idle',at:Date.now()-100};board.servers[0].findings.push({...originalDormant(),key:'dormant-new'});board.log=[];nudgeMode='pending';await refresh();
