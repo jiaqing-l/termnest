@@ -18,7 +18,7 @@ test('bundle contains exact runnable sources, manifests, platform scripts and fi
   const result = build({ output });
   const extracted = path.join(dir, 'out'); fs.mkdirSync(extracted); execFileSync('tar', ['-xzpf', output, '-C', extracted]);
   assert.match(result.sha256, /^[a-f0-9]{64}$/);
-  for (const name of ['server.js', 'lib/vault.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'scripts/install-supervisor.sh', 'scripts/prepare-pty.js']) assert.ok(result.entries.includes(name), name);
+  for (const name of ['server.js', 'lib/vault.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'docs/server-backups.md', 'scripts/install-supervisor.sh', 'scripts/prepare-pty.js']) assert.ok(result.entries.includes(name), name);
   for (const name of ['scripts/install-supervisor.ps1', 'scripts/install-supervisor-macos.sh']) if (fs.existsSync(path.join(root, name))) assert.ok(result.entries.includes(name), 'platform installer included');
   const sums = fs.readFileSync(path.join(extracted, 'SHA256SUMS'), 'utf8');
   for (const name of result.entries.filter(n => n !== 'SHA256SUMS')) {
@@ -91,7 +91,7 @@ test('real extracted source archive boots on loopback with pinned dependencies a
 });
 test('sentinel secrets, recursive archives, hidden metadata and native extensions are excluded', t => {
   const dir = fixture(t), source = path.join(dir, 'source');
-  for (const name of ['server.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'lib/ok.js', 'public/ok.css', 'scripts/install-supervisor.ps1', 'scripts/install-supervisor-macos.sh']) put(source, name, 'safe source\n');
+  for (const name of ['server.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'docs/server-backups.md', 'lib/ok.js', 'public/ok.css', 'scripts/install-supervisor.ps1', 'scripts/install-supervisor-macos.sh']) put(source, name, 'safe source\n');
   const excluded = ['.env', 'data/vault.json', 'node_modules/secret.js', 'implementation/old.tar.gz', 'public/.DS_Store', 'lib/.env', 'scripts/private.key', 'lib/credentials.json', 'lib/vault.json', 'lib/vault.js.bak', 'lib/vault/record.js', 'public/vault.js', 'scripts/vault.js', 'lib/nested/vault.js', 'lib/secret.js', 'public/data/secret.json', 'public/nested/old.tar.gz', 'lib/mac.node'];
   for (const name of excluded) put(source, name, 'SENTINEL-SECRET');
   const output = path.join(source, 'implementation', 'termnest-update-test.tar.gz');
@@ -105,7 +105,7 @@ test('sentinel secrets, recursive archives, hidden metadata and native extension
 test('unsafe paths, symlinks and disguised native binaries fail closed without replacing prior output', t => {
   for (const name of ['../secret', '/secret', 'lib/../secret', 'lib/a\nb', 'lib/secret.key', 'lib/node_modules/a.js', 'lib/.env']) assert.equal(safeEntry(name), false, name);
   const dir = fixture(t), source = path.join(dir, 'source'), output = path.join(dir, 'old.tar.gz');
-  for (const name of ['server.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'lib/ok.js', 'public/ok.css', 'scripts/ok.js']) put(source, name, 'source');
+  for (const name of ['server.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'docs/server-backups.md', 'lib/ok.js', 'public/ok.css', 'scripts/ok.js']) put(source, name, 'source');
   fs.writeFileSync(output, 'prior artifact');
   if (process.platform !== 'win32') {
     fs.symlinkSync(path.join(source, 'server.js'), path.join(source, 'lib/link.js'));
@@ -121,7 +121,7 @@ test('unsafe paths, symlinks and disguised native binaries fail closed without r
 test('exact vault source exception retains regular-file, link and native-byte checks', t => {
   assert.equal(safeEntry('lib/vault.js'), true);
   const dir = fixture(t), source = path.join(dir, 'source'), output = path.join(dir, 'old.tar.gz');
-  for (const name of ['server.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'lib/ok.js', 'public/ok.css', 'scripts/ok.js']) put(source, name, 'source');
+  for (const name of ['server.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'docs/server-backups.md', 'lib/ok.js', 'public/ok.css', 'scripts/ok.js']) put(source, name, 'source');
   fs.writeFileSync(output, 'prior artifact');
   const vault = path.join(source, 'lib/vault.js');
   if (process.platform !== 'win32') {

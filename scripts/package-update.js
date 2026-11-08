@@ -6,7 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
-const roots = ['lib', 'public', 'server.js', 'scripts', 'docs/supervisor.md', 'package.json', 'package-lock.json'];
+const roots = ['lib', 'public', 'server.js', 'scripts', 'docs/supervisor.md', 'docs/server-backups.md', 'package.json', 'package-lock.json'];
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 function safeEntry(name) {
   const parts = name.split('/');
