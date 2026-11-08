@@ -32,8 +32,8 @@ done
 app_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 runtime_os="$(uname -s)"
 case "$(uname -m)" in
-  arm64|aarch64) runtime_arch=arm64; macho_cpu=16777228 ;;
-  x86_64) runtime_arch=x64; macho_cpu=16777223 ;;
+  arm64|aarch64) runtime_arch=arm64 ;;
+  x86_64) runtime_arch=x64 ;;
   *) echo RUNTIME_NODE_ARCH_UNSUPPORTED >&2; exit 2 ;;
 esac
 bundled=0
@@ -46,31 +46,125 @@ if [[ -z "$node_bin" ]]; then
   fi
 fi
 [[ "$node_bin" = /* && -f "$node_bin" && -x "$node_bin" ]] || { echo RUNTIME_NODE_REQUIRED >&2; exit 2; }
-# Official bundled Node binaries are thin 64-bit Mach-O executables. Check CPU and
-# the macOS load-command platform BEFORE execution; never try ELF, PE or an iOS binary.
-# Unsupported/fat binaries fail closed; choose a native thin Node with --node-path.
+# Validate before execution using only macOS base-system tools (no Node, Python or
+# developer tools needed). Decode bytes explicitly: FAT/FAT64 tables may have either
+# byte order. Bound file size, architecture count and load-command reads; validate
+# every selectable slice, including the one launchd may prefer outside Rosetta.
+# Format references: Apple cctools include/mach-o/{fat,loader}.h.
+macho_words() {
+  /usr/bin/od -An -v -j "$1" -N "$2" -t u1 "$node_bin" 2>/dev/null |
+    /usr/bin/awk -v byte_count="$2" -v little="$3" '
+      { for (i=1; i<=NF; i++) b[n++]=$i }
+      END {
+        if (n != byte_count || n % 4) exit 1
+        for (i=0; i<n; i+=4) {
+          if (little) v=b[i]+256*b[i+1]+65536*b[i+2]+16777216*b[i+3]
+          else v=16777216*b[i]+65536*b[i+1]+256*b[i+2]+b[i+3]
+          printf "%.0f ", v
+        }
+        print ""
+      }'
+}
+validate_macos_slice() {
+  local start="$1" span="$2" expected_cpu="$3" expected_subtype="$4" header
+  local magic cpu subtype kind commands size flags reserved
+  (( span >= 32 )) || return 1
+  header="$(macho_words "$start" 32 1)" || return 1
+  read -r magic cpu subtype kind commands size flags reserved <<< "$header"
+  # Supported x64/arm64 macOS executables use little-endian 64-bit Mach-O.
+  [[ "$magic" = 4277009103 && "$kind" = 2 && "$reserved" = 0 ]] || return 1
+  [[ "$cpu" = 16777223 || "$cpu" = 16777228 ]] || return 1
+  if (( expected_cpu )); then
+    [[ "$cpu" = "$expected_cpu" && "$subtype" = "$expected_subtype" ]] || return 1
+  fi
+  (( commands > 0 && commands <= 256 && size >= 8 && size <= 1048576 && size <= span - 32 )) || return 1
+  /usr/bin/od -An -v -j "$((start+32))" -N "$size" -t u1 "$node_bin" 2>/dev/null |
+    /usr/bin/awk -v byte_count="$size" -v commands="$commands" '
+      function u32(p) { return b[p]+256*b[p+1]+65536*b[p+2]+16777216*b[p+3] }
+      { for (i=1; i<=NF; i++) b[n++]=$i }
+      END {
+        if (n != byte_count) exit 1
+        p=0; found=0
+        for (i=0; i<commands; i++) {
+          if (p+8 > n) exit 1
+          cmd=u32(p); size=u32(p+4)
+          if (size < 8 || size % 8 || size > n-p) exit 1
+          if (cmd == 50) { # LC_BUILD_VERSION: macOS, bounded build_tool_version array
+            if (size < 24 || u32(p+8) != 1 || u32(p+20) > (size-24)/8) exit 1
+            found=1
+          } else if (cmd == 36) { # LC_VERSION_MIN_MACOSX
+            if (size != 16) exit 1
+            found=1
+          } else if (cmd == 37 || cmd == 47 || cmd == 48) exit 1 # iOS/tvOS/watchOS
+          p+=size
+        }
+        if (!found || p != n) exit 1
+      }' || return 1
+  case "$cpu" in 16777223) slice_arch=x64 ;; 16777228) slice_arch=arm64 ;; esac
+}
 validate_macos_node() {
-  local magic cpu subtype kind commands size flags reserved offset=32 cmd bytes platform found=0 i
-  read -r magic cpu subtype kind commands size flags reserved <<< "$(/usr/bin/od -An -N32 -t u4 "$node_bin" | /usr/bin/tr '\n' ' ')"
-  [[ "$magic" = 4277009103 && "$cpu" = "$macho_cpu" && "$kind" = 2 &&
-     "$commands" =~ ^[0-9]+$ && "$size" =~ ^[0-9]+$ ]] || return 1
-  (( commands > 0 && commands <= 256 && size <= 1048576 )) || return 1
-  for ((i=0; i<commands; i++)); do
-    read -r cmd bytes <<< "$(/usr/bin/od -An -j "$offset" -N8 -t u4 "$node_bin")"
-    [[ "$cmd" =~ ^[0-9]+$ && "$bytes" =~ ^[0-9]+$ ]] || return 1
-    (( bytes >= 8 && offset + bytes <= 32 + size )) || return 1
-    case "$cmd" in
-      50) # LC_BUILD_VERSION: PLATFORM_MACOS = 1
-        (( bytes >= 24 )) || return 1
-        read -r platform <<< "$(/usr/bin/od -An -j "$((offset+8))" -N4 -t u4 "$node_bin")"
-        [[ "$platform" = 1 ]] || return 1
-        found=1 ;;
-      36) (( bytes >= 16 )) || return 1; found=1 ;; # LC_VERSION_MIN_MACOSX
-      37|47|48) return 1 ;; # iOS/tvOS/watchOS
-    esac
-    offset=$((offset+bytes))
-  done
-  (( found && offset == 32 + size ))
+  local total header magic count little=0 wide=0 entry=20 table slices start span cpu subtype slice_arch
+  total="$(/usr/bin/wc -c < "$node_bin")" || return 1
+  total="${total//[[:space:]]/}"
+  [[ "$total" =~ ^[0-9]+$ ]] || return 1
+  (( total >= 32 && total <= 1073741824 )) || return 1
+  header="$(macho_words 0 8 0)" || return 1
+  read -r magic count <<< "$header"
+  node_arches=" "
+  case "$magic" in
+    3489328638) # Little-endian MH_MAGIC_64, read as big-endian bytes
+      validate_macos_slice 0 "$total" 0 0 || return 1
+      node_arches=" $slice_arch " ;;
+    3405691582|3199925962|3405691583|3216703178)
+      case "$magic" in 3199925962|3216703178) little=1 ;; esac
+      case "$magic" in 3405691583|3216703178) wide=1; entry=32 ;; esac
+      header="$(macho_words 0 8 "$little")" || return 1
+      read -r magic count <<< "$header"
+      (( count > 0 && count <= 64 )) || return 1
+      table=$((8+count*entry))
+      (( table <= total )) || return 1
+      slices="$(/usr/bin/od -An -v -N "$table" -t u1 "$node_bin" 2>/dev/null |
+        /usr/bin/awk -v byte_count="$table" -v total="$total" -v count="$count" -v little="$little" -v wide="$wide" -v entry="$entry" '
+          function u32(p) {
+            if (little) return b[p]+256*b[p+1]+65536*b[p+2]+16777216*b[p+3]
+            return 16777216*b[p]+65536*b[p+1]+256*b[p+2]+b[p+3]
+          }
+          function bounded64(p) {
+            # File size is capped at 1 GiB: refuse high words before any floating-point conversion.
+            if (u32(p+(little ? 4 : 0)) != 0) return -1
+            return u32(p+(little ? 0 : 4))
+          }
+          { for (i=1; i<=NF; i++) b[n++]=$i }
+          END {
+            if (n != byte_count) exit 1
+            for (i=0; i<count; i++) {
+              p=8+i*entry; cpu=u32(p); subtype=u32(p+4)
+              if (cpu != 16777223 && cpu != 16777228) exit 1
+              if (seen[cpu]++) exit 1
+              start=wide ? bounded64(p+8) : u32(p+8)
+              size=wide ? bounded64(p+16) : u32(p+12)
+              align=u32(p+(wide ? 24 : 16))
+              if (wide && u32(p+28) != 0) exit 1
+              if (start < byte_count || size < 32 || start > total || size > total-start || align > 30 || start % (2^align)) exit 1
+              for (j=0; j<i; j++) if (start < ends[j] && starts[j] < start+size) exit 1
+              starts[i]=start; ends[i]=start+size
+              printf "%.0f %.0f %.0f %.0f\n", start, size, cpu, subtype
+            }
+          }')" || return 1
+      while read -r start span cpu subtype; do
+        validate_macos_slice "$start" "$span" "$cpu" "$subtype" || return 1
+        node_arches="$node_arches$slice_arch "
+      done <<< "$slices" ;;
+    *) return 1 ;;
+  esac
+  # Bundles must match this execution context. For source/explicit Node, another
+  # CPU is usable only if the native loader can run it (e.g. installed Rosetta).
+  # uname describes the current execution context, never proof of Intel hardware.
+  if [[ "$node_arches" != *" $runtime_arch "* ]]; then
+    (( ! bundled )) || return 1
+    case "$node_arches" in ' x64 ') /usr/bin/arch -x86_64 /usr/bin/true >/dev/null 2>&1 || return 1 ;;
+      ' arm64 ') /usr/bin/arch -arm64 /usr/bin/true >/dev/null 2>&1 || return 1 ;; *) return 1 ;; esac
+  fi
 }
 if [[ "$runtime_os" = Darwin ]] || (( bundled )); then
   validate_macos_node || { echo RUNTIME_NODE_INCOMPATIBLE >&2; exit 2; }
@@ -79,7 +173,9 @@ fi
 # The fixed probe prints no environment or secret and confirms the selected executable's own identity.
 node_identity="$("$node_bin" -p 'process.platform + "/" + process.arch')" || { echo RUNTIME_NODE_REQUIRED >&2; exit 2; }
 case "$runtime_os/$node_identity" in
-  Darwin/darwin/"$runtime_arch"|Linux/linux/"$runtime_arch") ;;
+  Darwin/darwin/x64|Darwin/darwin/arm64)
+    [[ "$node_arches" = *" ${node_identity#darwin/} "* ]] || { echo RUNTIME_NODE_INCOMPATIBLE >&2; exit 2; } ;;
+  Linux/linux/"$runtime_arch") ;;
   *) echo RUNTIME_NODE_INCOMPATIBLE >&2; exit 2 ;;
 esac
 label=io.termnest.supervisor
