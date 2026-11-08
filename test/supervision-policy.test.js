@@ -18,7 +18,7 @@ const linux = { skip: process.platform !== 'linux' };
 function fixture(t, options = {}) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-policy-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  let now = 1800000000000, serial = 0, failSave = false, readiness = options.readiness || 'audit_ready', queued;
+  let now = 1800000000000, serial = 0, failSave = false, readiness = options.readiness || 'audit_ready', queued, readinessGate, readinessError = false, readinessCalls = 0, deadProof = 'audit_death_unverified';
   const taskDir = path.join(root, '_crew/tasks/task'); fs.mkdirSync(taskDir, { recursive: true });
   fs.writeFileSync(path.join(taskDir, 'MANIFEST.md'), '---\nstatus: executing\nblocked: null\ntracks: [{ id: W1, state: pending }]\n---\n');
   fs.writeFileSync(path.join(root, '_crew/nudge.conf'), '%7 task\n');
@@ -40,7 +40,8 @@ function fixture(t, options = {}) {
     readJson: async req => req.body, send: (res, status, body) => Object.assign(res, { status, body }),
     fail: (res, status, error, extra) => Object.assign(res, { status, body: { error, ...extra } }),
   }; }
-  const runtime = guardRuntime({ now: () => now, readiness: (root, config, account) => ({ code: config && account ? readiness : 'audit_account_required', quota: 'unknown' }),
+  const runtime = guardRuntime({ now: () => now, boot: () => r.snapshot.bootId, proveAuditDead: () => ({ code: deadProof, proof: 'fixture_exact_death' }),
+    readiness: (root, config, account) => ({ code: config ? account && account !== 'a'.repeat(64) ? 'audit_account_mismatch' : readiness === 'audit_ready' && !account ? 'audit_account_registration_required' : readiness : 'audit_account_required', accountRef: 'a'.repeat(64), label: 'operator@example.test', quota: 'unknown' }),
     inspect: (i, name, idle = true) => {
       const current = r.snapshot.sessions.find(x => x.name === name && policy.sameIdentity(i, policy.liveIdentity(r, x)));
       if (!current || i.processStart && i.processStart !== '23' || idle && (current.aiStatus.status !== 'idle' || current.asking || current.aiStatus.parked)) throw Error('identity mismatch');
@@ -62,6 +63,7 @@ function fixture(t, options = {}) {
     } },
   });
   const guard = async (remote, action) => {
+    if (action.op === 'readiness') { readinessCalls++; if (readinessGate) await readinessGate; if (readinessError) throw Error('offline synthetic probe'); }
     if (queued && action.kind === 'recovery_send') { const wait = queued; queued = null; await wait; }
     return runtime(action);
   };
@@ -74,6 +76,7 @@ function fixture(t, options = {}) {
     get supervisor() { return running.supervisor; }, get now() { return now; },
     tick: () => running.tick(),
     advance(ms, fresh = true) { now += ms; if (fresh) r.lastPoll = now; },
+    get readinessCalls() { return readinessCalls; }, queueReadiness(value) { readinessGate = value; }, failReadiness(value = true) { readinessError = value; }, setDeathProof(code) { deadProof = code; },
     setReadiness(code) { readiness = code; }, failSave(value = true) { failSave = value; },
     queueRecovery(promise) { queued = promise; },
     stopCoordinator() { running.stop(); runningOps.stop(); },
@@ -283,4 +286,129 @@ test('corrupt coordinator authority history cannot be replaced with a healthy em
   await f.tick(); const status = await f.route('GET', '/supervision');
   f.genericTick(); await settle();
   assert.equal(status.body.enabled, false); assert.equal(status.body.errors[0].code, 'storage_corrupt'); assert.equal(f.commands.length, 0);
+});
+
+
+test('actual Ops account route validates saved scope, discovers a readable live identity and confirms changed binding without losing registrations', linux, async t => {
+  const f = fixture(t), original = clone(f.vault.crewpack.leaders);
+  const other = { serverId: 'vm', root: f.root + '/saved-other', auditConfig: '.claude-backup', auditAccount: 'a'.repeat(64) };
+  fs.mkdirSync(other.root); f.vault.crewpack.workspaces.push(other);
+  for (const body of [null, [], {}, { serverId: 'vm', root: f.root, auditConfig: '../secret' }, { serverId: 'vm', root: '/elsewhere', auditConfig: '.claude' },
+    { serverId: 'vm', root: f.root, auditConfig: '.claude', token: 'forbidden' }]) assert.equal((await f.route('POST', '/supervision/account', body)).status, 400);
+  const input = { serverId: 'vm', root: f.root, auditConfig: '.claude-other' };
+  const found = await f.route('POST', '/supervision/account', input);
+  assert.deepEqual(found.body, { ...input, accountRef: 'a'.repeat(64), label: 'operator@example.test', code: 'audit_account_registration_required', observedAt: f.now, quota: 'unknown' });
+  const before = f.readinessCalls;
+  assert.equal((await f.route('POST', '/supervision', { enabled: true, workspaces: [{ ...input, auditAccount: found.body.accountRef }, other] })).status, 200);
+  assert.ok(f.readinessCalls > before, 'saving a changed binding performs fresh remote confirmation');
+  assert.deepEqual(f.vault.crewpack.leaders, original); assert.deepEqual(f.vault.crewpack.workspaces[1], other);
+  assert.equal((await f.route('POST', '/supervision/account', input)).body.code, 'audit_ready');
+  const saved = clone(f.vault.crewpack.workspaces);
+  assert.equal((await f.route('POST', '/supervision', { enabled: true, workspaces: [{ ...input, auditAccount: 'b'.repeat(64) }, other] })).status, 400);
+  assert.deepEqual(f.vault.crewpack.workspaces, saved);
+  f.r.ready = false;
+  assert.equal((await f.route('POST', '/supervision/account', input)).body.code, 'host_unavailable');
+  // An unchanged offline binding is not a prerequisite for switching supervision off.
+  assert.equal((await f.route('POST', '/supervision', { enabled: false, workspaces: saved })).body.enabled, false);
+  assert.deepEqual(f.vault.crewpack.leaders, original);
+});
+
+test('readiness cache deduplicates GET probes, expires without restamping, invalidates boot/config/account and keeps OFF responsive', linux, async t => {
+  const f = fixture(t);
+  let release; f.queueReadiness(new Promise(r => { release = r; }));
+  const requests = Array.from({ length: 8 }, () => f.route('GET', '/supervision'));
+  await settle(); assert.equal(f.readinessCalls, 1);
+  release(); f.queueReadiness(null);
+  const results = await Promise.all(requests), stamp = results[0].body.auditReadiness[0].observedAt;
+  f.advance(15000); assert.equal((await f.route('GET', '/supervision')).body.auditReadiness[0].observedAt, stamp); assert.equal(f.readinessCalls, 1);
+  f.advance(15001); await f.route('GET', '/supervision'); assert.equal(f.readinessCalls, 2);
+  f.r.snapshot.bootId = 'boot-new'; await f.route('GET', '/supervision'); assert.equal(f.readinessCalls, 3);
+  f.supervisor.state.workspaces[0].auditConfig = '.claude-new'; await f.route('GET', '/supervision'); assert.equal(f.readinessCalls, 4);
+  f.supervisor.state.workspaces[0].auditAccount = 'b'.repeat(64); const mismatch = await f.route('GET', '/supervision');
+  assert.equal(mismatch.body.auditReadiness[0].code, 'audit_account_mismatch'); assert.equal(f.readinessCalls, 5);
+  f.advance(30001); f.queueReadiness(new Promise(r => { release = r; })); const slow = f.route('GET', '/supervision'); await settle();
+  const off = await f.route('POST', '/supervision', { enabled: false }); assert.equal(off.body.enabled, false);
+  assert.equal(off.body.auditReadiness[0].code, 'audit_readiness_stale'); assert.equal(off.body.auditReadiness[0].observedAt, mismatch.body.auditReadiness[0].observedAt);
+  release(); assert.equal((await slow).body.enabled, false, 'a pending GET cannot publish the old enabled policy after OFF');
+  f.advance(60001); f.r.ready = false; assert.equal((await f.route('GET', '/supervision')).body.auditReadiness[0].code, 'host_unavailable');
+});
+
+test('actual W5 pure provider API is consumed and preserves unconfigured/unverified status', linux, async t => {
+  const f = fixture(t), Module = require('node:module'), load = Module._load;
+  const value = Object.freeze({ platform: 'linux', supported: true, startupConfigured: false, startupVerified: false, managerState: 'unknown', startupCode: 'STARTUP_NOT_CONFIGURED' });
+  let calls = 0;
+  Module._load = function(name, ...args) { if (name === '../platform-supervisor') return { platformRuntimeInfo(options = {}) { calls++; assert.deepEqual(options, {}); return value; } }; return load.call(this, name, ...args); };
+  try { assert.deepEqual((await f.route('GET', '/supervision')).body.runtime.platform, value); assert.equal(calls, 1); }
+  finally { Module._load = load; }
+});
+
+test('proven dead delivered audit retires as failed history and a distinct run opens without replay; live/unknown/partial remain held', linux, async t => {
+  for (const proof of ['audit_identity_dead', 'audit_identity_live', 'audit_death_unverified']) {
+    const f = fixture(t); f.s.aiStatus.status = 'busy'; await f.tick(); await f.tick();
+    const old = clone(f.supervisor.host('vm').active), typed = f.sent.length;
+    f.r.snapshot.sessions = [f.s]; f.setDeathProof(proof); f.advance(15000); await f.tick();
+    const h = f.supervisor.host('vm');
+    if (proof !== 'audit_identity_dead') { assert.equal(h.active.runId, old.runId); assert.equal(h.active.requiresOwner, true); continue; }
+    assert.equal(h.active, null); assert.equal(h.history.at(-1).phase, 'failed'); assert.equal(h.history.at(-1).verification, 'unverified');
+    assert.equal(f.sent.length, typed, 'retirement never replays the prompt');
+    f.advance(31 * 60000); await f.tick(); const next = h.active || f.supervisor.host('vm').active;
+    assert.notEqual(next.runId, old.runId); assert.equal(f.commands.filter(x => x[0] === 'new-session').length, 2, JSON.stringify(next));
+    const state = JSON.parse(fs.readFileSync(path.join(f.root, '_crew/termnest-ops/coordination/state.json')));
+    assert.ok(Object.values(state.receipts).some(r => r.runId === old.runId && r.retirement === 'failed_unverified'), 'failed receipts remain durable');
+  }
+  const f = fixture(t, { partialSend: true }); f.s.aiStatus.status = 'busy'; await f.tick(); await f.tick();
+  const old = f.supervisor.host('vm').active.runId, typed = f.sent.length; f.setDeathProof('audit_identity_dead'); f.r.snapshot.sessions = [f.s];
+  f.advance(TIMEOUT_MS + 1); await f.tick(); f.restart(); await f.tick();
+  assert.equal(f.supervisor.host('vm').active.runId, old); assert.equal(f.sent.length, typed);
+});
+
+
+test('readiness expiry/probe failure never returns cached healthy identity or refreshes its timestamp; final confirmation bypasses cache', linux, async t => {
+  const f = fixture(t), first = (await f.route('GET', '/supervision')).body.auditReadiness[0];
+  f.advance(30001); f.failReadiness();
+  const failed = (await f.route('GET', '/supervision')).body.auditReadiness[0];
+  assert.equal(failed.code, 'audit_readiness_unavailable'); assert.equal(failed.observedAt, first.observedAt); assert.equal(failed.accountRef, undefined);
+  const calls = f.readinessCalls; await f.route('GET', '/supervision'); assert.equal(f.readinessCalls, calls, 'negative probes are bounded too');
+  const input = { serverId: 'vm', root: f.root, auditConfig: '.claude-work' };
+  assert.equal((await f.route('POST', '/supervision/account', input)).body.code, 'audit_readiness_unavailable'); assert.equal(f.readinessCalls, calls + 1);
+  f.failReadiness(false); const found = await f.route('POST', '/supervision/account', input); assert.equal(found.body.code, 'audit_ready');
+  f.setReadiness('audit_account_unavailable');
+  const saved = clone(f.vault.crewpack.workspaces); saved[0].auditConfig = '.claude-changed';
+  assert.equal((await f.route('POST', '/supervision', { enabled: true, workspaces: saved })).status, 400);
+  assert.equal(f.vault.crewpack.workspaces[0].auditConfig, '.claude-work');
+});
+
+test('readiness probes have bounded concurrency across many saved scopes and discard identity after a boot change mid-probe', linux, async t => {
+  const f = fixture(t); f.supervisor.ensure();
+  let release; f.queueReadiness(new Promise(r => { release = r; }));
+  f.supervisor.state.workspaces = Array.from({ length: 20 }, (_, n) => ({ serverId: 'vm', root: f.root + '/scope-' + n, auditConfig: '.claude-work', auditAccount: 'a'.repeat(64) }));
+  const pending = f.route('GET', '/supervision'); await settle(); assert.equal(f.readinessCalls, 4);
+  f.r.snapshot.bootId = 'superseded'; release();
+  const response = await pending; assert.equal(response.body.auditReadiness.filter(w => w.code === 'audit_readiness_busy').length, 16);
+  assert.equal(response.body.auditReadiness.filter(w => w.code === 'audit_readiness_stale').length, 4);
+  assert.ok(response.body.auditReadiness.every(w => !w.accountRef));
+});
+
+test('a failed dead audit releases host scheduling for the next uncovered team, with a new run and no replay', linux, async t => {
+  const f = fixture(t); f.vault.crewpack.autoRecovery = false;
+  const task = path.join(f.root, '_crew/tasks/another'); fs.mkdirSync(task); fs.writeFileSync(path.join(task, 'MANIFEST.md'), '---\nstatus: executing\nblocked: null\ntracks: [{ id: W1, state: pending }]\n---');
+  fs.appendFileSync(path.join(f.root, '_crew/nudge.conf'), '%8 another\n');
+  f.r.snapshot.sessions.push({ ...clone(f.s), name: 'second', id: '$2', paneIds: ['%8'], aiPid: 702 });
+  await f.tick(); await f.tick(); const first = clone(f.supervisor.host('vm').active), count = f.sent.length;
+  f.r.snapshot.sessions = f.r.snapshot.sessions.filter(s => !/^tn-ops-audit/.test(s.name)); f.setDeathProof('audit_identity_dead'); f.advance(15000); await f.tick();
+  assert.equal(f.supervisor.host('vm').active, null); await f.tick();
+  const next = f.supervisor.host('vm').active; assert.notEqual(next.runId, first.runId); assert.notEqual(next.teamId, first.teamId);
+  assert.equal(f.sent.length, count, 'reopening does not replay or prematurely send'); await f.tick(); assert.ok(f.sent.length > count);
+  assert.deepEqual(f.supervisor.host('vm').history.at(-1).taskIds, first.taskIds);
+});
+
+test('SIMULATION: 140 engine restarts revoke prior remote authority before compacting local coordinator history', linux, async t => {
+  const f = fixture(t, { readiness: 'audit_skill_missing' });
+  for (let n = 0; n < 140; n++) {
+    await f.tick(); assert.equal(f.vault.crewpack.coordinatorIds.length, 1);
+    f.restart(); f.advance(15000);
+  }
+  assert.equal(f.commands.length, 0); assert.equal(f.sent.length, 0);
+  const state = JSON.parse(fs.readFileSync(path.join(f.root, '_crew/termnest-ops/coordination/state.json')));
+  assert.ok(state.revoked.length <= 64); assert.ok(state.safetyCount >= 139);
 });

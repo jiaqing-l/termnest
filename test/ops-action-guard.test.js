@@ -191,7 +191,11 @@ test('audit open and an already existing idle audit both require a pinned accoun
   assert.equal((await request({ op: 'readiness' })).code, 'audit_account_required');
   assert.equal((await request({ op: 'readiness', config: '.claude-missing' })).code, 'audit_config_unavailable');
   let result = await request({ op: 'readiness', config: '.claude-work' }); assert.equal(result.code, 'audit_skill_missing');
-  const account = result.accountRef;
+  const account = result.accountRef; assert.equal(result.label, 'fixture@example.invalid');
+  auth.token = 'synthetic-do-not-return'; assert.doesNotMatch(JSON.stringify(result), /synthetic-do-not-return/);
+  const email = auth.email; delete auth.email; auth.accountId = 'a'.repeat(64);
+  assert.equal((await request({ op: 'readiness', config: '.claude-work' })).code, 'audit_account_identity_unavailable', 'an opaque account id never becomes a display label');
+  auth.email = email;
   fs.mkdirSync(skillDir, { recursive: true }); fs.writeFileSync(path.join(skillDir, 'SKILL.md'), 'synthetic installed skill');
   pluginList = [{ id: 'xspire-devkit@fixture', enabled: true, installPath: plugin }];
   assert.equal((await request({ op: 'readiness', config: '.claude-work', account })).code, 'audit_ready');
@@ -263,4 +267,85 @@ test('production identity inspector checks boot, tmux creation/pane, process sta
   state.processTable = '501 100 claude\n901 1 bash /trusted/crew-dispatch.sh --task managed --track W1\n';
   assert.equal((await recovery()).code, 'live_worker', 'detached managed worker blocks input'); assert.equal(state.sends, 0);
   state.processTable = '501 100 claude\n'; assert.equal((await recovery()).code, 'action_delivered'); assert.equal(state.sends, 2);
+});
+
+test('production audit retirement requires exact tmux and process death, retains failed evidence and refuses unavailable/partial proof', linux, async t => {
+  const f = fixture(t), runId = 'tn-' + '1'.repeat(32), identity = { bootId: 'boot-one', sessionId: '$9', created: 70, pane: '%90', agentPid: 501, config: '.claude', agentStartedAt: 1 };
+  let processState = 'live', table = '$9|70\n', unavailable = false;
+  const fakeFS = { ...fs, readFileSync(file, ...args) {
+    if (file === '/proc/501/stat') {
+      if (processState === 'denied') throw Object.assign(Error('denied'), { code: 'EACCES' });
+      if (processState === 'dead') throw Object.assign(Error('dead'), { code: 'ENOENT' });
+      const fields = Array(24).fill('0'); fields[0] = 'S'; fields[1] = '1'; fields[19] = processState === 'reused' ? '24' : '23'; return '501 (claude) ' + fields.join(' ');
+    }
+    return fs.readFileSync(file, ...args);
+  }, statSync(file, ...args) { return file === '/proc/501' ? { uid: process.getuid() } : fs.statSync(file, ...args); } };
+  const runtime = guardRuntime({ fs: fakeFS, boot: () => 'boot-one', now: () => f.now, inspect: () => ({ cwd: f.root, idleAt: 10, processStart: '23' }), readiness: () => ({ code: 'audit_ready' }),
+    cp: { execFileSync(file, args, opts) {
+      if (file === 'flock') return cp.execFileSync(file, args, opts);
+      if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 });
+      if (args[0] === 'new-session') return '$9|70|%90|501\n';
+      if (args[0] === 'list-sessions') { if (unavailable) throw Object.assign(Error('tmux failed'), { status: 1, stderr: 'permission denied' }); return table; }
+      return '';
+    } } });
+  const request = extra => runtime({ root: f.root, coordinatorId: A, ...extra });
+  const lease = await request({ op: 'lease' });
+  const opened = await request({ op: 'action', ...f.action(lease.token), kind: 'audit_open', eventId: digest('open'), runId });
+  assert.equal(opened.code, 'action_delivered'); assert.deepEqual(opened.receipt.identity, { bootId: 'boot-one', sessionId: '$9', created: 70, pane: '%90', agentPid: 501, processStart: '23' });
+  assert.equal((await request({ op: 'action', ...f.action(lease.token), identity, runId })).code, 'action_delivered');
+  const retire = { op: 'retire_audit', token: lease.token, session: f.action(lease.token).session, runId };
+  processState = 'dead'; assert.equal((await request(retire)).code, 'audit_identity_live', 'a surviving exact session blocks retirement');
+  table = '$10|71\n'; processState = 'live'; assert.equal((await request(retire)).code, 'audit_identity_live', 'detached old process still lives');
+  processState = 'denied'; assert.equal((await request(retire)).code, 'audit_death_unverified');
+  processState = 'dead'; unavailable = true; assert.equal((await request(retire)).code, 'audit_death_unverified');
+  unavailable = false; processState = 'reused'; const result = await request(retire); assert.equal(result.code, 'audit_retired'); assert.equal(result.proof, 'session_and_process_superseded');
+  const file = path.join(f.root, '_crew/termnest-ops/coordination/state.json');
+  let state = JSON.parse(fs.readFileSync(file)); assert.equal(state.receipts[digest('idle-one')].retirement, 'failed_unverified');
+  // A partial receipt is a barrier even after authoritative identity death and across different run ids.
+  state.receipts[digest('idle-one')].delivery = 'uncertain'; Object.values(state.scopes)[0].receipt.delivery = 'uncertain'; fs.writeFileSync(file, JSON.stringify(state));
+  assert.equal((await request(retire)).code, 'audit_retirement_uncertain');
+  const opening = await request({ op: 'action', token: lease.token, kind: 'audit_open', session: retire.session, runId: 'tn-' + '2'.repeat(32), config: '.claude', account: 'a'.repeat(64), eventId: digest('new-run') });
+  assert.equal(opening.code, 'audit_retirement_uncertain', 'a fresh run cannot bypass the prior partial receipt');
+});
+
+test('SIMULATION: 4200 successful audit-session replacements and coordinator resets stay bounded without replay or revocation loss', linux, async t => {
+  const f = fixture(t), file = path.join(f.root, '_crew/termnest-ops/coordination/state.json');
+  let sequence = 0, sends = 0;
+  // This serialized long-run fixture simulates process/tmux/flock IO; real kernel lock contention is tested above.
+  const runtime = guardRuntime({ now: () => f.now, boot: () => 'sim-boot', fs: { ...fs, fsyncSync() {} },
+    inspect: () => ({ cwd: f.root, idleAt: sequence + 10, processStart: '23' }), readiness: () => ({ code: 'audit_ready' }),
+    proveAuditDead: () => ({ code: 'audit_identity_dead', proof: 'simulated_exact_death' }),
+    cp: { execFileSync(file, args) { if (file === 'flock') return ''; if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 }); if (args[0] === 'send-keys' && args.includes('-l')) sends++; return ''; } } });
+  const firstId = digest('coordinator-0').slice(0, 32), firstEvent = digest('open-0');
+  for (sequence = 0; sequence < 4200; sequence++) {
+    const coordinatorId = digest('coordinator-' + sequence).slice(0, 32), runId = 'tn-' + sequence.toString(16).padStart(32, '0');
+    const request = extra => runtime({ root: f.root, coordinatorId, ...extra });
+    const lease = await request({ op: 'lease' }); assert.equal(lease.code, 'coordination_owner', 'lease ' + sequence);
+    const session = 'tn-ops-audit-0123456789abcdef', common = { op: 'action', session, runId, token: lease.token, config: '.claude', account: 'a'.repeat(64) };
+    const identity = { bootId: 'sim-boot', sessionId: '$' + sequence, created: sequence + 1, pane: '%7', agentPid: 501, agentStartedAt: sequence + 1, config: '.claude' };
+    assert.equal((await request({ ...common, kind: 'audit_open', eventId: digest('open-' + sequence) })).code, 'action_delivered', 'open ' + sequence);
+    assert.equal((await request({ ...common, kind: 'audit_send', identity, idleAt: sequence + 10, prompt: 'bounded', eventId: digest('send-' + sequence) })).code, 'action_delivered');
+    assert.equal((await request({ op: 'ack_audit', runId, token: lease.token })).code, 'audit_acknowledged');
+    // Alternate explicit retirement with normal between-run death: audit_open must also collect proven-dead, reported identities.
+    if (sequence % 2 === 0) assert.equal((await request({ op: 'retire_audit', runId, session, token: lease.token, reported: true })).code, 'audit_retired');
+    assert.equal((await request({ op: 'revoke' })).code, 'coordination_revoked');
+    if (sequence % 128 === 0) {
+      const state = JSON.parse(fs.readFileSync(file)); assert.ok(Object.keys(state.receipts).length <= 2); assert.ok(Object.keys(state.scopes).length <= 1); assert.ok(state.revoked.length <= 64); assert.ok(fs.statSync(file).size < 300000);
+    }
+  }
+  assert.equal(sends, 4200);
+  assert.equal((await runtime({ op: 'lease', root: f.root, coordinatorId: firstId })).code, 'coordination_revoked');
+  const coordinatorId = digest('final-coordinator').slice(0, 32), lease = await runtime({ op: 'lease', root: f.root, coordinatorId });
+  assert.equal((await runtime({ op: 'action', kind: 'audit_open', root: f.root, coordinatorId, token: lease.token, session: 'tn-ops-audit-0123456789abcdef', runId: 'tn-' + '0'.repeat(32), eventId: firstEvent })).code, 'action_duplicate');
+  assert.equal(sends, 4200, 'compacted events never replay after transfer');
+});
+
+test('exhausted tombstones freeze remote authority across restart while OFF still revokes queued tokens; malformed ledger fails closed', linux, async t => {
+  const f = fixture(t), lease = await f.request('lease'), file = path.join(f.root, '_crew/termnest-ops/coordination/state.json');
+  const state = JSON.parse(fs.readFileSync(file)); state.safetyFilter = '0'.repeat(262144); state.safetyCount = 65536; fs.writeFileSync(file, JSON.stringify(state));
+  assert.equal((await f.request('action', f.action(lease.token))).code, 'coordination_capacity_tombstones');
+  assert.equal((await f.request('revoke')).code, 'coordination_revoked');
+  assert.equal((await f.request('lease', { coordinatorId: B })).code, 'coordination_capacity_tombstones'); assert.equal(f.calls.length, 0);
+  const frozen = JSON.parse(fs.readFileSync(file)); assert.equal(frozen.lease.expiresAt, 0); delete frozen.safetyFilter; fs.writeFileSync(file, JSON.stringify(frozen));
+  assert.equal((await f.request('lease')).code, 'coordination_corrupt');
 });

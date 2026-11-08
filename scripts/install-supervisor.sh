@@ -8,13 +8,14 @@
 set -euo pipefail
 usage() {
   cat <<'USAGE'
-Usage: bash scripts/install-supervisor.sh [--dry-run] [--password-file FILE] [--data-dir DIR] [--port PORT]
+Usage: bash scripts/install-supervisor.sh [--dry-run] [--password-file FILE] [--data-dir DIR] [--port PORT] [--node-path FILE]
 Installs termnest-supervisor.service for the current systemd user. HTTP binds only to 127.0.0.1.
 Default DATA: ${XDG_STATE_HOME:-$HOME/.local/state}/termnest; default port: 7681.
 Use an existing protected, single-line password file (Unix owner only, mode 600/400).
 Without one, an interactive terminal may create the default secret once. Noninteractive installation fails immediately.
 Existing secrets and vaults are never overwritten. --dry-run prints the unit and performs no mutations or prompts.
-Install Node >=18 and tmux, then npm ci in the Linux application directory. Enable user lingering separately for boot.
+Uses adjacent app/node-x64 or app/node-arm64, an explicit --node-path, then source PATH Node >=18.
+Install tmux and source dependencies in the Linux application directory. Enable user lingering separately for boot.
 USAGE
 }
 dry=0
@@ -22,12 +23,13 @@ state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/termnest"
 data_dir="$state_dir"
 password_file=""
 port=7681
+node_path=""
 while (($#)); do
   case "$1" in
     --dry-run) dry=1; shift ;;
-    --password-file|--data-dir|--port)
+    --password-file|--data-dir|--port|--node-path)
       (($# >= 2)) || { usage >&2; exit 2; }
-      case "$1" in --password-file) password_file="$2";; --data-dir) data_dir="$2";; --port) port="$2";; esac
+      case "$1" in --password-file) password_file="$2";; --data-dir) data_dir="$2";; --port) port="$2";; --node-path) node_path="$2";; esac
       shift 2 ;;
     --help|-h) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
@@ -38,7 +40,22 @@ done
 if [[ -z "$password_file" ]]; then password_file="$state_dir/password"; fi
 [[ "$password_file" = /* ]] || { echo RUNTIME_PATH_INVALID >&2; exit 2; }
 app_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-node_bin="$(command -v node)"
+# Validate the selected runtime before any secret/state/unit or service-manager action (also in dry-run).
+[[ "$(uname -s)" = Linux ]] || { echo RUNTIME_LINUX_REQUIRED >&2; exit 2; }
+case "$(uname -m)" in
+  x86_64|amd64) node_arch=x64 ;;
+  aarch64|arm64) node_arch=arm64 ;;
+  *) echo RUNTIME_NODE_ARCH_UNSUPPORTED >&2; exit 2 ;;
+esac
+if [[ -n "$node_path" ]]; then
+  node_bin="$node_path"
+elif [[ -e "$app_dir/node-$node_arch" || -L "$app_dir/node-$node_arch" ]]; then
+  node_bin="$app_dir/node-$node_arch"
+else
+  node_bin="$(command -v node || true)"
+fi
+[[ "$node_bin" = /* && -f "$node_bin" && -x "$node_bin" ]] || { echo RUNTIME_NODE_REQUIRED >&2; exit 2; }
+"$node_bin" -e 'if(process.platform!=="linux" || process.arch!==process.argv[1] || Number(process.versions.node.split(".")[0])<18)process.exit(2)' "$node_arch" >/dev/null 2>&1 || { echo RUNTIME_NODE_INCOMPATIBLE >&2; exit 2; }
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 if (( ! dry )); then
   [[ "$(uname -s)" = Linux ]] || { echo RUNTIME_LINUX_REQUIRED >&2; exit 2; }
