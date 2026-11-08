@@ -249,7 +249,7 @@ let chrome, ws, closeBrowser, chromeError='';
  await refresh();assert.equal(nudges.length,1);
  board.servers[0].sessions[0].ai={status:'busy',at:Date.now()};board.servers[0].findings=board.servers[0].findings.filter(f=>f.key!=='dormant');board.log[0].verified=board.log[0].responded=true;await refresh();
  assert.ok(await evaluate(sessionRow('dormant')+'.closest(".g-running")!==null'),'only a new observed busy state moves the row');
- assert.ok(await evaluate('document.querySelector(".ops-log-sec").textContent.includes("tiến độ chưa xác minh")'));
+ assert.ok(await evaluate('document.querySelector(".ops-log-sec").textContent.includes(i18n("ops.delivery_responded"))'), 'observed response uses the current localized label');
  releaseNudge();releaseNudge=null;
  await until('__notices.length===1','late POST response after receipt cleanup');
  assert.deepEqual(await evaluate('__notices'),[{message:'Đã quan sát phản hồi; tiến độ chưa xác minh',ok:true}],'successful receipt survives early GET cleanup without false failure');
