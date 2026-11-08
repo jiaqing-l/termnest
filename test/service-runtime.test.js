@@ -382,6 +382,38 @@ test('installer repeated writes preserve vault and secret and refuse unmanaged u
   assert.equal(fs.readFileSync(unit, 'utf8'), '# someone else owns this');
 });
 
+test('Linux unit PATH discovers the selected Node and user-local Claude from a manager-like environment without copying secrets', { skip: process.platform !== 'linux' }, async t => {
+  const f = fixture(t), home = path.join(f.dir, 'home % $ " Việt'), runtime = path.join(f.dir, 'runtime % $ " Việt');
+  const inheritedBin = path.join(f.dir, 'unrelated-login-bin'), node = path.join(runtime, 'node');
+  fs.mkdirSync(runtime); fs.symlinkSync(process.execPath, node);
+  const managerEnv = { HOME: home, PATH: '/usr/local/bin:/usr/bin:/bin' };
+  const result = await execFile('/bin/bash', ['scripts/install-supervisor.sh', '--dry-run', '--password-file', f.file,
+    '--data-dir', path.join(home, 'data'), '--node-path', node], { cwd: ROOT, env: {
+    ...managerEnv, PATH: inheritedBin + ':' + managerEnv.PATH, UNRELATED_SECRET: SECRET,
+    XDG_CONFIG_HOME: path.join(home, 'config'), XDG_STATE_HOME: path.join(home, 'state'),
+  } });
+  assert.equal(fs.existsSync(home), false, 'dry-run must not create HOME, profile, state or config directories');
+  assert.doesNotMatch(result.stdout + result.stderr, new RegExp(SECRET));
+  assert.ok(!result.stdout.includes(inheritedBin), 'installer login PATH is not copied');
+  const declared = Object.fromEntries(result.stdout.split('\n').filter(line => line.startsWith('Environment=')).map(line => {
+    // Decode the quoted systemd literal and its escaped percent specifiers; Environment does not expand shell variables.
+    const value = JSON.parse(line.slice('Environment='.length)).replace(/%%/g, '%'), split = value.indexOf('=');
+    return [value.slice(0, split), value.slice(split + 1)];
+  }));
+  assert.deepEqual(Object.keys(declared).sort(), ['PATH', 'TW_DATA', 'TW_PASSWORD_FILE', 'TW_PORT']);
+  assert.deepEqual(declared.PATH.split(':'), [...new Set([runtime, path.join(home, '.local/bin'),
+    '/usr/local/bin', '/usr/bin', '/bin', '/usr/local/sbin', '/usr/sbin', '/sbin'])]);
+  assert.ok(!managerEnv.PATH.split(':').includes(path.join(home, '.local/bin')));
+  fs.mkdirSync(path.join(home, '.local/bin'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.local/bin/claude'), '#!/bin/sh\nprintf "synthetic-claude-only\\n"\n', { mode: 0o700 });
+  const serviceEnv = { ...managerEnv, ...declared };
+  assert.equal((await execFile('claude', ['--version'], { env: serviceEnv })).stdout, 'synthetic-claude-only\n');
+  assert.equal((await execFile('node', ['-p', 'process.versions.node'], { env: serviceEnv })).stdout.trim(), process.versions.node);
+  assert.equal(fs.existsSync(path.join(home, 'config')), false);
+  assert.equal(fs.existsSync(path.join(home, 'state')), false);
+  assert.equal(fs.readFileSync(f.file, 'utf8'), SECRET + '\n');
+});
+
 test('installer refuses Linger=no or unverifiable linger before any mutation; dry-run does not query the user manager', { skip: process.platform !== 'linux' }, async t => {
   const f = fixture(t), bin = path.join(f.dir, 'fake-bin'), home = path.join(f.dir, 'home'), marker = path.join(f.dir, 'login-called');
   fs.mkdirSync(bin);
