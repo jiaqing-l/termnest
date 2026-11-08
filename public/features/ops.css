@@ -272,3 +272,20 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .cp-record-note{color:var(--fg-3);white-space:normal!important}
 .cp-lease .ops-t small{white-space:normal}
 .cp-lease .btn{flex-shrink:0}
+
+/* Background policy remains compact; controls survive observation refreshes. */
+.ops-super{padding:14px;margin-bottom:14px;min-width:0;overflow-wrap:anywhere}
+.ops-super h3{margin:0 0 8px}.ops-super h4{margin:12px 0 6px}
+.ops-super p{margin:5px 0}.ops-super-alert{color:var(--warn,#966013)}
+.ops-super-settings{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.ops-super summary{cursor:pointer;font-weight:600}
+.ops-super-form{display:grid;gap:10px;margin-top:12px;max-width:720px}
+.ops-super-form label{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ops-super-form label span{flex:1 1 200px}.ops-super-form input[type=number]{width:90px}
+.ops-super-form select{min-width:0;max-width:100%}
+.ops-super-form textarea{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.ops-super-form .btn{justify-self:start;white-space:normal}
+.ops-super-row{display:flex;flex-wrap:wrap;gap:5px 12px;border-top:1px solid var(--line);padding:9px 0;min-width:0}
+.ops-super-row p,.ops-super-row small{flex-basis:100%;overflow-wrap:anywhere}
+.ops-super-state{color:var(--fg-2)}.ops-super-teams{margin-top:12px}
+@media(max-width:640px){.ops-super-form label{align-items:flex-start}.ops-super-row .btn{max-width:100%}}

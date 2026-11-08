@@ -38,6 +38,182 @@
   function button(label, cls, fn) { var b = el('button', 'btn ' + (cls || ''), label); b.type = 'button'; b.onclick = fn; return b; }
   function post(path, body) { return TW.api('POST', '/api/features/ops' + path, body || {}); }
 
+  // Supervision uses its own persistent DOM: polling never replaces controls or an unfinished edit.
+  var supervision = null, supervisionError = false, supervisionPending = false, supervisionFetching = false;
+  var supervisionRevision = 0, supervisionBox = null, supervisionStatus = null, supervisionForm = null, supervisionDraft = null;
+  function list(v) { return Array.isArray(v) ? v.filter(function (x) { return x && typeof x === 'object'; }) : []; }
+  function text(v) { return typeof v === 'string' || typeof v === 'number' ? String(v) : ''; }
+  function explanation(reason) {
+    var code = typeof reason === 'string' ? reason : reason && reason.code;
+    var key = 'ops.super.reason_' + code, value = i18n(key);
+    return value === key ? i18n('ops.super.reason_unknown') : value;
+  }
+  function stamp(at) {
+    var d = new Date(at || 0);
+    return at && Number.isFinite(d.getTime()) ? d.toLocaleString(window.TW_I18N ? window.TW_I18N.lang() : undefined) : i18n('ops.super.no_evidence');
+  }
+  function hostFresh(s) {
+    var at = new Date(s.observedAt || 0).getTime(), max = s.freshness && s.freshness.maxAgeMs;
+    return s.online === true && Number.isFinite(at) && at > 0 && at <= Date.now() + 5000 && Date.now() - at <= (Number.isFinite(max) && max > 0 ? max : 120000) && !(s.freshness && (s.freshness.snapshotFresh === false || s.freshness.taskEvidenceFresh === false));
+  }
+  function teamState(s, t) {
+    if (!hostFresh(s) || ['progressing', 'idle', 'waiting_owner', 'blocked', 'stalled', 'unknown', 'completed'].indexOf(t.status) < 0) return 'unknown';
+    var progress = new Date(t.lastProgressAt || 0).getTime();
+    if (t.status === 'progressing' && (!Number.isFinite(progress) || progress <= 0 || progress > Date.now())) return 'unknown';
+    return t.status;
+  }
+  function sameLeader(a, b) {
+    return !!a && !!b && a.serverId === b.serverId && a.session === b.session && a.root === b.root &&
+      ['bootId', 'sessionId', 'created', 'pane', 'agentPid', 'agentStartedAt', 'config'].every(function (k) { return a.identity && b.identity && a.identity[k] != null && String(a.identity[k]) === String(b.identity[k]); });
+  }
+  function recoveryReady() {
+    var r = supervision && supervision.runtime;
+    if (r && (typeof r.registrationReady === 'boolean' || typeof r.recoveryReady === 'boolean')) return r.registrationReady === true || r.recoveryReady === true;
+    return !!supervision && list(supervision.leaders).some(function (l) { return list(supervision.registrationCandidates).some(function (c) { return sameLeader(l, c); }) && list(supervision.servers).some(function (s) { return s.id === l.serverId && hostFresh(s); }); });
+  }
+  function registrationSelected() {
+    return supervisionForm && supervisionForm.querySelector('[name=leader]') && supervisionForm.querySelector('[name=leader]').value !== '' && supervisionForm.querySelector('[name=confirmLeader]').checked;
+  }
+  function supervisionCard() {
+    if (supervisionBox) return supervisionBox;
+    supervisionBox = el('section', 'ops-card ops-super');
+    supervisionBox.append(el('h3', '', i18n('ops.super.title')));
+    supervisionStatus = el('div', 'ops-super-status'); supervisionStatus.setAttribute('aria-live', 'polite');
+    supervisionForm = el('details', 'ops-super-settings'); keepOpen(supervisionForm, 'super-settings', false);
+    supervisionForm.append(el('summary', '', i18n('ops.super.settings')));
+    supervisionBox.append(supervisionForm, supervisionStatus);
+    renderSupervision(); return supervisionBox;
+  }
+  function makeSupervisionForm() {
+    if (!supervision || supervisionDraft) return;
+    supervisionDraft = { enabled: supervision.enabled === true, autoRecovery: supervision.autoRecovery === true,
+      intervalMinutes: supervision.intervalMinutes || 30, workspaces: list(supervision.workspaces).map(function (w) { return { serverId: text(w.serverId), root: text(w.root) }; }) };
+    var form = el('form', 'ops-super-form');
+    function field(label, input) { var l = el('label'); l.append(el('span', '', label), input); return l; }
+    function check(key, label) {
+      var input = el('input'); input.type = 'checkbox'; input.name = key; input.checked = supervisionDraft[key];
+      input.onchange = function () { supervisionDraft[key] = input.checked; renderSupervision(); };
+      return field(i18n(label), input);
+    }
+    form.append(check('enabled', 'ops.super.enable'), check('autoRecovery', 'ops.super.recovery'), el('p', 'ops-note', i18n('ops.super.scope')));
+    var interval = el('input'); interval.type = 'number'; interval.name = 'intervalMinutes'; interval.min = '1'; interval.max = '1440'; interval.required = true; interval.value = supervisionDraft.intervalMinutes;
+    interval.oninput = function () { supervisionDraft.intervalMinutes = Number(interval.value); };
+    form.append(field(i18n('ops.super.interval'), interval));
+    var roots = el('textarea'); roots.name = 'workspaces'; roots.rows = 3;
+    roots.value = supervisionDraft.workspaces.map(function (w) { return w.serverId + ' | ' + w.root; }).join('\n');
+    // IDs identify configured servers, never panes/boot identities. No leader is implicitly registered here.
+    roots.oninput = function () { supervisionDraft.workspaceText = roots.value; };
+    form.append(field(i18n('ops.super.workspaces'), roots), el('p', 'ops-note', i18n('ops.super.workspace_help')));
+    var names = list(supervision.servers).map(function (s) { return text(s.name || s.id) + ' = ' + text(s.id); }).join(' · ');
+    form.append(el('p', 'ops-note', names));
+    var candidates = list(supervision.registrationCandidates), leader = el('select'); leader.name = 'leader';
+    var none = el('option', '', i18n('ops.super.keep_leaders')); none.value = ''; leader.append(none);
+    candidates.forEach(function (c, index) {
+      var server = list(supervision.servers).find(function (v) { return v.id === c.serverId; });
+      var option = el('option', '', text(server && server.name || c.serverId) + ' · ' + text(c.session) + ' · ' + text(c.root)); option.value = String(index); leader.append(option);
+    });
+    leader.onchange = renderSupervision;
+    var tasks = el('input'); tasks.name = 'taskIds'; tasks.type = 'text';
+    var confirm = el('input'); confirm.type = 'checkbox'; confirm.name = 'confirmLeader'; confirm.onchange = renderSupervision;
+    form.append(field(i18n('ops.super.register_leader'), leader), field(i18n('ops.super.task_ids'), tasks), field(i18n('ops.super.confirm_leader'), confirm), el('p', 'ops-note', i18n('ops.super.identity_help')));
+    var save = button(i18n('ops.super.save'), 'primary', function () {}); save.type = 'submit'; save.name = 'save';
+    form.append(save);
+    form.onsubmit = function (e) {
+      e.preventDefault(); if (supervisionPending || !supervision || !form.reportValidity()) return;
+      var workspaces = [], valid = true;
+      roots.value.split('\n').forEach(function (line) {
+        if (!line.trim()) return;
+        var split = line.indexOf('|'), serverId = line.slice(0, split).trim(), root = line.slice(split + 1).trim();
+        if (split < 1 || !serverId || !root.startsWith('/') || !list(supervision.servers).some(function (s) { return s.id === serverId; })) valid = false;
+        var workspace = { serverId: serverId, root: root }, previous = list(supervision.workspaces).find(function (w) { return w.serverId === serverId && w.root === root; });
+        ['auditConfig', 'auditAccount'].forEach(function (k) { if (previous && typeof previous[k] === 'string') workspace[k] = previous[k]; });
+        workspaces.push(workspace);
+      });
+      if (!valid) { TW.app().say(i18n('ops.super.workspace_invalid'), false, 4000); return; }
+      var body = { enabled: supervisionDraft.enabled, autoRecovery: supervisionDraft.autoRecovery, intervalMinutes: supervisionDraft.intervalMinutes, workspaces: workspaces };
+      if (leader.value !== '') {
+        var candidate = candidates[Number(leader.value)], ids = tasks.value.split(/[\s,]+/).filter(Boolean);
+        var current = list(supervision.registrationCandidates).find(function (c) { return sameLeader(candidate, c); });
+        if (!confirm.checked || !current || !ids.length || ids.some(function (id) { return !/^[A-Za-z0-9][\w-]{0,127}$/.test(id); }) || !list(supervision.servers).some(function (s) { return s.id === current.serverId && hostFresh(s); }) || !workspaces.some(function (w) { return w.serverId === current.serverId && w.root === current.root; })) {
+          TW.app().say(i18n('ops.super.registration_invalid'), false, 4000); return;
+        }
+        function record(c) { return { serverId: c.serverId, root: c.root, session: c.session, taskIds: c.taskIds, identity: c.identity }; }
+        body.leaders = list(supervision.leaders).filter(function (l) { return l.serverId !== current.serverId || l.session !== current.session; }).map(record);
+        body.leaders.push(record({ serverId: current.serverId, root: current.root, session: current.session, taskIds: ids, identity: current.identity }));
+      }
+      if (body.enabled && body.autoRecovery && !recoveryReady() && !body.leaders) return;
+      supervisionPending = true; supervisionRevision++; renderSupervision();
+      post('/supervision', body).then(function () {
+        // A POST acknowledgement is not authoritative state. Require a new successful GET.
+        return loadSupervision(true).then(function () { if (supervision && body.leaders) { leader.value = ''; confirm.checked = false; } });
+      }).catch(function () { supervision = null; supervisionError = true; }).finally(function () {
+        supervisionPending = false; renderSupervision();
+      });
+    };
+    supervisionForm.append(form);
+  }
+  function renderSupervision() {
+    if (!supervisionStatus) return;
+    makeSupervisionForm(); supervisionStatus.textContent = '';
+    var controls = supervisionForm.querySelectorAll('input,textarea,select,button');
+    controls.forEach(function (c) { c.disabled = supervisionPending || !supervision; });
+    var save = supervisionForm.querySelector('[name=save]');
+    if (save && supervisionDraft && supervisionDraft.enabled && supervisionDraft.autoRecovery && !recoveryReady() && !registrationSelected()) save.disabled = true;
+    if (supervisionPending) supervisionStatus.append(el('p', 'ops-super-alert', i18n('ops.super.pending')));
+    if (!supervision) {
+      supervisionStatus.append(el('p', 'ops-super-alert', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading'))); return;
+    }
+    var servers = list(supervision.servers), teams = [];
+    servers.forEach(function (s) { list(s.teams).forEach(function (t) { teams.push({ server: s, team: t }); }); });
+    supervisionStatus.append(el('p', '', i18n(supervision.enabled ? 'ops.super.enabled' : 'ops.super.disabled') + ' · ' + i18n('ops.super.observed', [teams.length])));
+    var runtime = supervision.runtime || {}, ready = runtime.ready === true && !Object.keys(runtime).some(function (k) { return runtime[k] === false; });
+    supervisionStatus.append(el('p', 'ops-note', i18n(ready ? 'ops.super.ready' : 'ops.super.readiness_unknown')));
+    ['unlocked', 'monitoring', 'observationsFresh', 'validatedAuditCompletion', 'sshReady', 'auditReady', 'linger', 'registrationReady', 'recoveryReady'].forEach(function (k) {
+      if (typeof runtime[k] === 'boolean') supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.runtime_' + k) + ': ' + i18n(runtime[k] ? 'ops.super.confirmed' : 'ops.super.needs_setup')));
+    });
+    list(runtime.reasons).concat(list(supervision.errors)).forEach(function (r) { supervisionStatus.append(el('p', 'ops-super-alert', explanation(r))); });
+    list(runtime.passwordOnlyAccounts).concat(list(supervision.auditReadiness)).forEach(function (r) { supervisionStatus.append(el('p', 'ops-super-alert', text(r.serverId) + ' · ' + text(r.root) + ': ' + explanation(r))); });
+    if (runtime.platform) supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.platform') + ': ' + explanation(runtime.platform.code || runtime.platform.startupCode)));
+    if (runtime.code) supervisionStatus.append(el('p', 'ops-note', explanation(runtime.code)));
+    if (!recoveryReady()) supervisionStatus.append(el('p', 'ops-super-alert', i18n('ops.super.registration')));
+    supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.wait_valid')));
+    var all = el('details', 'ops-super-teams'); keepOpen(all, 'super-teams', false); all.append(el('summary', '', i18n('ops.super.teams', [teams.length])));
+    function teamRow(x) {
+      var s = x.server, t = x.team, row = el('div', 'ops-super-row');
+      var stale = !hostFresh(s);
+      var state = teamState(s, t);
+      row.append(el('b', '', text(s.name || s.id) + ' · ' + text(t.session || t.id)), el('span', 'ops-super-state', i18n('ops.super.state_' + state)));
+      row.append(el('p', '', stale ? i18n('ops.super.stale') : state === 'unknown' && t.status === 'progressing' ? i18n('ops.super.no_evidence') : explanation(t.reason)));
+      if (t.requiresOwner) row.append(el('p', 'ops-super-alert', i18n('ops.super.owner_action')));
+      row.append(el('small', '', i18n('ops.super.evidence', [stamp(t.lastProgressAt)])));
+      if (t.lastAction) row.append(el('p', 'ops-note', i18n('ops.super.last_action') + ': ' + explanation(t.lastAction) + ' · ' + stamp(t.lastAction.at)));
+      if (typeof t.session === 'string' && t.session && s.online === true) row.append(button(i18n('ops.super.open'), 'ghost', function () { TW.app().openSession(s.id, t.session); }));
+      return row;
+    }
+    var attention = teams.filter(function (x) { return x.team.requiresOwner || !['progressing', 'completed'].includes(teamState(x.server, x.team)); });
+    supervisionStatus.append(el('h4', '', i18n('ops.super.attention', [attention.length])));
+    attention.forEach(function (x) { supervisionStatus.append(teamRow(x)); });
+    teams.forEach(function (x) { all.append(teamRow(x)); }); supervisionStatus.append(all);
+    servers.forEach(function (s) {
+      supervisionStatus.append(el('p', 'ops-note', text(s.name || s.id) + ' · ' + i18n(s.online === true ? 'ops.super.observed_at' : 'ops.super.offline', [stamp(s.observedAt)])));
+      list(s.errors).forEach(function (r) { supervisionStatus.append(el('p', 'ops-super-alert', explanation(r))); });
+      list(s.audits).slice(-3).forEach(function (a) {
+        var reported = a.phase === 'completed' && a.verification === 'reported';
+        supervisionStatus.append(el('p', reported ? 'ops-note' : 'ops-super-alert', text(s.name || s.id) + ' · ' + i18n(reported ? 'ops.super.audit_reported' : 'ops.super.audit_unverified') + ': ' + explanation(a.reason)));
+      });
+    });
+  }
+  function loadSupervision(force) {
+    if ((!force && supervisionFetching) || (supervisionPending && !force)) return Promise.resolve();
+    var revision = ++supervisionRevision; supervisionFetching = true;
+    return TW.api('GET', '/api/features/ops/supervision').then(function (r) {
+      if (revision !== supervisionRevision) return;
+      if (!r || typeof r.enabled !== 'boolean' || !Array.isArray(r.servers)) throw Error('invalid supervision');
+      supervision = r; supervisionError = false;
+    }).catch(function () { if (revision === supervisionRevision) { supervision = null; supervisionError = true; } })
+      .finally(function () { supervisionFetching = false; renderSupervision(); });
+  }
+
   // Short status for the second half of a row ("<session> — <status>"); the session or job name is the first half.
   function status(f) {
     if (f.rule === 'custom') return f.params[0];
@@ -319,6 +495,8 @@
     var stale = plug ? plug.servers.reduce(function (n, v) { return n + v.stale.length; }, 0) : 0;
     if (pluginTab) { pluginTab.textContent = i18n('pl.tieu_de'); if (stale) pluginTab.append(el('span', 'ops-badge', String(stale))); }
     if (!page || !data) return;
+    var previousRules = editing && page.querySelector('.ops-rules');
+    if (supervisionBox) supervisionBox.remove();
     page.textContent = '';
     var all = [];
     data.servers.forEach(function (s) { s.findings.forEach(function (f) { all.push({ f: f, s: s }); }); });
@@ -339,9 +517,9 @@
     var exp = el('div', 'ops-expand'); exp.append(button(i18n('ops.mo_het'), 'ghost', function () { setAll(true); }), button(i18n('ops.thu_het'), 'ghost', function () { setAll(false); }));
     tools.append(exp);
     tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
-    head.append(h, tools); page.append(head);
+    head.append(h, tools); page.append(head, supervisionCard());
     var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);
-    if (editing) page.append(rulesForm());
+    if (editing) page.append(previousRules || rulesForm());
     var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); });
     var groups = el('div', 'ops-groups');
     if (!shown.length) { var e = el('section', 'ops-card'); e.append(el('p', 'ops-empty ok', i18n(all.length ? 'ops.khong_co_muc_loc' : 'ops.on_ca'))); groups.append(e); }
@@ -359,6 +537,7 @@
   }
 
   function load() {
+    loadSupervision();
     return TW.api('GET', '/api/features/ops/board').then(function (r) {
       data = r;
       // Typing in the rules form must not be wiped by the refresh.
@@ -368,7 +547,7 @@
   }
 
   (function () {
-    var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) { page = box; box.classList.add('ops-page'); }, onShow: load });
+    var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) { page = box; box.classList.add('ops-page'); box.append(supervisionCard()); }, onShow: load });
     if (v) tab = v.tab;
     var pv = TW.addView({ id: 'plugins', label: i18n('pl.tieu_de'), mount: function (box) { pluginPage = box; box.classList.add('ops-page'); }, onShow: loadPlugins });
     if (pv) pluginTab = pv.tab;
