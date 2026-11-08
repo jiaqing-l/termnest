@@ -932,6 +932,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && !originOk(req)) { fail(res, 403, tr('srv.server.yeu_cau_khong_hop_le')); return; }
     activeRequests++;
     try {
+      // Only this single-use saved-download capability bypasses session cookies. Host
+      // and Origin guards still apply; all other feature routes go through api auth.
+      if (url.pathname.startsWith('/api/features/server-backup/download-ticket/')) {
+        if (!originOk(req)) { fail(res, 403, tr('srv.server.yeu_cau_khong_hop_le')); return; }
+        const backup = features.service('server-backup');
+        if (!backup) { res.writeHead(404); res.end(); return; }
+        await backup.download(req, res, url); return;
+      }
       await api(req, res, url);
     } catch (err) {
       if (!res.headersSent) fail(res, err.message === 'bad json' ? 400 : 500, err.message === 'bad json' ? tr('srv.server.du_lieu_khong_hop_le') : (err.message || tr('srv.server.co_loi_xay_ra')));

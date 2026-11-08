@@ -37,7 +37,34 @@
     var q = new URLSearchParams({ server: server, snapshot: snapshot }); if (file) q.set('file', file);
     return base + path + '?' + q.toString();
   }
-  function link(key, href) { var a = el('a', 'btn', t(key)); a.href = href; a.download = ''; return a; }
+  function link(key, href) {
+    // Old installed bridges capture a[download] at the document capture phase and
+    // buffer the whole response for save_export. A real button never enters that path.
+    if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+      var busy = false, b = button(key, async function () {
+        if (busy) return; busy = true; b.disabled = true; b.setAttribute('aria-busy', 'true');
+        var ticket;
+        try {
+          var source = new URL(href, location.href), body = { serverId: source.searchParams.get('server'), snapshotId: source.searchParams.get('snapshot') };
+          if (source.searchParams.has('file')) body.fileId = source.searchParams.get('file');
+          ticket = await api('POST', '/download-ticket', body);
+          if (!ticket || typeof ticket.downloadURL !== 'string' || !/^\/api\/features\/server-backup\/download-ticket\/[A-Za-z0-9_-]{43}$/.test(ticket.downloadURL)) throw Error();
+          var target = new URL(ticket.downloadURL, location.href);
+          if (target.origin !== location.origin || target.username || target.password) throw Error();
+          await window.__TAURI_INTERNALS__.invoke('open_external', { url: target.href });
+          // Opening the browser is not proof that its download completed.
+        } catch (_) {
+          if (ticket && typeof ticket.downloadURL === 'string') {
+            try { await api('POST', '/download-cancel', { downloadURL: ticket.downloadURL }); } catch (_) { /* expires shortly */ }
+          }
+          TW.app().say(i18n('drop.khong_tai_duoc'), false, 4000);
+        } finally { busy = false; b.disabled = false; b.removeAttribute('aria-busy'); }
+      });
+      b.classList.add('backup-native-download');
+      return b;
+    }
+    var a = el('a', 'btn', t(key)); a.href = href; a.download = ''; return a;
+  }
   function reason(code) { var key = 'backup.reason_' + code, label = i18n(key); return label === key ? t('reason_unknown') : label; }
   function stamp(at) { return at ? new Date(at).toLocaleString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { dateStyle: 'short', timeStyle: 'short' }) : t('never'); }
   function valid(r) { return r && typeof r.enabled === 'boolean' && Array.isArray(r.servers) && r.servers.every(function (s) { return s && typeof s.id === 'string' && typeof s.name === 'string' && typeof s.online === 'boolean' && typeof s.hasSnapshot === 'boolean' && typeof s.includeChats === 'boolean' && Array.isArray(s.roots) && s.roots.every(function (root) { return typeof root === 'string'; }); }) && r.storage && typeof r.storage.host === 'string' && typeof r.storage.path === 'string'; }
