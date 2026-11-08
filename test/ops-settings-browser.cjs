@@ -6,6 +6,10 @@ const WebSocket = require('ws');
 const publicDir = path.join(__dirname, '../public');
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-ops-settings-'));
 const requests = [], posts = [], controls = [], nudges = [], accountChecks = [], downloads = [], rulePosts = [], tokenAccounts = [];
+const pluginPosts = [];
+let pluginFailure = false, pluginSlow = false, pluginDiscover = false, pluginNoDiscovery = false, pluginStateFailure = false;
+let pluginFreshReads = 0, pluginDiscoveryReads = 0;
+const plugins = { autoReload:false, servers:[{id:"vm1",name:"Build machine",scanned:Date.now(),accounts:[{cfg:".claude-work",plugins:[{id:"xspire@market",version:"2.4.1",running:"2.3.0",scope:"user",enabled:true,changedAt:Date.now()},{id:"folder-skill@local",version:"1.2.0",running:"1.1.0",scope:"project",folder:"/work/skills",usedBySessions:true,changedAt:Date.now()}]}],stale:[{session:"dormant",status:"idle",changedAt:Date.now()},{session:"busy",status:"busy",queued:true,changedAt:Date.now()}]}],log:[] };
 const now = Date.now(), accountRef = 'a'.repeat(64);
 const identity = { bootId: 'fixture-boot', sessionId: '$1', created: 1, pane: '%1', agentPid: 123, agentStartedAt: 1, config: '.claude-audit' };
 const supervision = { enabled: false, autoRecovery: false, intervalMinutes: 30,
@@ -71,7 +75,14 @@ const server = http.createServer(async (req, res) => {
   let body; if (req.method === 'POST') { let b=''; for await (const c of req) b+=c; body=b?JSON.parse(b):{}; }
   if (u.pathname === '/api/status') return send({ authed: true, packaged: false });
   if (u.pathname === '/api/prefs') return send(prefs);
-  if (u.pathname === '/api/state') return send(appState);
+  if (u.pathname === '/api/state') {
+   if(pluginStateFailure){res.statusCode=503;return send({error:'Plugin state discovery unavailable'});}
+   if(pluginDiscover){
+    pluginFreshReads++;pluginDiscoveryReads++;await new Promise(r=>setTimeout(r,180));
+    if(!pluginNoDiscovery && pluginDiscoveryReads>=2){appSessions.push({ ...appSessions[0],name:'tn-plugin-update' });pluginDiscover=false;}
+   }
+   return send(appState);
+  }
   if (u.pathname === '/api/features') return send({ modules: [{ name: 'server-backup', css: true }, { name: 'ops', css: true }] }); // Deliberately backup first.
   if (u.pathname === '/api/features/ops/board') { if (failBoard) { res.statusCode=503; return send({}); } return send(board); }
   if (u.pathname === '/api/features/ops/pack') {
@@ -105,7 +116,20 @@ const server = http.createServer(async (req, res) => {
    res.statusCode=nudgeMode==='pending'?202:200; return send({ ok:true,delivery:nudgeMode,responded:null,progress:'unknown' });
   }
   if (u.pathname === '/api/features/ops/dismiss') { board.dismissed++; board.servers.forEach(s=>s.findings=s.findings.filter(f=>f.key!==body.key)); return send({ok:true}); }
-  if (u.pathname === '/api/features/plugins/data') return send({ servers:[],autoReload:false });
+  if (u.pathname === '/api/features/plugins/data') return send(plugins);
+  if (u.pathname.startsWith('/api/features/plugins/')) {
+   assert.equal(req.method,'POST');pluginPosts.push({url:u.pathname,body});
+   if(pluginSlow)await new Promise(r=>setTimeout(r,300));
+   if(pluginFailure){res.statusCode=409;return send({error:'Plugin update fixture rejected'});}
+   if(u.pathname.endsWith('/auto'))plugins.autoReload=body.on;
+   if(u.pathname.endsWith('/refresh')){
+    plugins.servers[0].accounts[0].plugins[0].running='2.5.0';plugins.servers[0].scanned+=60000;
+    plugins.servers[0].stale[0].session='refreshed-stale';
+   }
+   if(u.pathname.endsWith('/update')){pluginDiscover=true;pluginDiscoveryReads=0;return send({session:'tn-plugin-update'});}
+   if(u.pathname.endsWith('/reload'))return send({now:1,queued:1});
+   return send({ok:true});
+  }
   if (u.pathname === '/api/features/server-backup/status') return send(backup);
   if (u.pathname === '/api/features/server-backup/control') {
    controls.push(body); if (slow) await new Promise(r=>setTimeout(r,250));
@@ -176,6 +200,7 @@ let chrome, ws, closeBrowser, chromeError='';
  const assertNoCrew = async label => {
   assert.equal(await evaluate('document.querySelectorAll(".crew,.crew-row,.meeting-room,.crew-band").length'),0,label+' has no worker nodes');
   assert.equal(await evaluate('document.querySelectorAll("#tab-crew").length'),0,label+' has no Crew tab');
+  assert.equal(await evaluate('document.querySelectorAll("#tab-plugins,#v-plugins,#v-over .ops-plug,#v-focus .ops-plug,#v-ops .ops-plug,.main-top .ops-plug").length'),0,label+' has no main plugins UI');
   assert.equal(await evaluate('document.querySelector("#crew-panel").hidden'),true,label+' has no worker log popup');
   assert.equal(await evaluate('document.querySelector("#v-over").textContent.includes("Crew") || document.querySelector("#v-focus").textContent.includes("worker Crew")'),false,label+' has no Crew summary');
   assert.equal(await evaluate('Array.from(document.querySelectorAll("#grid,#detail,#tabs,#chips,#fleet")).some(n=>/internal-(live|finished|owned)-task|private .* worker log|W1|W3|W4/.test(n.textContent))'),false,label+' has no internal worker details');
@@ -202,7 +227,61 @@ let chrome, ws, closeBrowser, chromeError='';
  assert.ok(!requests.some(r=>r.method==='DELETE'||r.method==='POST'),'presentation navigation does not mutate workers or sessions');
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
  // Use the normal Settings button before ever visiting Operations.
- await evaluate('document.querySelector("#set").click()');await settingsTab('backup');
+ await evaluate('document.querySelector("#set").click()');await settingsTab('plugins');
+ await until('!!document.querySelector("#plugins-settings-mount .pl-row")','Settings-first plugin data');
+ assert.equal(await evaluate('document.querySelector("#tab-ops").getAttribute("aria-pressed")'),'false');
+ assert.ok(await evaluate('document.querySelector("#plugins-settings-mount").textContent.includes(".claude-work") && document.querySelector("#plugins-settings-mount").textContent.includes("2.3.0") && document.querySelector("#plugins-settings-mount").textContent.includes("1.2.0")'));
+ assert.equal(await evaluate('document.querySelectorAll("#plugins-settings-mount .pl-row button").length'),1,'folder plugin has no update action');
+ assert.equal(pluginPosts.length,0,'navigation and polling issue no plugin mutations');
+ pluginSlow=true;
+ await evaluate('document.querySelector(".pl-auto input").focus();document.querySelector(".pl-auto input").click()');
+ await refresh();assert.equal(await evaluate('document.querySelector(".pl-auto input").checked'),true,'poll cannot clobber pending auto preference');
+ await until('!document.querySelector(".pl-auto input").disabled','auto save/readback');pluginSlow=false;
+ assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/auto',body:{on:true}});
+ assert.equal(await evaluate('document.querySelector(".pl-auto input").checked'),true,'saved auto preference read back');
+ await evaluate('document.querySelector(".pl-auto input").focus();window.__pluginCheckbox=document.activeElement');
+ plugins.servers[0].scanned++;await refresh();
+ assert.equal(await evaluate('document.activeElement===window.__pluginCheckbox'),true,'changed polling preserves keyboard focus');
+ await settingsTab('backup');await settingsTab('plugins');await refresh();
+ assert.equal(await evaluate('document.querySelectorAll("#plugins-settings-mount .ops-plug").length'),1);
+ await evaluate('window.__pluginRefresh=document.querySelector(".pl-bar button");__pluginRefresh.focus()');
+ assert.equal(await evaluate('document.activeElement===__pluginRefresh'),true,'refresh button focused before request');
+ await clickText('document.querySelector("#plugins-settings-mount")',require('../public/locales/vi.json')['pl.kiem_lai']);
+ await until('document.querySelector("#plugins-settings-mount").textContent.includes("2.5.0") && document.querySelector("#plugins-settings-mount").textContent.includes("refreshed-stale")','manual refresh updates visible data without blur');
+ assert.equal(await evaluate('document.activeElement===__pluginRefresh'),true,'refresh retains the same meaningful focused button');
+ assert.equal(await evaluate('document.querySelectorAll("#plugins-settings-mount .ops-plug").length'),1);
+ assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/refresh',body:{server:'vm1'}});
+ assert.equal(await evaluate('document.querySelector(".pl-srv-h small").textContent'),await evaluate('i18n("pl.doc_luc",[new Date('+plugins.servers[0].scanned+').toLocaleString("vi",{dateStyle:"short",timeStyle:"short"})])'),'scan time refreshed without blur');
+ pluginFailure=true;await evaluate('document.querySelector(".pl-stale-h button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes("Plugin update fixture rejected")','reload error visible in modal');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'reload failure keeps modal open');
+ assert.equal(await evaluate('document.querySelector(".pl-feedback").textContent.includes(i18n("pl.da_nap",[1,1]))'),false,'failed reload never claims success');
+ pluginFailure=false;await evaluate('document.querySelector(".pl-stale-h button").click()');await delay(80);
+ assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/reload',body:{server:'vm1',all:true}});
+ assert.ok(await evaluate('document.querySelector(".pl-feedback").textContent.includes(i18n("pl.da_nap",[1,1]))'),'reload immediate and queued feedback in modal');
+ pluginFailure=true;await evaluate('document.querySelector(".pl-row button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes("Plugin update fixture rejected")','actual update error');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'failed update keeps Settings open');
+ pluginFailure=false;pluginStateFailure=true;await evaluate('document.querySelector(".pl-row button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes("Plugin state discovery unavailable")','discovery GET error shown');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'discovery failure keeps Settings open');
+ assert.equal(await evaluate('TW.app().current()?.s.name'),'dormant','discovery error does not open fallback');
+ pluginStateFailure=false;pluginNoDiscovery=true;await evaluate('document.querySelector(".pl-row button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes(i18n("pl.khong_tim_thay_phien",["tn-plugin-update"]))','bounded no-discovery failure');
+ assert.equal(pluginFreshReads,3,'discovery retries bounded');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);
+ assert.equal(await evaluate('TW.app().current()?.s.name'),'dormant','missing session does not open fallback');
+ pluginNoDiscovery=false;
+ assert.equal(await evaluate('TW.app().servers().find(v=>v.id==="vm1").sessions.some(s=>s.name==="tn-plugin-update")'),false,'update session initially absent from client');
+ assert.equal(appSessions.some(s=>s.name==='tn-plugin-update'),false,'session initially absent from snapshot too');
+ await evaluate('document.querySelector(".pl-row button").click()');await delay(50);
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'modal stays open during pending fresh discovery');
+ await until('!document.querySelector("#dlg-set").open && document.querySelector("#v-focus").classList.contains("on") && document.querySelector("#detail .who b")?.textContent==="tn-plugin-update"','successful update discovers exact session then closes Settings');
+ assert.equal(await evaluate('TW.app().current().s.name'),'tn-plugin-update');
+ assert.equal(pluginFreshReads,5,'success retries stale snapshot before discovering new session');
+ assert.equal(await evaluate('!!document.activeElement.closest("#split")'),true,'modal focus return does not steal terminal focus');
+ assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/update',body:{server:'vm1',cfg:'.claude-work',id:'xspire@market'}});
+ await evaluate('document.querySelector("#tab-over").click();document.querySelector("#set").click()');await settingsTab('backup');
  assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);
  assert.equal(await evaluate('document.querySelector("#dlg-set .set-tab[aria-selected=true]").dataset.tab'),'backup');
  assert.equal(await evaluate('document.querySelector("#v-ops").contains(document.querySelector(".backup-card"))'),false);
@@ -275,6 +354,7 @@ let chrome, ws, closeBrowser, chromeError='';
  assert.equal(pack.rules.dormant.level,'suggest','saving drafts does not enable automatic reminders');
  // Operations contains one row per session and never types into asking, busy, unknown or background board.
  await closeSettings();await evaluate('window.__opened=[];var realOpen=TW.app().openSession;TW.app().openSession=function(id,name){__opened.push({id,name});return realOpen(id,name)};document.querySelector("#tab-ops").click()');await refresh();
+ await assertNoCrew('Operations');
  assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-session=dormant]").length'),1);
  assert.equal(await evaluate('document.querySelectorAll("#v-ops form,#v-ops input,#v-ops .backup-card,#tab-crew").length'),0);
  for(const name of ['asking','busy','unknown','parked','stale'])assert.equal(await evaluate('Array.from('+sessionRow(name)+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false,name+' cannot nudge');
@@ -362,14 +442,21 @@ let chrome, ws, closeBrowser, chromeError='';
   await evaluate('document.querySelector(".ops-reminder-settings").open=true;if(!document.querySelector(".ops-rules"))document.querySelector(".ops-edit-rules").click();document.querySelector(".ops-rules").scrollIntoView({block:"start"})');assert.ok(await evaluate('var d=document.querySelector("#dlg-set .set-panes");d.scrollWidth<=d.clientWidth+1'),'rules fit '+width);await screenshot('rules-'+width);
   await settingsTab('backup');assert.ok(await evaluate('var t=document.querySelector("#dlg-set .set-tab[aria-selected=true]").getBoundingClientRect();t.left>=0&&t.right<=innerWidth+1'),'selected backup tab visible '+width);assert.ok(await evaluate('var d=document.querySelector("#dlg-set .set-panes");d.scrollWidth<=d.clientWidth+1'),'backup pane width '+width);await screenshot('backup-'+width);await evaluate('document.querySelector(".backup-scope").open=true');assert.ok(await evaluate('document.querySelector(".backup-scope input").getBoundingClientRect().width<=24'));await screenshot('backup-scope-'+width);
   await settingsTab('sessions');await evaluate('document.querySelector("#dlg-set [data-tab=sessions]").focus()');await send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39});assert.equal(await evaluate('document.activeElement.dataset.tab'),'backup');
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39});assert.equal(await evaluate('document.activeElement.dataset.tab'),'plugins');
+  assert.ok(await evaluate('var t=document.activeElement.getBoundingClientRect();t.left>=0&&t.right<=innerWidth+1'),'plugin selected tab visible '+width);
+  assert.ok(await evaluate('var d=document.querySelector("#dlg-set .set-panes");d.scrollWidth<=d.clientWidth+1'),'plugin pane fits '+width);
+  assert.ok(await evaluate('document.querySelector(".pl-auto input").getBoundingClientRect().width<=24'),'plugin checkbox fits');
+  assert.ok(await evaluate('Array.from(document.querySelectorAll("#plugins-settings-mount .pl-row")).every(n=>n.getBoundingClientRect().height<180 && n.querySelector(".ops-name").getBoundingClientRect().width>30 && n.querySelector(".ops-meta").getBoundingClientRect().width>100)'),'plugin names and profiles readable '+width);
+  await screenshot('plugins-'+width);
   await closeSettings();await until('!document.querySelector("#dlg-set").open && !document.activeElement.closest("#dlg-set")','close returns focus outside Settings');
  }
+ assert.equal(pluginPosts.length,8,'only explicitly requested plugin writes, including rejected update; polling/navigation never update');
  assert.deepEqual(errors,[]);
  assert.ok(!requests.some(r=>/\/api\/servers\/.*\/(keys|sessions)$/.test(r.url)&&r.method==='POST'),'no arbitrary typing or new session path');
  assert.ok(!requests.some(r=>/\/api\/features\/(crew|crewpack)/.test(r.url)),'no Crew polling');
  assert.ok(!requests.some(r=>r.method==='DELETE'||/crew-log/.test(r.url)),'no process/task removal or worker log requests');
- fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,chrome:executable,chromeVersion,requests,posts,controls,nudges,accountChecks,downloads,rulePosts,errors},null,2));
- console.log('PASS: actual index/app Settings shell BEFORE Ops, backup-first feature loading, native folder/saved dialogs and focus, offline/removed saved reads and originals/export, pending full-list scope readback, real candidates/task checkboxes, account proof/expiry/readback, drafts through nav/poll, guarded nudge exact delivered/pending/uncertain/reload, owner row/badge dedupe, 1440/390; Overview/Terminal Crew removal with live, finished, owned and offline workers. Artifacts: '+output);
+ fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,chrome:executable,chromeVersion,requests,posts,controls,nudges,accountChecks,downloads,rulePosts,pluginPosts,errors},null,2));
+ console.log('PASS: actual index/app Settings shell BEFORE Ops, backup-first feature loading, native folder/saved dialogs and focus, offline/removed saved reads and originals/export, pending full-list scope readback, real candidates/task checkboxes, account proof/expiry/readback, drafts through nav/poll, guarded nudge exact delivered/pending/uncertain/reload, owner row/badge dedupe, plugin Settings-first versions, exact auto/refresh/reload/update POSTs, pending and focused polling, update session/modal success and failure, 1440/390 plugin fit; Overview/Terminal Crew removal with live, finished, owned and offline workers. Artifacts: '+output);
  async function screenshot(name){const r=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(output,name+'.png'),Buffer.from(r.data,'base64'));}
  function originalDormant(){return {session:'dormant',rule:'dormant',severity:'warn',level:'suggest',template:'continue',params:[60],since:3600,source:'status'};}
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(async()=>{

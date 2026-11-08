@@ -1429,7 +1429,7 @@
       return [v.id, v.name, v.on, v.hasTmux, v.error, v.lost, v.sessions.map(function (s) { return [s.name, s.state, s.cmd, s.diary]; }), v.workers.map(function (w) { return [w.finishedAt, w.result, w.kind, w.task, w.track, w.owner, w.elapsed >> 6, (w.lines || []).join()]; })];
     }));
   }
-  function refresh(force) {
+  function refresh(force, strict) {
     return api('GET', '/api/state').then(function (st) {
       servers = st.servers;
       servers.forEach(function (v) { if (v.local) v.name = i18n('app.local_name'); });
@@ -1453,6 +1453,7 @@
       if (view === 'focus' && ended && !terminalComposing()) { say(i18n('app.phien_da_ket_thuc'), true, 2500); if (paneCount === 1) setView('over'); }
       if (firstState) { firstState = false; if (!servers.length) addDlg(); }
     }).catch(function (e) {
+      if (strict) throw e;
       if (e.status === 401) { showLogin(); return; }
       if (online) { online = false; $('app').classList.add('offline'); say(i18n('app.mat_ket_noi_toi_web')); if (view === 'over') renderHero(); petSync(); }
     });
@@ -1498,7 +1499,7 @@
     if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
     var c = $('set-browser'); c.checked = true; c.onchange.call(c);
   }
-  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSettings: openSettings, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });

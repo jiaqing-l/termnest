@@ -1485,6 +1485,7 @@
   "ops.s.offline": "Máy mất kết nối hoặc dữ liệu đã cũ",
   "ops.s.unheard": "đã nhắc nhưng chưa phản hồi",
   "ops.loc_muc": "Lọc theo mức",
+  "pl.khong_tim_thay_phien": "Không tìm thấy phiên cập nhật {0}. Hãy kiểm tra lại kết nối.",
   "pl.tieu_de": "Plugin & skill",
   "pl.nguon": "Theo lệnh claude plugin list trên từng máy · đọc lại mỗi 10 phút",
   "pl.dang_doc": "Đang đọc danh sách plugin…",

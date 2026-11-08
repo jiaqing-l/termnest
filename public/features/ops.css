@@ -318,3 +318,11 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 #ops-settings-mount .ops-after{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0}
 #ops-settings-mount .ops-after input{width:60px;min-width:0;max-width:60px}
 #ops-settings-mount .ops-after span{white-space:nowrap;flex:none}
+
+#plugins-settings-mount{min-width:0}
+#plugins-settings-mount .ops-plug{margin:0;max-width:100%;box-shadow:none}
+#plugins-settings-mount .pl-auto{flex-direction:row;justify-content:flex-start}
+#plugins-settings-mount input[type=checkbox]{appearance:auto;width:18px;height:18px;min-height:18px;max-width:18px;padding:0;margin:0;flex:0 0 18px}
+#plugins-settings-mount .pl-srv-h{flex-wrap:wrap}
+#plugins-settings-mount .ops-meta,#plugins-settings-mount .pl-log-r{overflow-wrap:anywhere}
+#plugins-settings-mount .pl-row .ops-acts{width:auto;flex:none}
