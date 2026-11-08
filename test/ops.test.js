@@ -68,6 +68,7 @@ test('a nudge is confirmed only by the status file changing after it', () => {
   assert.equal(ops.verify(n, claude('busy', 0), NOW, 3), true);
   assert.equal(ops.verify(n, claude('idle', 0), NOW, 3), true);
   assert.equal(ops.verify(n, claude('idle', 5), NOW, 3), null);
+  assert.equal(ops.verify(n, claude('busy', 5), NOW, 3), null);
   assert.equal(ops.verify(n, claude('idle', 5), NOW + 3 * 60000, 3), false);
   assert.equal(ops.verify(n, { name: 'x', cmd: 'claude' }, NOW + 3 * 60000, 3), false);
   assert.ok(rules(run([claude('idle', 5)], { nudges: [{ ...n, server: 'm1', session: 'a', verified: false }] })).includes('unheard'));
