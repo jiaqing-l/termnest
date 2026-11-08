@@ -1,7 +1,9 @@
 # Current-user Task Scheduler adapter. No elevation, account password, service account or system service.
-# Usage: powershell.exe -NoProfile -File scripts/install-supervisor.ps1 [-DryRun] [-DataDir DIR] [-PasswordFile FILE] [-Port 7681]
+# Usage: powershell.exe -NoProfile -File scripts/install-supervisor.ps1 [-DryRun] [-DataDir DIR] [-PasswordFile FILE] [-Port 7681] [-NodePath EXE]
 #        powershell.exe -NoProfile -File scripts/install-supervisor.ps1 -Status|-Uninstall [-DryRun]
 # Optional -CreatePassword prompts securely only for a new secret inside an already private directory.
+# Runtime: explicit -NodePath, then app/node.exe from the installed payload, then PATH for source installs.
+# DATA defaults to the desktop launcher's Roaming AppData/Termnest; no vault migration is performed.
 # Prefer -PasswordFile with an existing protected secret. Never replaces a secret or a vault.
 # -DryRun prints deterministic task XML with paths only; it creates nothing and never prompts/starts a task.
 # InteractiveToken + LogonTrigger means LOGIN SESSION ONLY, not unattended boot or execution after logout.
@@ -9,7 +11,7 @@
 [CmdletBinding()]
 param(
   [switch]$DryRun, [switch]$Status, [switch]$Uninstall, [switch]$CreatePassword,
-  [string]$DataDir = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Termnest'),
+  [string]$DataDir = (Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Termnest'),
   [string]$PasswordFile = '', [ValidateRange(1,65535)][int]$Port = 7681,
   [string]$NodePath = ''
 )
@@ -29,14 +31,55 @@ try {
   $DataDir = AbsolutePath $DataDir
   if (-not $PasswordFile) { $PasswordFile = Join-Path $DataDir 'password' }
   $PasswordFile = AbsolutePath $PasswordFile
-  if (-not $NodePath) {
-    try { $NodePath = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source }
-    catch { throw 'RUNTIME_NODE_REQUIRED' }
+  # Read PE metadata before execution. Do not run a binary for a different OS/CPU,
+  # including an incompatible packaged runtime, and never silently bypass a damaged payload.
+  if (-not ('TermnestNativeCpu' -as [type])) {
+  Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class TermnestNativeCpu {
+ [StructLayout(LayoutKind.Sequential)] public struct Info {
+  public ushort Architecture, Reserved; public uint PageSize; public IntPtr Minimum, Maximum, Mask;
+  public uint Count, Type, Granularity; public ushort Level, Revision;
+ }
+ [DllImport("kernel32.dll")] static extern void GetNativeSystemInfo(out Info info);
+ public static ushort Architecture() { Info info; GetNativeSystemInfo(out info); return info.Architecture; }
+}
+'@
   }
-  $NodePath = (Get-Item -LiteralPath (AbsolutePath $NodePath)).FullName
-  $resolvedNode = & $NodePath -e 'process.stdout.write(require(''node:fs'').realpathSync.native(process.execPath));'
+  $cpu = [TermnestNativeCpu]::Architecture()
+  switch ($cpu) {
+    9 { $machine = 0x8664; $nodeArch = 'x64' }
+    12 { $machine = 0xaa64; $nodeArch = 'arm64' }
+    0 { $machine = 0x014c; $nodeArch = 'ia32' }
+    default { throw 'RUNTIME_NODE_ARCH_UNSUPPORTED' }
+  }
+  if (-not $NodePath) {
+    $bundledNode = Join-Path $AppDir 'node.exe'
+    if (Test-Path -LiteralPath $bundledNode) { $NodePath = $bundledNode }
+    else {
+      try { $NodePath = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source }
+      catch { throw 'RUNTIME_NODE_REQUIRED' }
+    }
+  }
+  try { $NodePath = (Get-Item -LiteralPath (AbsolutePath $NodePath)).FullName }
+  catch { throw 'RUNTIME_NODE_REQUIRED' }
+  $reader = $null
+  try {
+    $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($NodePath))
+    if ($reader.BaseStream.Length -lt 64 -or $reader.ReadUInt16() -ne 0x5a4d) { throw 'RUNTIME_NODE_INCOMPATIBLE' }
+    $reader.BaseStream.Position = 60
+    $peOffset = $reader.ReadUInt32()
+    if ($peOffset -gt $reader.BaseStream.Length - 24) { throw 'RUNTIME_NODE_INCOMPATIBLE' }
+    $reader.BaseStream.Position = $peOffset
+    if ($reader.ReadUInt32() -ne 0x00004550 -or $reader.ReadUInt16() -ne $machine) { throw 'RUNTIME_NODE_INCOMPATIBLE' }
+  } finally { if ($reader) { $reader.Dispose() } }
+  $resolvedNode = & $NodePath -e 'process.stdout.write(JSON.stringify({path:require(''node:fs'').realpathSync.native(process.execPath),platform:process.platform,arch:process.arch}));'
   if ($LASTEXITCODE -ne 0) { throw 'RUNTIME_NODE_REQUIRED' }
-  $NodePath = AbsolutePath $resolvedNode
+  try { $runtimeInfo = $resolvedNode | ConvertFrom-Json }
+  catch { throw 'RUNTIME_NODE_INCOMPATIBLE' }
+  if ($runtimeInfo.platform -ne 'win32' -or $runtimeInfo.arch -ne $nodeArch) { throw 'RUNTIME_NODE_INCOMPATIBLE' }
+  $NodePath = AbsolutePath $runtimeInfo.path
   $resolvedApp = & $NodePath -e 'process.stdout.write(require(''node:fs'').realpathSync.native(process.argv[1]));' $AppDir
   if ($LASTEXITCODE -ne 0) { throw 'RUNTIME_PATH_INVALID' }
   $AppDir = AbsolutePath $resolvedApp

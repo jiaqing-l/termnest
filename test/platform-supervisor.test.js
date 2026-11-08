@@ -8,7 +8,7 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const { platformRuntimeInfo } = require('../lib/platform-supervisor');
 const ROOT = path.resolve(__dirname, '..');
 function fixture(t) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-platform-'));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-platform-')));
   fs.chmodSync(dir, 0o700);
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
@@ -19,14 +19,127 @@ function ps(program, input = '') {
   return execFileSync(psPath(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(program, 'utf16le').toString('base64')],
     { input, encoding: 'utf8', timeout: 120000, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }).replace(/^\ufeff/, '').trim();
 }
-function windowsDry(args) {
-  return execFileSync(psPath(), ['-NoProfile', '-NonInteractive', '-File', path.join(ROOT, 'scripts/install-supervisor.ps1'), '-DryRun', ...args],
-    { encoding: 'utf8', timeout: 15000, windowsHide: true }).replace(/^\ufeff/, '').trim();
+function windowsDry(args, app = ROOT, env = process.env) {
+  return execFileSync(psPath(), ['-NoProfile', '-NonInteractive', '-File', path.join(app, 'scripts/install-supervisor.ps1'), '-DryRun', ...args],
+    { env, encoding: 'utf8', timeout: 15000, windowsHide: true }).replace(/^\ufeff/, '').trim();
 }
 function macDry(dir, args = [], app = ROOT) {
   return execFileSync('/bin/bash', [path.join(app, 'scripts/install-supervisor-macos.sh'), '--dry-run', ...args],
     { cwd: ROOT, env: { ...process.env, HOME: path.join(dir, 'absent home & Việt') }, encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
 }
+function appFixture(dir, name) {
+  const app = path.join(dir, name);
+  fs.mkdirSync(path.join(app, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(app, 'lib'));
+  for (const script of ['install-supervisor.ps1', 'install-supervisor-macos.sh']) {
+    fs.copyFileSync(path.join(ROOT, 'scripts', script), path.join(app, 'scripts', script));
+  }
+  fs.copyFileSync(path.join(ROOT, 'lib/service-runtime.js'), path.join(app, 'lib/service-runtime.js'));
+  return app;
+}
+
+test('source macOS adapter accepts an explicit runtime with spaces and Unicode and never invokes PATH node',
+  { skip: process.platform === 'win32' ? 'POSIX adapter; native Windows equivalent below' : false }, t => {
+    const dir = fixture(t), app = appFixture(dir, 'source app & Việt'), bin = path.join(dir, 'bin');
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(bin, 'node'), '#!/bin/sh\nexit 91\n', { mode: 0o700 });
+    const override = path.join(dir, 'explicit node Việt');
+    fs.copyFileSync(process.execPath, override); fs.chmodSync(override, 0o700);
+    const run = args => execFileSync('/bin/bash', [path.join(app, 'scripts/install-supervisor-macos.sh'), '--dry-run', ...args],
+      { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: bin + path.delimiter + process.env.PATH }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const text = run(['--node-path', override]);
+    assert.ok(text.includes(`<array><string>${override}</string>`));
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+    // Without an override or bundled runtime the failing PATH dependency is visible, before any mutation.
+    assert.throws(() => run([]), e => e.status === 2);
+    assert.throws(() => run(['--node-path', path.join(dir, 'missing')]), e => e.status === 2 && e.stderr.includes('RUNTIME_NODE_REQUIRED'));
+  });
+
+test('mock macOS binary fixtures select the matching packaged architecture and reject wrong OS/CPU before execution',
+  { skip: process.platform === 'win32' ? 'POSIX binary-header fixtures' : false }, t => {
+    const dir = fixture(t), app = appFixture(dir, 'Termnest Việt.app/Contents/Resources/app & spaces');
+    const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
+    fs.symlinkSync('/usr/bin/dirname', path.join(bin, 'dirname'));
+    // Stop only after real selection/header validation; synthetic Mach-O fixtures must NEVER execute.
+    const installer = path.join(app, 'scripts/install-supervisor-macos.sh');
+    const source = fs.readFileSync(installer, 'utf8');
+    const seam = '# Linux dry-run is a generation-only development fixture.';
+    assert.ok(source.includes(seam));
+    fs.writeFileSync(installer, source.replace(seam, 'printf \'%s\\n\' "$node_bin"; exit 0\n' + seam));
+    function macho(file, cpu, platform = 1) {
+      const b = Buffer.alloc(56);
+      [0xfeedfacf, cpu, 0, 2, 1, 24, 0, 0, 50, 24, platform, 0, 0, 0].forEach((v, i) => b.writeUInt32LE(v, i * 4));
+      fs.writeFileSync(file, b, { mode: 0o700 }); fs.chmodSync(file, 0o700);
+    }
+    const run = (arch, args = []) => {
+      fs.writeFileSync(path.join(bin, 'uname'), `#!/bin/sh\ncase "$1" in -m) echo ${arch} ;; *) echo Darwin ;; esac\n`, { mode: 0o700 });
+      return spawnSync('/bin/bash', [installer, '--dry-run', ...args],
+        { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: bin }, encoding: 'utf8' });
+    };
+    macho(path.join(app, 'node-x64'), 0x1000007);
+    macho(path.join(app, 'node-arm64'), 0x100000c);
+    for (const [arch, name, cpu, wrongCpu] of [['arm64', 'arm64', 0x100000c, 0x1000007], ['x86_64', 'x64', 0x1000007, 0x100000c]]) {
+      const bundled = path.join(app, `node-${name}`);
+      macho(bundled, cpu);
+      let result = run(arch); assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout.trim(), bundled);
+      const override = path.join(dir, 'override & Việt'); macho(override, cpu);
+      result = run(arch, ['--node-path', override]); assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout.trim(), override);
+      for (const bad of ['cpu', 'ios', 'elf', 'truncated']) {
+        if (bad === 'cpu') macho(bundled, wrongCpu);
+        if (bad === 'ios') macho(bundled, cpu, 2);
+        if (bad === 'elf') fs.writeFileSync(bundled, Buffer.concat([Buffer.from([0x7f, 0x45, 0x4c, 0x46]), Buffer.alloc(60)]));
+        if (bad === 'truncated') fs.writeFileSync(bundled, Buffer.from([0xcf, 0xfa]));
+        result = run(arch); assert.equal(result.status, 2, bad); assert.match(result.stderr, /RUNTIME_NODE_INCOMPATIBLE/, bad);
+      }
+      fs.unlinkSync(bundled);
+      result = run(arch); assert.equal(result.status, 2); assert.match(result.stderr, /RUNTIME_NODE_REQUIRED/);
+    }
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+  });
+
+test('native macOS packaged installer runs its adjacent Node without global Node and honors explicit override',
+  { skip: process.platform !== 'darwin' ? 'requires real macOS Node Mach-O execution; Linux fixtures are generation only' : false }, t => {
+    const dir = fixture(t), app = appFixture(dir, 'Termnest Việt & spaces.app/Contents/Resources/app');
+    const bundled = path.join(app, `node-${process.arch}`), override = path.join(dir, 'override node Việt');
+    for (const file of [bundled, override]) { fs.copyFileSync(process.execPath, file); fs.chmodSync(file, 0o700); }
+    const run = args => execFileSync('/bin/bash', [path.join(app, 'scripts/install-supervisor-macos.sh'), '--dry-run', ...args],
+      { env: { ...process.env, HOME: path.join(dir, 'absent'), PATH: '/usr/bin:/bin' }, encoding: 'utf8' });
+    for (const [args, expected] of [[[], bundled], [['--node-path', override], override]]) {
+      const text = run(args);
+      const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '-'], { input: text, encoding: 'utf8' }));
+      assert.equal(plist.ProgramArguments[0], fs.realpathSync(expected));
+      assert.equal(plist.ProgramArguments[1], path.join(app, 'server.js'));
+      assert.equal(plist.EnvironmentVariables.TW_DATA, path.join(dir, 'absent/Library/Application Support/Termnest'));
+    }
+    assert.equal(fs.existsSync(path.join(dir, 'absent')), false);
+  });
+
+test('native Windows packaged runtime works without PATH Node, honors overrides and rejects incompatible PE before execution',
+  { skip: process.platform !== 'win32' ? 'requires real Windows PE loader and PowerShell' : false }, t => {
+    const dir = fixture(t), app = appFixture(dir, 'installed Termnest Việt & spaces/app');
+    const bundled = path.join(app, 'node.exe'), override = path.join(dir, 'override node Việt.exe');
+    for (const file of [bundled, override]) fs.copyFileSync(process.execPath, file);
+    const env = { ...process.env, PATH: path.join(dir, 'absent-bin') };
+    const defaultData = path.join(ps("[Environment]::GetFolderPath('ApplicationData')"), 'Termnest');
+    for (const [args, expected] of [[[], bundled], [['-NodePath', override], override]]) {
+      const text = windowsDry(args, app, env);
+      const command = text.match(/<Command>(.*?)<\/Command>/)[1].replaceAll('&amp;', '&');
+      assert.equal(command, fs.realpathSync(expected));
+      const js = Buffer.from(text.match(/Buffer.from\(&apos;([A-Za-z0-9+/=]+)/)[1], 'base64').toString('utf8');
+      const context = { process: { env: {} }, require: server => assert.equal(server, path.join(app, 'server.js')) };
+      require('node:vm').runInNewContext(js, context);
+      assert.equal(context.process.env.TW_DATA, defaultData);
+    }
+    // Corrupt a copy only: incompatible payloads must fail rather than falling back to PATH.
+    const pe = fs.readFileSync(bundled), offset = pe.readUInt32LE(60);
+    pe.writeUInt16LE(process.arch === 'x64' ? 0xaa64 : 0x8664, offset + 4); fs.writeFileSync(bundled, pe);
+    assert.throws(() => windowsDry([], app, env), e => e.status === 2 && e.stderr.includes('RUNTIME_NODE_INCOMPATIBLE'));
+    fs.writeFileSync(bundled, '#!/bin/sh\nexit 91\n');
+    assert.throws(() => windowsDry([], app, env), e => e.status === 2 && e.stderr.includes('RUNTIME_NODE_INCOMPATIBLE'));
+    fs.unlinkSync(bundled);
+    assert.throws(() => windowsDry([], app, env), e => e.status === 2 && e.stderr.includes('RUNTIME_NODE_REQUIRED'));
+    assert.equal(fs.existsSync(path.join(dir, 'absent-bin')), false);
+  });
 
 test('pure readiness provider returns stable primitives and never turns configuration into runtime health', () => {
   const unknown = platformRuntimeInfo({ platform: 'win32' });
@@ -155,7 +268,7 @@ test('mock launchd lifecycle installs idempotently, preserves protected files, r
     fs.writeFileSync(vault, 'encrypted-fixture', { mode: 0o600 }); fs.writeFileSync(secret, 'synthetic-fixture-password\n', { mode: 0o600 });
     fs.copyFileSync(path.join(ROOT, 'lib/service-runtime.js'), path.join(app, 'lib/service-runtime.js'));
     const manager = path.join(bin, 'launchctl'), plutil = path.join(bin, 'plutil');
-    fs.writeFileSync(path.join(bin, 'uname'), '#!/bin/sh\necho Darwin\n', { mode: 0o700 });
+    fs.writeFileSync(path.join(bin, 'uname'), `#!/bin/sh\ncase "$1" in -m) echo ${process.arch === 'arm64' ? 'arm64' : 'x86_64'} ;; *) echo ${process.platform === 'darwin' ? 'Darwin' : 'Linux'} ;; esac\n`, { mode: 0o700 });
     fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 12345\n', { mode: 0o700 });
     fs.writeFileSync(plutil, '#!/bin/sh\ncat >/dev/null\n', { mode: 0o700 });
     fs.writeFileSync(manager, `#!/bin/sh
@@ -167,9 +280,10 @@ bootout) rm "$HOME/loaded" ;;
 *) exit 9 ;;
 esac
 `, { mode: 0o700 });
-    // Change executable locations only in the isolated test copy; no real launchctl can be reached.
+    // Use fixture managers only; the Linux copy also changes the host guard. No real launchctl can be reached.
     const source = fs.readFileSync(path.join(ROOT, 'scripts/install-supervisor-macos.sh'), 'utf8')
-      .replaceAll('/bin/launchctl', manager).replaceAll('/usr/bin/plutil', plutil);
+      .replaceAll('/bin/launchctl', manager).replaceAll('/usr/bin/plutil', plutil)
+      .replace('[[ "$runtime_os" = Darwin ]] || { echo RUNTIME_MACOS_REQUIRED', `[[ "$runtime_os" = ${process.platform === 'darwin' ? 'Darwin' : 'Linux'} ]] || { echo RUNTIME_MACOS_REQUIRED`);
     const installer = path.join(scripts, 'install-supervisor-macos.sh'); fs.writeFileSync(installer, source, { mode: 0o700 });
     const env = { ...process.env, HOME: home, PATH: bin + path.delimiter + process.env.PATH };
     const run = (...args) => execFileSync('/bin/bash', [installer, '--data-dir', data, '--password-file', secret, ...args], { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -262,6 +376,7 @@ test('mock missing Node dependency fails before macOS dry-run mutations', { skip
   const dir = fixture(t), bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
   // dirname is needed to resolve the script's own absolute application path; no node exists in this fixture PATH.
   fs.symlinkSync('/usr/bin/dirname', path.join(bin, 'dirname'));
+  fs.symlinkSync('/usr/bin/uname', path.join(bin, 'uname'));
   const home = path.join(dir, 'absent home');
   const result = spawnSync('/bin/bash', [path.join(ROOT, 'scripts/install-supervisor-macos.sh'), '--dry-run'],
     { env: { ...process.env, HOME: home, PATH: bin }, encoding: 'utf8' });
