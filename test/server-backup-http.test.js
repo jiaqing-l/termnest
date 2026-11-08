@@ -11,6 +11,11 @@ const { once } = require('node:events');
 const { Vault } = require('../lib/vault');
 const { SnapshotStore } = require('../lib/server-backup-store');
 const ROOT = path.resolve(__dirname, '..');
+async function within(promise, label, ms = 5000) {
+  let timer;
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('fixture timeout: ' + label)), ms); })]); }
+  finally { clearTimeout(timer); }
+}
 // Keep the real HTTP/auth/Host/Origin/lifecycle boundary and all real feature registration.
 // Substitute only backend creation, so no tmux/SSH/user account or live chats are touched.
 const PROGRAM = `
@@ -32,7 +37,7 @@ function request(port, method, route, { cookie, origin, host = '127.0.0.1', body
     if (cookie) headers.Cookie = cookie; if (origin) headers.Origin = origin;
     const req = http.request({ hostname: '127.0.0.1', port, method, path: route, headers }, res => {
       const chunks = []; res.on('data', d => chunks.push(d)); res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, bytes: Buffer.concat(chunks) })); res.on('error', reject);
-    }); req.on('error', reject); req.end(data);
+    }); req.setTimeout(5000, () => req.destroy(Error('fixture HTTP timeout'))); req.on('error', reject); req.end(data);
   });
 }
 
@@ -46,7 +51,7 @@ test('real server boots locked, authenticates every saved route, enforces Host/O
   const snapshot = store.commit(tx), file = store.manifest('deleted-vm', snapshot.id).entries[0];
   const child = spawn(process.execPath, ['-e', PROGRAM], { cwd: ROOT, env: { ...process.env, HOME: home, USERPROFILE: home, TW_DATA: dir, TW_DEFAULT_DIR: home, TW_PORT: '0', TW_PASSWORD_FILE: undefined, TW_PACKAGED: '0' }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
   let output = ''; child.stdout.on('data', d => { output += d; }); child.stderr.on('data', d => { output += d; }); const exited = once(child, 'exit');
-  t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; } });
+  t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await within(exited, 'server cleanup'); } });
   const port = await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(Error('boot timeout: ' + output)), 10000); child.once('message', m => { clearTimeout(timer); resolve(m.port); }); child.once('exit', () => { clearTimeout(timer); reject(Error('boot failed: ' + output)); }); });
   const routes = ['/status', '/snapshots?server=deleted-vm', `/files?server=deleted-vm&snapshot=${snapshot.id}`, `/preview?server=deleted-vm&snapshot=${snapshot.id}&file=${file.id}`, `/download?server=deleted-vm&snapshot=${snapshot.id}&file=${file.id}`, `/export?server=deleted-vm&snapshot=${snapshot.id}`];
   for (const route of routes) assert.equal((await request(port, 'GET', '/api/features/server-backup' + route)).status, 401);
@@ -67,5 +72,5 @@ test('real server boots locked, authenticates every saved route, enforces Host/O
   const exported = await request(port, 'GET', '/api/features/server-backup' + routes[5], { cookie }); assert.ok(exported.bytes.includes(data));
   assert.equal((await request(port, 'GET', `/api/features/server-backup/download?server=deleted-vm&snapshot=${snapshot.id}&file=../../vault.json`, { cookie })).status, 404);
   assert.ok(!/server-backup.*not loaded/i.test(output), output); assert.ok(!output.includes(data.toString()));
-  child.kill('SIGTERM'); const [code] = await exited; assert.equal(code, 0, output);
+  child.kill('SIGTERM'); const [code] = await within(exited, 'server shutdown'); assert.equal(code, 0, output);
 });
