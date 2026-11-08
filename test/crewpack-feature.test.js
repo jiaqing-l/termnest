@@ -8,8 +8,11 @@ const cp = require('../lib/features/crewpack');
 const wd = require('../lib/features/watchdog');
 const detect = require('../lib/crew-detect');
 
+const fixtureRoots = [];
+test.after(() => { for (const root of fixtureRoots) fs.rmSync(root, { recursive: true, force: true }); });
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-crewpack-'));
+  fixtureRoots.push(root);
   const task = (id, front, rounds) => {
     const d = path.join(root, '_crew', 'tasks', id); fs.mkdirSync(path.join(d, 'tracks', 'W1'), { recursive: true });
     fs.writeFileSync(path.join(d, 'MANIFEST.md'), `---\ntask_id: ${id}\ntitle: "Task ${id}"\n${front}\n---\n# body\n`);
@@ -74,4 +77,127 @@ test('a track names its repo, branch and remote from BASE, with any credentials 
   fs.writeFileSync(path.join(root, '_crew', 'tasks', 't-asleep', 'tracks', 'W1', 'BASE'), 'repo=repo\nbase_ref=main\nbranch=crew/t-asleep-w1\n');
   const res = await cp.crewRuntime()({ cwds: [root], days: 3 }), k = res.roots[0].tasks.find((t) => t.id === 't-asleep').tracks[0];
   assert.deepEqual([k.repo, k.branch, k.remote], ['repo', 'crew/t-asleep-w1', 'https://gitlab.example.com/g/repo.git']);
+});
+
+// Exercise the feature's real host adapters, runtime and registered HTTP handlers.
+// Only tmux launch/typing is faked: no existing user sessions are touched.
+function featureHost(t, options = {}) {
+  const root = fs.realpathSync(fixture());
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  let clock = 1800000000000, serial = 0;
+  const vault = { features: { crewpack: { enabled: false, ...options.settings }, ops: { keep: 'untouched' } }, other: 'preserved' };
+  const routes = new Map(), timers = [], sent = [], opened = [];
+  const remote = { cfg: { id: 'vm', name: 'VM', local: true }, ready: true, lastPoll: clock,
+    snapshot: { bootId: 'boot', sessions: [{ id: '$1', name: 'team', created: 3, path: root, paneIds: ['%7'], aiStatus: { tool: 'claude', status: 'busy', at: clock } }] },
+    exec: async (command) => { sent.push(command); return { code: 0, out: '' }; } };
+  const host = {
+    settings: { get: () => { if (options.locked) throw Error('locked'); return JSON.parse(JSON.stringify(vault.features.crewpack)); }, set: (s) => { vault.features.crewpack = s; } },
+    remotes: () => [remote], backendOf: (id) => id === 'vm' ? remote : null, log() {},
+    onSnapshot(fn) { this.snapshot = fn; }, route(method, route, fn) { routes.set(method + ' ' + route, fn); },
+    readJson: async (req) => req.body, send: (res, code, data) => Object.assign(res, { code, data }), fail: (res, code, error) => Object.assign(res, { code, error }),
+    sessions: { start: async (r, { name, dir, run }) => { opened.push({ name, dir, run }); r.snapshot.sessions.push({ id: '$9', name, created: 7, path: dir, paneIds: ['%90'], aiStatus: { tool: 'claude', status: 'idle', at: clock } }); } },
+  };
+  const running = cp.register(host, { now: () => clock, newId: () => 'tn-' + (++serial).toString(16).padStart(32, '0'), setInterval: (fn, ms) => { timers.push({ fn, ms }); return { unref() {} }; }, clearInterval() {} });
+  t.after(() => running.stop());
+  return { root, vault, remote, host, sent, opened, timers, running,
+    async route(method, url, body) { const res = {}; assert.ok(routes.has(method + ' ' + url)); await routes.get(method + ' ' + url)({ req: { body }, res }); return res; },
+    async tick() { await timers[0].fn(); },
+    advance(ms) { clock += ms; remote.lastPoll = clock; }, get now() { return clock; },
+  };
+}
+
+test('feature status/control routes have stable contracts and settings remain within crewpack', async (t) => {
+  const f = featureHost(t);
+  let response = await f.route('GET', '/status');
+  assert.deepEqual(Object.keys(response.data).sort(), ['enabled', 'errors', 'intervalMinutes', 'servers']);
+  assert.equal(response.data.enabled, false); assert.equal(response.data.intervalMinutes, 30);
+  response = await f.route('POST', '/control', { enabled: true, workspaces: [{ serverId: 'vm', root: f.root }] });
+  assert.equal(response.code, 200); assert.equal(response.data.intervalMinutes, 30);
+  await f.tick(); response = await f.route('GET', '/status');
+  const server = response.data.servers[0];
+  for (const key of ['id', 'name', 'online', 'observedAt', 'teams', 'audits', 'freshness']) assert.ok(Object.hasOwn(server, key), key);
+  for (const key of ['id', 'session', 'root', 'status', 'reason', 'lastProgressAt', 'lastAction', 'requiresOwner']) assert.ok(Object.hasOwn(server.teams[0], key), key);
+  assert.ok(server.teams.every((s) => ['progressing', 'idle', 'waiting_owner', 'blocked', 'stalled', 'unknown', 'completed'].includes(s.status)));
+  assert.ok(server.teams.every((s) => typeof s.reason.code === 'string' && s.reason.params.every((v) => ['string', 'number', 'boolean'].includes(typeof v))));
+  assert.deepEqual(f.vault.features.ops, { keep: 'untouched' }); assert.equal(f.vault.other, 'preserved');
+  assert.equal(f.timers[0].ms, 5000);
+});
+
+test('the backend feature timer opens then sends to an idle audit without an HTTP request or snapshot event', async (t) => {
+  const f = featureHost(t, { settings: { enabled: true } });
+  await f.tick(); assert.equal(f.opened.length, 1); assert.equal(f.sent.length, 0);
+  await f.tick(); assert.equal(f.sent.length, 1);
+  assert.ok(f.sent[0].includes("-t '%90'")); assert.ok(f.sent[0].includes('/xspire-devkit:xspire-crew-ops-audit'));
+  await f.host.snapshot(f.remote); await f.tick(); assert.equal(f.sent.length, 1);
+  const status = (await f.route('GET', '/status')).data;
+  assert.equal(status.servers[0].audits[0].verification, 'unverified');
+});
+
+test('feature report adapter requires the actual validated report file to complete', async (t) => {
+  const f = featureHost(t, { settings: { enabled: true } }); await f.tick(); await f.tick();
+  const run = f.running.supervisor.host('vm').active;
+  const dir = path.join(f.root, '_crew', 'termnest-ops', 'reports'); fs.mkdirSync(dir, { recursive: true });
+  f.advance(1);
+  fs.writeFileSync(path.join(dir, run.runId + '.json'), JSON.stringify({ schemaVersion: 1, runId: run.runId, serverId: 'vm', root: f.root,
+    teamId: run.teamId, startedAt: run.createdAt, completedAt: f.now, coverage: { taskIds: run.taskIds }, result: 'completed', findings: [] }));
+  await f.tick(); f.advance(1); await f.tick();
+  const audit = (await f.route('GET', '/status')).data.servers[0].audits[0];
+  assert.equal(audit.phase, 'completed'); assert.equal(audit.active, false); assert.equal(audit.verification, 'reported');
+  const manual = await f.route('POST', '/audit', { server: 'vm', root: f.root });
+  assert.equal(manual.code, 200); assert.notEqual(manual.data.runId, run.runId);
+  assert.equal(f.opened.length, 1); assert.equal(f.sent.length, 2);
+});
+
+test('legacy routes stay registered and off suppresses pending prompts and manual audit requests', async (t) => {
+  const f = featureHost(t);
+  assert.equal((await f.route('POST', '/days', { days: 7 })).data.days, 7);
+  assert.equal((await f.route('POST', '/schedule', { hours: 0.5 })).data.auditHours, 0.5);
+  await f.tick(); assert.equal(f.opened.length, 1);
+  let data = (await f.route('GET', '/data')).data;
+  assert.equal(data.days, 7); assert.equal(data.auditHours, 0.5); assert.equal(data.servers[0].auditPending, true);
+  assert.ok(data.servers[0].findings.length > 0); assert.ok(data.servers[0].tasks.length > 0);
+  await f.route('POST', '/schedule', { hours: 0 }); await f.tick(); await f.host.snapshot(f.remote);
+  assert.equal(f.sent.length, 0);
+  const response = await f.route('POST', '/audit', { server: 'vm', root: f.root });
+  assert.equal(response.code, 409); assert.equal(response.error, 'supervisor_disabled');
+  data = (await f.route('GET', '/data')).data; assert.equal(data.auditHours, 0);
+});
+
+test('feature route validation rejects bad roots/servers/intervals and fails closed while vault is locked', async (t) => {
+  const f = featureHost(t);
+  for (const body of [{ enabled: true, intervalMinutes: 1.5 }, { enabled: true, intervalMinutes: 1441 },
+    { enabled: true, workspaces: [{ serverId: 'missing', root: '/work' }] }, { enabled: true, workspaces: [{ serverId: 'vm', root: '/a\ncommand' }] }]) {
+    assert.equal((await f.route('POST', '/control', body)).code, 400);
+  }
+  assert.equal((await f.route('POST', '/audit', { server: 'missing', root: '/work' })).code, 404);
+  const locked = featureHost(t, { locked: true }); await locked.tick();
+  assert.equal((await locked.route('GET', '/status')).data.errors[0].code, 'storage_locked');
+  assert.equal(locked.opened.length + locked.sent.length, 0);
+});
+
+test('configured workspace discovery works with no sessions and open tasks ignore old mtimes', async (t) => {
+  const f = featureHost(t); f.remote.snapshot.sessions = [];
+  const mf = path.join(f.root, '_crew', 'tasks', 't-blocked', 'MANIFEST.md');
+  const old = new Date(Date.now() - 200 * 86400000); fs.utimesSync(mf, old, old);
+  const res = await cp.crewRuntime()({ cwds: [], roots: [f.root], days: 1 });
+  assert.ok(res.roots[0].tasks.some((t) => t.id === 't-blocked'));
+  await f.route('POST', '/control', { enabled: true, workspaces: [{ serverId: 'vm', root: f.root }] }); await f.tick();
+  const data = (await f.route('GET', '/status')).data;
+  assert.ok(data.servers[0].teams.some((s) => s.taskIds.includes('t-blocked') && s.status === 'blocked' && s.session === ''));
+  assert.ok(data.servers[0].teams.some((s) => s.taskIds.includes('t-asleep') && s.status === 'unknown'));
+});
+
+test('round evidence observes the tail after large legacy history and ignores token-only edits', async (t) => {
+  const f = featureHost(t), file = path.join(f.root, '_crew', 'tasks', 't-asleep', 'tracks', 'W1', 'ROUNDS.tsv');
+  const rows = Array.from({ length: 1500 }, (_, i) => `${i + 1}\t2026-11-01T01:00:00Z\t2026-11-01T02:00:00Z\t60\t0\t100\tnew\tcodex\tm\thigh\ttooling`).join('\n') + '\n';
+  fs.writeFileSync(file, rows);
+  const scan = () => cp.crewRuntime()({ roots: [f.root], cwds: [], days: 3 });
+  let result = await scan(); let k = result.roots[0].tasks.find((t) => t.id === 't-asleep').tracks[0];
+  assert.equal(k.lastRound.round, '1500'); const evidence = k.lastRound;
+  fs.writeFileSync(file, rows.replaceAll('\t100\t', '\t999\t'));
+  result = await scan(); k = result.roots[0].tasks.find((t) => t.id === 't-asleep').tracks[0];
+  assert.deepEqual(k.lastRound, evidence);
+  fs.appendFileSync(file, '1501\t2026-11-02T01:00:00Z\t2026-11-02T02:00:00Z\t60\t1\t100\tfix\tcodex\tm\thigh\ttooling\n');
+  result = await scan(); k = result.roots[0].tasks.find((t) => t.id === 't-asleep').tracks[0];
+  assert.equal(k.lastRound.round, '1501'); assert.equal(k.lastRound.result, '1');
 });
