@@ -105,16 +105,17 @@
     if (unavailable) rows.append(el('p', 'backup-warning', t(status ? 'prior' : 'unavailable')), button('retry', refresh));
     if (pending) rows.append(el('p', '', t('saving')));
     if (!status) return;
-    destination.textContent = t('destination', [status.storage.host, status.storage.path]);
+    destination.textContent = t('destination', [status.storage.host]);
     var toggle = button(status.enabled ? 'pause' : 'enable', function () { var enabled = !status.enabled; control({ enabled: enabled }, function (r) { return r.enabled === enabled; }); });
     toggle.disabled = pending || unavailable; settings.append(toggle, el('span', '', pending ? t('saving') : t(status.enabled && !unavailable ? 'automatic' : unavailable ? 'unavailable' : 'paused')));
+    settings.append(el('p', 'backup-storage-path', t('storage_path', [status.storage.path])));
     status.servers.forEach(function (s) {
       var row = el('article', 'backup-row'); row.dataset.server = s.id;
       row.append(el('h4', '', s.name), el('span', 'backup-connection', t(s.online ? 'online' : 'offline')));
       if (queued[s.id] && (s.phase === 'running' || s.lastAttemptAt !== queued[s.id].attempt)) delete queued[s.id];
       row.append(el('p', '', s.hasSnapshot ? (s.lastSuccessAt ? t('latest', [stamp(s.lastSuccessAt)]) : t('saved_partial')) : t('never')));
-      row.append(el('p', '', s.roots.length ? t(s.includeChats ? 'coverage' : 'files_coverage', [s.roots.join(', ')]) : t(s.includeChats ? 'chats_only' : 'no_scope')));
-      if (s.phase === 'partial' || s.phase === 'error') row.append(el('p', 'backup-warning', t('attempt', [stamp(s.lastAttemptAt)]) + ' ' + reason(s.reason)));
+      row.append(el('p', '', s.roots.length ? t(s.includeChats ? 'coverage' : 'files_coverage', [s.roots.length]) : t(s.includeChats ? 'chats_only' : 'no_scope')));
+      if (s.phase === 'partial' || s.phase === 'error') row.append(el('p', 'backup-warning', t('attempt', [stamp(s.lastAttemptAt), reason(s.reason)])));
       if (s.phase === 'running' || queued[s.id]) row.append(el('p', '', t('running')));
       var actions = el('div', 'backup-actions');
       var run = button('run', async function () {

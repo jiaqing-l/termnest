@@ -565,6 +565,7 @@
     if (pluginTab) { pluginTab.textContent = i18n('pl.tieu_de'); if (stale) pluginTab.append(el('span', 'ops-badge', String(stale))); }
     if (!page || !data) return;
     var previousRules = editing && page.querySelector('.ops-rules');
+    if (supervisionForm) supervisionForm.querySelectorAll('.ops-edit-rules,.ops-rules').forEach(function (node) { node.remove(); });
     if (supervisionBox) supervisionBox.remove();
     var backup = TW.serverBackupCard && TW.serverBackupCard(); if (backup) backup.remove();
     page.textContent = '';
@@ -577,19 +578,10 @@
     h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', i18n('ops.connections', [data.servers.length, data.servers.filter(function (s) { return s.online === true || s.connected === true; }).length])));
     var tools = el('div', 'ops-tools');
     if (data.dismissed) tools.append(button(i18n('ops.hien_lai', [data.dismissed]), 'ghost', function () { post('/dismiss', { all: true }).then(load); }));
-    // Open the separate plugin view; count sessions running an older plugin.
-    var staleN = 0; ((plug && plug.servers) || []).forEach(function (v) { staleN += v.stale.length; });
-    var jump = button(i18n('pl.tieu_de'), 'ghost ops-jump', function () { TW.app().setView('plugins'); });
-    jump.prepend(icon('plug')); if (staleN) jump.append(el('span', 'ops-count warn', String(staleN)));
-    tools.append(jump);
-    // Open or close every section at once (each section remembers its state on this device).
-    function setAll(open) { page.querySelectorAll('details.ops-card').forEach(function (d) { if (d.open !== open) d.open = open; }); }
-    var exp = el('div', 'ops-expand'); exp.append(button(i18n('ops.mo_het'), 'ghost', function () { setAll(true); }), button(i18n('ops.thu_het'), 'ghost', function () { setAll(false); }));
-    tools.append(exp);
-    tools.append(button(i18n('ops.chinh_luat'), '', function () { editing = !editing; draw(); }));
     head.append(h, tools); page.append(head, supervisionCard()); if (backup) page.append(backup);
     var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);
-    if (editing) page.append(previousRules || rulesForm());
+    supervisionForm.append(button(i18n('ops.chinh_luat'), 'ops-edit-rules', function () { editing = !editing; draw(); }));
+    if (editing) supervisionForm.append(previousRules || rulesForm());
     var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); });
     var groups = el('div', 'ops-groups');
     if (!shown.length) { var e = el('section', 'ops-card'); e.append(el('p', 'ops-empty ok', i18n(all.length ? 'ops.khong_co_muc_loc' : 'ops.on_ca'))); groups.append(e); }
@@ -597,7 +589,7 @@
       var items = shown.filter(function (x) { return group(x.f) === g; }); if (!items.length) return;
       var box = el('details', 'ops-card ops-group g-' + g), sum = el('summary', 'ops-card-h'); keepOpen(box, 'g-' + g, true);
       var h3 = el('h3', ''); h3.append(icon(g), document.createTextNode(i18n('ops.g.' + g)), el('span', 'ops-count', String(items.length)));
-      sum.append(h3, el('small', 'ops-pack', i18n('ops.gd.' + g))); box.append(sum);
+      sum.append(h3); box.append(sum);
       items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
     });
     page.append(el('div', 'ops-part', i18n('ops.phan_chu_y')), groups, el('div', 'ops-part', i18n('ops.phan_chi_tiet')));

@@ -15,7 +15,7 @@ const chat=[{type:'user',message:{role:'user',content:'<img src=x onerror="windo
 const longName='/saved/'+('tên-dài-🦉'.repeat(35))+'.jsonl';
 const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/features/ops.css"><link rel="stylesheet" href="/features/server-backup.css"><style>body{overflow:auto}.view.on{display:block}.main-top{position:static}</style></head><body><div class="main-top"><div class="seg"><button>Tổng quan</button><button>Terminal</button><button>Token AI</button><button>Ghi chú</button></div></div><section id="v-token"></section><script src="/features-host.js"></script><script>
 const locale=${fs.readFileSync(path.join(publicDir,'locales/vi.json'),'utf8')};window.i18n=(key,args=[])=>String(locale[key]||key).replace(/\\{(\\d+)\\}/g,(_,n)=>args[n]);
-window.__ticks=[];window.setInterval=(fn,ms)=>{__ticks.push({fn,ms});return __ticks.length};window.__refresh=()=>__ticks.filter(x=>x.ms===10000).forEach(x=>x.fn());
+window.__lang='vi';window.TW_I18N={lang:()=>__lang};window.__ticks=[];window.setInterval=(fn,ms)=>{__ticks.push({fn,ms});return __ticks.length};window.__refresh=()=>__ticks.filter(x=>x.ms===10000).forEach(x=>x.fn());
 window.__picks=[];TW.attach({api:async(method,url,body)=>{const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});if(!r.ok)throw Error('fixture');return r.json()},setView:id=>TW.setView(id),say:()=>{},servers:()=>[],openSession:()=>{},browseDir:(id,start,cb)=>{__picks.push({id,start});window.__pick=cb;}});
 </script><script src="/features/ops.js"></script><script src="/features/server-backup.js"></script></body></html>`;
 const server=http.createServer(async(req,res)=>{
@@ -81,7 +81,19 @@ let chrome,ws,chromeError = '';
  assert.equal(await evaluate('document.querySelectorAll(".ops-group .ops-row").length'),1,'ordinary finished/idle findings excluded');
  assert.equal(await evaluate('document.querySelectorAll(".ops-group .ops-row button").length'),2,'offline reconnect and dismiss');
  assert.ok((await text()).includes('Chỉ chat'));
- assert.ok((await text()).includes('backup-host · /encrypted/backups'));
+ assert.equal(await evaluate('document.querySelector(".backup-destination").textContent'),'Máy lưu: backup-host');
+ assert.equal(await evaluate('document.querySelector(".backup-settings").open'),false);
+ assert.equal(await evaluate('document.querySelector(".backup-storage-path").textContent'),'Thư mục lưu: /encrypted/backups');
+ assert.ok(await evaluate(row('vm3')+'.textContent.includes("Chat · 1 thư mục")'));
+ assert.ok(!(await evaluate(row('vm3')+'.querySelectorAll("p")[1].textContent')).includes('/work/third'),'root paths stay inside folder controls');
+ // Locale deliberately differs from Chrome default; all saved times use selected app language.
+ for (const lang of ['vi','en']) {
+  await evaluate('window.__lang='+JSON.stringify(lang));await refresh();
+  const expected=await evaluate('new Date('+status.servers[2].lastSuccessAt+').toLocaleString('+JSON.stringify(lang)+',{dateStyle:"short",timeStyle:"short"})');
+  assert.equal(await evaluate(row('vm3')+'.querySelector("p").textContent'),'Bản sao gần nhất: '+expected);
+ }
+ await evaluate('window.__lang="vi"');await refresh();
+ assert.equal(await evaluate('document.querySelectorAll(".ops-expand,.ops-jump,.ops-tools button,.ops-group summary small").length'),0);
  assert.ok(await evaluate(row('vm2')+'.textContent.includes("Chưa có bản sao lưu")'));
  assert.equal(await evaluate('Array.from('+row('vm3')+'.querySelectorAll("button")).find(b=>b.textContent==="Sao lưu ngay").disabled'),true);
  const offlineCopy=structuredClone(status.servers[2]);status.servers[2].hasSnapshot=false;status.servers[2].lastSuccessAt=null;await refresh();
@@ -90,7 +102,7 @@ let chrome,ws,chromeError = '';
  await click('vm3','Xem chat');await until('document.querySelectorAll(".backup-file-list button").length===1','offline chat files');
  await evaluate('document.querySelector(".backup-file-list button").click()');await until('document.querySelector(".backup-preview").textContent.includes("Claude reply")','chat parsed');
  let preview=await evaluate('document.querySelector(".backup-preview").textContent');
- assert.ok(preview.includes('<img src=x'));assert.ok(preview.includes('Chỉ hiển thị một phần'));assert.equal(preview.split('Codex reply').length-1,1,'Codex duplicate hidden');assert.ok(!preview.includes('hidden-tool'));
+ assert.ok(preview.includes('<img src=x'));assert.ok(preview.includes('Chỉ hiển thị một phần'));assert.ok(!preview.includes('MiB'));assert.ok(preview.includes('Tải bản gốc đầy đủ'));assert.equal(preview.split('Codex reply').length-1,1,'Codex duplicate hidden');assert.ok(!preview.includes('hidden-tool'));
  assert.equal(await evaluate('document.querySelectorAll(".backup-preview img,.backup-preview script").length'),0);assert.equal(await evaluate('window.__xss'),undefined);
  let links=await evaluate('Array.from(document.querySelectorAll(".backup-dialog a")).map(a=>new URL(a.href).pathname)');
  assert.deepEqual(links,['/api/features/server-backup/export','/api/features/server-backup/download']);
@@ -134,7 +146,9 @@ let chrome,ws,chromeError = '';
  // A 202 never changes the displayed last-good time or enables another request.
  const oldGood=status.servers[0].lastSuccessAt;await click('vm1','Sao lưu ngay');await until('document.querySelector(".backup-card").textContent.includes("Đang chờ")','queued state');await click('vm1','Sao lưu ngay');assert.equal(runs.length,1);assert.equal(status.servers[0].lastSuccessAt,oldGood);
  status.servers[0].phase='error';status.servers[0].lastAttemptAt=now+100;status.servers[0].reason='secret_internal_code';await refresh();assert.ok((await text()).includes('Lần thử'));assert.ok(!(await text()).includes('secret_internal_code'));assert.equal(status.servers[0].lastSuccessAt,oldGood);
- status.servers[0].phase='partial';await refresh();assert.ok((await text()).includes('Lần thử'));
+ status.servers[0].phase='partial';status.servers[0].reason='storage_error';await refresh();assert.ok((await text()).includes('Lần thử'));
+ const caption=await evaluate(row('vm1')+'.querySelector(".backup-warning").textContent');
+ assert.ok(caption.endsWith('Không ghi được bản lưu; kiểm tra máy lưu.'));assert.ok(!caption.includes('chưa hoàn tất'));
  // Pause keeps the saved copies; failure and mismatched readback cannot confirm it.
  await evaluate('document.querySelector(".backup-settings").open=true');
  failControl=true;await evaluate('document.querySelector(".backup-settings button").click()');await until('document.querySelector(".backup-card").textContent.includes("dữ liệu trước đó")','pause rejection');failControl=false;await refresh();assert.equal(status.enabled,true);

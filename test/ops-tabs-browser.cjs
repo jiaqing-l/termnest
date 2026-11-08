@@ -219,9 +219,12 @@ let chrome,ws,chromeError = '';
  await until('!document.querySelector("[name=save]").disabled','normal policy readback after onboarding');
  assert.deepEqual(posts.at(-1).workspaces,savedPolicy.workspaces.map((w,i)=>i===0?{...w,auditConfig:'.claude-audit',auditAccount:accountRef}:w));
  assert.deepEqual(supervision.leaders,originalLeaders);
+ assert.equal(await evaluate('document.querySelectorAll(".ops-tools button,.ops-expand,.ops-jump,.ops-group summary small").length'),0,'daily header has no duplicate controls or category descriptions');
  // Advanced rules remain editable even after focus leaves the form and several refreshes occur.
- await evaluate('Array.from(document.querySelectorAll(".ops-tools button")).find(b=>b.textContent===i18n("ops.chinh_luat")).click();document.querySelector(".ops-rules textarea").value="Retain this unsaved rule";document.querySelector(".ops-rules textarea").dispatchEvent(new Event("input"));document.querySelector(".ops-rules textarea").blur()');
+ await evaluate('Array.from(document.querySelectorAll(".ops-super-settings > button")).find(b=>b.textContent===i18n("ops.chinh_luat")).click();document.querySelector(".ops-rules textarea").value="Retain this unsaved rule";document.querySelector(".ops-rules textarea").dispatchEvent(new Event("input"));document.querySelector(".ops-rules textarea").blur()');
  await refresh();assert.equal(await evaluate('document.querySelector(".ops-rules textarea").value'),'Retain this unsaved rule');
+ assert.equal(await evaluate('document.querySelector(".ops-super-settings").contains(document.querySelector(".ops-rules"))'),true,'rules stay inside collapsed Setup');
+ assert.equal(await evaluate('document.querySelectorAll(".ops-edit-rules").length'),1,'polling does not duplicate rule control');
  assert.equal(pack.rules.dormant.level,'suggest');assert.equal(pack.templates.continue,'Keep the original general rule');
  // Accelerated display-only 24-hour fault sequence: this does not exercise the scheduler or establish uptime.
  for(let hour=0;hour<=24;hour++){
