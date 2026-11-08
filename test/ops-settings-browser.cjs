@@ -7,7 +7,8 @@ const publicDir = path.join(__dirname, '../public');
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-ops-settings-'));
 const requests = [], posts = [], controls = [], nudges = [], accountChecks = [], downloads = [], rulePosts = [], tokenAccounts = [];
 const pluginPosts = [];
-let pluginFailure = false, pluginSlow = false;
+let pluginFailure = false, pluginSlow = false, pluginDiscover = false, pluginNoDiscovery = false, pluginStateFailure = false;
+let pluginFreshReads = 0, pluginDiscoveryReads = 0;
 const plugins = { autoReload:false, servers:[{id:"vm1",name:"Build machine",scanned:Date.now(),accounts:[{cfg:".claude-work",plugins:[{id:"xspire@market",version:"2.4.1",running:"2.3.0",scope:"user",enabled:true,changedAt:Date.now()},{id:"folder-skill@local",version:"1.2.0",running:"1.1.0",scope:"project",folder:"/work/skills",usedBySessions:true,changedAt:Date.now()}]}],stale:[{session:"dormant",status:"idle",changedAt:Date.now()},{session:"busy",status:"busy",queued:true,changedAt:Date.now()}]}],log:[] };
 const now = Date.now(), accountRef = 'a'.repeat(64);
 const identity = { bootId: 'fixture-boot', sessionId: '$1', created: 1, pane: '%1', agentPid: 123, agentStartedAt: 1, config: '.claude-audit' };
@@ -74,7 +75,14 @@ const server = http.createServer(async (req, res) => {
   let body; if (req.method === 'POST') { let b=''; for await (const c of req) b+=c; body=b?JSON.parse(b):{}; }
   if (u.pathname === '/api/status') return send({ authed: true, packaged: false });
   if (u.pathname === '/api/prefs') return send(prefs);
-  if (u.pathname === '/api/state') return send(appState);
+  if (u.pathname === '/api/state') {
+   if(pluginStateFailure){res.statusCode=503;return send({error:'Plugin state discovery unavailable'});}
+   if(pluginDiscover){
+    pluginFreshReads++;pluginDiscoveryReads++;await new Promise(r=>setTimeout(r,180));
+    if(!pluginNoDiscovery && pluginDiscoveryReads>=2){appSessions.push({ ...appSessions[0],name:'tn-plugin-update' });pluginDiscover=false;}
+   }
+   return send(appState);
+  }
   if (u.pathname === '/api/features') return send({ modules: [{ name: 'server-backup', css: true }, { name: 'ops', css: true }] }); // Deliberately backup first.
   if (u.pathname === '/api/features/ops/board') { if (failBoard) { res.statusCode=503; return send({}); } return send(board); }
   if (u.pathname === '/api/features/ops/pack') {
@@ -114,7 +122,11 @@ const server = http.createServer(async (req, res) => {
    if(pluginSlow)await new Promise(r=>setTimeout(r,300));
    if(pluginFailure){res.statusCode=409;return send({error:'Plugin update fixture rejected'});}
    if(u.pathname.endsWith('/auto'))plugins.autoReload=body.on;
-   if(u.pathname.endsWith('/update'))return send({session:'ordinary'});
+   if(u.pathname.endsWith('/refresh')){
+    plugins.servers[0].accounts[0].plugins[0].running='2.5.0';plugins.servers[0].scanned+=60000;
+    plugins.servers[0].stale[0].session='refreshed-stale';
+   }
+   if(u.pathname.endsWith('/update')){pluginDiscover=true;pluginDiscoveryReads=0;return send({session:'tn-plugin-update'});}
    if(u.pathname.endsWith('/reload'))return send({now:1,queued:1});
    return send({ok:true});
   }
@@ -232,17 +244,42 @@ let chrome, ws, closeBrowser, chromeError='';
  assert.equal(await evaluate('document.activeElement===window.__pluginCheckbox'),true,'changed polling preserves keyboard focus');
  await settingsTab('backup');await settingsTab('plugins');await refresh();
  assert.equal(await evaluate('document.querySelectorAll("#plugins-settings-mount .ops-plug").length'),1);
+ await evaluate('window.__pluginRefresh=document.querySelector(".pl-bar button");__pluginRefresh.focus()');
+ assert.equal(await evaluate('document.activeElement===__pluginRefresh'),true,'refresh button focused before request');
  await clickText('document.querySelector("#plugins-settings-mount")',require('../public/locales/vi.json')['pl.kiem_lai']);
- await until('document.querySelectorAll("#plugins-settings-mount .ops-plug").length===1','manual refresh');await delay(80);
+ await until('document.querySelector("#plugins-settings-mount").textContent.includes("2.5.0") && document.querySelector("#plugins-settings-mount").textContent.includes("refreshed-stale")','manual refresh updates visible data without blur');
+ assert.equal(await evaluate('document.activeElement===__pluginRefresh'),true,'refresh retains the same meaningful focused button');
+ assert.equal(await evaluate('document.querySelectorAll("#plugins-settings-mount .ops-plug").length'),1);
  assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/refresh',body:{server:'vm1'}});
- await evaluate('document.querySelector(".pl-stale-h button").click()');await delay(80);
+ assert.equal(await evaluate('document.querySelector(".pl-srv-h small").textContent'),await evaluate('i18n("pl.doc_luc",[new Date('+plugins.servers[0].scanned+').toLocaleString("vi",{dateStyle:"short",timeStyle:"short"})])'),'scan time refreshed without blur');
+ pluginFailure=true;await evaluate('document.querySelector(".pl-stale-h button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes("Plugin update fixture rejected")','reload error visible in modal');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'reload failure keeps modal open');
+ assert.equal(await evaluate('document.querySelector(".pl-feedback").textContent.includes(i18n("pl.da_nap",[1,1]))'),false,'failed reload never claims success');
+ pluginFailure=false;await evaluate('document.querySelector(".pl-stale-h button").click()');await delay(80);
  assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/reload',body:{server:'vm1',all:true}});
  assert.ok(await evaluate('document.querySelector(".pl-feedback").textContent.includes(i18n("pl.da_nap",[1,1]))'),'reload immediate and queued feedback in modal');
  pluginFailure=true;await evaluate('document.querySelector(".pl-row button").click()');
  await until('document.querySelector(".pl-feedback").textContent.includes("Plugin update fixture rejected")','actual update error');
  assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'failed update keeps Settings open');
- pluginFailure=false;await evaluate('document.querySelector(".pl-row button").click()');
- await until('!document.querySelector("#dlg-set").open && document.querySelector("#v-focus").classList.contains("on") && document.querySelector("#detail .who b")?.textContent==="ordinary"','successful update opens actual session and closes Settings');
+ pluginFailure=false;pluginStateFailure=true;await evaluate('document.querySelector(".pl-row button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes("Plugin state discovery unavailable")','discovery GET error shown');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'discovery failure keeps Settings open');
+ assert.equal(await evaluate('TW.app().current()?.s.name'),'dormant','discovery error does not open fallback');
+ pluginStateFailure=false;pluginNoDiscovery=true;await evaluate('document.querySelector(".pl-row button").click()');
+ await until('document.querySelector(".pl-feedback").textContent.includes(i18n("pl.khong_tim_thay_phien",["tn-plugin-update"]))','bounded no-discovery failure');
+ assert.equal(pluginFreshReads,3,'discovery retries bounded');
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);
+ assert.equal(await evaluate('TW.app().current()?.s.name'),'dormant','missing session does not open fallback');
+ pluginNoDiscovery=false;
+ assert.equal(await evaluate('TW.app().servers().find(v=>v.id==="vm1").sessions.some(s=>s.name==="tn-plugin-update")'),false,'update session initially absent from client');
+ assert.equal(appSessions.some(s=>s.name==='tn-plugin-update'),false,'session initially absent from snapshot too');
+ await evaluate('document.querySelector(".pl-row button").click()');await delay(50);
+ assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true,'modal stays open during pending fresh discovery');
+ await until('!document.querySelector("#dlg-set").open && document.querySelector("#v-focus").classList.contains("on") && document.querySelector("#detail .who b")?.textContent==="tn-plugin-update"','successful update discovers exact session then closes Settings');
+ assert.equal(await evaluate('TW.app().current().s.name'),'tn-plugin-update');
+ assert.equal(pluginFreshReads,5,'success retries stale snapshot before discovering new session');
+ assert.equal(await evaluate('!!document.activeElement.closest("#split")'),true,'modal focus return does not steal terminal focus');
  assert.deepEqual(pluginPosts.at(-1),{url:'/api/features/plugins/update',body:{server:'vm1',cfg:'.claude-work',id:'xspire@market'}});
  await evaluate('document.querySelector("#tab-over").click();document.querySelector("#set").click()');await settingsTab('backup');
  assert.equal(await evaluate('document.querySelector("#dlg-set").open'),true);
@@ -413,7 +450,7 @@ let chrome, ws, closeBrowser, chromeError='';
   await screenshot('plugins-'+width);
   await closeSettings();await until('!document.querySelector("#dlg-set").open && !document.activeElement.closest("#dlg-set")','close returns focus outside Settings');
  }
- assert.equal(pluginPosts.length,5,'only explicitly requested plugin writes, including rejected update; polling/navigation never update');
+ assert.equal(pluginPosts.length,8,'only explicitly requested plugin writes, including rejected update; polling/navigation never update');
  assert.deepEqual(errors,[]);
  assert.ok(!requests.some(r=>/\/api\/servers\/.*\/(keys|sessions)$/.test(r.url)&&r.method==='POST'),'no arbitrary typing or new session path');
  assert.ok(!requests.some(r=>/\/api\/features\/(crew|crewpack)/.test(r.url)),'no Crew polling');

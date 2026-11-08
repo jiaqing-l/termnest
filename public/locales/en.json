@@ -1502,6 +1502,7 @@
   "ops.s.offline": "Host disconnected or observations are stale",
   "ops.s.unheard": "nudged, no reaction",
   "ops.loc_muc": "Filter by level",
+  "pl.khong_tim_thay_phien": "Update session {0} was not found. Check the connection and try again.",
   "pl.tieu_de": "Plugins & skills",
   "pl.nguon": "From claude plugin list on each machine · re-read every 10 min",
   "pl.dang_doc": "Reading the plugin list…",
