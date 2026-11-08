@@ -218,7 +218,7 @@
 <dialog id="dlg-set" class="wide set-dlg">
   <div class="dlg-h set-head"><h2><span data-i18n="html.cai_dat"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
   <div class="set-body">
-  <nav class="set-nav" role="tablist"><button type="button" class="set-tab" role="tab" data-tab="look" data-i18n="settings.tab_look"></button><button type="button" class="set-tab" role="tab" data-tab="alerts" data-i18n="settings.tab_alerts"></button><button type="button" class="set-tab" role="tab" data-tab="servers" data-i18n="settings.tab_servers"></button><button type="button" class="set-tab" role="tab" data-tab="backup" data-i18n="settings.tab_backup"></button><button type="button" class="set-tab" role="tab" data-tab="commands" data-i18n="settings.tab_commands"></button><button type="button" class="set-tab" role="tab" data-tab="connect" data-i18n="settings.tab_connect"></button><button type="button" class="set-tab" role="tab" data-tab="more" data-i18n="settings.tab_more"></button></nav>
+  <nav class="set-nav" role="tablist"><button type="button" class="set-tab" role="tab" data-tab="look" data-i18n="settings.tab_look"></button><button type="button" class="set-tab" role="tab" data-tab="alerts" data-i18n="settings.tab_alerts"></button><button type="button" class="set-tab" role="tab" data-tab="servers" data-i18n="settings.tab_servers"></button><button type="button" class="set-tab" role="tab" data-tab="sessions" data-i18n="settings.tab_sessions"></button><button type="button" class="set-tab" role="tab" data-tab="backup" data-i18n="settings.tab_backup"></button><button type="button" class="set-tab" role="tab" data-tab="commands" data-i18n="settings.tab_commands"></button><button type="button" class="set-tab" role="tab" data-tab="connect" data-i18n="settings.tab_connect"></button><button type="button" class="set-tab" role="tab" data-tab="more" data-i18n="settings.tab_more"></button></nav>
   <div class="set-panes">
   <section class="set-pane" data-pane="look">
     <div class="set-group"><label class="sw"><span data-i18n="settings.pets_label"></span><input id="pets-enabled" type="checkbox" checked></label><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label></div>
@@ -241,7 +241,10 @@
     <div class="rng"><span>RAM</span><input type="range" id="lim-ram" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_ram"><b id="lim-ram-v"></b></div>
     <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div></div>
   </section>
+  <section class="set-pane" data-pane="sessions"><div id="ops-settings-mount"></div></section>
   <section class="set-pane" data-pane="backup">
+    <div id="server-backup-settings-mount"></div>
+    <h3 data-i18n="settings.config_backup"></h3>
     <h4 data-i18n="move2.title"></h4>
     <div class="set-group">
       <div class="sw"><span data-i18n="move2.export_label"></span><button type="button" class="btn sm primary" id="mv2-open" data-i18n="move2.export_btn"></button></div>

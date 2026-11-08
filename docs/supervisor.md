@@ -1,7 +1,7 @@
 # Background supervision
 
 Termnest can run its backend on an always-on Linux VM while the browser or laptop is disconnected.
-The Operations tab has one **Background supervision / Vận hành nền** section. Crew panels remain hidden.
+Operations shows one row per session in **Needs you / Cần bạn**, **Waiting to continue / Chờ chạy tiếp**, **Working / Đang làm**, and a collapsed idle/unknown/background list. Setup lives in **Settings → Session monitoring / Cài đặt → Theo dõi phiên**. Crew panels remain hidden.
 Policy enabled, process alive, vault unlocked, fresh observations, delivered requests, agent responses,
 and validated audit reports are separate facts. Busy or idle alone never establishes task progress.
 Waiting for an owner is valid: the owner must answer permission prompts and decisions personally.
@@ -72,8 +72,7 @@ for that specific account, then recheck. Installation does not grant that admini
 exercise must confirm startup semantics. Merely seeing a process while logged in is insufficient.
 
 The health checker distinguishes locked, unlocked, monitoring and error; monitoring is not a validated
-audit result or proof that every remote host is reachable. Inspect authenticated Operations readiness
-and observation timestamps too. Logs can be reviewed with
+audit result or proof that every remote host is reachable. Inspect authenticated Settings → Session monitoring and the Operations session issues too. Logs can be reviewed with
 `journalctl --user -u termnest-supervisor.service --since today`; redact private paths/identities before
 sharing logs. Do not include secret files or session contents in diagnostic bundles.
 
@@ -118,7 +117,7 @@ that desktop sleeps or powers off. Use the always-on VM for fleet continuity.
 
 Windows and macOS deployment scripts, when present in the integrated release, are respectively
 `scripts/install-supervisor.ps1` and `scripts/install-supervisor-macos.sh`. Consult their `--help`/script
-usage before installation. W5 Windows startup uses a current-user Task Scheduler logon task with
+usage before installation. Windows startup uses a current-user Task Scheduler logon task with
 `InteractiveToken`: it requires that user to be logged in and does not survive logout or provide
 unattended boot. Inspect it with the script's `-Status` switch; `-DryRun` previews task XML. A macOS
 launchd user agent requires the user's GUI login session; logout stops it. Use `--status` or
@@ -169,28 +168,29 @@ an installer dry-run does not prove service startup, native terminal behavior or
 
 ## Policy, workspaces and leader ownership
 
-In Operations, expand supervision settings, list each selected server ID and absolute workspace root
-(one `serverId | root` per line), choose the audit interval, and explicitly apply enablement. The
-button applies the displayed complete workspace list; an empty list removes registered roots.
-Server IDs and names appear below the form. Automatic recovery is separate and requires explicit
-leader registration readiness. This form does not register every observed agent session and never
-enables the generic dormant automatic rule. Advanced general rules remain independently editable.
+Open **Settings → Session monitoring / Cài đặt → Theo dõi phiên**, or the short Monitoring settings shortcut on Operations. Choose a machine by name, use **Browse folder / Chọn thư mục…**, and explicitly add or remove workspace scopes. No server UUID or pipe-separated list is entered. Multiple scopes are supported; saving preserves the current saved metadata and unrelated scopes. Polling and Settings navigation preserve unfinished controls, focus, registration choices and account proof (until its expiry). A rejected write or failed/mismatching readback remains unavailable instead of showing an optimistic enabled state.
+
+Ordinary **Continue / Nhắc tiếp** is a per-session manual reminder on Operations. It does not require optional crew monitoring or automatic recovery to be enabled. It is offered only for an existing eligible dormant finding and an online, observed idle agent at its prompt. Asking sessions only open for the person to answer. Busy, stale/offline, parked/background boards, exited and unknown sessions cannot be nudged. Dismiss hides the existing finding; it does not schedule a new timer. Restoring dismissed items uses the existing restore action.
+
+A request in flight disables another send. A response that explicitly confirms delivery says **Reminder delivered / Đã gửi nhắc**; an accepted/pending response remains pending. Delivery does not move a row to Working. Only a new observed busy state does so, without establishing task progress. Uncertain/no-response events stay visible with Open session, and do not offer a duplicate resend. The short collapsed history distinguishes pending, delivered, responded, uncertain, not delivered and no response after the existing three-minute check. The server’s durable reservation prevents duplicate sends across reloads; clearing visible history does not reset it.
+
+The **30-minute dormant threshold** belongs to general session reminder rules. It is separate from the crew audit interval (also initially 30 minutes). General session rules/templates have their own collapsed section under Session monitoring, independent of optional crew policy and the registered-leader recovery checkbox. They remain available when crew status cannot be read. Account-only saves omit the optional recovery field, so the effective OFF status cannot overwrite a stored recovery preference. Moving these controls never enables either mechanism or enrolls sessions automatically.
 
 The authenticated facade is `GET/POST /api/features/ops/supervision`. GET provides policy,
 workspaces, runtime readiness, registration candidates and per-server teams/audits. POST normally
-sends `{enabled, autoRecovery, intervalMinutes, workspaces:[{serverId,root}]}`; existing optional
+sends `{enabled, intervalMinutes, workspaces:[{serverId,root}]}`, adding `autoRecovery` only after its checkbox is explicitly changed; existing optional
 `auditConfig` and `auditAccount` fields are retained when the server/root scope is unchanged.
 The backend rejects invalid scopes. To register a leader, explicitly select one fresh candidate by
-server/session/workspace, enter the managed task IDs and check the scope confirmation. Applying
+machine/session/workspace, select the discovered task scope checkboxes and check the scope confirmation. No task is selected by default. Task IDs come only from current `servers[].teams[].taskIds` for the candidate root; if that API has no fresh task evidence, the UI explains that registration is unavailable. It never enables monitoring to make discovery appear successful. Applying
 then sends `leaders` with that one added/updated record and preserves existing other registrations.
 The backend revalidates the candidate identity against the live host and task ownership. A stale
-candidate requires a page reload and fresh selection. The form never registers every agent by default. W3 revalidates every record submitted in `leaders`,
+candidate requires **Refresh session choices / Đọc lại lựa chọn phiên** and fresh selection. The form never registers every agent by default. The backend revalidates every record submitted in `leaders`,
 including retained registrations. If other retained leaders have stale identities, the owner must
 reconcile the full registration list through the authenticated facade before adding this leader;
 the compact form does not silently discard other scopes.
 No boot or pane identifiers need to be entered by the user. Recovery remains a separate checkbox.
 
-The integrated W3 candidate contract is
+The candidate contract is
 `registrationCandidates:[{serverId,session,root,identity}]`; registration records add `taskIds`.
 Identity fields travel unchanged from the selected candidate and are never rendered as product labels.
 The backend validates its `bootId`, `sessionId`, `created`, `pane`, `agentPid`, `agentStartedAt` and
@@ -199,11 +199,9 @@ The backend validates its `bootId`, `sessionId`, `created`, `pane`, `agentPid`, 
 matching a current candidate on a fresh host. This only establishes registration readiness; backend
 eligibility, task state, fresh scan and fencing still gate every actual action.
 
-Audit account configuration is independent of leader registration. In Operations → Background supervision
-(Vận hành nền) → Supervision settings, first save the intended workspace. In **Audit account / Tài khoản kiểm tra**:
+Audit account configuration is independent of leader registration. In Settings → Session monitoring, first save the intended workspace. In **Audit account / Tài khoản kiểm tra**:
 
-1. Select the saved workspace. Enter the intended Claude profile basename (`.claude` by default,
-   or the existing saved value, such as `.claude-audit`). This refers to the account already signed in
+1. Select the saved workspace and a default, saved or observed session profile. The current API does not enumerate every signed-in account; a profile choice is not a verified identity. If the intended account is missing, sign in to the correct profile on the host first. A custom profile basename can be supplied under Advanced. This refers to the account already signed in
    on that host, under the service user; it does not create an account or accept credentials.
 2. Select **Check account / Kiểm tra tài khoản**. The authenticated, side-effect-free
    `POST /api/features/ops/supervision/account` checks `{serverId,root,auditConfig}`. Review the readable
@@ -221,14 +219,7 @@ invalidates confirmation. Backend control revalidates account identity before an
 **unknown**, including after account confirmation; this never establishes full audit readiness.
 Enable policy and recovery separately, only after reviewing their readiness and explicit leader scope.
 
-UI readiness consumes optional `runtime.ready`, `unlocked`, `monitoring`, `observationsFresh`,
-`validatedAuditCompletion`, `sshReady`, `auditReady`, `linger`, `registrationReady` and `recoveryReady`
-booleans, `code`, `reasons`, `passwordOnlyAccounts`, and nested platform readiness. Missing fields
-remain unconfirmed. A successful POST is followed by a new GET before showing confirmed state.
-An unsuccessful or uncertain request remains visibly unavailable until a successful read; polling
-preserves typed settings and registration choices. Host freshness uses `freshness.maxAgeMs` (default
-120 seconds), `snapshotFresh`, `taskEvidenceFresh`, `online` and `observedAt`. Unknown reason codes
-receive a readable owner-review message. Validate optional W5 platform readiness fields at integration.
+Settings shows saved crew enablement separately from unsaved choices, pending writes and read errors. Registration readiness uses the optional flags described above or a conservative candidate/leader match. Successful policy, account and rule writes require a fresh matching GET before confirmation. Host freshness uses `freshness.maxAgeMs` (default 120 seconds), `snapshotFresh`, `online` and `observedAt`. Task selection additionally requires fresh task evidence; account identity checks do not require crew scanning to be enabled. Unknown reason codes receive a readable owner-review message. Platform startup, audit completion and quota require their own evidence; a checked policy control establishes none of them.
 
 Remote supervisor coordinator ownership/fencing controls who may audit or nudge a workspace. It is
 separate from Crew task leases and grants no authority to release task leases, steal a task, answer an

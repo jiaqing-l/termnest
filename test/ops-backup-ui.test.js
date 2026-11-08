@@ -49,52 +49,39 @@ test('fallback-only turns retain their position among response items', () => {
   ])), [{ role: 'user', text: 'Fallback question' }, { role: 'assistant', text: 'Response answer' }]);
 });
 
-test('unknown and unheard findings render a neutral empty state without fake urgency in both languages', () => {
-  const fs = require('node:fs'), vm = require('node:vm');
-  const source = fs.readFileSync(require.resolve('../public/features/ops.js'), 'utf8');
-  // Run the production draw function with a small DOM adapter; do not duplicate its finding filter.
-  const drawSource = source.slice(source.indexOf('  function draw() {'), source.indexOf('  function load() {'));
-  function element(tag, className = '', text = '') {
-    return {
-      tag, className, children: [], value: text,
-      append(...nodes) { this.children.push(...nodes); },
-      querySelector() { return null; }, querySelectorAll() { return []; },
-      get textContent() { return this.value + this.children.map(n => typeof n === 'string' ? n : n.textContent).join(''); },
-      set textContent(value) { this.value = value; this.children = []; }
-    };
-  }
-  for (const [lang, expected] of [['vi', 'Chưa có mục cần thao tác'], ['en', 'No items need action']]) {
-    const locale = require('../public/locales/' + lang + '.json');
-    const context = {
-      pluginPage: null, plug: null, pluginTab: null, supervisionBox: null, editing: false,
-      page: element('main'), tab: element('button'), supervisionForm: element('details'),
-      data: { servers: [{ id: 'vm1', online: true, findings: [] }] },
-      TW: {}, el: element, SEV: { urgent: 0, warn: 1, info: 2 }, filt: {},
-      i18n: key => locale[key] || key, quotaFindings: () => [],
-      supervisionCard: () => element('section'), summary: () => element('div'),
-      button: label => element('button', '', label), logList: () => element('div'),
-      keepOpen: () => {}, group: () => 'issue', icon: () => element('span'),
-      row: finding => element('div', 'finding', finding.rule),
-      document: { createTextNode: text => text }
-    };
-    vm.createContext(context); vm.runInContext(drawSource, context);
-    for (const rules of [['unknown'], ['unheard'], ['unknown', 'unheard']]) {
-      context.data.servers[0].findings = rules.map(rule => ({ rule, severity: 'urgent' }));
-      context.draw();
-      const groups = context.page.children.find(n => n.className === 'ops-groups');
-      assert.equal(groups.textContent, expected, lang + ': ' + rules.join(','));
-      assert.equal(groups.children.length, 1);
-      assert.equal(groups.children[0].tag, 'section', 'no actionable finding group');
-      assert.equal(context.tab.children.length, 0, 'no urgent badge for unreadable status');
-      assert.doesNotMatch(groups.textContent, /Mọi phiên đều ổn|All sessions look fine/i);
-    }
-    context.data.servers[0].findings.push({ rule: 'aborted', severity: 'urgent' });
-    context.draw();
-    const groups = context.page.children.find(n => n.className === 'ops-groups');
-    assert.equal(groups.children[0].tag, 'details', 'real actionable finding still appears');
-    assert.match(groups.textContent, /aborted/);
-    assert.equal(context.tab.children[0].textContent, '1', 'badge counts only the actionable finding');
-  }
+test('actual board sessions are deduplicated by actionable priority and keep unknown and delivery failures visible', () => {
+  const { opsSessionRows } = require('../public/features/ops');
+  const session = name => ({ name, agent: true, ai: { status: 'idle', at: Date.now() - 3600000 } });
+  const board = { servers: [{ id: 'vm1', online: true, sessions: [session('one'), session('two'), { name: 'unknown', agent: true, ai: null }], findings: [
+    { session: 'one', key: 'dormant', rule: 'dormant', severity: 'warn', template: 'continue' },
+    { session: 'one', key: 'unheard', rule: 'unheard', severity: 'urgent' },
+    { session: 'two', key: 'idle', rule: 'finished', severity: 'urgent' }
+  ] }] };
+  let rows = opsSessionRows(board, null);
+  assert.equal(rows.length, 3);
+  assert.equal(rows.find(x => x.f.session === 'one').f.rule, 'unheard', 'delivery failure wins over a new send suggestion');
+  assert.equal(rows.find(x => x.f.session === 'two').f.severity, 'info', 'idle is not task completion or urgent');
+  assert.equal(rows.find(x => x.f.session === 'unknown').f.rule, 'observed_unknown');
+  board.servers[0].findings.push({ session: 'one', key: 'asking', rule: 'asking', severity: 'urgent' });
+  rows = opsSessionRows(board, { enabled: true, servers: [{ id: 'vm1', teams: [{ session: 'one', requiresOwner: true, id: 'owner' }] }] });
+  assert.equal(rows.length, 3); assert.equal(rows[0].f.rule, 'asking', 'question wins and never offers a continuation template');
+  assert.equal(rows[0].f.template, undefined);
+  board.servers[0].online = false;
+  board.servers[0].findings.push({ key: 'offline', session: '', rule: 'offline', severity: 'warn' });
+  rows = opsSessionRows(board, { enabled: true, servers: [{ id: 'vm1', teams: [{ session: 'one', requiresOwner: true }] }] });
+  assert.equal(rows.filter(x => x.f.severity !== 'info').length, 1, 'one offline host issue, no phantom per-session errors');
+  assert.equal(rows.filter(x => x.f.rule === 'observed_unknown').length, 3, 'cached sessions remain accessible with truthful state');
+});
+
+test('supervisor owner requirements join existing sessions and preserve genuine unmatched issues', () => {
+  const { opsSessionRows } = require('../public/features/ops');
+  const rows = opsSessionRows({ servers: [{ id: 'vm1', online: true, sessions: [{ name: 'leader', ai: { status: 'busy' } }], findings: [] }] }, {
+    enabled: true, servers: [{ id: 'vm1', teams: [{ id: 'one', session: 'leader', requiresOwner: true, reason: { code: 'task_evidence_stale' } }, { id: 'two', session: '', requiresOwner: true, root: '/work/unmatched' }], audits: [{ runId: 'audit', teamSession: 'leader', requiresOwner: true }] }]
+  });
+  assert.equal(rows.length, 2);
+  assert.equal(rows.filter(x => x.f.session === 'leader').length, 1);
+  assert.equal(rows[0].f.reason.code, 'task_evidence_stale');
+  assert.equal(rows[1].f.settings, true);
 });
 
 test('production backup reason resolver translates actual API codes to relevant actions in both languages', () => {

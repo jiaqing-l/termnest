@@ -29,7 +29,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = { chatMessages: chatMessages };
   if (typeof window === 'undefined' || !window.TW) return;
   var TW = window.TW, el = TW.el, base = '/api/features/server-backup', card, rows, settings, destination, status = null, unavailable = false, pending = false, fetching = false;
-  var drafts = Object.create(null), runPending = Object.create(null), queued = Object.create(null), dialog = null, viewRevision = 0;
+  var storageDetails = null, drafts = Object.create(null), runPending = Object.create(null), queued = Object.create(null), dialog = null, viewRevision = 0;
   function t(key, args) { return i18n('backup.' + key, args); }
   function button(key, fn) { var b = el('button', 'btn', t(key)); b.type = 'button'; b.onclick = fn; return b; }
   function api(method, path, body) { return TW.api(method, base + path, body); }
@@ -46,7 +46,7 @@
     fetching = true;
     try { var r = await api('GET', '/status'); if (!valid(r)) throw Error(); status = r; unavailable = false; }
     catch (_) { unavailable = true; }
-    finally { fetching = false; render(); }
+    finally { fetching = false; render(); TW.emit('server-backup-updated'); }
   }
   async function control(body, confirms) {
     if (pending || fetching || unavailable || !status) return;
@@ -100,6 +100,7 @@
   function render() {
     if (!card) return;
     // Preserve scope control values and open state through polling and failed writes.
+    var focused = document.activeElement;
     var scopes = Object.create(null); rows.querySelectorAll('[data-server]').forEach(function (row) { var s = row.querySelector('.backup-scope'); if (s) scopes[row.dataset.server] = s; });
     rows.textContent = ''; settings.textContent = '';
     if (unavailable) rows.append(el('p', 'backup-warning', t(status ? 'prior' : 'unavailable')), button('retry', refresh));
@@ -108,7 +109,8 @@
     destination.textContent = t('destination', [status.storage.host]);
     var toggle = button(status.enabled ? 'pause' : 'enable', function () { var enabled = !status.enabled; control({ enabled: enabled }, function (r) { return r.enabled === enabled; }); });
     toggle.disabled = pending || unavailable; settings.append(toggle, el('span', '', pending ? t('saving') : t(status.enabled && !unavailable ? 'automatic' : unavailable ? 'unavailable' : 'paused')));
-    settings.append(el('p', 'backup-storage-path', t('storage_path', [status.storage.path])));
+    if (!storageDetails) { storageDetails = el('details', 'backup-storage'); storageDetails.append(el('summary', '', t('storage_details')), el('p', 'backup-storage-path')); }
+    storageDetails.querySelector('p').textContent = t('storage_path', [status.storage.path]); settings.append(storageDetails);
     status.servers.forEach(function (s) {
       var row = el('article', 'backup-row'); row.dataset.server = s.id;
       row.append(el('h4', '', s.name), el('span', 'backup-connection', t(s.online ? 'online' : 'offline')));
@@ -131,11 +133,16 @@
       row.querySelectorAll('.backup-scope button,.backup-scope input').forEach(function (c) { c.disabled = pending || unavailable || (!s.online && c.textContent === t('choose')); });
       rows.append(row);
     });
+    if (focused && focused.isConnected && focused.closest('.backup-scope') && !focused.disabled) focused.focus({ preventScroll: true });
   }
   async function browse(server, chatsOnly) {
-    if (dialog) dialog.remove();
+    if (dialog) dialog.close();
     var revision = ++viewRevision, box = el('dialog', 'backup-dialog'); dialog = box;
-    box.append(el('h3', '', server.name), button('close', function () { viewRevision++; box.close(); box.remove(); dialog = null; }));
+    var returnFocus = document.activeElement;
+    box.addEventListener('keydown', function (event) { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); box.close(); } });
+    box.addEventListener('cancel', function (event) { event.preventDefault(); event.stopPropagation(); box.close(); });
+    box.addEventListener('close', function () { box.remove(); if (dialog === box) { viewRevision++; dialog = null; var target = returnFocus && returnFocus.isConnected ? returnFocus : document.querySelector('#dlg-set[open] .set-tab[aria-selected=true]'); if (target) target.focus(); } });
+    box.append(el('h3', '', server.name), button('close', function () { box.close(); }));
     var note = el('p'), versions = el('select'), search = el('input'), list = el('div', 'backup-file-list'), preview = el('div', 'backup-preview'), exports = el('div');
     search.type = 'search'; search.placeholder = t('search'); search.setAttribute('aria-label', t('search')); versions.setAttribute('aria-label', t('snapshots'));
     var more = button('more', function () { loadFiles(true); }), cursor = null, fileRevision = 0;
@@ -192,11 +199,19 @@
       settings = el('details', 'backup-settings'); settings.append(el('summary', '', t('settings')));
       // Settings summary is persistent; render into a child.
       var content = el('div'); settings.append(content); card.append(settings); settings = content;
-      rows = el('div'); rows.setAttribute('aria-live', 'polite'); card.append(rows); refresh();
+      rows = el('div'); rows.setAttribute('aria-live', 'polite'); rows.append(el('p', '', t('loading'))); card.append(rows); refresh();
     }
     return card;
   };
-  TW.on('ready', function () { var page = document.querySelector('#v-ops .feature-page'); if (page && !page.contains(TW.serverBackupCard())) page.append(TW.serverBackupCard()); });
-  var page = document.querySelector('#v-ops .feature-page'); if (page) page.append(TW.serverBackupCard());
+  function mountSettings() {
+    var mount = document.getElementById('server-backup-settings-mount');
+    if (mount && !mount.contains(TW.serverBackupCard())) mount.append(TW.serverBackupCard());
+  }
+  TW.serverBackupIssue = function (boardServers) {
+    var failed = status && status.servers.some(function (s) { return s.online && (!boardServers || boardServers.some(function (v) { return v.id === s.id && v.online === true; })) && (s.phase === 'error' || s.phase === 'partial'); });
+    if (!failed && !unavailable) return null;
+    var b = button('review_issue', function () { TW.app().openSettings('backup'); }); b.classList.add('backup-issue'); return b;
+  };
+  TW.on('ready', mountSettings); mountSettings();
   setInterval(function () { if (!document.hidden) refresh(); }, 10000);
 })();
