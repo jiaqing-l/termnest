@@ -229,6 +229,130 @@ test('incomplete remote reconfiguration stays OFF on restart, and OFF revokes th
   assert.ok((await f.route('GET', '/supervision')).body.errors.some(e => e.code === 'configuration_incomplete'));
 });
 
+// Real feature snapshot/control adapters and remote guard state; only SSH, scan and tmux IO are simulated.
+async function fleetStartup(t) {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-startup-fleet-')));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const now = 1800000000000, services = new Map(), routes = new Map(), snapshots = new Map();
+  const remotes = ['vm1', 'vm2'].map(id => ({ cfg: { id }, ready: true, lastPoll: now,
+    snapshot: { bootId: 'boot-' + id, sessions: [], workers: [] } }));
+  const vault = { crewpack: { enabled: true, workspaces: [], supervisor: { version: 1, hosts: {} } }, ops: {} };
+  const runtimes = new Map(), calls = [], typed = [];
+  for (const r of remotes) {
+    const roots = {};
+    for (const name of ['saved', 'discovered']) {
+      const root = path.join(dir, r.cfg.id, name); fs.mkdirSync(root, { recursive: true });
+      roots[root] = { root, tasks: [], nudge: [], available: true, at: now };
+      if (name === 'saved') vault.crewpack.workspaces.push({ serverId: r.cfg.id, root });
+      runtimes.set(root, guardRuntime({ now: () => now, boot: () => r.snapshot.bootId,
+        inspect: () => ({ processStart: '23', cwd: root, idleAt: 10 }), readiness: () => ({ code: 'audit_ready' }),
+        cp: { execFileSync(file, args, options) {
+          if (file === 'flock') return child.execFileSync(file, args, options);
+          assert.equal(file, 'tmux'); typed.push({ root, args }); return '';
+        } },
+      }));
+    }
+    vault.crewpack.supervisor.hosts[r.cfg.id] = { roots, progress: {}, history: [] };
+  }
+  let beforeGuard;
+  const guard = async (r, a) => {
+    calls.push({ serverId: r.cfg.id, ...clone(a) }); await beforeGuard?.(r, a);
+    return runtimes.get(a.root)(a);
+  };
+  const host = name => ({ name,
+    settings: { get: () => clone(vault[name]), set: value => { vault[name] = clone(value); } },
+    provide: (key, value) => services.set(key, value), service: key => services.get(key),
+    remotes: () => remotes, backendOf: id => remotes.find(r => r.cfg.id === id),
+    onSnapshot: fn => snapshots.set(name, fn), route: (method, url, fn) => routes.set(name + ' ' + method + ' ' + url, fn), log() {},
+    readJson: async req => req.body, send: (res, status, body) => Object.assign(res, { status, body }),
+    fail: (res, status, error) => Object.assign(res, { status, body: { error } }),
+  });
+  const clock = { now: () => now, setInterval: () => ({ unref() {} }), clearInterval() {} };
+  let running, generic;
+  const start = () => {
+    generic = ops.register(host('ops'), clock);
+    running = crewpack.register(host('crewpack'), { ...clock, guard, runOnHost: async () => ({ roots: [] }) });
+  };
+  start(); t.after(() => { running.stop(); generic.stop(); });
+  await running.tick();
+  const prior = running.supervisor.coordinatorId;
+  assert.deepEqual(vault.crewpack.coordinatorIds, [prior]);
+  const tokens = new Map();
+  for (const [root, runtime] of runtimes) {
+    const owned = await runtime({ op: 'lease', root, coordinatorId: prior });
+    assert.equal(owned.code, 'coordination_owner'); tokens.set(root, owned.token);
+  }
+  // VM2 has no fresh post-restart snapshot: retirement must still include its remote roots.
+  remotes[1].lastPoll = now - 60001;
+  running.stop(); generic.stop(); services.clear(); snapshots.clear(); start(); calls.length = 0;
+  return { remotes, vault, prior, calls, typed, roots: [...runtimes.keys()], get supervisor() { return running.supervisor; },
+    snapshot: () => snapshots.get('crewpack')(remotes[0]),
+    beforeGuard(fn) { beforeGuard = fn; },
+    async off() { const res = {}; await routes.get('ops POST /supervision')({ req: { body: { enabled: false } }, res }); return res; },
+    async oldSend(root) {
+      return runtimes.get(root)({ op: 'action', root, coordinatorId: prior, token: tokens.get(root), kind: 'audit_send',
+        eventId: policy.digest('delayed-before-restart'), session: 'tn-ops-audit-0123456789abcdef',
+        identity: { pane: '%7', config: '.claude' }, idleAt: 10, config: '.claude', account: 'a'.repeat(64), prompt: 'bounded audit' });
+    },
+  };
+}
+
+test('feature restart snapshot retires every fleet host/root before compaction; OFF fences a delayed old helper on VM2 before its tick', linux, async t => {
+  const f = await fleetStartup(t), root = f.roots.at(-1);
+  let release;
+  const delayed = new Promise(resolve => { release = resolve; }).then(() => f.oldSend(root));
+  t.after(() => release());
+  const saves = [], save = f.supervisor.save;
+  f.supervisor.save = async value => {
+    if (!value.coordinatorIds.includes(f.prior)) {
+      saves.push(f.roots.filter(scope => {
+        const remote = JSON.parse(fs.readFileSync(path.join(scope, '_crew/termnest-ops/coordination/state.json')));
+        return remote.revoked.includes(f.prior);
+      }));
+    }
+    return save(value);
+  };
+  await f.snapshot();
+  const retired = f.calls.filter(a => a.op === 'revoke' && a.coordinatorId === f.prior).map(a => a.root);
+  assert.ok(!f.vault.crewpack.coordinatorIds.includes(f.prior));
+  assert.equal((await f.off()).status, 200); release();
+  assert.equal((await delayed).code, 'coordination_revoked'); assert.equal(f.typed.length, 0);
+  assert.deepEqual(retired.sort(), f.roots.slice().sort()); assert.ok(saves.length > 0);
+  for (const confirmed of saves) assert.deepEqual(confirmed, f.roots, 'each root must durably acknowledge BEFORE global history compaction');
+  assert.ok(!f.calls.some(a => a.op === 'lease' && a.serverId === 'vm2'), 'VM2 has not run host work or acquired a new lease');
+});
+
+test('feature OFF during asynchronous fleet startup retains old IDs until every root acknowledges and cannot resurrect authority', { ...linux, timeout: 5000 }, async t => {
+  const f = await fleetStartup(t), root = f.roots.at(-1);
+  let release, entered;
+  const held = new Promise(resolve => { release = resolve; }), waiting = new Promise(resolve => { entered = resolve; });
+  t.after(() => release());
+  let blocked = false;
+  f.beforeGuard(async (r, a) => {
+    if (!blocked && a.op === 'revoke' && a.coordinatorId === f.prior && a.root === root) { blocked = true; entered(); await held; }
+  });
+  const snapshot = f.snapshot(); await waiting;
+  assert.ok(f.vault.crewpack.coordinatorIds.includes(f.prior), 'unacknowledged VM2 authority must remain persisted');
+  assert.equal((await f.off()).status, 200);
+  assert.equal(f.vault.crewpack.enabled, false); assert.deepEqual(f.vault.crewpack.coordinatorIds, []);
+  release(); await snapshot;
+  assert.equal(f.supervisor.enabled(), false); assert.deepEqual(f.vault.crewpack.coordinatorIds, []);
+  assert.equal((await f.oldSend(root)).code, 'coordination_revoked'); assert.equal(f.typed.length, 0);
+});
+
+test('feature startup and OFF keep prior fleet authority persisted when one host cannot confirm revocation', linux, async t => {
+  const f = await fleetStartup(t);
+  f.beforeGuard(async (r, a) => { if (r.cfg.id === 'vm2' && a.op === 'revoke') throw Error('synthetic offline host'); });
+  await f.snapshot();
+  assert.ok(f.vault.crewpack.coordinatorIds.includes(f.prior)); assert.equal(f.supervisor.enabled(), false);
+  assert.ok(!f.calls.some(a => a.op === 'lease'), 'unconfirmed startup retirement must prevent new host work');
+  assert.equal((await f.off()).status, 503); assert.equal(f.vault.crewpack.off, true);
+  assert.ok(f.vault.crewpack.coordinatorIds.includes(f.prior)); assert.equal(f.vault.crewpack.configurationPending, true);
+  f.beforeGuard(null); assert.equal((await f.off()).status, 200);
+  assert.deepEqual(f.vault.crewpack.coordinatorIds, []);
+  assert.equal((await f.oldSend(f.roots.at(-1))).code, 'coordination_revoked'); assert.equal(f.typed.length, 0);
+});
+
 test('partial send plus engine restart preserves uncertain intent and never types another prompt', linux, async t => {
   const f = fixture(t, { partialSend: true }); await f.tick(); f.advance(15000); await f.tick();
   assert.equal(f.sent.filter(x => x.pane === '%7').length, 1);
