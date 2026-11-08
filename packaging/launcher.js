@@ -22,7 +22,10 @@ function dataDir(platform = process.platform, env = process.env, home = os.homed
   const lock = path.join(parent, '.termnest-migration.lock');
   let locked = false, staging;
   try {
-    // Serialize launchers through publication. Never steal a lock on age alone;
+    // Serialize cooperating Termnest launchers through publication. Unrelated
+    // software must leave DATA paths unchanged during migration; this lock and
+    // the target rechecks do not provide kernel no-replace against such writers.
+    // Never steal a lock on age alone;
     // after an interrupted migration it needs inspection before a manual retry.
     io.mkdirSync(lock, { mode: 0o700 });
     locked = true;
