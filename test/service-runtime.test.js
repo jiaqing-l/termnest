@@ -344,7 +344,7 @@ test('lock ownership uncertainty fails closed and release never removes a replac
   assert.equal(readProtected(lock).length > 0, true);
 });
 
-test('installer dry-run is deterministic, secret-free and does not create state/config or invoke systemd', { skip: process.platform === 'win32' ? 'systemd installer uses POSIX paths; native Task Scheduler adapter covered separately' : false }, async t => {
+test('installer dry-run is deterministic, secret-free and does not create state/config or invoke systemd', { skip: process.platform !== 'linux' }, async t => {
   const f = fixture(t), home = path.join(f.dir, 'fake home'), data = path.join(home, 'data % $ " tiếng Việt');
   const env = { ...process.env, HOME: home, XDG_STATE_HOME: path.join(home, 'state'), XDG_CONFIG_HOME: path.join(home, 'config') };
   const args = ['scripts/install-supervisor.sh', '--dry-run', '--password-file', f.file, '--data-dir', data, '--port', '8765'];
@@ -361,11 +361,11 @@ test('installer dry-run is deterministic, secret-free and does not create state/
   if (process.platform !== 'win32') await assert.rejects(execFile('bash', args, { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_PASSWORD_FILE_INVALID');
 });
 
-test('installer repeated writes preserve vault and secret and refuse unmanaged units using a fake user manager', { skip: process.platform === 'win32' }, async t => {
+test('installer repeated writes preserve vault and secret and refuse unmanaged units using a fake user manager', { skip: process.platform !== 'linux' }, async t => {
   const f = fixture(t), bin = path.join(f.dir, 'bin'), home = path.join(f.dir, 'home'), data = path.join(f.dir, 'data');
   fs.mkdirSync(bin); fs.mkdirSync(data, { mode: 0o700 });
   const vault = path.join(data, 'vault.json'); fs.writeFileSync(vault, 'encrypted-fixture', { mode: 0o600 });
-  fs.writeFileSync(path.join(bin, 'uname'), "#!/bin/sh\nprintf '%s\\n' Linux\n", { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'uname'), "#!/bin/sh\nif [ \"$1\" = -m ]; then /usr/bin/uname -m; else printf '%s\\n' Linux; fi\n", { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'systemctl'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'loginctl'), '#!/bin/sh\nprintf "yes\\n"\n', { mode: 0o700 });
   // Only the temporary fake user manager is ever called; this is not a VM installation.
@@ -382,10 +382,10 @@ test('installer repeated writes preserve vault and secret and refuse unmanaged u
   assert.equal(fs.readFileSync(unit, 'utf8'), '# someone else owns this');
 });
 
-test('installer refuses Linger=no or unverifiable linger before any mutation; dry-run does not query the user manager', { skip: process.platform === 'win32' }, async t => {
+test('installer refuses Linger=no or unverifiable linger before any mutation; dry-run does not query the user manager', { skip: process.platform !== 'linux' }, async t => {
   const f = fixture(t), bin = path.join(f.dir, 'fake-bin'), home = path.join(f.dir, 'home'), marker = path.join(f.dir, 'login-called');
   fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(bin, 'uname'), '#!/bin/sh\nprintf "Linux\\n"\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'uname'), '#!/bin/sh\nif [ "$1" = -m ]; then /usr/bin/uname -m; else printf "Linux\\n"; fi\n', { mode: 0o700 });
   fs.writeFileSync(path.join(bin, 'systemctl'), '#!/bin/sh\nexit 99\n', { mode: 0o700 });
   const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, 'config'), XDG_STATE_HOME: path.join(home, 'state'), PATH: bin + path.delimiter + process.env.PATH };
   const args = ['scripts/install-supervisor.sh', '--password-file', f.file, '--data-dir', path.join(home, 'data')];
@@ -425,7 +425,7 @@ test('unsafe DATA directories and symlinked lock files fail closed', { skip: pro
   assert.equal(fs.readFileSync(f.file, 'utf8'), SECRET + '\n');
 });
 
-test('installer quotes special application paths for systemd and never creates data in dry-run', { skip: process.platform === 'win32' ? 'systemd installer uses POSIX paths; native Task Scheduler adapter covered separately' : false }, async t => {
+test('installer quotes special application paths for systemd and never creates data in dry-run', { skip: process.platform !== 'linux' }, async t => {
   const f = fixture(t), app = path.join(f.dir, 'app % $ " Việt'), scripts = path.join(app, 'scripts');
   fs.mkdirSync(scripts, { recursive: true }); fs.mkdirSync(path.join(app, 'lib'));
   fs.copyFileSync(path.join(ROOT, 'scripts/install-supervisor.sh'), path.join(scripts, 'install-supervisor.sh'));
@@ -575,4 +575,38 @@ test('unattended unlock uses only the pinned primary bytes and never calls the i
   const extra = vault.sealExtra({ marker: true }); assert.deepEqual(vault.openExtra(extra), { marker: true });
   vault.save(); const reopened = new Vault(file); assert.equal(reopened.unlock(SECRET), true);
   assert.equal(reopened.data.prefs.marker, true);
+});
+
+test('Linux installer selects adjacent native Node without PATH Node, supports explicit override, and rejects missing/incompatible runtime before mutations', { skip: process.platform !== 'linux' }, async t => {
+  const f = fixture(t), app = path.join(f.dir, 'native payload'), scripts = path.join(app, 'scripts'), bin = path.join(f.dir, 'minimal-bin'), home = path.join(f.dir, 'untouched-home');
+  fs.mkdirSync(scripts, { recursive: true }); fs.mkdirSync(path.join(app, 'lib')); fs.mkdirSync(bin);
+  const installer = path.join(scripts, 'install-supervisor.sh');
+  fs.copyFileSync(path.join(ROOT, 'scripts/install-supervisor.sh'), installer);
+  fs.copyFileSync(path.join(ROOT, 'lib/service-runtime.js'), path.join(app, 'lib/service-runtime.js'));
+  for (const command of ['dirname', 'uname']) fs.symlinkSync(execFileSync('/usr/bin/which', [command], { encoding: 'utf8' }).trim(), path.join(bin, command));
+  const marker = path.join(f.dir, 'manager-called');
+  fs.writeFileSync(path.join(bin, 'systemctl'), '#!/bin/sh\necho called > "$TN_INSTALL_MARKER"\nexit 99\n', { mode: 0o700 });
+  fs.writeFileSync(path.join(bin, 'loginctl'), '#!/bin/sh\necho called > "$TN_INSTALL_MARKER"\necho yes\n', { mode: 0o700 });
+  const bundled = path.join(app, 'node-' + process.arch); fs.copyFileSync(process.execPath, bundled); fs.chmodSync(bundled, 0o700);
+  const env = { ...process.env, PATH: bin, HOME: home, XDG_CONFIG_HOME: path.join(home, 'config'), XDG_STATE_HOME: path.join(home, 'state'), TN_INSTALL_MARKER: marker };
+  const args = [installer, '--password-file', f.file, '--data-dir', path.join(home, 'data')];
+  const result = await execFile('/bin/bash', [...args, '--dry-run'], { cwd: ROOT, env });
+  assert.ok(result.stdout.includes('ExecStart="' + bundled + '"')); assert.equal(fs.existsSync(home), false); assert.equal(fs.existsSync(marker), false);
+  const explicit = await execFile('/bin/bash', [...args, '--dry-run', '--node-path', process.execPath], { cwd: ROOT, env });
+  assert.ok(explicit.stdout.includes('ExecStart="' + process.execPath + '"'));
+  fs.unlinkSync(bundled);
+  for (const dry of [[], ['--dry-run']]) {
+    await assert.rejects(execFile('/bin/bash', [...args, ...dry], { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_NODE_REQUIRED');
+    await assert.rejects(execFile('/bin/bash', [...args, ...dry, '--node-path', path.join(f.dir, 'absent')], { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_NODE_REQUIRED');
+  }
+  // Execute the actual probe with one incompatible Node property. Removing any guard makes this assertion fail.
+  const shellQuote = value => "'" + value.replace(/'/g, "'\\''") + "'";
+  for (const mutation of ['Object.defineProperty(process, "arch", {value:"wrong"})', 'Object.defineProperty(process, "platform", {value:"darwin"})', 'Object.defineProperty(process.versions, "node", {value:"16.0.0"})']) {
+    const source = 'const source=process.argv[1];process.argv.splice(1,1);' + mutation + ';eval(source)';
+    fs.writeFileSync(bundled, '#!/bin/sh\nexec ' + shellQuote(process.execPath) + ' -e ' + shellQuote(source) + ' "$2" "$3"\n', { mode: 0o700 });
+    await assert.rejects(execFile('/bin/bash', [...args, '--dry-run'], { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_NODE_INCOMPATIBLE', mutation);
+  }
+  fs.writeFileSync(bundled, '#!/bin/sh\nexit 2\n', { mode: 0o700 });
+  for (const dry of [[], ['--dry-run']]) await assert.rejects(execFile('/bin/bash', [...args, ...dry], { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_NODE_INCOMPATIBLE');
+  assert.equal(fs.existsSync(home), false); assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(f.file, 'utf8'), SECRET + '\n');
 });

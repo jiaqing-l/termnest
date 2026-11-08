@@ -104,7 +104,8 @@ function featureHost(t, options = {}) {
     if (a.op === 'lease') return { code: 'coordination_owner', token: { coordinatorId: a.coordinatorId, epoch: 1 } };
     if (a.op === 'inspect') return { code: 'identity_valid', processStart: '1' };
     if (a.op === 'revoke') return { code: 'coordination_revoked' };
-    if (a.op === 'readiness') return { code: 'audit_ready' };
+    if (a.op === 'readiness') return { code: 'audit_ready', accountRef: 'a'.repeat(64), label: 'operator@example.test' };
+    if (a.op === 'ack_audit') return { code: 'audit_acknowledged' };
     if (a.kind === 'audit_open') await host.sessions.start(r, { name: a.session, dir: a.root, run: 'claude' });
     else sent.push(a);
     return { code: 'action_delivered' };
@@ -216,9 +217,9 @@ test('round evidence observes the tail after large legacy history and ignores to
 
 test('local readiness/action helper uses an asynchronous isolated exec transport instead of blocking the backend event loop', async t => {
   const clock = Date.now(), commands = [];
-  const remote = { cfg: { id: 'local', local: true }, ready: true, lastPoll: clock, snapshot: { sessions: [] },
+  const remote = { cfg: { id: 'local', local: true }, ready: true, lastPoll: clock, snapshot: { bootId: 'boot-local', sessions: [] },
     exec: async command => { commands.push(command); return { code: 0, out: JSON.stringify({ code: 'audit_account_required', quota: 'unknown' }) }; } };
-  const host = { settings: { get: () => ({ enabled: false, workspaces: [{ serverId: 'local', root: '/synthetic-workspace' }] }), set() {} },
+  const host = { settings: { get: () => ({ enabled: true, workspaces: [{ serverId: 'local', root: '/synthetic-workspace' }] }), set() {} },
     remotes: () => [remote], onSnapshot() {}, route() {}, log() {} };
   const running = cp.register(host, { setInterval: () => ({ unref() {} }), clearInterval() {} }); t.after(() => running.stop());
   const status = await running.facade.status(); assert.equal(status.auditReadiness[0].code, 'audit_account_required');
