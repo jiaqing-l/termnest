@@ -199,25 +199,27 @@ The backend validates its `bootId`, `sessionId`, `created`, `pane`, `agentPid`, 
 matching a current candidate on a fresh host. This only establishes registration readiness; backend
 eligibility, task state, fresh scan and fencing still gate every actual action.
 
-Audit agent account configuration is independent of leader registration. W3 workspace records can
-include `auditConfig` (the intended `.claude` or `.claude-NAME` config directory name) and `auditAccount`
-(the account reference returned by authenticated audit readiness). Do not guess or enter credentials
-into Operations. The compact form preserves these fields for unchanged workspaces. The current facade
-does **not** enumerate available account/config choices: a new root without `auditConfig` returns
-`audit_account_required`, without an `accountRef`. It cannot yet support account onboarding in this form.
-An owner who already knows the intended config can submit that workspace's `auditConfig` through the
-authenticated facade, read its `auditReadiness.accountRef`, explicitly confirm the intended account,
-then submit that reference as `auditAccount` and GET again to verify `audit_ready`. Preserve the complete
-workspace list and other registrations on every update; never derive an account hash locally or enroll
-all sessions. Backend skill/auth checks can still reject the selection, and quota remains unknown.
+Audit account configuration is independent of leader registration. In Operations → Background supervision
+(Vận hành nền) → Supervision settings, first save the intended workspace. In **Audit account / Tài khoản kiểm tra**:
 
-For compact account selection to support a newly added root, the backend must provide authenticated,
-scope-bound choices (server ID, root, config, opaque account reference, readable account label and
-readiness code), either in GET supervision or a dedicated readiness-discovery endpoint accepting that
-server/root. This is a missing API contract, not an existing workflow. Until it is integrated, a new
-workspace can remain explicitly unavailable; enabling policy alone does not register its audit account.
-`auditReadiness` distinguishes missing skill, account mismatch/registration and unknown quota; it is
-never rendered as audit success. Confirm readiness by successful backend readback after registration.
+1. Select the saved workspace. Enter the intended Claude profile basename (`.claude` by default,
+   or the existing saved value, such as `.claude-audit`). This refers to the account already signed in
+   on that host, under the service user; it does not create an account or accept credentials.
+2. Select **Check account / Kiểm tra tài khoản**. The authenticated, side-effect-free
+   `POST /api/features/ops/supervision/account` checks `{serverId,root,auditConfig}`. Review the readable
+   verified identity, check time and skill/auth explanation. Missing skill/auth or unavailable hosts
+   require correction on the intended host before another check. No account choices are fabricated.
+3. Select **Confirm use for this scope / Xác nhận dùng cho phạm vi này** only if the displayed identity,
+   profile and workspace are intended. This saves the returned opaque account reference for that one
+   workspace, preserving all other saved workspaces, policy settings and leader registrations. It does
+   not apply unsaved policy edits or implicitly enable audit/recovery. A new GET must read back the
+   same profile and account before the UI reports saved. A rejected or mismatching readback requires
+   checking again; an uncertain write may already have reached the backend.
+
+The check expires after 60 seconds. Changing scope/profile, a failed check/read or offline/stale host
+invalidates confirmation. Backend control revalidates account identity before any action. Quota remains
+**unknown**, including after account confirmation; this never establishes full audit readiness.
+Enable policy and recovery separately, only after reviewing their readiness and explicit leader scope.
 
 UI readiness consumes optional `runtime.ready`, `unlocked`, `monitoring`, `observationsFresh`,
 `validatedAuditCompletion`, `sshReady`, `auditReady`, `linger`, `registrationReady` and `recoveryReady`

@@ -41,6 +41,7 @@
   // Supervision uses its own persistent DOM: polling never replaces controls or an unfinished edit.
   var supervision = null, supervisionError = false, supervisionPending = false, supervisionFetching = false;
   var supervisionRevision = 0, supervisionBox = null, supervisionStatus = null, supervisionForm = null, supervisionDraft = null;
+  var accountUI = null, accountProof = null, accountMessage = '', accountGeneration = 0, accountTimer = null, accountChecking = false;
   function list(v) { return Array.isArray(v) ? v.filter(function (x) { return x && typeof x === 'object'; }) : []; }
   function text(v) { return typeof v === 'string' || typeof v === 'number' ? String(v) : ''; }
   function explanation(reason) {
@@ -84,6 +85,95 @@
     supervisionBox.append(supervisionForm, supervisionStatus);
     renderSupervision(); return supervisionBox;
   }
+  // Account discovery never derives identity from leader config or saves policy implicitly.
+  function accountScope() {
+    if (!accountUI || !supervision) return null;
+    return list(supervision.workspaces).find(function (w) { return JSON.stringify([w.serverId, w.root]) === accountUI.scope.value; });
+  }
+  function accountFresh(proof) {
+    var w = accountScope(), at = proof && new Date(proof.observedAt).getTime();
+    return !!proof && !!w && proof.serverId === w.serverId && proof.root === w.root && proof.auditConfig === accountUI.profile.value &&
+      Number.isFinite(at) && at > 0 && at <= Date.now() + 5000 && Date.now() - at < 60000 &&
+      list(supervision.servers).some(function (s) { return s.id === w.serverId && hostFresh(s); });
+  }
+  function accountConfirmable(proof) {
+    return accountFresh(proof) && ['audit_account_registration_required', 'audit_ready'].indexOf(proof.code) >= 0;
+  }
+  function invalidateAccount(message) {
+    accountGeneration++; accountProof = null; accountMessage = message || '';
+    clearTimeout(accountTimer);
+  }
+  function makeAccountForm() {
+    if (accountUI) return;
+    var box = el('div', 'ops-super-form ops-super-account'), scope = el('select'), profile = el('input'), result = el('p', 'ops-note');
+    scope.name = 'accountWorkspace'; profile.name = 'accountProfile'; profile.type = 'text'; profile.value = '.claude'; profile.maxLength = 128;
+    result.setAttribute('aria-live', 'polite');
+    function field(key, input) { var label = el('label'); label.append(el('span', '', i18n(key)), input); return label; }
+    var check = button(i18n('ops.super.account_check'), '', function () {
+      if (supervisionPending) return;
+      invalidateAccount();
+      var w = accountScope(), config = profile.value;
+      if (!w || !/^\.claude(?:-[A-Za-z0-9_-]+)?$/.test(config) || !list(supervision.servers).some(function (s) { return s.id === w.serverId && hostFresh(s); })) {
+        accountMessage = i18n('ops.super.account_invalid'); renderSupervision(); return;
+      }
+      var request = { serverId: w.serverId, root: w.root, auditConfig: config }, generation = accountGeneration;
+      supervisionPending = true; accountChecking = true; supervisionRevision++; renderSupervision();
+      post('/supervision/account', request).then(function (r) {
+        if (generation !== accountGeneration) return;
+        if (!r || !accountFresh(r)) throw Error('account scope or freshness');
+        accountMessage = explanation(r.code);
+        if (!/^[a-f0-9]{64}$/.test(r.accountRef) || typeof r.label !== 'string' || !r.label.trim() || r.label.length > 200) return;
+        accountProof = { serverId: r.serverId, root: r.root, auditConfig: r.auditConfig, accountRef: r.accountRef, label: r.label, code: r.code, observedAt: r.observedAt };
+        accountTimer = setTimeout(function () { invalidateAccount(i18n('ops.super.account_expired')); renderSupervision(); }, Math.max(1, 60000 - (Date.now() - new Date(r.observedAt).getTime())));
+      }).catch(function () { if (generation === accountGeneration) invalidateAccount(i18n('ops.super.account_failed')); })
+        .finally(function () { supervisionPending = false; accountChecking = false; renderSupervision(); });
+    });
+    check.name = 'checkAccount';
+    var confirm = button(i18n('ops.super.account_confirm'), '', function () {
+      if (supervisionPending) return;
+      if (!accountConfirmable(accountProof)) { invalidateAccount(i18n('ops.super.account_expired')); renderSupervision(); return; }
+      var proof = accountProof, generation = accountGeneration;
+      // Use saved settings, never unsaved policy edits. Omit leaders so registrations remain untouched.
+      var body = { enabled: supervision.enabled, autoRecovery: supervision.autoRecovery, intervalMinutes: supervision.intervalMinutes,
+        workspaces: list(supervision.workspaces).map(function (w) { return Object.assign({}, w, w.serverId === proof.serverId && w.root === proof.root ? { auditConfig: proof.auditConfig, auditAccount: proof.accountRef } : {}); }) };
+      supervisionPending = true; supervisionRevision++; renderSupervision();
+      post('/supervision', body).then(function () { return loadSupervision(true); }).then(function () {
+        if (generation !== accountGeneration || !accountFresh(proof)) throw Error('account changed');
+        var w = accountScope();
+        if (!w || w.auditConfig !== proof.auditConfig || w.auditAccount !== proof.accountRef) throw Error('account readback mismatch');
+        invalidateAccount(i18n('ops.super.account_saved', [proof.label]));
+      }).catch(function () { invalidateAccount(i18n('ops.super.account_failed')); })
+        .finally(function () { supervisionPending = false; renderSupervision(); });
+    });
+    confirm.name = 'confirmAccount';
+    scope.onchange = function () { invalidateAccount(); var w = accountScope(); profile.value = w && typeof w.auditConfig === 'string' ? w.auditConfig : '.claude'; renderSupervision(); };
+    profile.oninput = function () { invalidateAccount(); renderSupervision(); };
+    box.append(el('h4', '', i18n('ops.super.account_title')), field('ops.super.account_workspace', scope), field('ops.super.account_profile', profile),
+      el('p', 'ops-note', i18n('ops.super.account_help')), check, result, confirm);
+    accountUI = { box: box, scope: scope, profile: profile, result: result, check: check, confirm: confirm, options: null };
+    supervisionForm.append(box);
+  }
+  function renderAccount() {
+    if (!accountUI) return;
+    if (!supervision) { invalidateAccount(i18n('ops.super.account_failed')); accountUI.result.textContent = accountMessage; return; }
+    var scopes = list(supervision.workspaces), options = JSON.stringify(scopes.map(function (w) { return [w.serverId, w.root]; }));
+    if (options !== accountUI.options) {
+      var selected = accountUI.scope.value;
+      accountUI.scope.textContent = '';
+      scopes.forEach(function (w) {
+        var server = list(supervision.servers).find(function (s) { return s.id === w.serverId; });
+        var option = el('option', '', text(server && server.name || w.serverId) + ' · ' + text(w.root)); option.value = JSON.stringify([w.serverId, w.root]); accountUI.scope.append(option);
+      });
+      if (scopes.some(function (w) { return JSON.stringify([w.serverId, w.root]) === selected; })) accountUI.scope.value = selected;
+      else { invalidateAccount(); var w = accountScope(); accountUI.profile.value = w && w.auditConfig || '.claude'; }
+      accountUI.options = options;
+    }
+    if (accountProof && !accountFresh(accountProof)) invalidateAccount(i18n('ops.super.account_expired'));
+    var w = accountScope(), fresh = !!w && list(supervision.servers).some(function (s) { return s.id === w.serverId && hostFresh(s); });
+    accountUI.check.disabled = supervisionPending || !fresh;
+    accountUI.confirm.disabled = supervisionPending || !accountConfirmable(accountProof);
+    accountUI.result.textContent = (accountProof ? i18n('ops.super.account_identity', [accountProof.label, stamp(accountProof.observedAt)]) + ' ' : '') + accountMessage + ' ' + i18n('ops.super.account_quota_unknown');
+  }
   function makeSupervisionForm() {
     if (!supervision || supervisionDraft) return;
     supervisionDraft = { enabled: supervision.enabled === true, autoRecovery: supervision.autoRecovery === true,
@@ -125,8 +215,8 @@
         if (!line.trim()) return;
         var split = line.indexOf('|'), serverId = line.slice(0, split).trim(), root = line.slice(split + 1).trim();
         if (split < 1 || !serverId || !root.startsWith('/') || !list(supervision.servers).some(function (s) { return s.id === serverId; })) valid = false;
-        var workspace = { serverId: serverId, root: root }, previous = list(supervision.workspaces).find(function (w) { return w.serverId === serverId && w.root === root; });
-        ['auditConfig', 'auditAccount'].forEach(function (k) { if (previous && typeof previous[k] === 'string') workspace[k] = previous[k]; });
+        var previous = list(supervision.workspaces).find(function (w) { return w.serverId === serverId && w.root === root; });
+        var workspace = Object.assign({}, previous || {}, { serverId: serverId, root: root });
         workspaces.push(workspace);
       });
       if (!valid) { TW.app().say(i18n('ops.super.workspace_invalid'), false, 4000); return; }
@@ -150,16 +240,17 @@
         supervisionPending = false; renderSupervision();
       });
     };
-    supervisionForm.append(form);
+    supervisionForm.append(form); makeAccountForm();
   }
   function renderSupervision() {
     if (!supervisionStatus) return;
     makeSupervisionForm(); supervisionStatus.textContent = '';
     var controls = supervisionForm.querySelectorAll('input,textarea,select,button');
     controls.forEach(function (c) { c.disabled = supervisionPending || !supervision; });
+    renderAccount();
     var save = supervisionForm.querySelector('[name=save]');
     if (save && supervisionDraft && supervisionDraft.enabled && supervisionDraft.autoRecovery && !recoveryReady() && !registrationSelected()) save.disabled = true;
-    if (supervisionPending) supervisionStatus.append(el('p', 'ops-super-alert', i18n('ops.super.pending')));
+    if (supervisionPending) supervisionStatus.append(el('p', 'ops-super-alert', i18n(accountChecking ? 'ops.super.account_checking' : 'ops.super.pending')));
     if (!supervision) {
       supervisionStatus.append(el('p', 'ops-super-alert', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading'))); return;
     }

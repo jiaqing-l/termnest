@@ -1778,7 +1778,7 @@
   "ops.super.runtime_observationsFresh": "Quan sát còn mới",
   "ops.super.runtime_validatedAuditCompletion": "Có báo cáo kiểm tra hợp lệ",
   "ops.super.platform": "Điều kiện chạy nền của hệ điều hành",
-  "ops.super.reason_audit_ready": "Skill và tài khoản kiểm tra sẵn sàng; quota vẫn cần theo dõi.",
+  "ops.super.reason_audit_ready": "Đã xác minh skill và tài khoản; hạn mức vẫn chưa được xác minh.",
   "ops.super.reason_audit_readiness_unknown": "Chưa xác minh điều kiện skill và tài khoản kiểm tra.",
   "ops.super.reason_persistent_ssh_identity_required": "Máy dùng mật khẩu SSH cần chuyển sang khóa lâu dài để chạy nền.",
   "ops.super.reason_registration_required": "Chưa đăng ký leader đúng danh tính; cần chủ team xác nhận.",
@@ -1819,5 +1819,18 @@
   "ops.super.reason_STARTUP_CONFIG_VERIFIED": "Đã xác minh cấu hình khởi động. Máy vẫn phải thức và có nguồn điện.",
   "ops.super.reason_PLATFORM_UNSUPPORTED": "Nền tảng chưa hỗ trợ cơ chế chạy nền này.",
   "ops.super.reason_STARTUP_UNVERIFIED": "Chưa xác minh được bộ quản lý dịch vụ.",
-  "ops.super.reason_STARTUP_MANAGER_UNAVAILABLE": "Không truy cập được bộ quản lý dịch vụ; chưa xác minh khởi động nền."
+  "ops.super.reason_STARTUP_MANAGER_UNAVAILABLE": "Không truy cập được bộ quản lý dịch vụ; chưa xác minh khởi động nền.",
+  "ops.super.account_title": "Tài khoản kiểm tra",
+  "ops.super.account_workspace": "Workspace đã lưu",
+  "ops.super.account_profile": "Tên thư mục hồ sơ Claude",
+  "ops.super.account_help": "Lưu workspace trước. Kiểm tra hồ sơ, xem danh tính rồi xác nhận chỉ dùng cho workspace này. Thao tác này không bật kiểm tra hay khôi phục.",
+  "ops.super.account_check": "Kiểm tra tài khoản",
+  "ops.super.account_confirm": "Xác nhận dùng cho phạm vi này",
+  "ops.super.account_invalid": "Chọn workspace đã lưu trên máy đang kết nối, có dữ liệu mới và hồ sơ .claude hoặc .claude-TEN.",
+  "ops.super.account_identity": "Danh tính đã xác minh: {0}. Kiểm tra lúc: {1}.",
+  "ops.super.account_expired": "Kết quả đã hết hạn hoặc phạm vi đã đổi. Kiểm tra lại trước khi xác nhận.",
+  "ops.super.account_failed": "Không thể xác minh hoặc đọc lại đúng tài khoản đã lưu. Hãy kiểm tra lại; chưa thể xác nhận.",
+  "ops.super.account_saved": "Đã lưu tài khoản {0} cho workspace này; đã đọc lại đúng từ máy chủ.",
+  "ops.super.account_quota_unknown": "Hạn mức chưa được xác minh. Xác nhận tài khoản chưa chứng minh đã sẵn sàng kiểm tra.",
+  "ops.super.account_checking": "Đang kiểm tra tài khoản của workspace đã lưu. Chính sách vẫn giữ nguyên."
 }

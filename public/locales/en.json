@@ -1795,7 +1795,7 @@
   "ops.super.runtime_observationsFresh": "Fresh observations",
   "ops.super.runtime_validatedAuditCompletion": "A validated audit report exists",
   "ops.super.platform": "Platform background readiness",
-  "ops.super.reason_audit_ready": "Audit skill and account ready; continue monitoring quota.",
+  "ops.super.reason_audit_ready": "Audit skill and account verified; quota remains unverified.",
   "ops.super.reason_audit_readiness_unknown": "Audit skill and account readiness unconfirmed.",
   "ops.super.reason_persistent_ssh_identity_required": "Password SSH host requires a persistent key for unattended operation.",
   "ops.super.reason_registration_required": "Exact leader identity is not registered; owner confirmation required.",
@@ -1836,5 +1836,18 @@
   "ops.super.reason_STARTUP_CONFIG_VERIFIED": "Startup configuration verified. The machine must remain awake and powered.",
   "ops.super.reason_PLATFORM_UNSUPPORTED": "This platform does not support this background mode.",
   "ops.super.reason_STARTUP_UNVERIFIED": "Service manager is unverified.",
-  "ops.super.reason_STARTUP_MANAGER_UNAVAILABLE": "Service manager unavailable; startup cannot be verified."
+  "ops.super.reason_STARTUP_MANAGER_UNAVAILABLE": "Service manager unavailable; startup cannot be verified.",
+  "ops.super.account_title": "Audit account",
+  "ops.super.account_workspace": "Saved workspace",
+  "ops.super.account_profile": "Claude profile folder name",
+  "ops.super.account_help": "Save the workspace first. Check the profile, review its identity, then confirm use only for this workspace. This does not enable audit or recovery.",
+  "ops.super.account_check": "Check account",
+  "ops.super.account_confirm": "Confirm use for this scope",
+  "ops.super.account_invalid": "Choose a saved workspace on a connected, freshly observed host and a .claude or .claude-NAME profile.",
+  "ops.super.account_identity": "Verified identity: {0}. Checked: {1}.",
+  "ops.super.account_expired": "Account check expired or scope changed. Check again before confirming.",
+  "ops.super.account_failed": "Account could not be verified or saved with matching readback. Check again; confirmation is unavailable.",
+  "ops.super.account_saved": "Saved account {0} for this workspace; matching backend readback confirmed.",
+  "ops.super.account_quota_unknown": "Quota is unverified. Account confirmation does not establish audit readiness.",
+  "ops.super.account_checking": "Checking the saved workspace account. Policy remains unchanged."
 }
