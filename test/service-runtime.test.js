@@ -9,13 +9,25 @@ const { spawn, execFileSync } = require('node:child_process');
 const { once } = require('node:events');
 const { promisify } = require('node:util');
 const execFile = promisify(require('node:child_process').execFile);
-const { readPassword, readProtected, unlockFromFile, acquireDataLock } = require('../lib/service-runtime');
+const { readPassword, readProtected, unlockFromFile, acquireDataLock, validateWindowsSecurity, directoryIdentity, processIdentity } = require('../lib/service-runtime');
 const { Vault } = require('../lib/vault');
+function privateWindowsDirectory(dir) {
+  // Native fixture only. Fixed SID-based ACL on a newly-created temp directory, no existing accounts/files.
+  const ps = `[Console]::InputEncoding=New-Object Text.UTF8Encoding($false);$p=[Console]::In.ReadToEnd();$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User;
+$a=New-Object Security.AccessControl.DirectorySecurity;$a.SetOwner($sid);$a.SetAccessRuleProtection($true,$false);
+foreach($id in @($sid.Value,'S-1-5-18','S-1-5-32-544')) {
+$r=New-Object Security.AccessControl.FileSystemAccessRule(([Security.Principal.SecurityIdentifier]$id),'FullControl','ContainerInherit,ObjectInherit','None','Allow');$a.AddAccessRule($r)};
+Set-Acl -LiteralPath $p -AclObject $a`;
+  execFileSync(path.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')],
+    { input: dir, timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'] });
+}
 const ROOT = path.resolve(__dirname, '..'), SECRET = 'fixture-secret-never-log-this';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-runtime-'));
   fs.chmodSync(dir, 0o700);
+  if (process.platform === 'win32') privateWindowsDirectory(dir);
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const file = path.join(dir, 'password');
   fs.writeFileSync(file, SECRET + '\n', { mode: 0o600 });
@@ -31,7 +43,11 @@ test('protected reader accepts owner-only regular files, bounded UTF-8 and a sin
   const io = Object.create(fs);
   io.lstatSync = p => fs.lstatSync(p);
   io.fstatSync = fd => fs.fstatSync(fd);
-  assert.equal(readPassword(f.file, io), SECRET, 'injected numeric Stats remain supported');
+  if (process.platform !== 'win32') assert.equal(readPassword(f.file, io), SECRET, 'injected numeric Stats remain supported');
+  // NTFS 64-bit file IDs require BigInt: rounding numeric Stats cannot establish security identity.
+  else if (fs.lstatSync(f.file, { bigint: true }).ino > BigInt(Number.MAX_SAFE_INTEGER)) {
+    assert.throws(() => readPassword(f.file, io), { code: 'RUNTIME_UNSAFE_PERMISSIONS' });
+  } else assert.equal(readPassword(f.file, io), SECRET);
   for (const text of ['Tiếng Việt secret\r\n', ' space preserved ', 'x']) {
     fs.writeFileSync(f.file, text); assert.equal(readPassword(f.file), text.replace(/\r?\n$/, ''));
   }
@@ -59,19 +75,25 @@ test('bounded nofollow reader catches swap before open, replacement after read a
   fs.writeFileSync(other, SECRET, { mode: 0o600 });
   for (const moment of ['open', 'read']) {
     fs.writeFileSync(f.file, SECRET, { mode: 0o600 });
-    const io = Object.create(fs); let swapped = false;
+    const io = Object.create(fs); let swapped = false, replacementBlocked;
+    const replace = p => {
+      try { fs.unlinkSync(p); fs.copyFileSync(other, p); }
+      catch (e) { if (process.platform === 'win32' && ['EPERM', 'EACCES', 'EBUSY'].includes(e.code)) replacementBlocked = e.code; throw e; }
+    };
     io.openSync = (p, flags) => {
       assert.ok(process.platform === 'win32' || (flags & fs.constants.O_NOFOLLOW));
-      if (moment === 'open') { fs.unlinkSync(p); fs.copyFileSync(other, p); }
+      if (moment === 'open') replace(p);
       return fs.openSync(p, flags);
     };
     io.readSync = (...args) => {
       assert.ok(args[3] <= 4097);
       const n = fs.readSync(...args);
-      if (moment === 'read' && !swapped) { swapped = true; fs.unlinkSync(f.file); fs.copyFileSync(other, f.file); }
+      if (moment === 'read' && !swapped) { swapped = true; replace(f.file); }
       return n;
     };
-    noLeak(() => readPassword(f.file, io), /RUNTIME_(UNSAFE_FILE|FILE_CHANGED)/, moment);
+    noLeak(() => readPassword(f.file, io), { test: code => /RUNTIME_(UNSAFE_FILE|FILE_CHANGED)/.test(code) ||
+      // Windows may refuse replacement of a still-open NTFS name; that OS refusal must also fail closed.
+      !!replacementBlocked && code === 'RUNTIME_FILE_UNREADABLE' }, moment);
   }
   const io = Object.create(fs); let grew = false;
   io.readSync = (...args) => { if (!grew) { grew = true; fs.appendFileSync(f.file, 'x'.repeat(20000)); } return fs.readSync(...args); };
@@ -79,7 +101,7 @@ test('bounded nofollow reader catches swap before open, replacement after read a
 });
 
 test('reader rejects reused inode metadata with changes below millisecond precision before reading any content', t => {
-  const f = fixture(t), base = fs.lstatSync(f.file);
+  const f = fixture(t), base = fs.lstatSync(f.file, { bigint: process.platform === 'win32' });
   // Model inode reuse deterministically: identity/size and every millisecond field match, but one ns field differs.
   // Numeric Stats also exercise injected IO implementations that do not honor the bigint option.
   for (const field of ['birthtime', 'ctime', 'mtime']) {
@@ -105,7 +127,7 @@ test('reader rejects reused inode metadata with changes below millisecond precis
 test('reader pins the observed inode across path/open replacement even when all timestamps are identical', t => {
   const f = fixture(t), other = path.join(f.dir, 'replacement');
   fs.writeFileSync(other, SECRET + '\n', { mode: 0o600 });
-  const io = Object.create(fs), handles = [], closed = []; let reads = 0, observed = false, replaced = false;
+  const io = Object.create(fs), handles = [], closed = []; let reads = 0, observed = false, replaced = false, replacementBlocked;
   const fixedTimes = st => {
     for (const key of ['birthtime', 'ctime', 'mtime']) { st[key + 'Ns'] = 1800000000000000000n; st[key + 'Ms'] = 1800000000000n; }
     return st;
@@ -119,9 +141,11 @@ test('reader pins the observed inode across path/open replacement even when all 
     if (handles.length === 1) {
       assert.equal(observed, true);
       const pinned = fs.fstatSync(handles[0], { bigint: true });
-      fs.unlinkSync(p);
+      try { fs.unlinkSync(p); }
+      catch (e) { if (process.platform === 'win32' && ['EPERM', 'EACCES', 'EBUSY'].includes(e.code)) replacementBlocked = e.code; throw e; }
       if (process.platform !== 'win32') assert.equal(fs.fstatSync(handles[0], { bigint: true }).nlink, 0n);
-      fs.copyFileSync(other, p);
+      try { fs.copyFileSync(other, p); }
+      catch (e) { if (process.platform === 'win32' && ['EPERM', 'EACCES', 'EBUSY'].includes(e.code)) replacementBlocked = e.code; throw e; }
       // The still-open reference makes inode reuse impossible; no filesystem clock resolution is assumed.
       assert.notEqual(fs.lstatSync(p, { bigint: true }).ino, pinned.ino);
       replaced = true;
@@ -131,8 +155,9 @@ test('reader pins the observed inode across path/open replacement even when all 
   io.fstatSync = (fd, options) => fixedTimes(fs.fstatSync(fd, options));
   io.readSync = (...args) => { reads++; return fs.readSync(...args); };
   io.closeSync = fd => { closed.push(fd); fs.closeSync(fd); };
-  noLeak(() => readPassword(f.file, io), /RUNTIME_FILE_CHANGED/);
-  assert.equal(replaced, true); assert.equal(reads, 0);
+  noLeak(() => readPassword(f.file, io), { test: code => code === 'RUNTIME_FILE_CHANGED' ||
+    !!replacementBlocked && code === 'RUNTIME_FILE_UNREADABLE' });
+  assert.ok(replaced || process.platform === 'win32' && replacementBlocked, 'replacement must occur or be refused by NTFS'); assert.equal(reads, 0);
   assert.deepEqual(closed.sort(), handles.sort());
 });
 
@@ -209,7 +234,7 @@ function child(t, f, env = {}) {
   return c;
 }
 async function waitFor(fn, c) {
-  const until = Date.now() + 10000;
+  const until = Date.now() + (process.platform === 'win32' ? 90000 : 10000);
   while (!fn()) {
     if (c?.exitCode != null) throw Error('child exited: ' + c.output);
     if (Date.now() > until) throw Error('timed out: ' + (c?.output || ''));
@@ -231,7 +256,12 @@ test('boot existing vault unlocks and connects without creating any browser cook
   const result = await execFile(process.execPath, ['scripts/supervisor-check.js', '--port', String(port)], { cwd: ROOT });
   assert.deepEqual(JSON.parse(result.stdout), { state: 'monitoring', unlocked: true, monitoring: true, error: false });
   assert.doesNotMatch(c.output + result.stdout, new RegExp(SECRET));
-  c.kill('SIGTERM'); assert.equal((await c.done)[0], 0);
+  c.kill('SIGTERM');
+  const exit = (await c.done)[0];
+  if (process.platform === 'win32') {
+    assert.notEqual(exit, 0, 'Windows kill uses TerminateProcess rather than POSIX SIGTERM');
+    const recovered = await acquireDataLock(f.dir); recovered.release(); await tick();
+  } else assert.equal(exit, 0);
   assert.equal(fs.existsSync(path.join(f.dir, 'service.lock')), false);
 });
 
@@ -275,7 +305,10 @@ test('one DATA lock rejects same/different HTTP ports and recovers only after ac
   assert.equal(fs.existsSync(lock), true);
   const recovered = child(t, f, { TW_PORT: String(port) }); await waitFor(() => recovered.output.includes('Termnest:'), recovered);
   assert.notEqual(JSON.parse(fs.readFileSync(lock)).token, record.token);
-  recovered.kill('SIGTERM'); assert.equal((await recovered.done)[0], 0);
+  recovered.kill('SIGTERM');
+  const code = (await recovered.done)[0];
+  if (process.platform !== 'win32') assert.equal(code, 0);
+  else { const final = await acquireDataLock(f.dir); final.release(); await tick(); }
 });
 
 test('lock ownership uncertainty fails closed and release never removes a replaced lock', async t => {
@@ -291,7 +324,7 @@ test('lock ownership uncertainty fails closed and release never removes a replac
   assert.equal(readProtected(lock).length > 0, true);
 });
 
-test('installer dry-run is deterministic, secret-free and does not create state/config or invoke systemd', async t => {
+test('installer dry-run is deterministic, secret-free and does not create state/config or invoke systemd', { skip: process.platform === 'win32' ? 'systemd installer uses POSIX paths; native Task Scheduler adapter covered separately' : false }, async t => {
   const f = fixture(t), home = path.join(f.dir, 'fake home'), data = path.join(home, 'data % $ " tiếng Việt');
   const env = { ...process.env, HOME: home, XDG_STATE_HOME: path.join(home, 'state'), XDG_CONFIG_HOME: path.join(home, 'config') };
   const args = ['scripts/install-supervisor.sh', '--dry-run', '--password-file', f.file, '--data-dir', data, '--port', '8765'];
@@ -355,7 +388,7 @@ test('unsafe DATA directories and symlinked lock files fail closed', { skip: pro
   assert.equal(fs.readFileSync(f.file, 'utf8'), SECRET + '\n');
 });
 
-test('installer quotes special application paths for systemd and never creates data in dry-run', async t => {
+test('installer quotes special application paths for systemd and never creates data in dry-run', { skip: process.platform === 'win32' ? 'systemd installer uses POSIX paths; native Task Scheduler adapter covered separately' : false }, async t => {
   const f = fixture(t), app = path.join(f.dir, 'app % $ " Việt'), scripts = path.join(app, 'scripts');
   fs.mkdirSync(scripts, { recursive: true }); fs.mkdirSync(path.join(app, 'lib'));
   fs.copyFileSync(path.join(ROOT, 'scripts/install-supervisor.sh'), path.join(scripts, 'install-supervisor.sh'));
@@ -380,4 +413,129 @@ test('health CLI reports only fixed states for disconnected or invalid backend r
   });
   const absent = await freePort();
   await assert.rejects(execFile(process.execPath, ['scripts/supervisor-check.js', '--port', String(absent)], { cwd: ROOT }), e => JSON.parse(e.stdout).state === 'error');
+});
+
+test('mock Windows SID ACL branch refuses broad grants, other owners, reparse and wrong physical identity before content access', t => {
+  const f = fixture(t), st = fs.lstatSync(f.file, { bigint: true }), sid = 'S-1-5-21-1-2-3-1001';
+  const good = { currentSid: sid, ownerSid: sid, inode: String(st.ino), volume: String(st.dev), links: 1,
+    directory: false, reparse: false, entries: [sid, 'S-1-5-18', 'S-1-5-32-544'].map(sid => ({ sid, type: 'AccessAllowed', mask: 2032127 })) };
+  assert.doesNotThrow(() => validateWindowsSecurity(good, st));
+  const io = Object.create(fs); let reads = 0;
+  io.readSync = (...args) => { reads++; return fs.readSync(...args); };
+  const bad = [
+    { ...good, ownerSid: 'S-1-5-21-9-9-9-1002' }, { ...good, reparse: true }, { ...good, links: 2 },
+    { ...good, inode: String(st.ino + 1n) }, { ...good, volume: String(st.dev + 1n) },
+    { ...good, entries: [] },
+    { ...good, entries: [...good.entries, { sid: 'S-1-1-0', type: 'AccessAllowed', mask: 1 }] },
+    { ...good, entries: [...good.entries, { sid: 'S-1-5-32-545', type: 'AccessAllowed', mask: 1 }, { sid: 'S-1-5-32-545', type: 'AccessDenied', mask: 1 }] },
+  ];
+  for (const snapshot of bad) {
+    noLeak(() => readPassword(f.file, io, { platform: 'win32', windowsProbe: () => snapshot }), /RUNTIME_UNSAFE_PERMISSIONS/);
+    assert.equal(reads, 0);
+  }
+  noLeak(() => readPassword(f.file, io, { platform: 'win32', windowsProbe: () => { throw Error(SECRET); } }), /RUNTIME_FILE_UNREADABLE/);
+  assert.equal(reads, 0);
+});
+
+test('native Windows ACL refuses Everyone read on secret, primary vault, DATA and lock; hardlinks and junctions fail closed',
+  { skip: process.platform !== 'win32' ? 'requires actual Windows NTFS ACL/Win32 APIs' : false }, async t => {
+    const f = fixture(t), vaultFile = path.join(f.dir, 'vault.json');
+    new Vault(vaultFile).create(SECRET, { servers: [] });
+    assert.equal(readPassword(f.file), SECRET);
+    const powershell = path.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe');
+    function grant(file, add) {
+      const ps = `[Console]::InputEncoding=New-Object Text.UTF8Encoding($false);$p=[Console]::In.ReadToEnd();$a=Get-Acl -LiteralPath $p;
+$r=New-Object Security.AccessControl.FileSystemAccessRule(([Security.Principal.SecurityIdentifier]'S-1-1-0'),'Read','Allow');
+${add ? '$a.AddAccessRule($r)' : '$a.RemoveAccessRuleSpecific($r)'};Set-Acl -LiteralPath $p -AclObject $a`;
+      execFileSync(powershell, ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')],
+        { input: file, timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'] });
+    }
+    grant(f.file, true); noLeak(() => readPassword(f.file), /RUNTIME_UNSAFE_PERMISSIONS/); grant(f.file, false);
+    grant(vaultFile, true); noLeak(() => unlockFromFile(new Vault(vaultFile), f.file, () => assert.fail()), /RUNTIME_UNLOCK_FAILED/); grant(vaultFile, false);
+    grant(f.dir, true); await assert.rejects(acquireDataLock(f.dir), { code: 'RUNTIME_UNSAFE_PERMISSIONS' }); grant(f.dir, false);
+    const owner = await acquireDataLock(f.dir), lock = path.join(f.dir, 'service.lock');
+    grant(lock, true); noLeak(() => readProtected(lock), /RUNTIME_UNSAFE_PERMISSIONS/);
+    owner.release(); await tick(); assert.equal(fs.existsSync(lock), true, 'uncertain lock retained');
+    grant(lock, false); fs.unlinkSync(lock);
+    const hard = path.join(f.dir, 'hard'); fs.linkSync(f.file, hard);
+    noLeak(() => readPassword(f.file), /RUNTIME_UNSAFE/); fs.unlinkSync(hard);
+    const junction = path.join(f.dir, 'junction'); fs.symlinkSync(f.dir, junction, 'junction');
+    const physicalOwner = await acquireDataLock(f.dir);
+    try {
+      await assert.rejects(acquireDataLock(junction), { code: 'RUNTIME_UNSAFE_FILE' });
+      noLeak(() => readPassword(path.join(junction, 'password')), /RUNTIME_WINDOWS_SECURITY_UNAVAILABLE/);
+      await assert.rejects(acquireDataLock(f.dir), { code: 'RUNTIME_ALREADY_RUNNING' });
+    } finally { physicalOwner.release(); await tick(); }
+  });
+
+test('directory identity uses exact BigInt device/inode and refuses uncertain identity', () => {
+  assert.equal(directoryIdentity({ dev: 12n, ino: 9007199254740993n }), 'directory-v2:12:9007199254740993');
+  for (const st of [{ dev: 1, ino: 2 }, { dev: 1n, ino: 0n }, { dev: -1n, ino: 2n }]) {
+    assert.throws(() => directoryIdentity(st), { code: 'RUNTIME_LOCK_UNCERTAIN' });
+  }
+  assert.ok(processIdentity(process.pid)); assert.equal(processIdentity(-1), '');
+  assert.equal(processIdentity('1; exit'), '');
+});
+
+test('legacy path-hash locks, including dead/uncertain records, are never erased automatically during identity migration', async t => {
+  const f = fixture(t), lock = path.join(f.dir, 'service.lock');
+  const data = require('node:crypto').createHash('sha256').update(fs.realpathSync(f.dir)).digest('hex');
+  const text = JSON.stringify({ pid: 2147483647, identity: 'old-identity', data, token: 'legacy' });
+  fs.writeFileSync(lock, text, { mode: 0o600 });
+  await assert.rejects(acquireDataLock(f.dir), { code: 'RUNTIME_LOCK_UNCERTAIN' });
+  assert.equal(fs.readFileSync(lock, 'utf8'), text);
+});
+
+for (const kind of ['case', 'unicode']) {
+  test(`native ${kind} aliases share the physical arbiter across simultaneous starts`, async t => {
+    if (kind === 'unicode' && process.platform !== 'darwin') return t.skip('macOS normalization-alias filesystem test');
+    const f = fixture(t), real = path.join(f.dir, kind === 'case' ? 'DataCase' : 'Dátá');
+    const alias = path.join(f.dir, kind === 'case' ? 'datacase' : 'Dátá'.normalize('NFD'));
+    fs.mkdirSync(real, { mode: 0o700 });
+    if (!fs.existsSync(alias) || fs.statSync(real, { bigint: true }).ino !== fs.statSync(alias, { bigint: true }).ino) {
+      return t.skip('filesystem does not support this physical alias');
+    }
+    assert.equal(directoryIdentity(fs.statSync(real, { bigint: true })), directoryIdentity(fs.statSync(alias, { bigint: true })));
+    const program = `const {acquireDataLock}=require('./lib/service-runtime');
+acquireDataLock(process.argv[1]).then(lock=>{process.send('owner');process.on('message',()=>{lock.release();process.exit(0)})},e=>{process.send(e.code);process.exit(1)});`;
+    const children = [real, alias, real, alias].map(dir => spawn(process.execPath, ['-e', program, dir], { cwd: ROOT, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] }));
+    const exits = children.map(c => once(c, 'exit'));
+    t.after(async () => { children.forEach(c => { if (c.exitCode === null && !c.signalCode) c.kill(); }); await Promise.all(exits); });
+    const states = await Promise.all(children.map(c => once(c, 'message').then(([m]) => m)));
+    assert.equal(states.filter(s => s === 'owner').length, 1);
+    assert.ok(states.filter(s => s !== 'owner').every(s => s === 'RUNTIME_ALREADY_RUNNING'));
+    children[states.indexOf('owner')].send('release'); await Promise.all(exits);
+  });
+}
+
+test('native symlink alias is refused while physical DATA remains exclusively owned', { skip: process.platform === 'win32' ? 'Windows junction covered by native ACL test' : false }, async t => {
+  const f = fixture(t), alias = path.join(f.dir, 'symbolic');
+  fs.symlinkSync(f.dir, alias);
+  const owner = await acquireDataLock(f.dir);
+  try {
+    await assert.rejects(acquireDataLock(alias), { code: 'RUNTIME_UNSAFE_FILE' });
+    await assert.rejects(acquireDataLock(f.dir), { code: 'RUNTIME_ALREADY_RUNNING' });
+  } finally { owner.release(); await tick(); }
+});
+
+test('native Windows fresh DATA receives a private inherited ACL without a boot-secret file',
+  { skip: process.platform !== 'win32' ? 'requires actual Windows ACL creation' : false }, async t => {
+    const f = fixture(t), data = path.join(f.dir, 'fresh DATA Việt & $ %');
+    const lock = await acquireDataLock(data);
+    assert.ok(fs.existsSync(path.join(data, 'service.lock')));
+    assert.equal(fs.existsSync(path.join(data, 'password')), false);
+    lock.release(); await tick(); assert.equal(fs.existsSync(path.join(data, 'service.lock')), false);
+  });
+
+test('unattended unlock uses only the pinned primary bytes and never calls the interactive backup reader', t => {
+  const f = fixture(t), file = path.join(f.dir, 'vault.json');
+  new Vault(file).create(SECRET, { servers: [], prefs: { marker: true } });
+  const bytes = fs.readFileSync(file), vault = new Vault(file);
+  vault.unlock = () => { throw Error('interactive reopen must not happen'); };
+  assert.equal(unlockFromFile(vault, f.file, () => {}), true);
+  assert.equal(vault.unlocked, true); assert.equal(vault.data.prefs.marker, true); assert.equal(vault.recovered, null);
+  assert.deepEqual(fs.readFileSync(file), bytes);
+  const extra = vault.sealExtra({ marker: true }); assert.deepEqual(vault.openExtra(extra), { marker: true });
+  vault.save(); const reopened = new Vault(file); assert.equal(reopened.unlock(SECRET), true);
+  assert.equal(reopened.data.prefs.marker, true);
 });
