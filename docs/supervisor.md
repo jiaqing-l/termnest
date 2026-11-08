@@ -126,6 +126,47 @@ launchd user agent requires the user's GUI login session; logout stops it. Use `
 Windows credentials require owner ACLs, not Unix chmod assumptions. These adapters and native CI
 need native evidence separately; mocked platform tests do not establish installed service readiness.
 
+## Source and installed native resource paths
+
+For a source checkout or extracted update archive, run the commands above from the application root:
+the runbook is `docs/supervisor.md`, installers are in `scripts/`, and `node` is the installed host Node.
+Run `npm ci` there on the target platform before installation.
+
+The native application carries a prepared runtime payload instead. Its resource `app/` directory contains
+`server.js`, `lib/`, production `node_modules/`, `scripts/` and this runbook as **`SUPERVISOR.md`**;
+it intentionally has no `docs/` directory. Only the three supervisor installers and `supervisor-check.js`
+are copied from scripts when present at build time. Rebuild after integrating platform installers.
+Do not run `npm ci` inside an installed native application or replace its native modules.
+
+Locate the installed resource root containing `app/server.js` using the installation/package contents:
+on macOS it is typically `Termnest.app/Contents/Resources/app`, on Linux the package resource directory
+is typically `/usr/lib/Termnest/app`, and on Windows it is the installation directory's `app` subdirectory.
+Verify the actual package location rather than assuming a particular installation prefix. Set `TERM_APP`
+to that `app` directory. The bundled Node sits beside `server.js`: `node-arm64` or `node-x64` on Unix,
+and `node.exe` on Windows. From that directory, run the matching platform commands, for example:
+
+```sh
+cd "$TERM_APP"
+# Select the architecture actually present in this payload.
+./node-x64 scripts/supervisor-check.js --port "$TERM_PORT"
+bash scripts/install-supervisor.sh --dry-run --data-dir "$TERM_DATA" \
+  --password-file "$TERM_BOOT_PASSWORD_FILE" --port "$TERM_PORT"
+# On macOS, use install-supervisor-macos.sh with the same arguments instead.
+```
+
+```powershell
+Set-Location $env:TERM_APP
+& .\node.exe scripts/supervisor-check.js --port $env:TERM_PORT
+powershell.exe -NoProfile -File scripts/install-supervisor.ps1 -DryRun `
+  -DataDir $env:TERM_DATA -PasswordFile $env:TERM_BOOT_PASSWORD_FILE -Port $env:TERM_PORT
+```
+
+Installer Node discovery must support the bundled executable (W5 integration); inspect the dry-run
+service executable before installing. A health check can use bundled Node directly as shown. Preserve
+the prepared application directory while its service references it, and rerun the installer after an
+application upgrade or move. Keep DATA and the protected secret outside the application package;
+an installer dry-run does not prove service startup, native terminal behavior or audit readiness.
+
 ## Policy, workspaces and leader ownership
 
 In Operations, expand supervision settings, list each selected server ID and absolute workspace root
@@ -160,12 +201,23 @@ eligibility, task state, fresh scan and fencing still gate every actual action.
 
 Audit agent account configuration is independent of leader registration. W3 workspace records can
 include `auditConfig` (the intended `.claude` or `.claude-NAME` config directory name) and `auditAccount`
-(the account reference returned by authenticated audit readiness). Configure those through the
-integrated account/workspace workflow or authenticated facade, selecting the account that is already
-logged in on that host. Do not guess or enter credentials into Operations. The compact form preserves
-these fields for unchanged workspaces but does not offer a new account selector; an added workspace
-may remain explicitly unavailable until account registration is completed. `auditReadiness` distinguishes
-missing skill, account mismatch/registration and unknown quota; it is never rendered as audit success.
+(the account reference returned by authenticated audit readiness). Do not guess or enter credentials
+into Operations. The compact form preserves these fields for unchanged workspaces. The current facade
+does **not** enumerate available account/config choices: a new root without `auditConfig` returns
+`audit_account_required`, without an `accountRef`. It cannot yet support account onboarding in this form.
+An owner who already knows the intended config can submit that workspace's `auditConfig` through the
+authenticated facade, read its `auditReadiness.accountRef`, explicitly confirm the intended account,
+then submit that reference as `auditAccount` and GET again to verify `audit_ready`. Preserve the complete
+workspace list and other registrations on every update; never derive an account hash locally or enroll
+all sessions. Backend skill/auth checks can still reject the selection, and quota remains unknown.
+
+For compact account selection to support a newly added root, the backend must provide authenticated,
+scope-bound choices (server ID, root, config, opaque account reference, readable account label and
+readiness code), either in GET supervision or a dedicated readiness-discovery endpoint accepting that
+server/root. This is a missing API contract, not an existing workflow. Until it is integrated, a new
+workspace can remain explicitly unavailable; enabling policy alone does not register its audit account.
+`auditReadiness` distinguishes missing skill, account mismatch/registration and unknown quota; it is
+never rendered as audit success. Confirm readiness by successful backend readback after registration.
 
 UI readiness consumes optional `runtime.ready`, `unlocked`, `monitoring`, `observationsFresh`,
 `validatedAuditCompletion`, `sshReady`, `auditReady`, `linger`, `registrationReady` and `recoveryReady`
