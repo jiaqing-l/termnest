@@ -25,9 +25,10 @@ function harness(f, session, options = {}) {
   function machine(home, sessions) {
     return { cfg: { id: path.basename(home) }, mode: 'native', snapshot: { sessions }, exec: async (command, timeout, maxBuffer, input) => {
       calls.push({ home, command, input: !!input });
-      if (command.includes('function verifyRuntime()')) return { code: 0, out: JSON.stringify({ verified: options.verified === true }) };
+      if (command.includes('function verifyRuntime()')) { options.beforeProof?.(); return { code: 0, out: JSON.stringify({ verified: options.verified === true }) }; }
       if (command.startsWith('tmux send-keys ')) return { code: options.launchFail ? 1 : 0, out: '' };
       const r = cp.spawnSync('sh', ['-c', command], { env: env(home), input, maxBuffer: move.MAX_BYTES * 2 });
+      if (input && r.status === 0) options.afterWrite?.();
       return { code: r.status, out: String(r.stdout), err: String(r.stderr) };
     } };
   }
@@ -48,7 +49,7 @@ test('exact UUID discovery finds agent03, carries provenance and reads only its 
   assert.equal(found.profile, path.join(f.A, '.claude-agent03')); assert.equal(Buffer.from(found.b64, 'base64').toString(), fs.readFileSync(source, 'utf8'));
   assert.ok(!JSON.stringify(found).includes('WRONG PROFILE'));
   const account = runtime(f.A, move.accountRuntime, { tool: 'claude', profile: found.profile });
-  assert.equal(account.email, 'right@fixture.invalid'); assert.ok(!JSON.stringify(account).includes('NEVER-RETURN-AUTH'));
+  assert.equal(account.email, 'right@fixture.invalid'); assert.equal(account.mode, 'config'); assert.ok(!JSON.stringify(account).includes('NEVER-RETURN-AUTH'));
   fs.unlinkSync(path.join(f.A, '.claude-agent03', '.claude.json'));
   assert.equal(runtime(f.A, move.accountRuntime, { tool: 'claude', profile: found.profile }).email, '', 'never falls back to the wrong default identity');
 });
@@ -101,14 +102,99 @@ test('agent03 survey, explicit target profile, empty non-git folder, rewrite and
   const h = harness(f, { name: 'smart', path: f.cwd, aiTool: 'claude', aiSessionId: id });
   const first = await h.check(); assert.equal(first.same, false); assert.ok(first.targetProfiles.includes(path.join(f.B, '.claude-agent07')));
   const c = await h.check({ targetProfile: path.join(f.B, '.claude-agent07') }); assert.equal(c.same, true); assert.ok(c.places.every(p => p.why !== 'repo'));
+  assert.equal(c.sourceMode, 'config'); assert.equal(c.targetMode, 'config');
   const moved = await h.run({ profile: c.profile, targetProfile: c.targetProfile, receipt: c.receipt, stop: false });
   assert.equal(moved.ok, true); assert.equal(moved.stopped, false); assert.equal(h.stops.length, 0);
   const landed = path.join(f.B, '.claude-agent07', 'projects', f.dst.replace(/[^A-Za-z0-9]/g, '-'), id + '.jsonl');
   assert.equal(fs.readFileSync(landed, 'utf8'), before.toString().split(f.cwd).join(f.dst)); assert.deepEqual(fs.readFileSync(original), before);
   assert.equal(fs.existsSync(path.join(f.B, '.claude', 'projects')), false);
   const launch = h.calls.find(c => c.command.startsWith('tmux send-keys ')).command;
-  assert.ok(launch.includes('CLAUDE_CONFIG_DIR=')); assert.ok(launch.includes(c.targetProfile)); assert.ok(launch.includes('--resume')); assert.ok(launch.includes(id));
+  assert.equal(launch, `tmux send-keys -t ${shq('=moved:')} ${shq(`env CLAUDE_CONFIG_DIR=${shq(c.targetProfile)} claude --resume ${shq(id)}`)} Enter`);
   assert.equal(h.starts[0].run, 'shell');
+});
+
+test('normal default Claude accounts and resume use HOME/.claude.json with the config env unset', async t => {
+  const f = fixture(t);
+  for (const home of [f.A, f.B]) {
+    auth(home, '.claude', 'default@fixture.invalid');
+    const who = runtime(home, move.accountRuntime, { tool: 'claude', profile: path.join(home, '.claude') });
+    assert.deepEqual(who, { email: 'default@fixture.invalid', profile: path.join(home, '.claude'), mode: 'default' });
+    assert.equal(fs.existsSync(path.join(home, '.claude', '.claude.json')), false);
+  }
+  const source = chat(f.A, '.claude', f.cwd), original = fs.readFileSync(source);
+  const h = harness(f, { name: 'smart', path: f.cwd, aiTool: 'claude', aiSessionId: id, aiStatus: { cfg: '.claude' } }, { verified: true });
+  const c = await h.check(); assert.equal(c.same, true); assert.equal(c.sourceMode, 'default'); assert.equal(c.targetMode, 'default');
+  const r = await h.run({ profile: c.profile, targetProfile: c.targetProfile, receipt: c.receipt, stop: true });
+  assert.equal(r.ok, true); assert.equal(r.stopped, true); assert.deepEqual(h.stops, ['smart']);
+  const launch = h.calls.find(c => c.command.startsWith('tmux send-keys ')).command;
+  assert.equal(launch, `tmux send-keys -t ${shq('=moved:')} ${shq(`env -u CLAUDE_CONFIG_DIR claude --resume ${shq(id)}`)} Enter`);
+  assert.ok(h.calls.find(c => c.command.includes('function verifyRuntime()')).command.includes('"mode":"default"'));
+  assert.deepEqual(fs.readFileSync(source), original);
+  assert.equal(fs.existsSync(path.join(f.B, '.claude', '.claude.json')), false, 'never creates or copies credentials to match launch mode');
+});
+
+test('conflicting top-level and nested default Claude identities reject on either host', async t => {
+  for (const side of ['A', 'B']) {
+    const f = fixture(t);
+    auth(f.A, '.claude', 'checked@fixture.invalid'); auth(f.B, '.claude', 'checked@fixture.invalid');
+    const nested = put(path.join(f[side], '.claude', '.claude.json'), JSON.stringify({ oauthAccount: { emailAddress: 'launched@fixture.invalid' }, secret: 'NEVER-RETURN-AUTH' }));
+    const before = fs.readFileSync(nested); chat(f.A, '.claude', f.cwd);
+    assert.equal(runtime(f[side], move.accountRuntime, { tool: 'claude', profile: path.join(f[side], '.claude') }).code, 'account');
+    const h = harness(f, { name: 'smart', path: f.cwd, aiTool: 'claude', aiSessionId: id });
+    const c = await h.check(); assert.equal(c.same, false); assert.equal(side === 'A' ? c.from : c.to, '');
+    assert.equal(await h.run({ stop: true }), null); assert.equal(h.calls.filter(c => c.input).length, 0);
+    assert.equal(h.starts.length, 0); assert.equal(h.stops.length, 0); assert.deepEqual(fs.readFileSync(nested), before);
+    assert.ok(!JSON.stringify(h.sent).includes('launched@fixture.invalid')); assert.ok(!JSON.stringify(h.sent).includes('NEVER-RETURN-AUTH'));
+  }
+});
+
+test('nested default metadata never substitutes for missing normal default identity', t => {
+  const f = fixture(t);
+  for (const home of [f.A, f.B]) {
+    put(path.join(home, '.claude', '.claude.json'), JSON.stringify({ oauthAccount: { emailAddress: 'nested@fixture.invalid' } }));
+    const who = runtime(home, move.accountRuntime, { tool: 'claude', profile: path.join(home, '.claude') });
+    assert.equal(who.email, ''); assert.equal(who.mode, 'default');
+  }
+});
+
+test('source append during upload or just before stop keeps the old session and reports an incomplete move', async t => {
+  for (const [when, stop] of [['afterWrite', false], ['afterWrite', true], ['beforeProof', true]]) {
+    const f = fixture(t); auth(f.A, '.claude', 'same@fixture.invalid'); auth(f.B, '.claude', 'same@fixture.invalid');
+    const source = chat(f.A, '.claude', f.cwd), original = fs.readFileSync(source), tail = JSON.stringify({ type: 'user', message: { content: 'new source message' } }) + '\n';
+    const h = harness(f, { name: 'smart', path: f.cwd, aiTool: 'claude', aiSessionId: id }, { verified: true, [when]: () => fs.appendFileSync(source, tail) });
+    const c = await h.check();
+    assert.equal(await h.run({ receipt: c.receipt, stop }), null);
+    assert.equal(h.failed.at(-1).code, 'stale'); assert.equal(h.failed.at(-1).incomplete, true); assert.equal(h.failed.at(-1).stopped, false);
+    assert.equal(h.stops.length, 0); assert.equal(h.starts.length, when === 'afterWrite' ? 0 : 1);
+    assert.equal(h.calls.filter(c => c.command.startsWith('tmux send-keys ')).length, when === 'afterWrite' ? 0 : 1);
+    assert.equal(fs.readFileSync(source, 'utf8'), original.toString() + tail);
+    const landed = path.join(f.B, '.claude', 'projects', f.dst.replace(/[^A-Za-z0-9]/g, '-'), id + '.jsonl');
+    assert.equal(fs.readFileSync(landed, 'utf8'), original.toString().split(f.cwd).join(f.dst));
+    assert.ok(!fs.readFileSync(landed, 'utf8').includes('new source message'), 'fixture proves the target is an older prefix');
+    if (when === 'afterWrite') {
+      assert.equal(await h.run({ stop: true }), null, 'a retry cannot overwrite a different existing target');
+      assert.equal(h.stops.length, 0); assert.equal(h.starts.length, 0);
+    }
+  }
+});
+
+test('source account, profile path and snapshot identity are rechecked after upload', async t => {
+  for (const change of ['account', 'profile', 'snapshot']) {
+    const f = fixture(t); auth(f.A, '.claude-agent03', 'same@fixture.invalid'); auth(f.B, '.claude', 'same@fixture.invalid');
+    chat(f.A, '.claude-agent03', f.cwd);
+    const options = { verified: true }, session = { name: 'smart', path: f.cwd, aiTool: 'claude', aiSessionId: id, aiStatus: { cfg: '.claude-agent03' } };
+    const h = harness(f, session, options);
+    options.afterWrite = () => {
+      if (change === 'account') auth(f.A, '.claude-agent03', 'changed@fixture.invalid');
+      if (change === 'snapshot') session.aiSessionId = other;
+      if (change === 'profile') {
+        fs.renameSync(path.join(f.A, '.claude-agent03'), path.join(f.A, '.claude-original'));
+        fs.symlinkSync(path.join(f.A, '.claude-original'), path.join(f.A, '.claude-agent03'));
+      }
+    };
+    assert.equal(await h.run({ stop: true }), null); assert.equal(h.failed.at(-1).code, 'stale');
+    assert.equal(h.starts.length, 0); assert.equal(h.stops.length, 0);
+  }
 });
 
 test('target collision and symlink reject without overwrite, resume, or stopping source', async t => {
@@ -165,6 +251,26 @@ test('stop proof requires a live descendant with exact UUID, working folder and 
   assert.equal(runtime(f.B, move.verifyRuntime, { ...args, profile: path.join(f.B, '.claude') }, extra).verified, false);
   assert.equal(runtime(f.B, move.verifyRuntime, { ...args, id: other }, extra).verified, false);
   assert.equal(runtime(f.B, move.verifyRuntime, { ...args, dir: f.cwd }, extra).verified, false);
+  assert.equal(runtime(f.B, move.verifyRuntime, { ...args, mode: 'default' }, extra).verified, false);
+});
+
+test('default Claude stop proof requires unset config, the exact HOME, UUID and default mode', { skip: process.platform !== 'linux' }, async t => {
+  const f = fixture(t), profile = path.join(f.B, '.claude'), bin = path.join(f.root, 'bin');
+  const executable = put(path.join(f.root, 'claude'), 'process.stdout.write("ready\\n");setInterval(()=>{},1000);');
+  const fakeTmux = put(path.join(bin, 'tmux'), '#!/bin/sh\nprintf "%s\\n" ' + process.pid + '\n'); fs.chmodSync(fakeTmux, 0o700);
+  const args = { tool: 'claude', id, dir: f.dst, profile, mode: 'default', name: 'moved' }, extra = { PATH: bin + ':' + process.env.PATH };
+  for (const kind of ['normal', 'explicitNested', 'otherHome']) {
+    const childEnv = env(kind === 'otherHome' ? f.A : f.B); delete childEnv.CLAUDE_CONFIG_DIR;
+    if (kind === 'explicitNested') childEnv.CLAUDE_CONFIG_DIR = profile;
+    const child = cp.spawn(process.execPath, [executable, '--resume', id], { cwd: f.dst, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    t.after(() => child.kill()); await new Promise((resolve, reject) => { child.stdout.once('data', resolve); child.once('error', reject); });
+    assert.equal(runtime(f.B, move.verifyRuntime, args, extra).verified, kind === 'normal', kind);
+    if (kind === 'normal') {
+      assert.equal(runtime(f.B, move.verifyRuntime, { ...args, mode: 'config' }, extra).verified, false);
+      assert.equal(runtime(f.B, move.verifyRuntime, { ...args, id: other }, extra).verified, false);
+    }
+    child.kill(); await new Promise(resolve => child.once('exit', resolve));
+  }
 });
 
 test('UUID already stored in another destination project rejects instead of ambiguous resume', async t => {

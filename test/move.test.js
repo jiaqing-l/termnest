@@ -48,7 +48,7 @@ test('a Claude chat moves to a machine where the same repository lives at anothe
     if (process.platform !== 'win32') assert.equal(fs.statSync(landed).mode & 0o077, 0);
     assert.deepEqual(started, [['b', { name: 'SV1-2', dir: path.join(dstRepo, 'docs'), run: 'shell', restoring: true }]]);
     assert.deepEqual(stopped, [['a', 'SV1']]);
-    assert.ok(b.launches[0].includes('--resume')); assert.ok(b.launches[0].includes(id)); assert.ok(b.launches[0].includes('CLAUDE_CONFIG_DIR='));
+    assert.ok(b.launches[0].includes('--resume')); assert.ok(b.launches[0].includes(id)); assert.ok(b.launches[0].includes('env -u CLAUDE_CONFIG_DIR'));
     // a second move never shortens a longer copy that the target went on with
     fs.appendFileSync(landed, JSON.stringify({ message: 'continued on b' }) + '\n');
     b.snapshot.sessions.push({ name: 'SV1-2', path: dstRepo, cmd: 'claude' });
