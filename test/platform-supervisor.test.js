@@ -374,6 +374,39 @@ test('macOS plist dry-run escapes paths, preserves workers and creates no files 
     assert.match(macDry(dir, ['--uninstall']), /RUNTIME_DRY_RUN_UNINSTALL/);
   });
 
+test('macOS generated launchd environment finds tools and selected Node with only a base environment',
+  { skip: process.platform === 'win32' ? 'POSIX launchd environment fixture; no service registration' : false }, t => {
+    const dir = fixture(t), app = appFixture(dir, 'source app Việt');
+    const runtime = path.join(dir, 'runtime & < > " \' Việt $HOME `id`');
+    fs.mkdirSync(runtime);
+    const node = path.join(runtime, 'node');
+    fs.copyFileSync(process.execPath, node); fs.chmodSync(node, 0o700);
+    fs.writeFileSync(path.join(runtime, 'tmux'), '#!/bin/sh\nprintf "fixture-tmux"\n', { mode: 0o700 });
+    const home = path.join(dir, 'absent home');
+    const baseenv = { HOME: home, PATH: '/usr/bin:/bin' };
+    const text = execFileSync('/bin/bash', [path.join(app, 'scripts/install-supervisor-macos.sh'), '--dry-run', '--node-path', node],
+      { env: { ...baseenv, UNRELATED_PRIVATE_VALUE: 'never-copy-this-value' }, encoding: 'utf8', timeout: 60000 });
+    // Decode just the generated environment on Linux; use the real plist parser on macOS.
+    const decode = v => v.replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+    const dict = text.match(/<key>EnvironmentVariables<\/key><dict>([\s\S]*?)<\/dict>/)[1];
+    const env = Object.fromEntries([...dict.matchAll(/<key>([^<]+)<\/key><string>([^<]*)<\/string>/g)].map(m => [decode(m[1]), decode(m[2])]));
+    if (process.platform === 'darwin') {
+      const plist = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '-'], { input: text, encoding: 'utf8' }));
+      assert.deepEqual(env, plist.EnvironmentVariables);
+    }
+    assert.deepEqual(Object.keys(env).sort(), ['PATH', 'TW_DATA', 'TW_PASSWORD_FILE', 'TW_PORT']);
+    assert.doesNotMatch(text, /UNRELATED_PRIVATE_VALUE|never-copy-this-value/);
+    const entries = env.PATH.split(':');
+    for (const entry of [runtime, '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']) assert.ok(entries.includes(entry), entry);
+    assert.ok(entries.length <= 7);
+    assert.ok(entries.every(v => path.isAbsolute(v) && v.length <= 4096 && !/[\x00-\x1f\x7f]/.test(v)));
+    assert.equal(new Set(entries).size, entries.length);
+    // Direct child lookup receives exactly the declared environment, as launchd would.
+    assert.equal(execFileSync('tmux', [], { env: { HOME: home, ...env }, encoding: 'utf8', timeout: 10000 }), 'fixture-tmux');
+    assert.equal(execFileSync('node', ['-p', 'process.execPath'], { env: { HOME: home, ...env }, encoding: 'utf8', timeout: 10000 }).trim(), node);
+    assert.equal(fs.existsSync(home), false);
+  });
+
 test('macOS dry-run resolves special application path and refuses unmanaged/symlinked registration',
   { skip: process.platform === 'win32' ? 'POSIX path/security checks' : false }, t => {
     const dir = fixture(t), app = path.join(dir, 'app & < > " \' Việt $ %');
