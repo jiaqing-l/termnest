@@ -21,13 +21,17 @@ function fixture(t) {
   fs.writeFileSync(file, SECRET + '\n', { mode: 0o600 });
   return { dir, file };
 }
-function noLeak(fn, pattern) {
-  assert.throws(fn, e => { assert.doesNotMatch(e.message + JSON.stringify(e), new RegExp(SECRET)); return pattern.test(e.code); });
+function noLeak(fn, pattern, message) {
+  assert.throws(fn, e => { assert.doesNotMatch(e.message + JSON.stringify(e), new RegExp(SECRET)); return pattern.test(e.code); }, message);
 }
 
 test('protected reader accepts owner-only regular files, bounded UTF-8 and a single optional line ending', t => {
   const f = fixture(t);
   assert.equal(readPassword(f.file), SECRET);
+  const io = Object.create(fs);
+  io.lstatSync = p => fs.lstatSync(p);
+  io.fstatSync = fd => fs.fstatSync(fd);
+  assert.equal(readPassword(f.file, io), SECRET, 'injected numeric Stats remain supported');
   for (const text of ['Tiếng Việt secret\r\n', ' space preserved ', 'x']) {
     fs.writeFileSync(f.file, text); assert.equal(readPassword(f.file), text.replace(/\r?\n$/, ''));
   }
@@ -67,11 +71,88 @@ test('bounded nofollow reader catches swap before open, replacement after read a
       if (moment === 'read' && !swapped) { swapped = true; fs.unlinkSync(f.file); fs.copyFileSync(other, f.file); }
       return n;
     };
-    noLeak(() => readPassword(f.file, io), /RUNTIME_(UNSAFE_FILE|FILE_CHANGED)/);
+    noLeak(() => readPassword(f.file, io), /RUNTIME_(UNSAFE_FILE|FILE_CHANGED)/, moment);
   }
   const io = Object.create(fs); let grew = false;
   io.readSync = (...args) => { if (!grew) { grew = true; fs.appendFileSync(f.file, 'x'.repeat(20000)); } return fs.readSync(...args); };
   noLeak(() => readPassword(f.file, io), /RUNTIME_FILE_CHANGED/);
+});
+
+test('reader rejects reused inode metadata with changes below millisecond precision before reading any content', t => {
+  const f = fixture(t), base = fs.lstatSync(f.file);
+  // Model inode reuse deterministically: identity/size and every millisecond field match, but one ns field differs.
+  // Numeric Stats also exercise injected IO implementations that do not honor the bigint option.
+  for (const field of ['birthtime', 'ctime', 'mtime']) {
+    const before = Object.assign(Object.create(Object.getPrototypeOf(base)), base);
+    for (const key of ['birthtime', 'ctime', 'mtime']) {
+      before[key + 'Ms'] = 1800000000000;
+      before[key + 'Ns'] = 1800000000000000001n;
+    }
+    const replaced = Object.assign(Object.create(Object.getPrototypeOf(before)), before, { [field + 'Ns']: before[field + 'Ns'] + 1n });
+    assert.equal(before.dev, replaced.dev); assert.equal(before.ino, replaced.ino);
+    assert.equal(before[field + 'Ms'], replaced[field + 'Ms']);
+    const io = Object.create(fs), closed = []; let reads = 0;
+    io.openSync = () => 71;
+    io.lstatSync = () => before;
+    io.fstatSync = () => replaced;
+    io.readSync = (_fd, bytes, offset) => ++reads === 1 ? bytes.write(SECRET + '\n', offset) : 0;
+    io.closeSync = fd => closed.push(fd);
+    noLeak(() => readPassword(f.file, io), /RUNTIME_FILE_CHANGED/, field);
+    assert.equal(reads, 0); assert.deepEqual(closed, [71]);
+  }
+});
+
+test('reader pins the observed inode across path/open replacement even when all timestamps are identical', t => {
+  const f = fixture(t), other = path.join(f.dir, 'replacement');
+  fs.writeFileSync(other, SECRET + '\n', { mode: 0o600 });
+  const io = Object.create(fs), handles = [], closed = []; let reads = 0, observed = false, replaced = false;
+  const fixedTimes = st => {
+    for (const key of ['birthtime', 'ctime', 'mtime']) { st[key + 'Ns'] = 1800000000000000000n; st[key + 'Ms'] = 1800000000000n; }
+    return st;
+  };
+  io.lstatSync = (p, options) => {
+    if (handles.length === 0) return fixedTimes(fs.lstatSync(p, options)); // Special-file preflight only.
+    assert.equal(handles.length, 1, 'the reference must exist before observing the path');
+    observed = true; return fixedTimes(fs.lstatSync(p, options));
+  };
+  io.openSync = (p, flags) => {
+    if (handles.length === 1) {
+      assert.equal(observed, true);
+      const pinned = fs.fstatSync(handles[0], { bigint: true });
+      fs.unlinkSync(p);
+      if (process.platform !== 'win32') assert.equal(fs.fstatSync(handles[0], { bigint: true }).nlink, 0n);
+      fs.copyFileSync(other, p);
+      // The still-open reference makes inode reuse impossible; no filesystem clock resolution is assumed.
+      assert.notEqual(fs.lstatSync(p, { bigint: true }).ino, pinned.ino);
+      replaced = true;
+    }
+    const fd = fs.openSync(p, flags); handles.push(fd); return fd;
+  };
+  io.fstatSync = (fd, options) => fixedTimes(fs.fstatSync(fd, options));
+  io.readSync = (...args) => { reads++; return fs.readSync(...args); };
+  io.closeSync = fd => { closed.push(fd); fs.closeSync(fd); };
+  noLeak(() => readPassword(f.file, io), /RUNTIME_FILE_CHANGED/);
+  assert.equal(replaced, true); assert.equal(reads, 0);
+  assert.deepEqual(closed.sort(), handles.sort());
+});
+
+test('reader releases both descriptors after open, read or close failure without exposing content', t => {
+  const f = fixture(t);
+  for (const failure of ['open', 'read', 'close']) {
+    const io = Object.create(fs), handles = [], closed = [];
+    io.openSync = (...args) => {
+      if (failure === 'open' && handles.length === 1) throw Error(SECRET);
+      const fd = fs.openSync(...args); handles.push(fd); return fd;
+    };
+    io.readSync = (...args) => { if (failure === 'read') throw Error(SECRET); return fs.readSync(...args); };
+    io.closeSync = fd => {
+      fs.closeSync(fd); closed.push(fd);
+      if (failure === 'close' && closed.length === 1) throw Error(SECRET);
+    };
+    noLeak(() => readPassword(f.file, io), /RUNTIME_FILE_UNREADABLE/, failure);
+    assert.deepEqual(closed.sort(), handles.sort());
+    for (const fd of handles) assert.throws(() => fs.fstatSync(fd), { code: 'EBADF' });
+  }
 });
 
 test('FIFO credential never blocks startup', { skip: process.platform === 'win32' }, async t => {
