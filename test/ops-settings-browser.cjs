@@ -39,6 +39,7 @@ const backup = { enabled: true, storage: { host: 'fixture-store', path: '/encryp
  { id: 'first', name: 'First connection', online: false, configured: true, roots: [], includeChats: true, phase: 'never', hasSnapshot: false }
  ] };
 let failBoard = false, failSupervision = false, failPost = false, mismatch = false, slow = false, nudgeMode = 'delivered', failRuleRead = false, folder = '/work/new';
+let releaseNudge;
 const originalSupervision = structuredClone(supervision), originalBackup = structuredClone(backup);
 const prefs = { limits: { cpu: 95, ram: 90, disk: 90 }, templates: [], commands: [], recentDirs: [], backupMinutes: 60, petsEnabled: false };
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8').replace('<head>', `<head><script>
@@ -74,6 +75,12 @@ const server = http.createServer(async (req, res) => {
    return send(supervision);
   }
   if (u.pathname === '/api/features/ops/nudge') {
+   if (nudgeMode === 'poll-first') {
+    nudges.push(body);
+    board.log.unshift({ server: body.server, session:'dormant',rule:'dormant',at:Date.now(),idleAt:board.servers[0].sessions[0].ai.at,delivery:'delivered',verified:null,responded:null });
+    await new Promise(resolve=>{releaseNudge=resolve});
+    return send({ok:true,delivery:'delivered',responded:null,progress:'unknown'});
+   }
    nudges.push(body); await new Promise(r=>setTimeout(r,180));
    if (nudgeMode === 'uncertain') {
     board.log.unshift({ server: body.server, session: 'dormant', rule: 'dormant', at: Date.now(), delivery:'uncertain', code:'OPS_DELIVERY_UNCERTAIN' });
@@ -100,6 +107,7 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname === '/api/backup') return send({lastAt:now,dir:'/fixture/vault-backups',extraDir:'',suggestions:[]});
   if (u.pathname === '/api/transfer') return send({waiting:[]});
   if (u.pathname === '/api/tokens') return send({accounts:tokenAccounts,hosts:[]});
+  if (u.pathname === '/api/usage') return send({at:Date.now(),accounts:[],hosts:[]});
   return send({});
  }
  const vendor = { '/vendor/xterm.js':'@xterm/xterm/lib/xterm.js', '/vendor/xterm.css':'@xterm/xterm/css/xterm.css', '/vendor/addon-fit.js':'@xterm/addon-fit/lib/addon-fit.js', '/vendor/markdown-it.js':'markdown-it/dist/markdown-it.min.js' };
@@ -133,6 +141,19 @@ let chrome, ws, closeBrowser, chromeError='';
  const clickText=async(root,label)=>evaluate('Array.from('+root+'.querySelectorAll("button")).find(b=>b.textContent==='+JSON.stringify(label)+').click()');
  const settingsTab=async tab=>evaluate('document.querySelector('+JSON.stringify('#dlg-set [data-tab="'+tab+'"]')+').click()');
  const closeSettings=async()=>evaluate('document.querySelector("#dlg-set [data-close]").click()');
+ const captureDaily=async name=>{
+  for(const width of [1440,390]){
+   await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});await delay(80);
+   await evaluate('document.querySelector("#tab-ops").scrollIntoView({block:"nearest",inline:"nearest"})');
+   assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),'daily width '+width);
+   await screenshot(name+'-'+width);
+   if(name==='operations-all-groups-before-nudge'){
+    await evaluate('document.querySelector(".g-running").scrollIntoView({block:"start"})');
+    await screenshot('operations-lower-groups-before-nudge-'+width);
+    await evaluate('document.querySelector(".ops-head").scrollIntoView({block:"start"})');
+   }
+  }
+ };
  chromeVersion=await send('Browser.getVersion');await send('Runtime.enable');await send('Page.enable');
  await send('Page.navigate',{url:'http://127.0.0.1:'+server.address().port+'/?lang=vi'});
  await until('!!window.TW && !!TW.app() && !!document.querySelector("[name=save]") && !!document.querySelector(".backup-card")','full app feature load');
@@ -215,14 +236,24 @@ let chrome, ws, closeBrowser, chromeError='';
  assert.equal(await evaluate('document.querySelectorAll("#v-ops form,#v-ops input,#v-ops .backup-card,#tab-crew").length'),0);
  for(const name of ['asking','busy','unknown','parked','stale'])assert.equal(await evaluate('Array.from('+sessionRow(name)+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false,name+' cannot nudge');
  await clickText(sessionRow('asking'),'Mở phiên');await delay(30);assert.equal(nudges.length,0);assert.deepEqual(await evaluate('__opened.at(-1)'),{id:'vm1',name:'asking'});await evaluate('document.querySelector("#tab-ops").click()');
- slow=true;await clickText(sessionRow('dormant'),'Nhắc tiếp');assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).find(b=>b.textContent==="Nhắc tiếp").disabled'),true);
- await refresh();await until(sessionRow('dormant')+'.textContent.includes("Đã gửi nhắc")','delivered reminder');slow=false;
+ await evaluate('document.querySelector(".g-routine").open=true');
+ await captureDaily('operations-all-groups-before-nudge');
+ await evaluate('window.__notices=[];var realSay=TW.app().say;TW.app().say=function(message,ok,ms){__notices.push({message,ok});return realSay(message,ok,ms)}');
+ nudgeMode='poll-first';await clickText(sessionRow('dormant'),'Nhắc tiếp');assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).find(b=>b.textContent==="Nhắc tiếp").disabled'),true);
+ for(let i=0;i<100&&!releaseNudge;i++)await delay(20);
+ assert.ok(releaseNudge,'POST is held until after early GET and observed busy');
+ await refresh();await until(sessionRow('dormant')+'.textContent.includes("Đã gửi nhắc")','early GET delivered reminder');
  assert.equal(nudges.length,1);assert.ok(await evaluate(sessionRow('dormant')+'.closest(".g-waiting")!==null'),'delivery never moves session to Working');
- assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false);
+ assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).find(b=>b.textContent==="Nhắc tiếp").disabled'),true,'early delivered GET keeps in-flight POST disabled');
+ await captureDaily('operations-delivered');
  await refresh();assert.equal(nudges.length,1);
  board.servers[0].sessions[0].ai={status:'busy',at:Date.now()};board.servers[0].findings=board.servers[0].findings.filter(f=>f.key!=='dormant');board.log[0].verified=board.log[0].responded=true;await refresh();
  assert.ok(await evaluate(sessionRow('dormant')+'.closest(".g-running")!==null'),'only a new observed busy state moves the row');
  assert.ok(await evaluate('document.querySelector(".ops-log-sec").textContent.includes("tiến độ chưa xác minh")'));
+ releaseNudge();releaseNudge=null;
+ await until('__notices.length===1','late POST response after receipt cleanup');
+ assert.deepEqual(await evaluate('__notices'),[{message:'Đã quan sát phản hồi; tiến độ chưa xác minh',ok:true}],'successful receipt survives early GET cleanup without false failure');
+ assert.equal(nudges.length,1,'late POST never resends');
  // Exact current response handling: accepted/pending cannot claim delivered. Uncertain is visible and never resent, even after reload.
  board.servers[0].sessions[0].ai={status:'idle',at:Date.now()-100};board.servers[0].findings.push({...originalDormant(),key:'dormant-new'});board.log=[];nudgeMode='pending';await refresh();
  await clickText(sessionRow('dormant'),'Nhắc tiếp');await until(sessionRow('dormant')+'.textContent.includes("Đang chờ xác nhận gửi")','202 pending');assert.ok(!await evaluate(sessionRow('dormant')+'.textContent.includes("Đã gửi nhắc")'));assert.equal(nudges.length,2);
@@ -230,14 +261,28 @@ let chrome, ws, closeBrowser, chromeError='';
  nudgeMode='uncertain';board.servers[0].sessions[0].ai.at=Date.now()-3600000;board.log=[];
  await send('Page.reload');await until('!!document.querySelector("[name=save]")','reloaded app');await evaluate('document.querySelector("#tab-ops").click()');await clickText(sessionRow('dormant'),'Nhắc tiếp');
  await until(sessionRow('dormant')+'.textContent.includes("Chưa rõ lời nhắc đã đến")','uncertain outcome');assert.equal(nudges.length,3);await refresh();
+ await captureDaily('operations-uncertain');
  assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false);
  await send('Page.reload');await until('!!document.querySelector("[name=save]")','reload uncertain app');await evaluate('document.querySelector("#tab-ops").click()');await refresh();
  assert.equal(await evaluate('Array.from('+sessionRow('dormant')+'.querySelectorAll("button")).some(b=>b.textContent==="Nhắc tiếp")'),false);assert.equal(nudges.length,3);
- // Owner findings deduplicate session rows and badges. Stale task evidence remains a visible issue.
- supervision.enabled=true;supervision.servers[0].teams=[{id:'owner',session:'asking',root:'/work/one',requiresOwner:true,reason:{code:'task_evidence_stale'},taskIds:['task-one']},{id:'stale-evidence',session:'busy',root:'/work/one',requiresOwner:true,reason:{code:'task_evidence_stale'},taskIds:['task-two']}];await refresh();
- assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-session=asking]").length'),1);assert.equal(await evaluate(sessionRow('asking')+'.dataset.rule'),'asking');assert.ok(await evaluate(sessionRow('busy')+'.textContent.includes("Bằng chứng công việc thiếu hoặc đã cũ")'));
+ // Fresh owner findings deduplicate; unknown/stale/configuration flags never override busy.
+ supervision.enabled=true;
+ const host=supervision.servers[0];host.freshness.taskEvidenceFresh=true;
+ for(const code of ['task_evidence_stale','registration_required','awaiting_task_progress']){
+  host.teams=[{id:'owner',session:'asking',root:'/work/one',status:'waiting_owner',requiresOwner:true,reason:{code:'owner_decision'}},{id:'neutral',session:'busy',root:'/work/one',status:'unknown',requiresOwner:true,reason:{code}}];await refresh();
+  assert.equal(await evaluate(sessionRow('busy')+'.dataset.rule'),'observed_busy',code+' stays observed busy');
+  assert.ok(await evaluate(sessionRow('busy')+'.closest(".g-running")!==null'));
+  assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-session=asking]").length'),1);assert.equal(await evaluate(sessionRow('asking')+'.dataset.rule'),'asking');
+ }
+ host.teams[1]={...host.teams[1],status:'stalled',reason:{code:'no_task_progress'}};await refresh();
+ assert.equal(await evaluate(sessionRow('busy')+'.dataset.rule'),'owner','fresh real stall is actionable');
+ assert.ok(await evaluate(sessionRow('busy')+'.textContent.includes("Lâu chưa thấy thay đổi")'));
+ assert.ok(!await evaluate(sessionRow('busy')+'.textContent.includes("/work/one")'),'daily row hides raw root');
+ host.freshness.snapshotFresh=false;await refresh();assert.equal(await evaluate(sessionRow('busy')+'.dataset.rule'),'observed_busy','stale host cannot promote');host.freshness.snapshotFresh=true;
+ host.teams[1]={...host.teams[1],status:'unknown',reason:{code:'task_evidence_stale'}};await refresh();
+ assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-src").length'),0,'daily has no diagnostic source badges');
  assert.equal(await evaluate('document.querySelectorAll("#v-ops .ops-row[data-rule=offline]").length'),1);assert.ok(!await evaluate('document.querySelector("#v-ops").textContent.includes("Mọi phiên đều ổn")'));
- const actionCount=await evaluate('document.querySelectorAll("#v-ops .g-attention .ops-row,#v-ops .g-waiting .ops-row").length');assert.equal(await evaluate('Number(document.querySelector("#tab-ops .ops-badge").textContent)'),actionCount);
+ const actionCount=await evaluate('document.querySelectorAll("#v-ops .g-attention .ops-row,#v-ops .g-waiting .ops-row").length');assert.equal(actionCount,3,'only asking, unresolved reminder and offline host need attention');assert.equal(await evaluate('Number(document.querySelector("#tab-ops .ops-badge").textContent)'),actionCount);
  // A proven failed/exhausted delivery must not become a fabricated three-minute no-response event.
  board.log[0].delivery='exhausted';board.servers[0].findings.find(f=>f.key==='unheard').code='OPS_NOT_SENT';await refresh();
  assert.ok(await evaluate(sessionRow('dormant')+'.textContent.includes("Chưa gửi được")'));assert.ok(!await evaluate(sessionRow('dormant')+'.textContent.includes("sau 3 phút")'));assert.equal(nudges.length,3);
@@ -247,6 +292,12 @@ let chrome, ws, closeBrowser, chromeError='';
  tokenAccounts.push({id:'one-account',tool:'claude',nickname:'Fixture account',limits:{session:{percent:95},weekly:{percent:99}}});
  await evaluate('__ticks.filter(t=>t.ms===60000).forEach(t=>t.fn())');await delay(100);await refresh();
  assert.equal(await evaluate(`document.querySelectorAll('#v-ops .ops-row[data-session="acc:Fixture account"]').length`),1,'quota is counted once per account across both limits');
+ const quotaPosts=requests.filter(r=>r.method==='POST').length;
+ await clickText(sessionRow('acc:Fixture account'),'Xem tài khoản');
+ assert.equal(await evaluate('document.querySelector("#v-token").classList.contains("on")'),true,'quota opens actual Token AI view');
+ assert.equal(await evaluate('document.querySelector("#tab-token").getAttribute("aria-pressed")'),'true');
+ assert.equal(requests.filter(r=>r.method==='POST').length,quotaPosts,'account navigation does not mutate credentials');
+ await evaluate('document.querySelector("#tab-ops").click()');
  failBoard=true;await refresh();assert.ok(await evaluate('document.querySelector("#v-ops").textContent.includes("Không đọc được phiên mới")'));failBoard=false;await refresh();
  // Backup/board online flags can disagree while a snapshot is stale: show only the one host issue.
  backup.servers[1].online=true;backup.servers[1].phase='error';await refresh();assert.equal(await evaluate('document.querySelectorAll("#v-ops .backup-issue").length'),0);
