@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đề xuất tiện ích Termnest · Mockup</title>
+<link rel="stylesheet" href="../public/fonts/fonts.css">
+<style>
+:root{color-scheme:light;--bg:#eef3fb;--surface:#fff;--surface-2:#f2f5fb;--surface-3:#e5ebf6;--line:#dfe6f2;--line-strong:#c2cde0;--fg:#172036;--fg-2:#4a556f;--fg-3:#6c7891;--primary:#ff5c7a;--on-primary:#fff;--hero-a:#0fb5ae;--hero-b:#2f80ed;--ok:#0d9b63;--ok-soft:#dcf7ea;--wait:#b86e00;--wait-soft:#ffefcf;--bad:#d8344a;--bad-soft:#ffe3e7;--idle:#7a879f;--term:#101527;--term-fg:#dfe6f5;--term-dim:#7c89a6;--claude:#3270f5;--codex:#ec7900;--shadow:0 14px 30px -18px rgba(38,58,110,.38);--sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0e1224;--surface:#171c33;--surface-2:#1f2642;--surface-3:#2a3254;--line:#2a3250;--line-strong:#404b72;--fg:#f0f3fc;--fg-2:#b2bcd4;--fg-3:#8691ad;--primary:#ff6f8a;--on-primary:#330713;--hero-a:#0b7f7b;--hero-b:#2358b8;--ok:#49dca0;--ok-soft:rgba(73,220,160,.15);--wait:#ffc55c;--wait-soft:rgba(255,197,92,.15);--bad:#ff8a96;--bad-soft:rgba(255,138,150,.14);--idle:#8691ad;--term:#0a0d1a;--shadow:0 16px 34px -20px rgba(0,0,0,.8)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.hero{position:relative;display:flex;align-items:center;gap:16px;padding:18px 22px;border-radius:22px;color:#fff;background:linear-gradient(115deg,var(--hero-a),var(--hero-b));overflow:hidden;flex-wrap:wrap}
+.hero::after{content:"";position:absolute;right:-60px;top:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.1)}
+.hero>*{position:relative;z-index:1}.hero>div{flex:1 1 320px;min-width:0}.hero h1{margin:0;font-size:21px}.hero p{margin:2px 0 0;font-size:13px;opacity:.93}.hero .em{font-size:38px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+.btn{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:5px 14px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;transition:transform .12s}
+.btn:hover{transform:translateY(-1px)}.btn.primary{background:var(--primary);color:var(--on-primary);border-color:transparent}.btn.danger{background:var(--bad-soft);color:var(--bad);border-color:transparent}.btn.glass{margin-left:auto;background:rgba(255,255,255,.95);color:#12304f;border-color:transparent}
+.panel{background:var(--surface);border-radius:18px;box-shadow:0 0 0 1px var(--line),var(--shadow);padding:14px 16px}
+.tag{font-size:10.5px;border-radius:999px;padding:1px 8px;background:var(--surface-3);color:var(--fg-2);font-weight:600;white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.wait{background:var(--wait-soft);color:var(--wait)}.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sp{margin-left:auto}
+h2{margin:0;font-size:16px}h3{margin:0;font-size:14px}small,.dim{color:var(--fg-3)}
+/* overview table */
+.tw{overflow:auto;border-radius:14px;box-shadow:0 0 0 1px var(--line)}table{border-collapse:collapse;width:100%;font-size:13px}th{background:var(--surface-2);color:var(--fg-3);text-align:left;padding:8px 11px;font-size:12px}td{padding:8px 11px;border-top:1px solid var(--line);vertical-align:top}
+.stars{color:#e0a100;letter-spacing:1px;white-space:nowrap}.eff{white-space:nowrap}
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--fg-2)}
+.tabs button[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.idea[hidden]{display:none}.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.why{display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--fg-2)}.why b{color:var(--fg)}.why ul{margin:2px 0 0;padding-left:18px}
+.mock{border-radius:16px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);padding:12px;display:flex;flex-direction:column;gap:10px}
+.mock-t{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--fg-3);font-weight:700}
+.card{background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:10px 12px}
+.meter{height:9px;border-radius:99px;background:var(--surface-3);overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--hero-a),var(--hero-b))}.meter.warn i{background:linear-gradient(90deg,#ffb938,#ff7a45)}.meter.bad i{background:var(--bad)}
+.ring{--p:0;--c:var(--hero-a);width:60px;height:60px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--surface-3) 0);position:relative;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}.ring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--surface)}.ring span{position:relative}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:10px 12px;background:var(--bad-soft);color:var(--bad)}.alert b{color:inherit}.alert .dim{color:var(--fg-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font:600 12px var(--mono);background:var(--surface-3);color:var(--fg-2)}.chip.bad{background:var(--bad-soft);color:var(--bad)}.chip button{border:0;background:none;cursor:pointer;color:inherit;padding:0}
+.term{background:var(--term);color:var(--term-fg);border-radius:12px;padding:10px 12px;font:12px/1.55 var(--mono);overflow:auto;white-space:pre}.term .hl{background:#ffd166;color:#10162b;border-radius:3px;padding:0 2px}.term .d{color:var(--term-dim)}
+.track{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.track .id{font:700 12px var(--mono);width:30px}.track .pet{font-size:22px;width:28px;text-align:center}.track .t{flex:1;min-width:0}.track .t small{display:block}
+.pill{border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.run{background:#dcebff;color:var(--claude)}.pill.wait{background:var(--wait-soft);color:var(--wait)}.pill.idle{background:var(--surface-3);color:var(--idle)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.palette{border-radius:16px;background:var(--surface);box-shadow:0 20px 40px -16px rgba(20,30,60,.45),0 0 0 1px var(--line);overflow:hidden}
+.palette input{width:100%;border:0;border-bottom:1px solid var(--line);padding:12px 14px;background:transparent;font-size:15px;outline:none}
+.hit{padding:8px 14px;border-bottom:1px solid var(--line);cursor:pointer}.hit:hover,.hit.on{background:var(--surface-2)}.hit .h{display:flex;align-items:center;gap:8px;font-weight:700}.hit .ln{font:12px var(--mono);color:var(--fg-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hit mark{background:#ffd166;color:#10162b;border-radius:3px;padding:0 2px}
+kbd{font:600 11px var(--mono);background:var(--surface-3);border-radius:6px;padding:1px 6px;box-shadow:inset 0 -1px 0 var(--line-strong)}
+.sz{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}.sz .n{flex:1;min-width:0;font:12px var(--mono);overflow:hidden;text-overflow:ellipsis}.sz b{font:700 12.5px var(--mono)}
+input[type=checkbox]{accent-color:var(--hero-a);width:16px;height:16px}
+.sn{display:flex;flex-direction:column;gap:6px;background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:10px 12px}.sn code{font:12px var(--mono);background:var(--surface-3);border-radius:8px;padding:6px 8px;white-space:pre-wrap}
+.var{background:#fff3c4;color:#7a5800;border-radius:5px;padding:0 4px}
+.tl{display:flex;flex-direction:column;gap:0}.tl .e{display:flex;gap:10px;padding:7px 0;position:relative}.tl .e::before{content:"";position:absolute;left:11px;top:26px;bottom:-7px;width:2px;background:var(--line)}.tl .e:last-child::before{display:none}.tl .dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--surface);box-shadow:0 0 0 1px var(--line);font-size:13px;flex:none;z-index:1}.tl time{font:11.5px var(--mono);color:var(--fg-3);width:42px;flex:none;padding-top:3px}
+.md{background:var(--term);color:var(--term-fg);border-radius:12px;padding:10px 12px;font:12px/1.55 var(--mono);white-space:pre-wrap}
+.note{font-size:12px;color:var(--fg-3)}
+
+.stab{display:flex;gap:4px;align-items:flex-end;flex-wrap:wrap;border-bottom:2px solid var(--line);padding:0 4px}
+.stab .t{position:relative;display:inline-flex;align-items:center;gap:7px;border-radius:12px 12px 0 0;padding:7px 8px 7px 12px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer;font-weight:600;font-size:13px;color:var(--fg-2)}
+.stab .t.on{background:var(--surface);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line),inset 0 3px 0 var(--c,var(--hero-b))}
+.stab .t .x{width:20px;height:20px;border:0;border-radius:6px;background:transparent;color:var(--fg-3);cursor:pointer;display:grid;place-items:center;font-size:12px;opacity:0;transition:opacity .12s}
+.stab .t:hover .x,.stab .t.on .x{opacity:1}.stab .t .x:hover{background:var(--bad-soft);color:var(--bad)}
+.toast{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--fg);color:var(--bg);font-size:13px}.toast button{border:0;background:rgba(255,255,255,.18);color:inherit;border-radius:8px;padding:3px 10px;cursor:pointer;font-weight:700}
+.notes{display:grid;grid-template-columns:150px 1fr;gap:10px}@media(max-width:700px){.notes{grid-template-columns:1fr}}
+.nlist{display:flex;flex-direction:column;gap:6px}.nlist button{text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:7px 10px;cursor:pointer;font-size:12.5px}.nlist button[aria-pressed=true]{border-color:var(--hero-b);box-shadow:0 0 0 3px color-mix(in srgb,var(--hero-b) 16%,transparent)}.nlist small{display:block;color:var(--fg-3)}
+.ned{width:100%;min-height:190px;border:1.5px solid var(--line);border-radius:12px;padding:10px;background:var(--surface);font:12.5px/1.55 var(--mono);color:var(--fg);resize:vertical}
+.tpl{display:flex;gap:6px;flex-wrap:wrap}.tpl button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 11px;cursor:pointer;font-size:12px;font-weight:600}
+
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal .h{font-size:11px;color:var(--fg-3);text-align:center;font-weight:700;padding:2px 0}
+.cal button{position:relative;aspect-ratio:1/.82;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font:600 12.5px var(--sans);color:var(--fg)}
+.cal button.off{visibility:hidden}.cal button.today{border-color:var(--hero-a);box-shadow:inset 0 0 0 1px var(--hero-a)}.cal button.sel{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.cal button i{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);display:flex;gap:2px}.cal button i b{width:5px;height:5px;border-radius:50%;background:var(--primary)}.cal button i b.n{background:var(--hero-b)}
+.rem{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}.rem time{font:700 12.5px var(--mono);width:44px}.rem .t{flex:1;min-width:0}.rem small{display:block;color:var(--fg-3)}
+.rform{display:grid;grid-template-columns:1fr 92px;gap:6px}.rform input,.rform select{border:1.5px solid var(--line);border-radius:10px;padding:6px 9px;background:var(--surface);font:13px var(--sans);min-width:0}.rform .w{grid-column:1/-1}
+.ntoast{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:14px;background:var(--surface);box-shadow:0 18px 36px -14px rgba(20,30,60,.5),0 0 0 1px var(--line);border-left:5px solid var(--primary)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero"><span class="em">💡</span><div><h1>Đề xuất tiện ích cho Termnest</h1><p>27 ý, tất cả chạy bằng code thường, không tốn token AI. 1–6 bám vào sự cố đã gặp, 7–12 tiện ích hằng ngày, 13–18 tiết kiệm token, 19–24 tăng năng suất và chất lượng, <b>25–27 là các tiện ích bạn đề xuất (nút X trên tab, sổ ghi chú, lịch nhắc việc)</b>.</p></div><button class="btn glass" id="theme">◐ Sáng / tối</button></section>
+
+  <section class="panel" style="border-left:5px solid var(--hero-a)">
+    <div class="row"><h2>🌱 Nguyên tắc: không đốt token AI để làm việc vặt</h2></div>
+    <ul style="margin:6px 0 0;padding-left:18px;color:var(--fg-2)">
+      <li><b>Mọi tiện ích dưới đây chạy bằng code thường</b>: đọc file log, <code>tmux</code>, <code>git</code>, <code>ccusage</code>, so sánh chuỗi. Termnest không gọi mô hình AI nào.</li>
+      <li>Việc cần “hiểu” (tóm tắt, phân loại) <b>không</b> làm; chỉ trích nguyên văn và đếm. Nếu sau này muốn tóm tắt bằng AI thì phải là nút riêng, mặc định tắt, và ghi rõ tốn bao nhiêu.</li>
+      <li>Một số ý còn <b>giúp giảm</b> token: dừng phiên lặp (9), nhắc mở phiên mới khi ngữ cảnh đầy (14), thay vòng “hỏi AI xong chưa” bằng bộ theo dõi sự kiện (13).</li>
+      <li>Ngoại lệ cần nói rõ: “Trả lời nhanh” (7) hay “Prompt nhanh” (5) chỉ <i>gửi phím/chữ</i> vào phiên; phiên AI đó tự tiêu token như khi bạn gõ tay, Termnest không tốn thêm.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="margin-bottom:8px"><h2>Tổng quan và thứ tự mình đề xuất</h2><span class="tag">giá trị cao → làm trước</span></div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>Tiện ích</th><th>Giải quyết việc gì</th><th>Giá trị</th><th>Công sức</th><th>Dựa trên</th><th>Tốn token AI?</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><b>Hàng rào model và ngân sách</b></td><td>Báo ngay khi dùng model bị cấm (như gpt-6-astra) hoặc sắp vượt ngân sách</td><td class="stars">★★★★★</td><td class="eff">Vừa</td><td>Báo cáo ccusage vừa làm, tất cả đã có số liệu</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>2</td><td><b>Crew ngay trên màn</b></td><td>Thấy track nào đang chạy / xếp hàng / đã gộp mà không mở shell</td><td class="stars">★★★★★</td><td class="eff">Vừa</td><td>Bạn đã hỏi; thư mục <code>_crew/tasks</code></td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>3</td><td><b>Tìm xuyên phiên (Ctrl+K)</b></td><td>Tìm “lỗi 500” hay một đường dẫn trong mọi phiên rồi nhảy tới đúng dòng</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Cuộn tmux vừa làm; <code>capture-pane</code></td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>4</td><td><b>Sức khoẻ máy chủ và dọn ổ đĩa</b></td><td>Cảnh báo ổ đầy, gợi ý dọn worktree đã gộp, node_modules, target</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>W6 phải chờ vì thiếu 1 GB đĩa</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>5</td><td><b>Prompt và lệnh nhanh</b></td><td>Lưu prompt hay dùng, điền biến, gửi cho nhiều phiên một lúc</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td><td>Đã có API gửi phím cho phiên</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>6</td><td><b>Nhật ký ngày xuất Markdown</b></td><td>Tự tổng hợp hôm nay làm gì, tốn bao nhiêu, để dán vào file tracking</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td><td>Đã có diary và báo cáo token</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>7</td><td><b>Trả lời nhanh cho phiên “Chờ bạn”</b></td><td>Duyệt / từ chối / nhắn tiếp ngay trên thẻ, không phải mở terminal từng phiên</td><td class="stars">★★★★★</td><td class="eff">Nhỏ</td><td>Đã có trạng thái “Chờ bạn”, 8 dòng cuối màn hình và API gửi phím</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>8</td><td><b>Thanh Git trên mỗi phiên</b></td><td>Thấy phiên đang ở nhánh nào, còn thay đổi chưa commit, có đang đứng ở nhánh được bảo vệ không</td><td class="stars">★★★★☆</td><td class="eff">Nhỏ</td><td>Chỉ chạy <code>git status</code> trong thư mục phiên (đã biết đường dẫn)</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>9</td><td><b>Phát hiện phiên treo hoặc lặp</b></td><td>Cảnh báo khi “đang chạy” mà không có gì mới, hoặc in lặp một dòng, tránh đốt token vô ích</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Màn hình phiên đã được lấy mỗi chu kỳ poll</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>10</td><td><b>Xu hướng chi phí và phiên tốn nhất</b></td><td>So tuần này với tuần trước, top phiên/model đắt, dự báo cuối tháng</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td><td>Báo cáo ccusage vừa làm</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>11</td><td><b>Mục tiêu và ghi chú gắn với phiên</b></td><td>Ghim “phiên này để làm gì”, checklist nhỏ; hiện trên thẻ và panel</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td><td>Kho lưu cấu hình (vault) sẵn có</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>12</td><td><b>Ghi lại và phát lại phiên</b></td><td>Xem lại đúng những gì worker làm để đối chiếu bằng chứng, kể cả khi đã đóng phiên</td><td class="stars">★★★☆☆</td><td class="eff">Lớn</td><td>Luồng terminal đã đi qua server</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>13</td><td><b>Bộ theo dõi sự kiện (thay vòng “hỏi AI xong chưa”)</b></td><td>Chờ CI xong, file xuất hiện, cổng mở, dòng chữ hiện ra thì báo bạn hoặc gửi một dòng vào phiên</td><td class="stars">★★★★★</td><td class="eff">Vừa</td><td>Phiên đang tự chạy vòng chờ, mỗi lần thức tốn token</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>14</td><td><b>Đồng hồ ngữ cảnh của phiên</b></td><td>Thấy phiên đã đầy bao nhiêu % cửa sổ ngữ cảnh, nhắc mở phiên mới trước khi quá dài</td><td class="stars">★★★★★</td><td class="eff">Vừa</td><td>Log CLI có số token từng lượt</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>15</td><td><b>Kéo-thả ảnh và tệp vào phiên</b></td><td>Thả ảnh chụp màn hình lên phiên ở máy xa; app lưu rồi dán đường dẫn vào terminal</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Bạn thường gửi ảnh cho phiên trên dev-ubuntu-02; trình xem file hiện chưa hỗ trợ ảnh</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>16</td><td><b>Bảng host đang chạy theo cổng</b></td><td>Cặp cổng 44–47 nào đang bật, của phiên nào, dùng DB và Redis nào</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Quy ước 4 cặp cổng và Redis riêng cho từng host</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>17</td><td><b>Huy hiệu model và cảnh báo cache thấp</b></td><td>Mỗi thẻ ghi phiên đang dùng model nào; báo khi tỷ lệ đọc cache tụt bất thường</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td><td>Log CLI và báo cáo ccusage</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>18</td><td><b>Thống kê thời gian phiên chờ bạn</b></td><td>Tổng phút phiên phải đợi bạn, giờ cao điểm, phiên bị bỏ quên lâu nhất</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td><td>Nhật ký trạng thái thú cưng đã ghi sẵn</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>19</td><td><b>Trung tâm cảnh báo (“Cần chú ý”)</b></td><td>Một hộp duy nhất gom mọi cảnh báo, xếp theo mức ưu tiên, có tạm hoãn</td><td class="stars">★★★★★</td><td class="eff">Vừa</td><td>Gom các ý 1, 4, 7, 9 để khỏi có 4 chuông khác nhau</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>20</td><td><b>Lưới an toàn khi dán và nhãn môi trường</b></td><td>Viền đỏ cho máy prod; hỏi lại khi dán lệnh nguy hiểm (<code>rm -rf</code>, <code>DROP</code>, push --force…)</td><td class="stars">★★★★★</td><td class="eff">Nhỏ</td><td>Quy tắc “không chạm DB dùng chung”; so khớp chuỗi thường</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>21</td><td><b>Xem log thông minh</b></td><td>Tô màu lỗi/cảnh báo, lọc theo mức, nhảy tới lỗi kế tiếp, theo dõi đuôi log</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Trình xem file và log crew sẵn có</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>22</td><td><b>Sao chép an toàn (tự che bí mật)</b></td><td>Chọn đoạn màn hình rồi sao chép dạng khối code, tự che token, mật khẩu, chuỗi kết nối</td><td class="stars">★★★★☆</td><td class="eff">Nhỏ</td><td>Bạn hay dán log vào chat, tài liệu, MR</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>23</td><td><b>Mở ca / Đóng ca</b></td><td>Đầu ngày: mở bộ phiên quen thuộc. Cuối ngày: kiểm tra còn gì chưa đẩy, chưa tắt, chưa dọn</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Phiên mẫu và thanh Git (ý 8), host (ý 16)</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>24</td><td><b>Thẻ MR và pipeline theo nhánh của phiên</b></td><td>Thấy MR đã mở chưa, pipeline xanh hay đỏ, có comment chưa trả lời, bấm là mở</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Quy trình gate trên GitLab; cần bạn quyết cách cấp token</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>25</td><td><b>Nút ✕ để đóng tab ngay trên thanh tab</b></td><td>Ẩn bớt tab không cần mà <b>không dừng phiên</b>; khôi phục được bằng một cú bấm</td><td class="stars">★★★★★</td><td class="eff">Nhỏ</td><td>Thanh tab hiện liệt kê mọi phiên, chưa đóng được từng tab</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>26</td><td><b>Sổ ghi chú công việc, xuất .md / .txt</b></td><td>Ghi nhanh việc đang làm, quyết định, việc kế tiếp; xuất ra file để bổ sung vào tracking</td><td class="stars">★★★★★</td><td class="eff">Vừa</td><td>Quy trình của bạn luôn có file tracking và nhật ký thay đổi</td><td><span class="tag ok">Không</span></td></tr>
+        <tr><td>27</td><td><b>Lịch nhắc việc gắn với phiên và ghi chú</b></td><td>Hẹn giờ nhắc, thông báo ngay trên Termnest, bấm là mở đúng phiên hoặc ghi chú liên quan</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td><td>Đã có chuông và thông báo màn hình của app desktop; kết hợp ý 26</td><td><span class="tag ok">Không</span></td></tr>
+      </tbody></table></div>
+  </section>
+
+  <div class="tabs" id="tabs">
+    <button aria-pressed="true" data-i="1">1 · Hàng rào model</button><button aria-pressed="false" data-i="2">2 · Crew trên màn</button><button aria-pressed="false" data-i="3">3 · Tìm xuyên phiên</button><button aria-pressed="false" data-i="4">4 · Sức khoẻ máy chủ</button><button aria-pressed="false" data-i="5">5 · Prompt nhanh</button><button aria-pressed="false" data-i="6">6 · Nhật ký ngày</button><button aria-pressed="false" data-i="7">7 · Trả lời nhanh</button><button aria-pressed="false" data-i="8">8 · Thanh Git</button><button aria-pressed="false" data-i="9">9 · Phiên treo/lặp</button><button aria-pressed="false" data-i="10">10 · Xu hướng chi phí</button><button aria-pressed="false" data-i="11">11 · Mục tiêu phiên</button><button aria-pressed="false" data-i="12">12 · Phát lại phiên</button><button aria-pressed="false" data-i="13">13 · Theo dõi sự kiện</button><button aria-pressed="false" data-i="14">14 · Đồng hồ ngữ cảnh</button><button aria-pressed="false" data-i="15">15 · Kéo-thả ảnh</button><button aria-pressed="false" data-i="16">16 · Host theo cổng</button><button aria-pressed="false" data-i="17">17 · Huy hiệu model</button><button aria-pressed="false" data-i="18">18 · Thời gian chờ bạn</button><button aria-pressed="false" data-i="19">19 · Cần chú ý</button><button aria-pressed="false" data-i="20">20 · Lưới an toàn</button><button aria-pressed="false" data-i="21">21 · Xem log</button><button aria-pressed="false" data-i="22">22 · Sao chép an toàn</button><button aria-pressed="false" data-i="23">23 · Mở / đóng ca</button><button aria-pressed="false" data-i="24">24 · MR và pipeline</button><button aria-pressed="false" data-i="25">25 · Nút ✕ đóng tab</button><button aria-pressed="false" data-i="26">26 · Sổ ghi chú</button><button aria-pressed="false" data-i="27">27 · Lịch nhắc việc</button>
+  </div>
+
+  <!-- 1 -->
+  <section class="idea" data-i="1"><div class="grid">
+    <div class="panel why"><h2>Hàng rào model và ngân sách</h2>
+      <p><b>Vấn đề thật:</b> báo cáo vừa làm cho thấy Codex trên máy này đã dùng <code>gpt-6-astra</code> ngày 01/11 (74,5 triệu token, $115,23) và 02/11 ($47,33), dù bạn cấm. Hiện chỉ biết khi mở báo cáo.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Danh sách <b>model bị cấm</b> do bạn tự đặt (mặc định rỗng, không ghi cứng).</li><li>Gặp model đó trong báo cáo thì hiện <span class="tag bad">cấm</span> đỏ ở bảng, chuông thông báo và tên phiên liên quan.</li><li><b>Ngân sách</b> theo ngày / tháng cho từng tài khoản hoặc tổng; cảnh báo ở 80% và 100%.</li><li>Số liệu lấy từ ccusage đã có, không cần thu thập thêm.</li></ul>
+      <p class="note">Giới hạn: ccusage báo theo ngày nên cảnh báo trễ tối đa theo chu kỳ làm mới (5 phút). Nếu cần tức thì phải đọc thêm log phiên Codex để thấy model ngay khi bắt đầu; mình chưa làm phần đó.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Token AI</div>
+      <div class="alert"><span style="font-size:22px">🚫</span><div><b>Model bị cấm: gpt-6-astra</b><br><span class="dim">Codex · codex · 01/11 và 02/11 · 105,4 triệu token · $162,56</span><div class="row" style="margin-top:6px"><button class="btn danger">Xem chi tiết</button><button class="btn">Bỏ qua 7 ngày</button></div></div></div>
+      <div class="card"><div class="row"><div class="ring" style="--p:72"><span>72%</span></div><div><h3>Ngân sách tháng 11</h3><div><b style="font:700 18px var(--mono)">$577,86</b> <small>/ $800</small></div><small>còn $222 · dự báo $1.020 nếu giữ nhịp hiện tại</small></div></div>
+        <div class="meter warn" style="margin-top:8px"><i style="width:72%"></i></div></div>
+      <div class="card"><h3>Model bị cấm</h3><div class="row" style="margin-top:6px"><span class="chip bad">gpt-6-astra <button title="Gỡ">✕</button></span><span class="chip">+ thêm model</span></div><small>Khớp theo tên chứa chuỗi; không phân biệt hoa thường.</small></div>
+      <div class="card"><h3>Ngưỡng cảnh báo</h3><div class="row" style="margin-top:6px"><span class="tag">80% → thông báo</span><span class="tag bad">100% → thông báo + tô đỏ</span></div></div>
+    </div></div></section>
+
+  <!-- 2 -->
+  <section class="idea" data-i="2" hidden><div class="grid">
+    <div class="panel why"><h2>Crew ngay trên màn</h2>
+      <p><b>Vấn đề thật:</b> bạn phải mở “shells” mới thấy W6 đang chờ đĩa hay đang quét xung đột; panel chỉ đếm worker đang chạy nên hiện 0.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Đọc trạng thái track trong <code>_crew/tasks/&lt;task&gt;/tracks/*</code> (DONE, FAILED, QUEUED…) ngay trong thư mục của phiên.</li><li>Mỗi track một dòng: pha (xếp hàng, quét xung đột, đang chạy, đã gộp), thời gian, lý do chờ.</li><li>Thanh tiến độ “5/7 track”, bấm một track để xem log như hiện nay.</li><li>Ghép với phiên bằng <code>TMUX_PANE</code> (PR #3) nên không đoán theo thư mục.</li></ul>
+      <p class="note">Cần: server đọc thư mục task qua SSH (chỉ đọc), giới hạn số task và độ sâu. Không ghi gì lên máy.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · panel bên phải phiên Smart-Visibility</div>
+      <div class="card"><div class="row"><h3>Crew 20261102-sv-ev-photo-perf</h3><span class="sp tag ok">5 / 7 đã gộp</span></div><div class="meter" style="margin-top:8px"><i style="width:71%"></i></div></div>
+      <div class="track"><span class="id">W0</span><span class="pet">🦊</span><div class="t"><b>Cache manifest</b><small>12 phút</small></div><span class="pill ok">Đã gộp</span></div>
+      <div class="track"><span class="id">W4</span><span class="pet">🐰</span><div class="t"><b>Gộp shared → common</b><small>19 phút</small></div><span class="pill ok">Đã gộp</span></div>
+      <div class="track"><span class="id">C0</span><span class="pet">🐼</span><div class="t"><b>Chốt cấu hình</b><small>6 phút</small></div><span class="pill ok">Đã gộp</span></div>
+      <div class="track" style="box-shadow:0 0 0 2px var(--wait)"><span class="id">W6</span><span class="pet">💤</span><div class="t"><b>Đo lại lần gọi hai</b><small style="color:var(--wait)">Xếp hàng: ổ đĩa thiếu khoảng 1 GB</small></div><span class="pill wait">Xếp hàng</span></div>
+      <div class="track"><span class="id">W7</span><span class="pet">🔍</span><div class="t"><b>Quét xung đột</b><small>đang chờ worker</small></div><span class="pill run">Quét</span></div>
+      <p class="note" style="margin:0">Các dòng trên là minh hoạ theo nội dung màn hình bạn gửi.</p></div></div></section>
+
+  <!-- 3 -->
+  <section class="idea" data-i="3" hidden><div class="grid">
+    <div class="panel why"><h2>Tìm xuyên phiên (Ctrl+K)</h2>
+      <p><b>Vấn đề thật:</b> nhiều phiên chạy cùng lúc trên nhiều máy; nhớ “cái lỗi 500 ở phiên nào đó” rồi phải mở từng phiên và cuộn.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Một ô tìm duy nhất: gõ từ khoá, kết quả gom theo phiên và máy, có đoạn trích tô sáng.</li><li>Chọn kết quả thì nhảy tới phiên và cuộn đúng dòng (dùng cuộn tmux vừa làm).</li><li>Nguồn: <code>tmux capture-pane</code> với lịch sử có giới hạn; chỉ tìm trong những gì tmux còn giữ.</li><li>Lọc nhanh: chỉ Claude / Codex / lỗi.</li></ul>
+      <p class="note">Giới hạn: với ứng dụng ở màn hình thay thế (Codex mặc định) tmux không giữ lịch sử, nên chỉ tìm được phần đang hiển thị.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · hộp tìm</div>
+      <div class="palette"><input value="lỗi 500" readonly>
+        <div class="hit on"><div class="h">🦊 Smart-Visibility <span class="tag">dev-ubuntu-02</span> <span class="tag ok">Đang chạy</span></div><div class="ln">… <mark>lỗi 500</mark> ngẫu nhiên: có một lần request đầu của tiến trình mới trả 500 …</div></div>
+        <div class="hit"><div class="h">🐰 Token-ai <span class="tag">dev-ubuntu-02</span></div><div class="ln">POST /api/tokens → <mark>500</mark> NullReferenceException (audit log)</div></div>
+        <div class="hit"><div class="h">🐼 Vifon-SV <span class="tag">Máy này</span></div><div class="ln">Chưa thấy “lỗi 500” trong phần còn trong bộ đệm</div></div>
+        <div class="row" style="padding:8px 14px"><span class="dim" style="font-size:12px"><kbd>↑</kbd><kbd>↓</kbd> chọn · <kbd>Enter</kbd> nhảy tới dòng · <kbd>Esc</kbd> đóng</span></div></div></div></div></section>
+
+  <!-- 4 -->
+  <section class="idea" data-i="4" hidden><div class="grid">
+    <div class="panel why"><h2>Sức khoẻ máy chủ và dọn ổ đĩa</h2>
+      <p><b>Vấn đề thật:</b> W6 phải xếp hàng vì ổ đĩa thiếu khoảng 1 GB; phải tự đi xoá build output của worktree đã gộp.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Thẻ máy chủ cảnh báo khi ổ dưới ngưỡng bạn đặt (ví dụ dưới 10 GB hoặc trên 85%).</li><li>Gợi ý các thư mục lớn có thể dọn: worktree <code>_wt-*</code> đã gộp, <code>target</code>, <code>node_modules</code>, cache.</li><li><b>An toàn:</b> chỉ gợi ý, xem trước dung lượng (dry-run), phải bấm xác nhận; không bao giờ tự xoá; bỏ qua nhánh chưa gộp hoặc có thay đổi chưa commit.</li></ul>
+      <p class="note">Đây là thao tác xoá trên máy dùng chung nên mình đề xuất bản đầu chỉ cảnh báo và liệt kê, phần xoá để bước sau.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thẻ máy chủ dev-ubuntu-02</div>
+      <div class="card"><div class="row"><div class="ring" style="--p:93;--c:var(--bad)"><span>93%</span></div><div><h3>Ổ đĩa gần đầy</h3><small>còn 6,8 GB · ngưỡng cảnh báo: 10 GB</small></div><span class="sp pill bad">Cảnh báo</span></div></div>
+      <div class="sz"><input type="checkbox" checked><span class="n">_wt-20261101-tmuxweb-fun-w1 <span class="tag ok">đã gộp</span></span><b>2,4 GB</b></div>
+      <div class="sz"><input type="checkbox" checked><span class="n">_wt-20261102-desktop-shell-2-w3/desktop/target <span class="tag ok">đã gộp</span></span><b>1,9 GB</b></div>
+      <div class="sz"><input type="checkbox"><span class="n">_wt-20261102-release-fix2-w2 <span class="tag wait">chưa gộp</span></span><b>1,1 GB</b></div>
+      <div class="sz"><input type="checkbox"><span class="n">hqsoft.xspire/.../node_modules</span><b>0,8 GB</b></div>
+      <div class="row"><span class="dim" style="font-size:12px">Đã chọn 4,3 GB · còn lại sau dọn 11,1 GB</span><button class="btn primary sp">Xem trước (không xoá)</button></div></div></div></section>
+
+  <!-- 5 -->
+  <section class="idea" data-i="5" hidden><div class="grid">
+    <div class="panel why"><h2>Prompt và lệnh nhanh</h2>
+      <p><b>Vấn đề thật:</b> hay gõ lại cùng một yêu cầu cho nhiều phiên (“tóm tắt tiến độ”, “chạy lại test”), hoặc gửi cùng một lệnh cho nhiều máy.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Thư viện prompt: tên, nội dung, biến <span class="var">{task}</span> điền lúc gửi.</li><li>Chọn nhiều phiên rồi “Gửi cho 3 phiên”; có xem trước và nút xác nhận.</li><li>Mở rộng thanh phím tắt hiện có (<code>git status</code>, <code>npm test</code>) bằng các mục do bạn tự thêm.</li></ul>
+      <p class="note">Nên bắt buộc xác nhận khi gửi cho nhiều phiên, tránh gửi nhầm vào phiên đang chạy việc khác.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thư viện prompt</div>
+      <div class="sn"><div class="row"><b>Tóm tắt tiến độ</b><span class="tag sp">dùng 14 lần</span></div><code>Tóm tắt trong 5 dòng: việc đã xong, đang làm, bị chặn ở đâu cho task <span class="var">{task}</span>.</code></div>
+      <div class="sn"><div class="row"><b>Chạy lại test lỗi</b><span class="tag sp">dùng 6 lần</span></div><code>Chạy lại các test vừa fail ở <span class="var">{module}</span> và báo kết quả, không sửa code.</code></div>
+      <div class="card"><div class="row"><h3>Gửi tới</h3><label><input type="checkbox" checked> Smart-Visibility</label><label><input type="checkbox" checked> Token-ai</label><label><input type="checkbox"> Vifon-SV</label></div>
+        <div class="row" style="margin-top:8px"><span class="dim" style="font-size:12px">task = <b>sv-ev-photo-perf</b></span><button class="btn primary sp">Gửi cho 2 phiên</button></div></div></div></div></section>
+
+  <!-- 6 -->
+  <section class="idea" data-i="6" hidden><div class="grid">
+    <div class="panel why"><h2>Nhật ký ngày xuất Markdown</h2>
+      <p><b>Vấn đề thật:</b> quy trình của bạn yêu cầu file tracking và nhật ký thay đổi cho mỗi đợt việc; hiện phải tự gom từ nhiều nơi.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Dòng thời gian hôm nay: phiên nào chạy lúc nào, bao lâu, token và chi phí (từ báo cáo ccusage), phiên chờ bạn bao nhiêu phút.</li><li>Nút <b>Xuất Markdown</b> để dán vào <code>NN-NHAT-KY-THAY-DOI-….md</code>.</li><li>Chỉ liệt kê dữ liệu có sẵn; không tự suy diễn nội dung công việc.</li></ul>
+      <p class="note">Commit và MR chưa đưa vào bản đầu vì phải đọc git trên từng máy; có thể thêm sau.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · nhật ký 03/11/2026</div>
+      <div class="card tl">
+        <div class="e"><time>09:28</time><span class="dot">🦊</span><div><b>Smart-Visibility</b> bắt đầu <small>· dev-ubuntu-02 · claude</small></div></div>
+        <div class="e"><time>10:37</time><span class="dot">⏳</span><div><b>Chờ bạn</b> 4 lần, tổng 17 phút <small>· Token-ai</small></div></div>
+        <div class="e"><time>11:26</time><span class="dot">🐼</span><div><b>Vifon-SV</b> bắt đầu <small>· Máy này · codex</small></div></div>
+        <div class="e"><time>11:43</time><span class="dot">💰</span><div>Tổng hôm nay <b>$8,05</b> · 40,7 triệu token <small>· 2 tài khoản</small></div></div></div>
+      <div class="row"><button class="btn primary">⬇ Xuất Markdown</button><span class="note">xem trước bên dưới</span></div>
+      <div class="md"># Nhật ký 2026-11-03
+
+## Phiên
+- 09:28 Smart-Visibility (claude, dev-ubuntu-02): chạy 2 giờ 15 phút
+- 11:26 Vifon-SV (codex, Máy này): chạy 31 phút
+
+## Sử dụng
+| Công cụ | Token | Chi phí |
+|---|---|---|
+| Claude | 40,7 triệu | $8,05 |</div></div></div></section>
+
+  <!-- 7 -->
+  <section class="idea" data-i="7" hidden><div class="grid">
+    <div class="panel why"><h2>Trả lời nhanh cho phiên “Chờ bạn”</h2>
+      <p><b>Vấn đề thật:</b> nhiều phiên dừng chờ bạn duyệt (cho phép chạy lệnh, chọn phương án, “tiếp tục”). Phải mở từng phiên mới trả lời được, trong khi chỉ cần một phím.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Mục “Chờ bạn” ở Tổng quan sắp theo thời gian chờ, hiện 8 dòng cuối để biết phiên đang hỏi gì.</li><li>Nút nhanh: <kbd>Enter</kbd>, “Có / Không”, “Tiếp tục”, hoặc gõ một câu ngắn.</li><li><b>An toàn:</b> luôn thấy nội dung câu hỏi trước khi gửi; không có nút “duyệt tất cả”; phiên đã đổi nội dung từ lúc bạn mở thì nút bị vô hiệu hoá.</li></ul>
+      <p class="note">Câu hỏi của công cụ khác nhau (Claude, Codex) nên nút nhanh chỉ gửi phím cơ bản, không đoán ý nghĩa.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · hộp “Chờ bạn”</div>
+      <div class="card"><div class="row"><span style="font-size:22px">🦊</span><h3>Smart-Visibility</h3><span class="tag">dev-ubuntu-02</span><span class="sp pill wait">chờ 4 phút</span></div>
+        <div class="term" style="margin-top:8px"><span class="d">Claude muốn chạy:</span>
+git push -o ci.skip origin crew/20261102-sv-ev-photo-perf
+<span class="d">1. Có   2. Có, và không hỏi lại   3. Không</span></div>
+        <div class="row" style="margin-top:8px"><button class="btn primary">1 · Có</button><button class="btn">3 · Không</button><button class="btn">Mở phiên</button><span class="note sp">gửi phím “1”</span></div></div>
+      <div class="card"><div class="row"><span style="font-size:22px">🐰</span><h3>Token-ai</h3><span class="tag">Máy này</span><span class="sp pill wait">chờ 1 phút</span></div>
+        <div class="term" style="margin-top:8px"><span class="d">Bạn có muốn tiếp tục với bước 3?</span></div>
+        <div class="row" style="margin-top:8px"><button class="btn primary">Tiếp tục</button><button class="btn">Nhắn…</button></div></div>
+      <p class="note" style="margin:0">Nội dung là minh hoạ.</p></div></div></section>
+
+  <!-- 8 -->
+  <section class="idea" data-i="8" hidden><div class="grid">
+    <div class="panel why"><h2>Thanh Git trên mỗi phiên</h2>
+      <p><b>Vấn đề thật:</b> làm việc nhiều nhánh, nhiều repo, dễ quên phiên nào đang đứng ở <code>main</code> hay <code>develop</code> (nhánh không được commit thẳng) hoặc còn thay đổi chưa lưu.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Dưới tên phiên hiện nhánh, số file thay đổi, số commit chưa đẩy.</li><li>Tô cảnh báo khi đứng ở nhánh bạn đánh dấu là “bảo vệ”.</li><li>Chỉ đọc: <code>git status -sb</code> trong thư mục của phiên, không đổi gì.</li></ul>
+      <p class="note">Danh sách nhánh bảo vệ do bạn tự đặt, không ghi cứng tên nhánh trong code.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thẻ phiên</div>
+      <div class="card"><div class="row"><span style="font-size:22px">🦊</span><h3>Smart-Visibility</h3><span class="sp pill run">Đang chạy</span></div><div class="row" style="margin-top:6px"><span class="chip">⎇ crew/20261102-sv-ev-photo-perf</span><span class="tag wait">3 thay đổi</span><span class="tag">↑ 2 chưa đẩy</span></div></div>
+      <div class="card" style="box-shadow:0 0 0 2px var(--bad)"><div class="row"><span style="font-size:22px">🐼</span><h3>Vifon-SV</h3><span class="sp pill run">Đang chạy</span></div><div class="row" style="margin-top:6px"><span class="chip bad">⎇ main</span><span class="tag bad">nhánh được bảo vệ</span><span class="tag wait">1 thay đổi</span></div><small>Bạn đang ở nhánh không nên commit thẳng.</small></div>
+      <div class="card"><div class="row"><span style="font-size:22px">🐰</span><h3>Token-ai</h3><span class="sp pill idle">Đang nghỉ</span></div><div class="row" style="margin-top:6px"><span class="chip">⎇ feat/token-usage-report</span><span class="tag ok">sạch</span></div></div></div></div></section>
+
+  <!-- 9 -->
+  <section class="idea" data-i="9" hidden><div class="grid">
+    <div class="panel why"><h2>Phát hiện phiên treo hoặc lặp</h2>
+      <p><b>Vấn đề thật:</b> một phiên “đang chạy” có thể đã kẹt hoặc đang in lặp một lỗi mà vẫn tiêu token cho tới khi bạn để ý.</p>
+      <b>Tiện ích:</b>
+      <ul><li>So sánh màn hình giữa các lần poll: không đổi quá N phút khi trạng thái “đang chạy” thì cảnh báo “có thể treo”.</li><li>Phát hiện cùng một dòng lặp lại nhiều lần liên tiếp.</li><li>Thông báo trên chuông; bạn tự quyết dừng hay bỏ qua. Không tự dừng phiên.</li><li>Ngưỡng phút do bạn đặt cho từng loại (shell, claude, codex).</li></ul>
+      <p class="note">Có thể báo nhầm khi công cụ đang chạy lệnh dài im lặng (build, test), nên chỉ cảnh báo và cho bấm “vẫn đang chờ”.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · chuông thông báo</div>
+      <div class="alert" style="background:var(--wait-soft);color:var(--wait)"><span style="font-size:22px">🐢</span><div><b>Smart-Visibility có thể đang treo</b><br><span class="dim">Màn hình không đổi 12 phút khi “Đang chạy”</span><div class="row" style="margin-top:6px"><button class="btn">Mở phiên</button><button class="btn">Vẫn đang chờ (30 phút)</button></div></div></div>
+      <div class="alert"><span style="font-size:22px">🔁</span><div><b>Token-ai đang in lặp một dòng</b><br><span class="dim">“retry 3/3 connection refused” lặp 48 lần trong 2 phút</span><div class="row" style="margin-top:6px"><button class="btn danger">Mở phiên để dừng</button></div></div></div>
+      <div class="card"><h3>Ngưỡng</h3><div class="row" style="margin-top:6px"><span class="tag">claude: 10 phút</span><span class="tag">codex: 10 phút</span><span class="tag">shell: tắt</span><span class="tag">lặp: ≥ 20 lần</span></div></div></div></div></section>
+
+  <!-- 10 -->
+  <section class="idea" data-i="10" hidden><div class="grid">
+    <div class="panel why"><h2>Xu hướng chi phí và phiên tốn nhất</h2>
+      <p><b>Vấn đề thật:</b> báo cáo cho biết đã dùng bao nhiêu nhưng chưa trả lời “đang tăng hay giảm” và “tốn vào đâu”.</p>
+      <b>Tiện ích:</b>
+      <ul><li>So tuần này với tuần trước (±%), ngày đắt nhất, ngày rẻ nhất.</li><li>Top 5 model và top 5 phiên tốn nhất trong khoảng chọn.</li><li>Dự báo cuối tháng theo nhịp hiện tại (một phép nhân đơn giản, ghi rõ là ước tính).</li></ul>
+      <p class="note">Chi phí theo phiên cần ccusage <code>session</code> (lệnh riêng), thêm một lần chạy cho mỗi tài khoản.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thêm vào tab Token AI</div>
+      <div class="row"><div class="card" style="flex:1"><small>Tuần này</small><br><b style="font:700 18px var(--mono)">$577,86</b> <span class="tag bad">▲ 42%</span><br><small>tuần trước $406,90</small></div><div class="card" style="flex:1"><small>Dự báo cuối tháng</small><br><b style="font:700 18px var(--mono)">≈ $1.020</b><br><small>ước tính theo nhịp 3 ngày qua</small></div></div>
+      <div class="card"><h3>Model tốn nhất</h3>
+        <div class="row" style="margin-top:6px"><span class="chip" style="width:120px">sonnet-5-5</span><div class="meter" style="flex:1"><i style="width:62%"></i></div><b style="font:700 12px var(--mono)">$358</b></div>
+        <div class="row" style="margin-top:6px"><span class="chip" style="width:120px">opus-5-5</span><div class="meter" style="flex:1"><i style="width:34%"></i></div><b style="font:700 12px var(--mono)">$195</b></div>
+        <div class="row" style="margin-top:6px"><span class="chip bad" style="width:120px">gpt-6-astra</span><div class="meter bad" style="flex:1"><i style="width:28%"></i></div><b style="font:700 12px var(--mono)">$162</b></div></div></div></div></section>
+
+  <!-- 11 -->
+  <section class="idea" data-i="11" hidden><div class="grid">
+    <div class="panel why"><h2>Mục tiêu và ghi chú gắn với phiên</h2>
+      <p><b>Vấn đề thật:</b> tên phiên chỉ là “Smart-Visibility”; vài giờ sau không nhớ phiên này đang làm gì, đã xong phần nào, hay cần quay lại việc gì.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Mỗi phiên có một dòng <b>mục tiêu</b> và checklist ngắn, sửa ngay trên thẻ.</li><li>Hiện lại trên panel bên phải và khi di chuột vào thẻ.</li><li>Lưu cùng kho cấu hình, theo tên phiên và máy; không gửi vào terminal.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · panel bên phải</div>
+      <div class="card"><h3>🎯 Mục tiêu</h3><div style="margin-top:4px">Giảm thời gian tải ảnh danh giá CTTB xuống dưới 0,1 s</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px"><label><input type="checkbox" checked> Cache manifest (W0–W5)</label><label><input type="checkbox" checked> Gộp shared → common → salesdistribution</label><label><input type="checkbox"> Đo lại lần gọi hai</label><label><input type="checkbox"> Mở MR</label></div>
+        <div class="row" style="margin-top:8px"><span class="tag ok">2 / 4 xong</span><button class="btn sp">✎ Sửa</button></div></div>
+      <div class="card"><h3>📝 Ghi chú</h3><div class="dim" style="font-size:13px;margin-top:4px">Nhớ hỏi: ổ đĩa dev-ubuntu-02 còn bao nhiêu trước khi chạy W6.</div></div></div></div></section>
+
+  <!-- 12 -->
+  <section class="idea" data-i="12" hidden><div class="grid">
+    <div class="panel why"><h2>Ghi lại và phát lại phiên</h2>
+      <p><b>Vấn đề thật:</b> quy trình crew coi lời worker “xong rồi” chỉ là một lời khai; muốn kiểm tra phải đọc log rải rác, và khi phiên đóng thì màn hình biến mất.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Server ghi luồng terminal kèm dấu thời gian (kiểu asciinema) cho các phiên bạn bật.</li><li>Trình phát có thanh thời gian, tua nhanh, nhảy tới lúc có lỗi hoặc lúc “Chờ bạn”.</li><li>Tự xoá sau N ngày; có thể che mẫu nhạy cảm (token, mật khẩu) trước khi lưu.</li></ul>
+      <p class="note"><b>Cân nhắc nghiêm túc:</b> nội dung terminal có thể chứa bí mật nên mặc định tắt, bật theo từng phiên, lưu trên máy và có hạn dùng. Đây là ý lớn nhất trong danh sách.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · trình phát</div>
+      <div class="term"><span class="d">$</span> scripts/crew/crew-dispatch.sh --task sv-ev-photo-perf --track W6
+<span class="d">[10:38:12]</span> preflight: disk free 5.2 GB, need 6.3 GB
+<span class="d">[10:38:12]</span> <span class="hl">QUEUED</span> reason=resources
+<span class="d">[10:39:40]</span> retry after cleanup: 32.6 GB free
+<span class="d">[10:39:41]</span> conflict scan started …</div>
+      <div class="meter"><i style="width:46%"></i></div>
+      <div class="row"><button class="btn">⏮</button><button class="btn primary">▶ Phát</button><button class="btn">1×</button><span class="tag">10:38:12 / 10:52:40</span><span class="sp"></span><button class="btn">⚑ Tới “Chờ bạn”</button></div></div></div></section>
+
+  <!-- 13 -->
+  <section class="idea" data-i="13" hidden><div class="grid">
+    <div class="panel why"><h2>Bộ theo dõi sự kiện</h2>
+      <p><b>Vấn đề thật:</b> phiên AI hay “chờ” bằng cách tự chạy vòng lặp hỏi trạng thái (xong chưa, pipeline xong chưa). Mỗi lần thức dậy là một lượt đọc ngữ cảnh, tốn token chỉ để nghe “chưa”.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Tạo một <b>điều kiện chờ</b> ngay trong Termnest: lệnh trả về mã 0, tệp xuất hiện, cổng mở, một chuỗi hiện ra trong màn hình phiên, hoặc số dòng log đổi.</li><li>Termnest kiểm tra bằng shell trên máy, chi phí token bằng 0.</li><li>Khi điều kiện đúng: rung chuông, và (tuỳ chọn) <b>gửi một dòng</b> vào phiên, ví dụ “pipeline xong, tiếp tục”. Phiên AI chỉ tốn token đúng một lượt đó.</li><li>Có thời hạn tối đa và nút huỷ; mỗi điều kiện dùng lệnh do bạn nhập, chạy chỉ với quyền của chính tài khoản đó.</li></ul>
+      <p class="note">Không thay thế cơ chế crew-watch có sẵn của quy trình; chỉ giúp những chỗ phiên đang tự lặp để chờ.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · tạo điều kiện chờ</div>
+      <div class="card"><h3>Chờ cái gì?</h3>
+        <div class="row" style="margin-top:6px"><span class="chip">lệnh trả về 0</span><span class="chip" style="background:var(--ok-soft);color:var(--ok)">chuỗi xuất hiện</span><span class="chip">tệp xuất hiện</span><span class="chip">cổng mở</span></div>
+        <div class="term" style="margin-top:8px"><span class="d">phiên:</span> Smart-Visibility   <span class="d">tìm:</span> <span class="hl">W6 DONE</span>   <span class="d">tối đa:</span> 60 phút</div>
+        <div class="row" style="margin-top:8px"><label><input type="checkbox" checked> Rung chuông</label><label><input type="checkbox" checked> Gửi vào phiên:</label><span class="tag">"W6 xong, review và gộp"</span></div>
+        <div class="row" style="margin-top:8px"><button class="btn primary">Bắt đầu theo dõi</button><span class="note sp">chi phí token: 0</span></div></div>
+      <div class="card"><h3>Đang theo dõi</h3>
+        <div class="track" style="margin-top:6px"><span class="pet">⏱</span><div class="t"><b>Smart-Visibility · “W6 DONE”</b><small>kiểm tra mỗi 10 giây · đã chờ 12 phút</small></div><button class="btn">Huỷ</button></div>
+        <div class="track" style="margin-top:6px"><span class="pet">✅</span><div class="t"><b>Token-ai · cổng 44390 mở</b><small>xong lúc 11:42 · đã báo</small></div><span class="pill ok">Xong</span></div></div></div></div></section>
+
+  <!-- 14 -->
+  <section class="idea" data-i="14" hidden><div class="grid">
+    <div class="panel why"><h2>Đồng hồ ngữ cảnh của phiên</h2>
+      <p><b>Vấn đề thật:</b> phiên càng dài, mỗi lượt càng đọc lại nhiều ngữ cảnh nên càng đắt; quy trình của bạn cũng khuyên mở phiên mới từ file trạng thái thay vì kéo dài mãi.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Vòng % trên thẻ phiên: ngữ cảnh đang chiếm bao nhiêu so với cửa sổ của model.</li><li>Lấy từ log CLI: số token của lượt gần nhất (Claude ghi sẵn trong log, Codex ghi sẵn trong sự kiện token). Không gọi AI.</li><li>Từ ngưỡng bạn đặt (ví dụ 70%) thì nhắc “nên mở phiên mới”, kèm ước tính phiên này đã tốn bao nhiêu.</li></ul>
+      <p class="note">Cần kiểm tra thực tế các trường trong log từng công cụ (kích thước cửa sổ có thể phải đoán theo tên model); số hiển thị là ước tính.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thẻ phiên</div>
+      <div class="card"><div class="row"><span style="font-size:22px">🦊</span><h3>Smart-Visibility</h3><div class="ring sp" style="--p:78;--c:#ff7a45;width:52px;height:52px"><span>78%</span></div></div><div class="row" style="margin-top:4px"><span class="tag wait">Ngữ cảnh gần đầy</span><span class="note">≈ 156k / 200k token</span></div><div class="meter warn" style="margin-top:8px"><i style="width:78%"></i></div><div class="row" style="margin-top:8px"><button class="btn">Nên mở phiên mới</button><button class="btn">Nhắc sau</button></div></div>
+      <div class="card"><div class="row"><span style="font-size:22px">🐼</span><h3>Vifon-SV</h3><div class="ring sp" style="--p:21;width:52px;height:52px"><span>21%</span></div></div><div class="meter" style="margin-top:8px"><i style="width:21%"></i></div></div>
+      <p class="note" style="margin:0">Số mẫu.</p></div></div></section>
+
+  <!-- 15 -->
+  <section class="idea" data-i="15" hidden><div class="grid">
+    <div class="panel why"><h2>Kéo-thả ảnh và tệp vào phiên, xem ảnh ngay trong Termnest</h2>
+      <p><b>Vấn đề thật:</b> muốn cho AI trên máy xa xem một ảnh chụp lỗi thì phải copy ảnh sang máy đó rồi gõ đường dẫn; và cũng không xem lại được ảnh đó ngay trong app.</p>
+      <b>Trả lời câu hỏi “xem được ảnh hay chỉ thấy tên file?”</b>
+      <ul><li><b>Xem được ảnh</b>: sau khi thả, hiện <b>hình thu nhỏ</b> phía trên ô terminal; bấm vào (hoặc bấm đường dẫn ảnh trong terminal) thì mở <b>panel xem trước</b> bên phải, có phóng to, thu nhỏ, tải về.</li><li><b>Không vẽ ảnh bên trong chữ của terminal</b>: terminal chỉ vẽ chữ, và Claude/Codex cũng không in ảnh ra màn hình, nên trong dòng lệnh chỉ thấy đường dẫn.</li><li>Hiện nay trình xem file của Termnest chỉ đọc văn bản và Markdown, nên cần mở rộng cho png, jpg, gif, webp (không nhận SVG vì có thể chứa script). Giới hạn dung lượng.</li></ul>
+      <b>Tiện ích:</b>
+      <ul><li>Thả ảnh hoặc dán Ctrl+V lên ô terminal, Termnest tải lên thư mục tạm riêng trên máy của phiên rồi tự dán đường dẫn vào dòng lệnh.</li><li><b>An toàn:</b> chỉ nhận loại tệp cho phép, tên tệp do app đặt (không dùng tên gốc), tự xoá sau N ngày, hỏi xác nhận lần đầu cho mỗi máy.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · phiên Smart-Visibility trên dev-ubuntu-02</div>
+      <div class="term" style="border:2px dashed var(--hero-a);text-align:center;padding:14px 12px;white-space:normal"><b style="color:#fff">🖼️ Thả ảnh vào đây để gửi cho phiên</b> <span class="d">· tối đa 10 MB · png, jpg, gif, webp, pdf, txt</span></div>
+      <div class="row"><div class="card" style="width:132px;padding:6px"><div style="height:74px;border-radius:9px;background:linear-gradient(135deg,#bfe9ff,#ffd9e0);display:grid;place-items:center;font-size:26px">📸</div><small style="display:block;margin-top:4px">Screenshot 10.42.16</small></div>
+        <div class="card" style="flex:1"><div class="row"><b>1,2 MB</b><span class="pill ok sp">Đã tải lên</span></div><div class="term" style="margin-top:6px"><span class="d">$</span> claude  /tmp/termnest-drop/9f3a1c7e.png</div><small>Đường dẫn đã dán vào dòng lệnh. Bấm hình để xem trước.</small></div></div>
+      <div class="card"><div class="row"><h3>🔍 Xem trước · 9f3a1c7e.png</h3><span class="sp"><span class="chip">−</span> <span class="chip">100%</span> <span class="chip">+</span> <span class="chip">⬇</span></span></div>
+        <div style="margin-top:8px;height:120px;border-radius:12px;background:linear-gradient(135deg,#d7f1ff,#ffe3ea);display:grid;place-items:center;font-size:44px">📸</div><small>2558 × 1415 · png · tự xoá sau 7 ngày</small></div></div></div></section>
+
+  <!-- 16 -->
+  <section class="idea" data-i="16" hidden><div class="grid">
+    <div class="panel why"><h2>Bảng host đang chạy theo cổng</h2>
+      <p><b>Vấn đề thật:</b> có bốn cặp cổng mỗi máy và mỗi host cần Redis riêng; dễ quên cặp nào đang chạy, của phiên nào, trỏ vào DB nào.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Liệt kê cổng đang nghe (44390/44373, 45…, 46…, 47…) với tiến trình, thời gian chạy.</li><li>Đọc biến môi trường của tiến trình (chỉ tên DB và <code>Redis__InstanceName</code>; <b>che mật khẩu</b>) để thấy host trỏ vào đâu.</li><li>Cảnh báo khi hai host dùng chung một <code>Redis__InstanceName</code> hoặc trỏ DB dùng chung.</li><li>Phiên đầu tiên chỉ xem; nút Dừng chỉ hiện khi bạn bật, có xác nhận.</li></ul>
+      <p class="note">Bám theo quy ước trong tài liệu workspace; danh sách cổng đọc từ cấu hình, không ghi cứng trong code.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Host (máy dev-ubuntu-02)</div>
+      <div class="sz"><span class="pill ok">Chạy</span><span class="n"><b>Cặp 44</b> · 44390 / 44373 · phiên Token-ai</span><b>2 giờ 10</b></div>
+      <div class="card" style="font-size:12.5px"><div class="row"><span class="tag">DB Xspire_dev_thanhlg</span><span class="tag">Redis Xspire-dev-p44</span><span class="tag ok">riêng</span></div></div>
+      <div class="sz"><span class="pill ok">Chạy</span><span class="n"><b>Cặp 45</b> · 45390 / 45373 · phiên Smart-Visibility</span><b>25 phút</b></div>
+      <div class="alert"><span style="font-size:20px">⚠️</span><div><b>Cặp 45 dùng chung Redis với cặp 44</b><br><span class="dim">Cùng Redis__InstanceName “Xspire-dev”, đăng nhập có thể chập chờn.</span></div></div>
+      <div class="sz"><span class="pill idle">Tắt</span><span class="n"><b>Cặp 46</b> · không có tiến trình</span><b>—</b></div>
+      <p class="note" style="margin:0">Số mẫu.</p></div></div></section>
+
+  <!-- 17 -->
+  <section class="idea" data-i="17" hidden><div class="grid">
+    <div class="panel why"><h2>Huy hiệu model và cảnh báo cache thấp</h2>
+      <p><b>Vấn đề thật:</b> chỉ nhìn thẻ không biết phiên đang chạy model nào, effort bao nhiêu; và khi prompt caching hỏng (tỷ lệ đọc cache tụt) thì chi phí tăng mà không ai thấy.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Mỗi thẻ có huy hiệu model và effort lấy từ log phiên, tô đỏ nếu thuộc danh sách model bị cấm (ý 1).</li><li>Tỷ lệ cache đọc của ngày/tuần từ báo cáo ccusage; tụt dưới ngưỡng bạn đặt thì báo.</li></ul>
+      <p class="note">Rất nhỏ, tận dụng lại dữ liệu đã có.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thẻ phiên</div>
+      <div class="card"><div class="row"><span style="font-size:22px">🐼</span><h3>Vifon-SV</h3><span class="chip sp">gpt-6.1-sol · medium</span></div></div>
+      <div class="card" style="box-shadow:0 0 0 2px var(--bad)"><div class="row"><span style="font-size:22px">🐰</span><h3>Token-ai</h3><span class="chip bad sp">gpt-6-astra · high</span></div><small>Model nằm trong danh sách bị cấm.</small></div>
+      <div class="card"><div class="row"><h3>Tỷ lệ đọc cache · 7 ngày</h3><span class="tag wait sp">tụt từ 97% còn 71%</span></div><div class="meter warn" style="margin-top:8px"><i style="width:71%"></i></div><small>Có thể prompt hoặc công cụ đang thay đổi nên cache không dùng lại được.</small></div></div></div></section>
+
+  <!-- 18 -->
+  <section class="idea" data-i="18" hidden><div class="grid">
+    <div class="panel why"><h2>Thống kê thời gian phiên chờ bạn</h2>
+      <p><b>Vấn đề thật:</b> phiên AI chạy nhanh nhưng hay dừng chờ bạn; nhìn được tổng thời gian chờ thì biết nên gom việc duyệt vào khung giờ nào.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Tổng phút phiên chờ bạn hôm nay / tuần này; phiên bị bỏ quên lâu nhất.</li><li>Biểu đồ theo giờ trong ngày để thấy giờ nào hay bỏ lỡ.</li><li>Dữ liệu lấy từ nhật ký trạng thái đã ghi sẵn (“Chờ bạn”, “Phiên hết chờ”), không thêm thu thập.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Tổng quan</div>
+      <div class="row"><div class="card" style="flex:1"><small>Phiên đã chờ bạn hôm nay</small><br><b style="font:700 18px var(--mono)">1 giờ 47</b></div><div class="card" style="flex:1"><small>Lâu nhất</small><br><b style="font:700 16px var(--mono)">38 phút</b><br><small>Token-ai · 09:45</small></div></div>
+      <div class="card"><h3>Theo giờ</h3><div style="display:flex;align-items:flex-end;gap:6px;height:84px;margin-top:8px"><i style="flex:1;height:18%;background:var(--hero-a);border-radius:5px"></i><i style="flex:1;height:55%;background:var(--hero-a);border-radius:5px"></i><i style="flex:1;height:92%;background:var(--bad);border-radius:5px"></i><i style="flex:1;height:70%;background:var(--wait);border-radius:5px"></i><i style="flex:1;height:30%;background:var(--hero-a);border-radius:5px"></i><i style="flex:1;height:44%;background:var(--hero-a);border-radius:5px"></i><i style="flex:1;height:12%;background:var(--hero-a);border-radius:5px"></i></div><div class="row" style="justify-content:space-between;margin-top:4px"><small>08h</small><small>09h</small><small>10h</small><small>11h</small><small>13h</small><small>14h</small><small>15h</small></div></div>
+      <p class="note" style="margin:0">Số mẫu. Cột đỏ là giờ phiên chờ bạn lâu nhất.</p></div></div></section>
+
+  <!-- 19 -->
+  <section class="idea" data-i="19" hidden><div class="grid">
+    <div class="panel why"><h2>Trung tâm cảnh báo (“Cần chú ý”)</h2>
+      <p><b>Vấn đề thật:</b> nếu làm hết các ý ở trên sẽ có nhiều loại cảnh báo (model cấm, ổ đĩa, phiên treo, chờ bạn…). Mỗi loại một chuông thì rối và bị bỏ qua.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Một hộp duy nhất, nhóm theo mức: <b>Khẩn</b> (ổ đĩa đầy, host chập Redis, model cấm), <b>Chờ bạn</b>, <b>Nên xem</b>.</li><li>Mỗi dòng có hành động một chạm (mở phiên, tạm hoãn 1 giờ, đã xử lý).</li><li>Số đỏ trên thanh trên cùng cho biết còn bao nhiêu việc khẩn.</li><li>Bạn bật tắt từng loại cảnh báo; tạm hoãn không làm mất cảnh báo, chỉ ẩn tới giờ hẹn.</li></ul>
+      <p class="note">Là lớp giao diện gom dữ liệu từ các ý khác, nên làm sau khi có vài ý trong số đó.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · hộp “Cần chú ý” (chuông)</div>
+      <div class="card"><div class="row"><h3>🔴 Khẩn</h3><span class="tag bad">2</span></div>
+        <div class="track" style="margin-top:6px"><span class="pet">💾</span><div class="t"><b>dev-ubuntu-02 sắp đầy ổ đĩa</b><small>còn 6,8 GB</small></div><button class="btn">Xem</button></div>
+        <div class="track" style="margin-top:6px"><span class="pet">🚫</span><div class="t"><b>Codex dùng gpt-6-astra</b><small>Vifon-SV · $4,20 hôm nay</small></div><button class="btn">Xem</button></div></div>
+      <div class="card"><div class="row"><h3>🟡 Chờ bạn</h3><span class="tag wait">2</span></div>
+        <div class="track" style="margin-top:6px"><span class="pet">🦊</span><div class="t"><b>Smart-Visibility hỏi: git push?</b><small>chờ 4 phút</small></div><button class="btn primary">Trả lời</button></div></div>
+      <div class="card"><div class="row"><h3>🔵 Nên xem</h3><span class="tag">1</span></div>
+        <div class="track" style="margin-top:6px"><span class="pet">🐢</span><div class="t"><b>Token-ai có thể treo</b><small>không đổi 12 phút</small></div><button class="btn">Hoãn 1 giờ</button></div></div></div></div></section>
+
+  <!-- 20 -->
+  <section class="idea" data-i="20" hidden><div class="grid">
+    <div class="panel why"><h2>Lưới an toàn khi dán và nhãn môi trường</h2>
+      <p><b>Vấn đề thật:</b> terminal của nhiều máy trông giống nhau; chỉ cần dán nhầm một lệnh vào phiên đang nối vào môi trường dùng chung là hậu quả lớn. Quy tắc của bạn cũng cấm chạm DB dùng chung.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Gắn nhãn cho mỗi máy hoặc phiên: <b>dev / test / prod</b>, viền terminal và thanh trên cùng đổi màu theo nhãn.</li><li>Khi <b>dán</b> hoặc gõ Enter một dòng khớp mẫu nguy hiểm (do bạn khai báo: <code>rm -rf</code>, <code>DROP TABLE</code>, <code>git push --force</code>, <code>database update</code>…), hiện hộp xác nhận nêu rõ lệnh và máy.</li><li>Mặc định chỉ hỏi ở môi trường test/prod; dev tắt cho khỏi phiền.</li></ul>
+      <p class="note">So khớp bằng biểu thức chính quy, không dùng AI. Không thể chặn mọi trường hợp (lệnh bị che bởi biến); đây là lớp chặn nhầm tay, không phải bảo mật.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · hộp xác nhận khi dán</div>
+      <div class="term" style="border:3px solid var(--bad)"><span class="d">[PROD] root@xspire-prod-01</span>
+$ <span class="hl">dotnet ef database update</span></div>
+      <div class="alert"><span style="font-size:24px">⛔</span><div><b>Lệnh có thể sửa cơ sở dữ liệu dùng chung</b><br><span class="dim">Máy: <b>xspire-prod-01</b> (nhãn: <b>prod</b>) · mẫu khớp: <code>database update</code></span>
+        <div class="row" style="margin-top:8px"><button class="btn">Huỷ (nên chọn)</button><button class="btn danger">Vẫn chạy</button></div></div></div>
+      <div class="card"><h3>Nhãn môi trường</h3><div class="row" style="margin-top:6px"><span class="tag ok">dev-ubuntu-02 · dev</span><span class="tag wait">xspire-test · test</span><span class="tag bad">xspire-prod-01 · prod</span></div></div></div></div></section>
+
+  <!-- 21 -->
+  <section class="idea" data-i="21" hidden><div class="grid">
+    <div class="panel why"><h2>Xem log thông minh</h2>
+      <p><b>Vấn đề thật:</b> log crew, log build, log host dài hàng nghìn dòng; tìm lỗi phải cuộn và dò mắt.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Trình xem file có chế độ log: tô <b>ERROR / WARN / Exception</b>, nhóm các dòng stack trace.</li><li>Lọc theo mức, bấm <kbd>n</kbd> / <kbd>N</kbd> để nhảy tới lỗi kế tiếp / trước.</li><li><b>Theo dõi đuôi</b> (như <code>tail -f</code>) có nút tạm dừng; đọc từng đoạn nên log lớn vẫn nhẹ.</li><li>Dùng được cho log crew đang xem hiện nay.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · panel xem log</div>
+      <div class="row"><span class="chip">Tất cả</span><span class="chip bad">Lỗi 3</span><span class="chip" style="background:var(--wait-soft);color:var(--wait)">Cảnh báo 12</span><span class="sp"></span><button class="btn">⏸ Dừng theo dõi</button><button class="btn">↓ Lỗi kế (n)</button></div>
+      <div class="term"><span class="d">10:38:12</span> preflight: disk free 5.2 GB
+<span class="d">10:38:12</span> <span style="color:#ffc55c">WARN</span> need 6.3 GB, queueing
+<span class="d">10:39:40</span> cleanup done, 32.6 GB free
+<span class="d">10:41:03</span> <span style="background:#5a1d2b;color:#ff8a96;padding:0 3px;border-radius:3px">ERROR</span> NullReferenceException at AuditLogManager
+<span class="d">10:41:03</span> <span class="d">   at HQSOFT.Xspire.AuditLog.Save(...)</span>
+<span class="d">10:41:03</span> <span class="d">   at HQSOFT.Xspire.Pipeline.Run(...)</span>
+<span class="d">10:41:20</span> retry 1/3 ok</div>
+      <small>Dòng ERROR được tô, stack trace thu gọn bên dưới.</small></div></div></section>
+
+  <!-- 22 -->
+  <section class="idea" data-i="22" hidden><div class="grid">
+    <div class="panel why"><h2>Sao chép an toàn (tự che bí mật)</h2>
+      <p><b>Vấn đề thật:</b> hay chọn một đoạn màn hình để dán vào chat, MR, tài liệu; trong đó có thể lẫn token, mật khẩu, chuỗi kết nối.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Chọn đoạn màn hình rồi bấm “Sao chép an toàn”: tự thay các mẫu nhạy cảm bằng <code>••••</code> (token <code>ghp_…</code>, <code>Bearer …</code>, <code>password=…</code>, chuỗi kết nối, khoá riêng).</li><li>Hiện bản xem trước những gì đã che, bạn bỏ che được từng chỗ.</li><li>Tuỳ chọn: bọc trong khối code Markdown, hoặc lưu thành tệp.</li></ul>
+      <p class="note">Che bằng mẫu nhận dạng, nên có thể sót; vì vậy luôn có bước xem trước trước khi sao chép.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · xem trước trước khi sao chép</div>
+      <div class="card"><div class="row"><h3>Đã che 3 chỗ</h3><span class="tag ok">an toàn hơn</span></div>
+        <div class="term" style="margin-top:8px">export SH_API_KEY=<span style="background:#2a3250;border-radius:4px;padding:0 4px">••••••••</span>
+curl -H "Authorization: Bearer <span style="background:#2a3250;border-radius:4px;padding:0 4px">••••••••</span>" https://api.example/v1
+Host=db01;Password=<span style="background:#2a3250;border-radius:4px;padding:0 4px">••••••••</span>;Database=Xspire</div>
+        <div class="row" style="margin-top:8px"><label><input type="checkbox" checked> Bọc khối code Markdown</label><span class="sp"></span><button class="btn">Bỏ che chỗ này</button><button class="btn primary">Sao chép</button></div></div></div></div></section>
+
+  <!-- 23 -->
+  <section class="idea" data-i="23" hidden><div class="grid">
+    <div class="panel why"><h2>Mở ca / Đóng ca</h2>
+      <p><b>Vấn đề thật:</b> đầu ngày phải mở lại từng phiên, nhớ thư mục nào ở máy nào; cuối ngày dễ quên commit chưa đẩy, host còn chạy, worktree thừa.</p>
+      <b>Tiện ích:</b>
+      <ul><li><b>Mở ca</b> một chạm: dựng lại bộ phiên bạn đã lưu (máy, thư mục, chạy shell/claude/codex).</li><li><b>Đóng ca</b>: quét mọi phiên rồi đưa danh sách “còn dở”: thay đổi chưa commit, commit chưa đẩy, host còn chạy, phiên đang chờ bạn, worktree crew chưa dọn.</li><li>Chỉ báo cáo và gợi ý; không tự commit, đẩy hay tắt.</li></ul>
+      <p class="note">Dùng dữ liệu của thanh Git (8) và bảng host (16) nên nên làm sau hai ý đó.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · Đóng ca 17:45</div>
+      <div class="card"><h3>Trước khi nghỉ, còn 4 việc dở</h3>
+        <div class="sz" style="margin-top:6px"><span class="pet">📝</span><span class="n">Smart-Visibility · 3 file chưa commit</span><button class="btn">Mở</button></div>
+        <div class="sz" style="margin-top:6px"><span class="pet">⬆</span><span class="n">Token-ai · 2 commit chưa đẩy</span><button class="btn">Mở</button></div>
+        <div class="sz" style="margin-top:6px"><span class="pet">🖥</span><span class="n">Cặp 45 còn chạy (25 phút)</span><button class="btn">Xem</button></div>
+        <div class="sz" style="margin-top:6px"><span class="pet">🧹</span><span class="n">5 worktree crew đã gộp chưa dọn · 4,3 GB</span><button class="btn">Xem</button></div>
+        <div class="row" style="margin-top:8px"><span class="tag ok">Vifon-SV: sạch</span><span class="sp"></span><button class="btn primary">Lưu bộ phiên cho mai</button></div></div></div></div></section>
+
+  <!-- 24 -->
+  <section class="idea" data-i="24" hidden><div class="grid">
+    <div class="panel why"><h2>Thẻ MR và pipeline theo nhánh của phiên</h2>
+      <p><b>Vấn đề thật:</b> sau khi đẩy nhánh phải mở GitLab để xem MR đã tạo chưa, pipeline xanh hay đỏ, có ai comment không.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Từ nhánh hiện tại của phiên (thanh Git, ý 8) tra MR và pipeline mới nhất; hiện trạng thái ngay trên thẻ.</li><li>Số comment chưa giải quyết và nút “Mở MR”.</li><li>Chỉ <b>đọc</b>, không merge, không chạy pipeline.</li></ul>
+      <p class="note"><b>Cần bạn quyết:</b> cách cấp quyền đọc GitLab. Phương án an toàn: dùng khoá chỉ-đọc riêng (scope <code>read_api</code>) lưu trong kho mã hoá của Termnest, không tái sử dụng thông tin đăng nhập git của bạn. Số liệu GitLab được lưu đệm vài phút để khỏi gọi liên tục.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thẻ phiên</div>
+      <div class="card"><div class="row"><span style="font-size:22px">🦊</span><h3>Smart-Visibility</h3><span class="chip sp">⎇ crew/…-perf</span></div>
+        <div class="row" style="margin-top:8px"><span class="pill ok">Pipeline xanh</span><span class="tag">MR !482</span><span class="tag wait">2 comment chưa giải quyết</span></div><div class="row" style="margin-top:8px"><button class="btn">Mở MR</button><button class="btn">Xem pipeline</button></div></div>
+      <div class="card"><div class="row"><span style="font-size:22px">🐰</span><h3>Token-ai</h3><span class="chip sp">⎇ feat/token-usage-report</span></div>
+        <div class="row" style="margin-top:8px"><span class="pill bad">Pipeline đỏ</span><span class="tag">MR !479</span><span class="tag bad">job: pg_integration_gate</span></div><div class="row" style="margin-top:8px"><button class="btn">Xem job lỗi</button></div></div>
+      <p class="note" style="margin:0">Số mẫu.</p></div></div></section>
+
+  <!-- 25 -->
+  <section class="idea" data-i="25" hidden><div class="grid">
+    <div class="panel why"><h2>Nút ✕ để đóng tab ngay trên thanh tab</h2>
+      <p><b>Hiện trạng:</b> thanh tab phía trên terminal liệt kê <b>mọi phiên</b> đang thấy, chưa có cách bỏ bớt từng tab. Nhiều phiên thì thanh tab dài và rối, phải cuộn mới tìm được tab cần.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Mỗi tab có nút <b>✕</b> (hiện khi trỏ chuột hoặc ở tab đang chọn). Bấm là <b>ẩn tab khỏi thanh tab</b>.</li><li><b>Quan trọng:</b> đóng tab <u>không dừng phiên tmux</u>. Phiên vẫn chạy, vẫn thấy ở danh sách bên trái và tab Tổng quan, và mở lại được bất cứ lúc nào. Muốn dừng hẳn vẫn dùng nút “Dừng”, có xác nhận như hiện nay.</li><li><b>Hoàn tác:</b> vừa đóng sẽ có thông báo “Hoàn tác” trong vài giây; thêm “Tab đã đóng gần đây” để mở lại.</li><li>Phím tắt: nhấp chuột giữa vào tab, hoặc <kbd>Ctrl</kbd>+<kbd>W</kbd>; mở lại bằng <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>. Chuột phải: “Đóng các tab khác”, “Đóng các tab bên phải”.</li><li>Danh sách tab đã ẩn được nhớ theo từng người dùng, không ảnh hưởng người khác.</li></ul>
+      <p class="note">Phiên đang “Chờ bạn” mà bạn đã ẩn tab vẫn hiện chấm báo trên mục “Chờ bạn” ở danh sách, nên không bị bỏ quên.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · thử bấm ✕ (bấm được)</div>
+      <div class="stab" id="stab"></div>
+      <div id="stoast"></div>
+      <div class="card"><div class="row"><h3>Tab đã đóng gần đây</h3></div><div class="row" id="sclosed" style="margin-top:6px"><span class="note">Chưa có</span></div></div>
+      <p class="note" style="margin:0">Đóng tab chỉ ẩn khỏi thanh tab, phiên vẫn chạy trong danh sách bên trái.</p></div></div></section>
+
+  <!-- 26 -->
+  <section class="idea" data-i="26" hidden><div class="grid">
+    <div class="panel why"><h2>Sổ ghi chú công việc, xuất .md / .txt</h2>
+      <p><b>Vấn đề thật:</b> trong lúc làm với nhiều phiên bạn cần ghi nhanh việc đang làm, quyết định đã chốt, việc kế tiếp; hiện phải mở ứng dụng ghi chú khác, rồi sau đó chép tay vào file tracking hoặc nhật ký thay đổi.</p>
+      <b>Tiện ích:</b>
+      <ul><li><b>Màn Ghi chú</b> ngay trong Termnest: danh sách ghi chú (chung và theo từng phiên), soạn bằng Markdown, có <b>xem trước</b>.</li><li><b>Mẫu có sẵn</b> một cú bấm: “Việc hôm nay”, “Quyết định”, “Việc kế tiếp”, “Bàn giao”; chèn giờ hiện tại bằng nút hoặc <kbd>Ctrl</kbd>+<kbd>;</kbd>; danh sách việc có ô tick <code>- [ ]</code>.</li><li><b>Xuất file:</b> <b>.md</b> (giữ nguyên Markdown) hoặc <b>.txt</b> (bỏ ký hiệu định dạng, gọn để dán vào chat hay email); mở hộp thoại chọn thư mục và tên file, tên gợi ý có ngày và tên phiên.</li><li><b>Bổ sung vào file có sẵn</b> (ví dụ file tracking trên máy): chỉ <b>nối vào cuối</b> khi bạn xác nhận, hiện trước phần sẽ được thêm; không bao giờ ghi đè.</li><li><b>Tự lưu</b> mỗi vài giây vào kho mã hoá của Termnest; xuất hết ghi chú của một ngày thành một file.</li></ul>
+      <p class="note">Không dùng AI để tóm tắt hay viết lại: ghi gì xuất nấy. Việc xuất file dùng hộp thoại lưu của app (đã sửa cho bản desktop) nên chọn được thư mục.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · màn Ghi chú (bấm được)</div>
+      <div class="notes"><div class="nlist" id="nlist"></div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+          <div class="row"><b id="ntitle">Smart-Visibility</b><span class="tag ok" id="nsaved">đã lưu</span><span class="sp"></span><button class="btn" id="nprev">👁 Xem trước</button></div>
+          <div class="tpl"><button data-t="today">+ Việc hôm nay</button><button data-t="decide">+ Quyết định</button><button data-t="next">+ Việc kế tiếp</button><button data-t="time">⏱ Chèn giờ</button></div>
+          <textarea class="ned" id="ned" spellcheck="false"></textarea>
+          <div class="row"><button class="btn primary" id="xmd">⬇ Xuất .md</button><button class="btn" id="xtxt">⬇ Xuất .txt</button><button class="btn" id="xapp">＋ Nối vào file…</button></div>
+          <div class="card" id="nout" hidden><div class="row"><b id="nfile"></b><span class="tag" id="nsize"></span><span class="sp note">xem trước nội dung sẽ lưu</span></div><div class="md" id="nbody" style="margin-top:6px;max-height:190px;overflow:auto"></div></div>
+        </div></div></div></div></section>
+
+  <!-- 27 -->
+  <section class="idea" data-i="27" hidden><div class="grid">
+    <div class="panel why"><h2>Lịch nhắc việc gắn với phiên và ghi chú</h2>
+      <p><b>Ý của bạn:</b> thêm lịch, ghi chú và nhắc nhở thông báo ngay trong Termnest. <b>Mình thấy hợp</b>, với điều kiện giữ nhỏ và bám vào ngữ cảnh làm việc, đừng làm thành một Google Calendar thu nhỏ.</p>
+      <b>Vì sao hợp:</b>
+      <ul><li>Termnest <b>đã có hạ tầng thông báo</b>: chuông trong app và thông báo hệ điều hành ở bản desktop. Phần khó nhất đã có.</li><li>Điểm khác với ứng dụng lịch thường: nhắc việc <b>biết bạn đang làm gì</b>. Thông báo “15:00 xem lại pipeline” có nút <b>Mở phiên Smart-Visibility</b> và hiện đúng ghi chú đã viết (ý 26), thay vì chỉ một dòng chữ.</li></ul>
+      <b>Phạm vi mình đề xuất (bản đầu):</b>
+      <ul><li>Nhắc việc: tiêu đề, ngày giờ, lặp (không / hằng ngày / các thứ trong tuần), gắn với một phiên hoặc một ghi chú.</li><li>Lịch tháng có chấm ở ngày có nhắc hoặc ghi chú; bấm ngày để xem và thêm.</li><li>Thông báo có 3 nút: <b>Mở</b>, <b>Hoãn</b> (10 phút, 1 giờ, sáng mai), <b>Xong</b>.</li><li>Không có: mời người khác, đồng bộ Google, phòng họp.</li></ul>
+      <div class="lim"><b>Giới hạn thật:</b> nhắc việc chỉ kêu khi <b>Termnest đang chạy</b>. Nếu app desktop đang tắt thì lỡ; bù bằng mục “Bỏ lỡ” lúc mở lại. Chạy Termnest như một dịch vụ trên máy luôn bật sẽ nhắc được cả khi bạn không mở app, nhưng khi đó thông báo hệ điều hành cần có trình duyệt hoặc app đang mở để hiện. Giờ lưu theo múi giờ của bạn; dữ liệu nằm trong kho mã hoá sẵn có.</div></div>
+    <div class="mock"><div class="mock-t">Mockup · Lịch nhắc việc (bấm được)</div>
+      <div class="row"><b id="calt">Tháng 11 / 2026</b><span class="sp"></span><span class="tag"><span style="color:var(--primary)">●</span> nhắc việc</span><span class="tag"><span style="color:var(--hero-b)">●</span> ghi chú</span></div>
+      <div class="cal" id="cal"></div>
+      <div class="card"><div class="row"><h3 id="dayt">Hôm nay</h3><span class="tag" id="dayn"></span></div><div id="rlist" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+        <div class="rform" style="margin-top:10px"><input class="w" id="rtitle" placeholder="Nhắc tôi… (ví dụ: xem lại pipeline)"><input type="time" id="rtime" value="15:00"><select id="rrep"><option>Không lặp</option><option>Hằng ngày</option><option>T2–T6</option></select>
+          <select class="w" id="rlink"><option>Gắn với: không</option><option>Phiên Smart-Visibility</option><option>Phiên Token-ai</option><option>Ghi chú “Smart-Visibility”</option></select></div>
+        <div class="row" style="margin-top:8px"><button class="btn primary" id="radd">＋ Thêm nhắc</button><button class="btn" id="rtest">🔔 Xem thử thông báo</button></div></div>
+      <div id="rtoast"></div></div></div></section>
+
+  <section class="panel"><div class="row"><h2>Bạn muốn làm cái nào trước?</h2><span class="tag">chỉ cần chọn số</span></div><p class="dim" style="margin:6px 0 0">Thứ tự đề xuất: <b>1 → 2 → 4</b> (cùng giải quyết sự cố vừa gặp), rồi <b>25</b> (nhỏ, làm nhanh, dùng ngay) và <b>26</b> (sổ ghi chú), rồi <b>20</b> (nhỏ mà chặn được sự cố lớn), <b>13 → 14 → 9</b> (tiết kiệm token), <b>7</b> và <b>19</b> (gom cảnh báo, làm sau khi có vài ý ở trên). Ý 12 giá trị nhưng lớn và nhạy cảm, nên để sau. Mockup chỉ minh hoạ, số liệu mẫu; chưa có dòng code nào cho các ý này.</p></section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));document.querySelectorAll('.idea').forEach(s=>s.hidden=s.dataset.i!==b.dataset.i);};
+$('theme').onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';};
+document.querySelectorAll('.sz input').forEach(c=>c.onchange=()=>{});
+/* ---- 27: reminders */
+const REM=[{d:3,t:'15:00',title:'Xem lại pipeline Smart-Visibility',link:'Phiên Smart-Visibility',rep:'Không lặp',done:false},{d:3,t:'17:30',title:'Đóng ca: kiểm tra commit chưa đẩy',link:'Ghi chú “Smart-Visibility”',rep:'T2–T6',done:false},{d:5,t:'09:00',title:'Họp nhóm: cập nhật tiến độ crew',link:'Gắn với: không',rep:'Không lặp',done:false},{d:10,t:'08:30',title:'Dọn worktree đã gộp',link:'Phiên Token-ai',rep:'Không lặp',done:false}];
+const NOTED=[3,4,10,17];let sel=3;
+function drawCal(){const c=$('cal');c.textContent='';['T2','T3','T4','T5','T6','T7','CN'].forEach(x=>{const h=document.createElement('div');h.className='h';h.textContent=x;c.append(h);});
+ for(let i=0;i<6;i++){const b=document.createElement('button');b.className='off';c.append(b);}
+ for(let d=1;d<=30;d++){const b=document.createElement('button');b.textContent=d;if(d===3)b.classList.add('today');if(d===sel)b.classList.add('sel');
+  const has=REM.some(r=>r.d===d),nt=NOTED.includes(d);if(has||nt){const i=document.createElement('i');if(has){const x=document.createElement('b');i.append(x);}if(nt){const x=document.createElement('b');x.className='n';i.append(x);}b.append(i);}
+  b.onclick=()=>{sel=d;drawCal();drawRem();};c.append(b);}}
+function drawRem(){const l=$('rlist');l.textContent='';const items=REM.filter(r=>r.d===sel).sort((a,b)=>a.t.localeCompare(b.t));
+ $('dayt').textContent=sel===3?'Hôm nay · 03/11':'Ngày '+sel+'/11';$('dayn').textContent=items.length+' nhắc';
+ if(!items.length){const e=document.createElement('span');e.className='note';e.textContent='Chưa có nhắc việc nào trong ngày này.';l.append(e);}
+ items.forEach(r=>{const row=document.createElement('div');row.className='rem';row.style.opacity=r.done?.55:1;const t=document.createElement('time');t.textContent=r.t;const m=document.createElement('div');m.className='t';const b=document.createElement('b');b.textContent=r.title;const sm=document.createElement('small');sm.textContent=r.link+' · '+r.rep;m.append(b,sm);
+  const x=document.createElement('button');x.className='btn';x.textContent=r.done?'↩':'✓ Xong';x.onclick=()=>{r.done=!r.done;drawRem();};row.append(t,m,x);l.append(row);});}
+function toast(r){const t=$('rtoast');t.textContent='';const d=document.createElement('div');d.className='ntoast';const ic=document.createElement('span');ic.style.fontSize='24px';ic.textContent='⏰';const m=document.createElement('div');m.style.flex='1';
+ const b=document.createElement('b');b.textContent=r.t+' · '+r.title;const sm=document.createElement('small');sm.style.cssText='display:block;color:var(--fg-3)';sm.textContent=r.link!=='Gắn với: không'?r.link:'Termnest';
+ const row=document.createElement('div');row.className='row';row.style.marginTop='8px';
+ [['Mở',true],['Hoãn 10 phút'],['Hoãn 1 giờ'],['Xong']].forEach(([x,p])=>{const bt=document.createElement('button');bt.className='btn'+(p?' primary':'');bt.textContent=x;bt.onclick=()=>{t.textContent='';};row.append(bt);});
+ m.append(b,sm,row);d.append(ic,m);t.append(d);}
+$('radd').onclick=()=>{const ti=$('rtitle').value.trim();if(!ti){$('rtitle').focus();return;}REM.push({d:sel,t:$('rtime').value||'09:00',title:ti,link:$('rlink').value,rep:$('rrep').value,done:false});$('rtitle').value='';drawCal();drawRem();};
+$('rtest').onclick=()=>toast(REM.filter(r=>r.d===sel)[0]||{t:$('rtime').value,title:$('rtitle').value||'Nhắc việc mẫu',link:$('rlink').value});
+drawCal();drawRem();
+
+/* ---- 25: close tab */
+const SESS=[{id:'a',n:'Vifon-SV',pet:'🐼',c:'#ec7900'},{id:'b',n:'Smart-Visibility',pet:'🦊',c:'#3270f5'},{id:'c',n:'Token-ai',pet:'🐰',c:'#7b61ff'}];
+let open=SESS.map(x=>x.id),closed=[],active='b',undo=null,undoT=null;
+function drawTabs(){
+  const box=$('stab');box.textContent='';
+  open.forEach(id=>{const x=SESS.find(s=>s.id===id),t=document.createElement('div');t.className='t'+(id===active?' on':'');t.style.setProperty('--c',x.c);
+    t.append(document.createTextNode(x.pet+' '+x.n));const b=document.createElement('button');b.className='x';b.title='Đóng tab (phiên vẫn chạy)';b.textContent='✕';
+    b.onclick=e=>{e.stopPropagation();closeTab(id);};t.onclick=()=>{active=id;drawTabs();};
+    t.onauxclick=e=>{if(e.button===1){e.preventDefault();closeTab(id);}};t.append(b);box.append(t);});
+  if(!open.length){const e=document.createElement('span');e.className='note';e.style.padding='8px';e.textContent='Không còn tab nào. Phiên vẫn chạy: mở từ danh sách bên trái hoặc từ “Tab đã đóng gần đây”.';box.append(e);}
+  const cl=$('sclosed');cl.textContent='';
+  if(!closed.length){const n=document.createElement('span');n.className='note';n.textContent='Chưa có';cl.append(n);}
+  closed.forEach(id=>{const x=SESS.find(s=>s.id===id),b=document.createElement('button');b.className='btn';b.textContent='↩ '+x.pet+' '+x.n;b.onclick=()=>{closed=closed.filter(i=>i!==id);open.push(id);active=id;drawTabs();};cl.append(b);});
+}
+function closeTab(id){
+  const idx=open.indexOf(id);open=open.filter(i=>i!==id);closed.unshift(id);if(active===id)active=open[Math.min(idx,open.length-1)]||'';
+  undo={id,idx};drawTabs();const x=SESS.find(s=>s.id===id),t=$('stoast');t.textContent='';
+  const d=document.createElement('div');d.className='toast';d.append(document.createTextNode('Đã đóng tab '+x.n+'. Phiên vẫn chạy. '));const u=document.createElement('button');u.textContent='Hoàn tác';
+  u.onclick=()=>{closed=closed.filter(i=>i!==undo.id);open.splice(Math.min(undo.idx,open.length),0,undo.id);active=undo.id;t.textContent='';drawTabs();};d.append(u);t.append(d);
+  clearTimeout(undoT);undoT=setTimeout(()=>{t.textContent='';},5000);
+}
+drawTabs();
+/* ---- 26: notes */
+const NOTES=[{id:'g',n:'Chung',sub:'hôm nay',t:'# Ghi chú chung 2026-11-03\n\n- [x] Duyệt PR #2 và #3 của termnest\n- [ ] Chọn tiện ích làm trước\n'},
+ {id:'sv',n:'Smart-Visibility',sub:'phiên · dev-ubuntu-02',t:'# Smart-Visibility\n\n## Việc hôm nay\n- [x] Cache manifest (W0–W5) đã gộp\n- [ ] Đo lại lần gọi hai (W6)\n- [ ] Mở MR theo thứ tự shared → common → salesdistribution\n\n## Quyết định\n- Chờ ổ đĩa đủ chỗ rồi mới chạy W6 (đã dọn, còn 32,6 GB)\n\n## Việc kế tiếp\n- Review và gộp W6, build lại API, đo lại (mục tiêu ~0,1 s)\n'},
+ {id:'ta',n:'Token-ai',sub:'phiên · Máy này',t:'# Token-ai\n\n- Báo cáo ccusage theo ngày đã xong, chờ duyệt PR\n'}];
+let cur='sv';
+const TPL={today:'\n## Việc hôm nay\n- [ ] \n',decide:'\n## Quyết định\n- \n',next:'\n## Việc kế tiếp\n- \n'};
+function drawNotes(){const l=$('nlist');l.textContent='';NOTES.forEach(n=>{const b=document.createElement('button');b.setAttribute('aria-pressed',String(n.id===cur));const t=document.createElement('b');t.textContent=n.n;const s=document.createElement('small');s.textContent=n.sub;b.append(t,s);b.onclick=()=>{save();cur=n.id;$('ned').value=n.t;$('ntitle').textContent=n.n;$('nout').hidden=true;drawNotes();};l.append(b);});}
+function save(){const n=NOTES.find(x=>x.id===cur);n.t=$('ned').value;}
+function toTxt(md){return md.replace(/^#{1,6}\s*/gm,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1').replace(/`(.+?)`/g,'$1').replace(/\[(.+?)\]\((.+?)\)/g,'$1 ($2)').replace(/^- \[x\]/gim,'[x]').replace(/^- \[ \]/gm,'[ ]').replace(/^- /gm,'• ');}
+function slug(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function out(ext,mode){save();const n=NOTES.find(x=>x.id===cur),body=ext==='txt'?toTxt(n.t):n.t,name='ghi-chu-2026-11-03-'+slug(n.n)+'.'+ext;
+  $('nfile').textContent=mode==='append'?'Nối vào cuối: …/Implementation/'+n.n+'/NN-TRACKING.md':name;$('nsize').textContent=new Blob([body]).size+' byte';$('nbody').textContent=mode==='append'?'--- (nối vào cuối file, không ghi đè) ---\n'+toTxt(n.t).slice(0,400)+'\n…':body;$('nout').hidden=false;}
+$('xmd').onclick=()=>out('md');$('xtxt').onclick=()=>out('txt');$('xapp').onclick=()=>out('md','append');
+$('nprev').onclick=()=>{save();const n=NOTES.find(x=>x.id===cur);$('nfile').textContent='Xem trước (Markdown đã dựng)';$('nsize').textContent='';$('nbody').textContent=toTxt(n.t);$('nout').hidden=false;};
+document.querySelectorAll('.tpl button').forEach(b=>b.onclick=()=>{const ta=$('ned');ta.value+=b.dataset.t==='time'?'\n['+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})+'] ':TPL[b.dataset.t];ta.focus();$('nsaved').textContent='đang lưu…';setTimeout(()=>$('nsaved').textContent='đã lưu',500);});
+$('ned').oninput=()=>{$('nsaved').textContent='đang lưu…';clearTimeout(window.__sv);window.__sv=setTimeout(()=>{save();$('nsaved').textContent='đã lưu';},600);};
+$('ned').value=NOTES.find(x=>x.id===cur).t;drawNotes();
+
+</script>
+</body>
+</html>

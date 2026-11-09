@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup 15 · Mở phiên mới khi ngữ cảnh đầy</title>
+<style>
+:root{--bg:#f4f6fb;--surface:#fff;--surface-3:#eef1f8;--fg:#1c2438;--fg-2:#56627d;--fg-3:#8892a8;--line:#dfe4ef;--ok:#1f9d6a;--ok-soft:#dcf5ea;--wait:#b86e00;--wait-soft:#ffefcf;--wait-line:#ffb938;--bad:#d8344a;--bad-soft:#ffe3e7;--primary:#e8506e;--term:#101527;--term-fg:#d6dcf0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px}
+main{max-width:1100px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--fg-2);margin:0 0 16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}.tabs button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 14px;font:inherit;cursor:pointer;color:var(--fg-2)}.tabs button[aria-pressed=true]{background:var(--fg);color:#fff;border-color:var(--fg)}
+.scene{display:none}.scene.on{display:block}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin:0 0 14px;color:var(--fg-2)}.note b{color:var(--fg)}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.card{width:300px;background:var(--surface);border-radius:18px;box-shadow:0 0 0 2px var(--wait-line);display:flex;flex-direction:column;min-height:236px;position:relative}
+.card-head{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#ffefd9;border-radius:18px 18px 0 0}.card-head b{font:700 14px ui-monospace,Menlo,monospace}.pill{margin-left:auto;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--wait-soft);color:var(--wait)}
+.ctx{display:flex;align-items:center;gap:10px;padding:8px 12px}.ring{width:38px;height:38px;border-radius:50%;background:conic-gradient(var(--bad) 90%,var(--surface-3) 0);display:grid;place-items:center;position:relative;flex:none;font-weight:800;font-size:10px}.ring:before{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--surface)}.ring span{position:relative}
+.nudge b{display:block;color:var(--bad);font-size:12.5px}.nudge small{color:var(--fg-3);font-size:11px}
+.btns{display:flex;gap:6px;padding:0 12px 10px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:6px 12px;font:inherit;font-size:12.5px;cursor:pointer}.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700}.btn.ghost{color:var(--fg-2)}.btn[disabled]{opacity:.45;cursor:not-allowed}
+.foot{margin-top:auto;padding:7px 12px;font-size:12px;color:var(--fg-3);display:flex;justify-content:space-between;gap:8px}
+.menu{position:relative}.menu-box{position:absolute;left:0;top:34px;z-index:20;width:290px;background:var(--surface);border-radius:12px;box-shadow:0 8px 28px rgba(20,30,60,.22);padding:6px}
+.menu-box div{padding:8px 10px;border-radius:8px;font-size:12.5px}.menu-box div b{display:block}.menu-box div small{display:block;color:var(--fg-3)}.menu-box div:hover{background:var(--surface-3)}.menu-box .warnline{color:var(--wait)}
+.dlg{width:min(680px,100%);background:var(--surface);border-radius:18px;box-shadow:0 12px 40px rgba(20,30,60,.25);padding:18px 20px}
+.dlg h2{margin:0 0 2px;font-size:17px}.dlg .lead{margin:0 0 12px;color:var(--fg-2);font-size:13px}
+.steps{display:flex;gap:6px;margin:0 0 12px;font-size:12px;color:var(--fg-3)}.steps span{padding:3px 10px;border-radius:99px;background:var(--surface-3)}.steps .on{background:var(--fg);color:#fff}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line);font-size:13px}.chk:first-of-type{border-top:0}
+.dot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex:none}.dot.ok{background:var(--ok)}.dot.warn{background:var(--wait-line)}.dot.bad{background:var(--bad)}
+.chk small{display:block;color:var(--fg-3);font-size:11.5px}.chk code{background:var(--surface-3);border-radius:6px;padding:1px 6px;font:12px ui-monospace,Menlo,monospace;word-break:break-all}
+.cost{background:var(--surface-3);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:12.5px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.cost b{display:block;font-size:15px}.cost small{color:var(--fg-3)}
+pre{background:var(--term);color:var(--term-fg);border-radius:12px;padding:12px 14px;margin:10px 0;font:12px/1.55 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.sess{background:var(--surface);border-radius:16px;padding:12px 14px;box-shadow:0 0 0 1.5px var(--line)}.sess h3{margin:0 0 4px;font:700 14px ui-monospace,Menlo,monospace}.sess .tag{font-size:11.5px;padding:2px 8px;border-radius:99px;background:var(--ok-soft);color:var(--ok);margin-left:6px}.sess .tag.old{background:var(--surface-3);color:var(--fg-2)}
+.mini{background:var(--term);color:var(--term-fg);border-radius:10px;padding:8px 10px;font:11.5px/1.5 ui-monospace,Menlo,monospace;margin-top:8px}
+@media(max-width:600px){.card{width:100%}}
+</style>
+</head>
+<body>
+<main>
+<h1>Mockup 15 · Ngữ cảnh gần đầy: mở phiên mới hay làm mới</h1>
+<p class="sub">Số mẫu lấy từ phiên Smart-Visibility thật: 902k / 1M token (90%). Phiên mới trong workspace này bắt đầu ≈ 65k.</p>
+<div class="tabs" role="group" aria-label="Màn hình mẫu">
+ <button aria-pressed="true" data-s="1">1 · Thẻ phiên</button>
+ <button aria-pressed="false" data-s="2">2 · Kiểm tra trước khi mở</button>
+ <button aria-pressed="false" data-s="3">3 · Snapshot cũ / thiếu</button>
+ <button aria-pressed="false" data-s="4">4 · Gói bàn giao</button>
+ <button aria-pressed="false" data-s="5">5 · Sau khi mở</button>
+</div>
+
+<section class="scene on" id="s1">
+ <div class="note"><b>Hôm nay</b> thẻ chỉ báo "Gần đầy · nên mở phiên mới". <b>Đề xuất:</b> thêm nút hành động. "Mở phiên mới…" là mặc định; các lựa chọn khác nằm trong menu "⋯" kèm cảnh báo.</div>
+ <div class="row">
+  <div class="card">
+   <div class="card-head"><span>🦊</span><b>Smart-Visibility</b><span class="pill">Chờ bạn</span></div>
+   <div class="ctx"><div class="ring"><span>90%</span></div><div class="nudge"><b>Gần đầy · nên mở phiên mới</b><small>≈ 902k / 1M token · cache có thể đã hết hạn</small></div></div>
+   <div class="btns">
+    <button class="btn primary">Mở phiên mới…</button>
+    <span class="menu"><button class="btn" id="more">⋯</button>
+     <div class="menu-box" id="menu" hidden>
+      <div><b>Làm mới tại chỗ (/clear)</b><small>Giữ tên, tab, thú. Không hoàn tác được.</small><span class="warnline"><small>⚠ Phiên đang có 2 shell nền</small></span></div>
+      <div><b>Nén (/compact)</b><small>Tóm tắt do model viết, có thể mất chi tiết.</small></div>
+      <div><b>Nhắc sau 4 giờ</b></div>
+     </div></span>
+   </div>
+   <div class="foot"><span>Hoạt động 4 phút trước</span><span>…ire-workspaces/</span></div>
+  </div>
+  <div class="card" style="box-shadow:0 0 0 1.5px var(--line);z-index:0">
+   <div class="card-head" style="background:#dff0ff"><span>🐼</span><b>Token-ai</b><span class="pill">Chờ bạn</span></div>
+   <div class="ctx"><div class="ring" style="background:conic-gradient(var(--ok) 10%,var(--surface-3) 0)"><span>10%</span></div><div>ngữ cảnh</div></div>
+   <div class="foot"><span>Hoạt động 2 giờ trước</span><span>…ire-workspaces/</span></div>
+  </div>
+ </div>
+</section>
+
+<section class="scene" id="s2">
+ <div class="note"><b>Bước 1 · Kiểm tra</b> (code thuần, không dùng AI). Mỗi dòng có màu; chỉ khi không đỏ mới cho đi tiếp.</div>
+ <div class="dlg">
+  <h2>Mở phiên mới từ Smart-Visibility</h2><p class="lead">Phiên cũ giữ nguyên để đối chiếu. Phiên mới đọc file trạng thái, không nạp lại 902k token.</p>
+  <div class="steps"><span class="on">1 Kiểm tra</span><span>2 Gói bàn giao</span><span>3 Mở</span></div>
+  <div class="chk"><i class="dot ok"></i><div><b>Snapshot tìm thấy</b><small><code>Implementation/Smart-Visibility/SV-Phan-Con-Thieu/16-IMPLEMENTATION-TRACKING.md</code> · sửa 12 phút trước</small></div></div>
+  <div class="chk"><i class="dot ok"></i><div><b>Độ tươi</b><small>Phiên chưa sửa thêm file nào kể từ lần ghi cuối của snapshot</small></div></div>
+  <div class="chk"><i class="dot ok"></i><div><b>Crew</b><small>Task <code>20261102-sv-ev-photo-perf</code>: 11/11 track đã gộp, không worker đang chạy</small></div></div>
+  <div class="chk"><i class="dot warn"></i><div><b>Git</b><small>Nhánh <code>develop</code> · 2 file chưa commit (xem trong gói bàn giao)</small></div></div>
+  <div class="chk"><i class="dot warn"></i><div><b>Shell nền</b><small>2 shell đang chạy trong phiên cũ. Phiên cũ sẽ được giữ chạy, không dừng.</small></div></div>
+  <div class="chk"><i class="dot warn"></i><div><b>Câu hỏi đang chờ bạn</b><small>"Bạn muốn làm phần nào?" — sẽ đưa vào gói bàn giao</small></div></div>
+  <div class="cost"><div><small>Phiên cũ, mỗi lượt kế tiếp</small><b>≈ $0,18</b><small>cache còn · $1,8 nếu hết (Sonnet 5.5)</small></div><div><small>Phiên mới, lượt đầu</small><b>≈ $0,16</b><small>≈ 80k token</small></div><div><small>Phiên mới, các lượt sau</small><b>≈ $0,016</b><small>giảm &gt; 90% input</small></div></div>
+  <div class="actions"><button class="btn ghost">Huỷ</button><button class="btn primary">Tiếp: xem gói bàn giao</button></div>
+ </div>
+</section>
+
+<section class="scene" id="s3">
+ <div class="note"><b>Khi snapshot thiếu hoặc cũ</b>, nút chính đổi thành "Ghi snapshot trước" và <b>chặn</b> mở phiên mới "mù". Gửi đúng một câu lệnh cố định vào phiên cũ, có xác nhận.</div>
+ <div class="dlg">
+  <h2>Mở phiên mới từ Support-DuAn</h2><p class="lead">Chưa an toàn để mở phiên mới.</p>
+  <div class="steps"><span class="on">1 Kiểm tra</span><span>2 Gói bàn giao</span><span>3 Mở</span></div>
+  <div class="chk"><i class="dot bad"></i><div><b>Snapshot cũ hơn các sửa đổi gần nhất</b><small>Snapshot sửa 3 giờ trước; phiên đã sửa 7 file kể từ đó</small></div></div>
+  <div class="chk"><i class="dot ok"></i><div><b>Git</b><small>Nhánh <code>feat/support</code> · sạch</small></div></div>
+  <p class="lead" style="margin-top:12px">Lệnh sẽ gửi vào phiên cũ (một lượt, bạn xem được trước):</p>
+  <pre>Ghi snapshot trạng thái theo skill context-persistence vào file hiện có: mục tiêu, quyết định đã chốt, việc đã xong, việc đang dở, bước kế, câu hỏi mở, file và nhánh liên quan. Không bắt đầu việc mới.</pre>
+  <div class="cost"><div><small>Chi phí lượt ghi snapshot</small><b>≈ $0,10</b><small>ngữ cảnh 512k, cache còn</small></div><div><small>Nếu cache đã hết</small><b>≈ $1,0</b><small>(Sonnet 5.5)</small></div></div>
+  <div class="actions"><button class="btn ghost">Huỷ</button><button class="btn primary">Nhờ phiên cũ ghi snapshot</button><button class="btn" disabled title="Chặn vì snapshot cũ">Mở phiên mới</button></div>
+ </div>
+</section>
+
+<section class="scene" id="s4">
+ <div class="note"><b>Bước 2 · Gói bàn giao.</b> Dựng bằng code từ file và git, không phải bản tóm tắt của AI. Sửa được trước khi mở. Lời nhắc gõ sẵn, <b>không tự Enter</b>.</div>
+ <div class="dlg">
+  <h2>Gói bàn giao</h2><p class="lead">Nguồn: snapshot, MANIFEST, git, tin nhắn cuối của phiên cũ.</p>
+  <div class="steps"><span>1 Kiểm tra</span><span class="on">2 Gói bàn giao</span><span>3 Mở</span></div>
+  <pre>Đọc theo thứ tự, không dựng lại từ trí nhớ:
+1. Implementation/Smart-Visibility/SV-Phan-Con-Thieu/16-IMPLEMENTATION-TRACKING.md
+2. _crew/tasks/20261102-sv-ev-photo-perf/MANIFEST.md
+
+Đối chiếu `git status` với snapshot (nhánh develop, 2 file chưa commit:
+  M docs/Implementation/Smart-Visibility/…/40-DE-XUAT-Q01-Q05-THEO-CODE.md
+  M docs/Implementation/Smart-Visibility/…/19-NHAT-KY-THAY-DOI.md).
+Nếu lệch thì hỏi tôi trước khi làm.
+
+Câu hỏi đang chờ tôi: "Bạn muốn làm phần nào?" (tin nhắn cuối của phiên cũ, 06:57).
+Việc kế tiếp: dọn tồn đọng (đưa checkout về develop, dừng host cổng 44, đóng task crew).</pre>
+  <div class="two">
+   <label>Loại phiên<br><select><option>Claude (như phiên cũ)</option><option>Codex</option></select></label>
+   <label>Tên phiên mới<br><input value="Smart-Visibility-2" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+  </div>
+  <div class="actions"><button class="btn ghost">Quay lại</button><button class="btn primary">Mở phiên mới và gõ sẵn lời nhắc</button></div>
+ </div>
+</section>
+
+<section class="scene" id="s5">
+ <div class="note"><b>Bước 3 · Sau khi mở.</b> Phiên cũ <b>không</b> bị dừng. Khi phiên mới trả lời đúng trạng thái, bạn xác nhận rồi mới dừng phiên cũ (hai bước, như nút "Dừng" hiện nay).</div>
+ <div class="two">
+  <div class="sess"><h3>Smart-Visibility-2 <span class="tag">mới</span></h3><small>≈ 82k / 1M token · 8%</small>
+   <div class="mini">❯ Đọc theo thứ tự, không dựng lại từ trí nhớ: …<br>● Đã đọc snapshot và MANIFEST. git status khớp (2 file chưa commit).<br>● Câu hỏi đang mở: "Bạn muốn làm phần nào?"</div>
+   <div class="btns" style="padding:10px 0 0"><button class="btn primary">Trạng thái đúng, dừng phiên cũ…</button><button class="btn">Chưa đúng, giữ cả hai</button></div></div>
+  <div class="sess"><h3>Smart-Visibility <span class="tag old">cũ · giữ lại</span></h3><small>902k / 1M token · 90% · 2 shell nền vẫn chạy</small>
+   <div class="mini">✻ Cooked for 52s · done 6:57 AM · 2 shells still running</div>
+   <div class="btns" style="padding:10px 0 0"><button class="btn" disabled title="Chờ xác nhận từ phiên mới">Dừng phiên cũ</button></div></div>
+ </div>
+</section>
+</main>
+<script>
+document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tabs button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});document.querySelectorAll('.scene').forEach(function(s){s.classList.toggle('on',s.id==='s'+b.dataset.s)});};});
+var menu=document.getElementById('menu'),more=document.getElementById('more');
+more.setAttribute('aria-haspopup','menu');more.setAttribute('aria-expanded','false');
+function setMenu(open){menu.hidden=!open;more.setAttribute('aria-expanded',String(open));}
+more.onclick=function(e){e.stopPropagation();setMenu(menu.hidden);};
+// Click anywhere outside the menu, switch tab, or press Esc: the popup closes.
+document.addEventListener('click',function(e){if(!menu.hidden&&!menu.contains(e.target))setMenu(false);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!menu.hidden){setMenu(false);more.focus();}});
+document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){setMenu(false);});});
+menu.querySelectorAll('div').forEach(function(item){item.addEventListener('click',function(){setMenu(false);});});
+</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERMNEST · Crew Ops</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#fff; --ink:#1d2433; --muted:#5b6478; --line:#e3e7ef;
+  --you:#f59e0b; --you-bg:#fff7e6;
+  --ai:#4f46e5; --ai-bg:#eef0ff;
+  --tn:#0891b2; --tn-bg:#e6f7fb;
+  --ok:#16a34a; --ok-bg:#e8f7ee;
+  --warn:#dc2626; --warn-bg:#fdecec;
+  --r:14px; --shadow:0 6px 24px rgba(30,40,80,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;font-size:16px}
+nav.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.top .in{max-width:1240px;margin:auto;display:flex;align-items:center;gap:6px;padding:8px 20px;overflow-x:auto;white-space:nowrap}
+nav.top .brand{font-weight:800;margin-right:14px;color:var(--tn)}
+nav.top a{text-decoration:none;color:var(--muted);font-size:13.5px;padding:6px 10px;border-radius:999px}
+nav.top a:hover,nav.top a.on{background:var(--tn-bg);color:var(--tn)}
+section{max-width:1240px;margin:auto;padding:44px 20px 36px}
+section+section{border-top:1px dashed var(--line)}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tn)}
+h1{font-size:44px;line-height:1.15;margin:.2em 0 .3em}
+h2{font-size:32px;margin:.2em 0 .4em}
+h3{font-size:19px;margin:.2em 0 .4em}
+p.lead{font-size:19px;color:var(--muted);max-width:860px}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:980px){.g2,.g3,.g4{grid-template-columns:1fr}h1{font-size:32px}h2{font-size:26px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card.you{border-top:5px solid var(--you)} .card.ai{border-top:5px solid var(--ai)} .card.tn{border-top:5px solid var(--tn)} .card.ok{border-top:5px solid var(--ok)} .card.warn{border-top:5px solid var(--warn)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;vertical-align:middle}
+.p-live{background:var(--ok-bg);color:var(--ok)} .p-new{background:var(--ai-bg);color:var(--ai)}
+.icon{font-size:30px;line-height:1}
+ul.tight{margin:.3em 0;padding-left:1.2em} ul.tight li{margin:.2em 0}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
+@media(max-width:980px){.hero{grid-template-columns:1fr}}
+.hero .stat{display:flex;gap:14px;margin-top:22px;flex-wrap:wrap}
+.hero .stat div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:140px}
+.hero .stat b{display:block;font-size:24px}
+.balance{background:#fff;border-radius:22px;padding:26px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.balance .side{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;margin:10px 0}
+.balance .side.y{background:var(--you-bg)} .balance .side.a{background:var(--ai-bg)} .balance .side.t{background:var(--tn-bg)}
+.balance .side .icon{font-size:34px}
+.flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:14px 2px 18px}
+.step{flex:1 1 0;min-width:165px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 14px;position:relative;box-shadow:var(--shadow);transition:all .35s}
+.step .n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:var(--ai);margin-bottom:8px}
+.step.y .n{background:var(--you)} .step.t .n{background:var(--tn)} .step.ok .n{background:var(--ok)}
+.step.y{background:var(--you-bg);border-color:#fcd9a0}
+.step.lit{box-shadow:0 0 0 4px rgba(8,145,178,.25),var(--shadow);transform:translateY(-4px)}
+.step.y.lit{box-shadow:0 0 0 4px rgba(245,158,11,.35),var(--shadow)}
+.arrow{flex:0 0 30px;display:grid;place-items:center;color:#9aa3b5;font-size:22px}
+.step h4{margin:0 0 6px;font-size:16px} .step p{margin:0;font-size:13.5px;color:var(--muted)}
+.gate{position:absolute;top:-11px;right:10px;background:var(--you);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 18px;font-size:14px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.diagram{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:10px;overflow-x:auto}
+.diagram svg{display:block;min-width:1000px;width:100%;height:auto}
+.diagram text{font-family:inherit}
+.anim .hot{stroke-width:4px!important}
+.anim .tok{filter:drop-shadow(0 0 6px currentColor)}
+.cap{margin-top:8px;min-height:30px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.cap .b{background:var(--tn);color:#fff;border-radius:999px;font-size:12px;padding:2px 10px;font-weight:800}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}
+th{background:#f0f2f8;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+.tblw{overflow-x:auto}
+.chain{display:flex;gap:0;flex-wrap:wrap;align-items:center;margin:16px 0}
+.chain .s{background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px 14px;text-align:center;min-width:140px}
+.chain .s b{display:block} .chain .s small{color:var(--muted)}
+.chain .s.done{border-color:var(--ok);background:var(--ok-bg)} .chain .s.bad{border-color:var(--warn);background:var(--warn-bg)} .chain .s.cur{border-color:var(--tn);background:var(--tn-bg);box-shadow:0 0 0 4px rgba(8,145,178,.12)}
+.chain .ar{padding:0 6px;color:#9aa3b5;font-size:20px}
+.tl{position:relative;padding-left:26px;margin:10px 0}
+.tl::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:3px;background:var(--line);border-radius:3px}
+.tl .e{position:relative;margin:0 0 12px}
+.tl .e::before{content:"";position:absolute;left:-23px;top:5px;width:13px;height:13px;border-radius:50%;background:var(--tn);border:3px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.tl .e.y::before{background:var(--you)} .tl .e.a::before{background:var(--ai)} .tl .e.ok::before{background:var(--ok)} .tl .e.w::before{background:var(--warn)}
+.tl .e b{font-size:14.5px} .tl .e div{font-size:13.5px;color:var(--muted)}
+.term{background:#0f1520;color:#cfd8e6;border-radius:12px;padding:12px 14px;font:13px/1.6 ui-monospace,Consolas,monospace;overflow-x:auto;white-space:pre}
+.term .g{color:#7fdbca}.term .y{color:#ffcb6b}.term .p{color:#c792ea}.term .d{color:#6b7489}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:#eef0f5;padding:1px 5px;border-radius:5px}
+.kbd{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:#eef0f5;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.tech{display:flex;flex-wrap:wrap;gap:10px}.tech div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);min-width:150px}.tech b{display:block}.tech small{color:var(--muted)}
+footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+#motionBtn{position:fixed;right:18px;bottom:18px;z-index:60;border:0;border-radius:999px;padding:10px 16px;font-weight:700;background:#1d2433;color:#fff;box-shadow:var(--shadow);cursor:pointer}
+@media (prefers-reduced-motion:reduce){.step{transition:none}}
+@media print{nav.top,#motionBtn,.cap{display:none}section{min-height:auto;page-break-after:always}}
+.flow.wrap{flex-wrap:wrap;row-gap:16px;overflow:visible}.flow.wrap .step{flex:1 1 200px;min-width:200px}.flow.wrap .arrow{flex:0 0 26px}
+@media(max-width:980px){.flow.wrap .arrow{display:none}.flow.wrap{gap:12px}}
+</style>
+</head>
+<body>
+<nav class="top"><div class="in"><span class="brand">🐼 TERMNEST · Crew Ops</span><a href="#s-skill">Ops audit là gì</a><a href="#s-how">Đang chạy thế nào</a><a href="#s-ask">Yêu cầu</a><a href="#s-have">Đã có</a><a href="#s-plan">Đề xuất</a><a href="#s-board">Màn hình</a><a href="#s-flow">Luồng</a><a href="#s-rules">Luật</a><a href="#s-road">Lộ trình</a></div></nav>
+
+<section id="s-hero">
+  <div class="hero">
+    <div>
+      <div class="kicker">Đề xuất · TERMNEST × xspire-crew-ops-audit · 06/11/2026</div>
+      <h1>6–9 team AI<br>chạy <span style="color:var(--ok)">24/7</span>,<br>không ai phải <span style="color:var(--you)">ngồi trông</span>.</h1>
+      <p class="lead">Đưa "ông trùm" <code>xspire-crew-ops-audit</code> vào làm nền của TERMNEST: TERMNEST liên tục đo mọi crew session trên mọi VM, phát hiện phiên ngủ, kẹt, chờ chủ, và đẩy đúng việc tới đúng người, theo đúng luật của skill.</p>
+      <div class="stat">
+        <div><b>3 VM</b><span class="small muted">× 2–3 orchestrator</span></div>
+        <div><b>6–9</b><span class="small muted">team dev · vài chục worker</span></div>
+        <div><b>≤ 3 phút</b><span class="small muted">phát hiện phiên dừng</span></div>
+        <div><b>0</b><span class="small muted">lệnh tự ý vượt quyền chủ</span></div>
+      </div>
+    </div>
+    <div class="balance">
+      <div class="side y"><div class="icon">🧑‍💼</div><div><b>Chủ (sếp / DEV)</b><div class="small muted">Duyệt quyết định, trả lời câu hỏi nghiệp vụ, bấm một nút cho đề xuất của trùm</div></div></div>
+      <div class="side a"><div class="icon">🤖</div><div><b>Orchestrator + worker</b><div class="small muted">Mỗi crew session là một team dev trên VM; tự làm, tự sửa</div></div></div>
+      <div class="side t"><div class="icon">🐼</div><div><b>TERMNEST = trùm của trùm</b><div class="small muted">Đo liên tục · tìm gốc gây dừng · nhắc đúng phiên · báo chủ khi cần quyết</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="s-skill">
+  <div class="kicker">00 · "Ông trùm" sếp nhắc là gì</div>
+  <h2>Skill <code>xspire-crew-ops-audit</code> trong bộ xspire-devkit</h2>
+  <p class="lead">Là một skill của plugin <b>xspire-devkit</b> (gọi đầy đủ <code>xspire-devkit:xspire-crew-ops-audit</code>). Một phiên Claude hoặc Codex đóng vai <b>điều phối viên</b> chạy skill này để kiểm <b>cách cả đội crew đang vận hành</b>, không phải kiểm code.</p>
+  <div class="grid g3">
+    <div class="card tn"><div class="icon">🎯</div><h3>Kiểm cái gì</h3><ul class="tight small"><li>Mọi phiên tmux trên mọi VM crew</li><li>Task, track, worker, model đang dùng</li><li>Worktree, đĩa, RAM, slot DB</li><li>Lưu lượng GitLab, pipeline, phiên bản crew/devkit</li></ul></div>
+    <div class="card ai"><div class="icon">🔀</div><h3>Khác <code>xspire-crew-audit</code></h3><p class="small"><code>xspire-crew-audit</code> soát code của <b>một track</b>. Ops audit soát <b>cả hệ thống</b>: phiên nào ngủ, phiên nào chờ chủ, chia việc có hợp lý không, có lãng phí CI hay token không.</p></div>
+    <div class="card you"><div class="icon">⏰</div><h3>Khi nào chạy</h3><ul class="tight small"><li>Chủ hỏi: "session nào đang ngủ", "crew chậm", "audit sessions"</li><li>Định kỳ, ví dụ 2 lần mỗi ngày</li><li>Sau khi ra bản devkit/crew mới, chuyển workspace hoặc có sự cố</li></ul></div>
+  </div>
+</section>
+
+<section id="s-how">
+  <div class="kicker">00b · Đang hoạt động thế nào</div>
+  <h2>Bảy bước, mặc định chỉ đọc</h2>
+  <div class="flow wrap">
+    <div class="step t"><div class="n">1</div><h4>Chụp hiện trạng</h4><p>SSH vào từng VM: phiên, công cụ, model, bận hay rảnh, câu hỏi đang chờ; task và track trong <code>_crew/</code>; tài nguyên; phiên bản.</p></div><div class="arrow">➜</div>
+    <div class="step t"><div class="n">2</div><h4>Đối chiếu bảng kiểm</h4><p>Hơn 40 điểm kiểm chia 6 nhóm, mỗi điểm có ngưỡng và cách sửa thường gặp.</p></div><div class="arrow">➜</div>
+    <div class="step"><div class="n">3</div><h4>Phân loại</h4><p><b>BLOCKER</b> (dừng việc), <b>WASTE</b> (phí thời gian, token, CI), <b>DRIFT</b> (lệch phiên bản, cấu hình), <b>INFO</b>.</p></div><div class="arrow">➜</div>
+    <div class="step"><div class="n">4</div><h4>Giao đúng người</h4><p>Orchestrator của phiên, điều phối viên, crew-tooling hoặc chủ; mỗi lỗi một việc cụ thể, kèm bằng chứng.</p></div><div class="arrow">➜</div>
+    <div class="step y"><span class="gate">CHỦ</span><div class="n">5</div><h4>Báo cáo, chờ duyệt</h4><p>Bảng ngắn trong chat, tài liệu nếu dài. Chỉ làm sau khi chủ duyệt.</p></div><div class="arrow">➜</div>
+    <div class="step"><div class="n">6</div><h4>Thực hiện</h4><p>Ghi <code>OWNER-DECISION-*.md</code> trên VM, nhắn đúng pane, chụp lại xem phiên đã nhận chưa.</p></div><div class="arrow">➜</div>
+    <div class="step ok"><div class="n">7</div><h4>Cài bản sửa, đo lại</h4><p>Bản sửa crew đã merge được cài lên mọi VM, rồi đo lại đúng con số đã báo.</p></div>
+  </div>
+  <h3 style="margin-top:22px">Gặp phiên đang ngủ thì không chỉ ghi "đang ngủ"</h3>
+  <div class="chain">
+    <div class="s cur"><b>Cổng chặn</b><small>track, MR, lease hay câu hỏi nào</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Đo lại thật</b><small>"đang chờ X" có thể đã cũ</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Việc làm được ngay</b><small>bước không cần cổng đó</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Gốc của chặn</b><small>MR xung đột, ai giữ slot…</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Nhắc kèm lệnh</b><small>và bằng chứng</small></div>
+  </div>
+  <h3 style="margin-top:18px">Vài điểm kiểm trong bảng</h3>
+  <div class="tblw"><table>
+    <tr><th>Nhóm</th><th>Dấu hiệu</th><th>Cách xử lý thường gặp</th></tr>
+    <tr><td>Phiên</td><td>Không bận quá 30 phút, task chưa xong, không có câu hỏi chờ chủ</td><td>Nhắc phiên; lặp lại thì tìm vì sao (thiếu dòng trong <code>nudge.conf</code>, crew-watch chưa bật lại…)</td></tr>
+    <tr><td>Phiên</td><td>Kết thúc lượt mà không chạy <code>crew-watch --heartbeat</code></td><td>Nhắc chạy heartbeat ở tiền cảnh và giữ lượt mở</td></tr>
+    <tr><td>Chờ ngoài</td><td>Chờ MR nhóm khác, hạ tầng hay sức chứa quá 4 giờ</td><td>Đo lại điều kiện; MR đã merge thì báo phiên chạy tiếp</td></tr>
+    <tr><td>Chia việc</td><td>Hơn 15 track một task, track nhỏ dưới khoảng 1 giờ</td><td>Gộp track, chia theo repo hoặc lát tính năng</td></tr>
+    <tr><td>Model</td><td>Model mạnh nhất cho việc viết docs, test, HTML</td><td>Hạ xuống mức routine cho các track chưa chạy</td></tr>
+    <tr><td>Hiệu suất</td><td>Hơn 20% vòng thoát mã 7; chờ hơn 30 phút từ DONE tới audit</td><td>Sửa môi trường hoặc packet; nhắc audit</td></tr>
+    <tr><td>Hạ tầng</td><td>Đĩa dữ liệu trên 80%, lệch phiên bản devkit giữa các VM</td><td>Janitor theo task; lên bản mới theo kế hoạch</td></tr>
+  </table></div>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card warn"><b>Hạn chế khi chỉ chạy bằng skill</b><ul class="tight small"><li>Mỗi lần chạy, phiên AI phải SSH đọc lại mọi thứ: tốn token, mất vài phút</li><li>Kết quả là văn bản trong chat, không có bảng nhìn liên tục</li><li>Giữa hai lần chạy, phiên ngủ vẫn có thể nằm vài giờ</li><li>Gửi nhắc và kiểm "đã nhận chưa" phải làm tay</li></ul></div>
+    <div class="card ok"><b>Vì sao đưa vào TERMNEST</b><ul class="tight small"><li>TERMNEST đã quét mọi VM mỗi 3 giây, không tốn token</li><li>Phần đo cơ học (bận/rảnh, câu hỏi chờ, track, đĩa, phiên bản) chạy liên tục</li><li>Skill chỉ cần chạy khi có việc cần suy luận, ví dụ tìm gốc của chặn</li><li>Nhắc, xác nhận đã nhận và nhật ký đều là nút bấm</li></ul></div>
+  </div>
+  <p class="small muted" style="margin-top:10px">Nguồn: <code>hqsoft.abp.docs/workspace-setup/xspire-devkit-plugin/xspire-devkit/skills/xspire-crew-ops-audit/</code> (SKILL.md, references/collect.md, checks.md, restarts.md), đối chiếu ngày 06/11/2026.</p>
+</section>
+
+<section id="s-ask">
+  <div class="kicker">01 · Sếp cần gì</div>
+  <h2>Không để team nào dừng hay chờ mà không ai hay</h2>
+  <div class="grid g3">
+    <div class="card warn"><div class="icon">😴</div><h3>Phiên ngủ quên</h3><p class="small">Orchestrator làm xong một bước rồi im luôn, không ai nhắc nó làm tiếp.</p></div>
+    <div class="card warn"><div class="icon">⏸</div><h3>Chờ chủ mà chủ không biết</h3><p class="small">Một câu hỏi y/n, một quyết định, một lease đang giữ… nằm đó hàng giờ.</p></div>
+    <div class="card warn"><div class="icon">🧱</div><h3>Kẹt vì phụ thuộc</h3><p class="small">Chờ MR của task khác, chờ slot DB, đĩa đầy; ghi "waiting" nhưng thực ra đã gỡ được.</p></div>
+  </div>
+</section>
+
+<section id="s-have">
+  <div class="kicker">02 · TERMNEST đã có sẵn</div>
+  <h2>TERMNEST đã làm được khoảng một nửa</h2>
+  <div class="tblw"><table>
+    <tr><th>Cần cho ops audit</th><th>Trong TERMNEST hôm nay</th><th>Còn thiếu</th></tr>
+    <tr><td>Thấy mọi session trên mọi VM</td><td>✅ Quét tmux mỗi 3 giây qua SSH, trạng thái chạy / chờ / xong / lỗi</td><td>Biết session nào là <b>orchestrator</b>, đang giữ task nào</td></tr>
+    <tr><td>Track, worker của task</td><td>✅ Đọc <code>_crew/tasks</code> (MANIFEST, sentinel), worker <code>crew-dispatch</code> đang chạy</td><td>Vòng sửa (ROUNDS), WAITING_ON, inbox chưa trả lời</td></tr>
+    <tr><td>Phát hiện câu hỏi chờ chủ</td><td>✅ Nhận ra câu hỏi y/n, menu, mật khẩu</td><td>Gom thành một danh sách "chờ chủ" cho cả đội</td></tr>
+    <tr><td>Tài nguyên VM</td><td>✅ CPU, RAM, ổ đĩa, watchdog tiến trình (build trần, ef update…)</td><td>Worktree, slot DB, phiên bản crew/devkit giữa các VM</td></tr>
+    <tr><td>Nhắc phiên</td><td>✅ Gõ vào phiên (tab "Tất cả"), lệnh mẫu</td><td>Mẫu nhắc theo luật skill, xác nhận đã nhận, ghi lại đã gửi gì</td></tr>
+    <tr><td>Khôi phục khi VM bật lại</td><td>✅ Mở lại phiên, <code>claude --resume</code> đúng chat</td><td>Kiểm READY-RESTART và không còn worker con trước khi mở lại</td></tr>
+  </table></div>
+</section>
+
+<section id="s-plan">
+  <div class="kicker">03 · Đề xuất</div>
+  <h2>Màn "Crew Ops" ba lớp</h2>
+  <div class="grid g3">
+    <div class="card tn"><div class="icon">📡</div><h3>Lớp 1 · Đo liên tục <span class="pill p-live">TỰ ĐỘNG</span></h3><ul class="tight small"><li>Mỗi 1–3 phút đọc từng VM: session ↔ task (<code>nudge.conf</code>), track, ROUNDS, WAITING_ON, inbox, worker, worktree, đĩa, phiên bản crew</li><li>Gắn nhãn: <b>BLOCKER · WASTE · DRIFT · INFO</b> như skill</li><li>Chỉ đọc, không đổi gì</li></ul></div>
+    <div class="card ai"><div class="icon">🧠</div><h3>Lớp 2 · Trùm phân tích <span class="pill p-new">THEO LỊCH</span></h3><ul class="tight small"><li>TERMNEST tự mở một phiên Claude "ops" chạy skill <code>xspire-crew-ops-audit</code> (ví dụ 2 lần/ngày, hoặc khi có BLOCKER quá 15 phút)</li><li>Đi gốc rễ phiên ngủ: cổng nào chặn, đo lại sống, việc nào chạy được ngay</li><li>Kết quả hiện thành phiếu trong TERMNEST</li></ul></div>
+    <div class="card you"><div class="icon">✅</div><h3>Lớp 3 · Chủ bấm, hệ thống làm <span class="pill p-new">CÓ DUYỆT</span></h3><ul class="tight small"><li>Mỗi đề xuất một nút: "Gửi nhắc cho SV1", "Ghi OWNER-DECISION"</li><li>TERMNEST gõ đúng mẫu vào đúng pane, chụp lại xác nhận đã nhận</li><li>Không bao giờ tự trả lời câu hỏi của chủ hay vượt red line</li></ul></div>
+  </div>
+</section>
+
+<section id="s-board">
+  <div class="kicker">04 · Màn hình ví dụ</div>
+  <h2>Một bảng: team nào, ở VM nào, đang làm gì, có kẹt không</h2>
+  <div class="tblw"><table>
+    <tr><th>VM · session</th><th>Task · track</th><th>Trạng thái</th><th>Vì sao</th><th>Việc tiếp</th></tr>
+    <tr><td><b>vm-crew-01</b> · ISE-MVP13</td><td>20261105-ise-mvp13 · W2/3</td><td><span class="pill p-live">ĐANG CHẠY</span></td><td>worker Codex vòng 1, build xanh</td><td>—</td></tr>
+    <tr><td><b>vm-crew-01</b> · SFA-B4</td><td>20260922-sfa-b4 · W1</td><td><span class="pill" style="background:var(--warn-bg);color:var(--warn)">NGỦ 47 phút</span></td><td>track W1 DONE, chưa dispatch W2 (không phụ thuộc)</td><td><button class="btn" style="padding:4px 10px">Gửi nhắc: dispatch W2</button></td></tr>
+    <tr><td><b>vm-crew-02</b> · MGR-M1</td><td>20260922-mgr-m1 · W3</td><td><span class="pill" style="background:var(--you-bg);color:#b45309">CHỜ CHỦ</span></td><td>hỏi chốt ngưỡng duyệt chiết khấu (Q-07)</td><td><button class="btn" style="padding:4px 10px">Mở câu hỏi</button></td></tr>
+    <tr><td><b>vm-crew-02</b> · DEX-01</td><td>20261101-dex-01 · W1</td><td><span class="pill" style="background:var(--warn-bg);color:var(--warn)">KẸT</span></td><td>WAITING_ON shared MR !812, nhưng MR đã merge sáng nay (sha a1b2c3)</td><td><button class="btn" style="padding:4px 10px">Báo đã landed</button></td></tr>
+    <tr><td><b>vm-crew-03</b> · —</td><td>—</td><td><span class="pill" style="background:var(--tn-bg);color:var(--tn)">DRIFT</span></td><td>xspire-crew bản cũ hơn 2 VM kia</td><td><button class="btn" style="padding:4px 10px">Cài bản mới (cần duyệt)</button></td></tr>
+  </table></div>
+</section>
+
+<section id="s-flow">
+  <div class="kicker">05 · Luồng khi một team dừng</div>
+  <h2>Phiên đứng im được phát hiện và chạy lại trong vài phút</h2>
+  <div class="flow">
+    <div class="step t"><div class="n">1</div><h4>Phát hiện</h4><p>SFA-B4 không có output 30 phút, không worker con.</p></div><div class="arrow">➜</div>
+    <div class="step t"><div class="n">2</div><h4>Đo lại cổng</h4><p>W1 DONE, W2 không phụ thuộc gì đang chờ.</p></div><div class="arrow">➜</div>
+    <div class="step"><div class="n">3</div><h4>Trùm đề xuất</h4><p>"Dispatch W2 ngay" kèm bằng chứng MANIFEST.</p></div><div class="arrow">➜</div>
+    <div class="step y"><span class="gate">CHỦ</span><div class="n">4</div><h4>Duyệt một chạm</h4><p>Hoặc chính sách "tự nhắc khi READY" đã duyệt trước.</p></div><div class="arrow">➜</div>
+    <div class="step ok"><div class="n">5</div><h4>Gửi + xác nhận</h4><p>Gõ vào pane, chụp lại thấy đã nhận, ghi nhật ký.</p></div>
+  </div>
+</section>
+
+<section id="s-rules">
+  <div class="kicker">06 · Luật của skill được giữ nguyên</div>
+  <h2>Trùm làm được nhiều nhưng không vượt quyền chủ</h2>
+  <div class="grid g3">
+    <div class="card"><b>👀 Mặc định chỉ đọc</b><p class="small muted">Không janitor --yes toàn cục, không kill -9 worker, không ghi DB chung, không deploy, không MR của team khác.</p></div>
+    <div class="card"><b>🙅 Không trả lời thay chủ</b><p class="small muted">Câu hỏi, hộp thoại của chủ chỉ được hiện ra cho chủ; không bao giờ tự bấm Enter cho nó.</p></div>
+    <div class="card"><b>🔎 Lời session là "lời khai"</b><p class="small muted">Đối chiếu MANIFEST, ROUNDS, GitLab, tiến trình trước khi kết luận.</p></div>
+  </div>
+</section>
+
+<section id="s-road">
+  <div class="kicker">07 · Lộ trình</div>
+  <h2>Làm trong ba bước, xong bước nào dùng được ngay bước đó</h2>
+  <div class="tblw"><table>
+    <tr><th>Bước</th><th>Làm gì</th><th>Ước lượng</th></tr>
+    <tr><td><b>1 · Bảng Crew Ops</b></td><td>Session ↔ task ↔ track trên mọi VM, nhãn NGỦ / CHỜ CHỦ / KẸT / DRIFT, chuông khi BLOCKER</td><td>2–3 ngày</td></tr>
+    <tr><td><b>2 · Trùm theo lịch</b></td><td>Phiên "ops" chạy skill tự động, phiếu kết quả, nhắc có duyệt + xác nhận đã nhận</td><td>2–3 ngày</td></tr>
+    <tr><td><b>3 · Chính sách tự nhắc</b></td><td>Chủ duyệt trước các mẫu an toàn (ví dụ "READY → dispatch track kế"), TERMNEST tự làm và báo cáo</td><td>2 ngày</td></tr>
+  </table></div>
+  <p class="small muted" style="margin-top:12px">Cần trước khi làm: quyền SSH tới các VM crew từ máy chạy TERMNEST, xác nhận đường dẫn workspace trên từng VM, và chủ chốt danh sách mẫu nhắc được phép tự gửi ở bước 3.</p>
+</section>
+<footer>TERMNEST · đề xuất Crew Ops · dựa trên skill xspire-crew-ops-audit (verified 2026-11-06)</footer>
+</body>
+</html>

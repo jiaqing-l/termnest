@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERMNEST · Giới thiệu trực quan</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#fff; --ink:#1d2433; --muted:#5b6478; --line:#e3e7ef;
+  --you:#f59e0b; --you-bg:#fff7e6;
+  --ai:#4f46e5; --ai-bg:#eef0ff;
+  --tn:#0891b2; --tn-bg:#e6f7fb;
+  --ok:#16a34a; --ok-bg:#e8f7ee;
+  --warn:#dc2626; --warn-bg:#fdecec;
+  --r:14px; --shadow:0 6px 24px rgba(30,40,80,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;font-size:16px}
+nav.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.top .in{max-width:1240px;margin:auto;display:flex;align-items:center;gap:6px;padding:8px 20px;overflow-x:auto;white-space:nowrap}
+nav.top .brand{font-weight:800;margin-right:14px;color:var(--tn)}
+nav.top a{text-decoration:none;color:var(--muted);font-size:13.5px;padding:6px 10px;border-radius:999px}
+nav.top a:hover,nav.top a.on{background:var(--tn-bg);color:var(--tn)}
+section{max-width:1240px;margin:auto;padding:44px 20px 36px}
+section+section{border-top:1px dashed var(--line)}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tn)}
+h1{font-size:44px;line-height:1.15;margin:.2em 0 .3em}
+h2{font-size:32px;margin:.2em 0 .4em}
+h3{font-size:19px;margin:.2em 0 .4em}
+p.lead{font-size:19px;color:var(--muted);max-width:860px}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:980px){.g2,.g3,.g4{grid-template-columns:1fr}h1{font-size:32px}h2{font-size:26px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card.you{border-top:5px solid var(--you)} .card.ai{border-top:5px solid var(--ai)} .card.tn{border-top:5px solid var(--tn)} .card.ok{border-top:5px solid var(--ok)} .card.warn{border-top:5px solid var(--warn)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;vertical-align:middle}
+.p-live{background:var(--ok-bg);color:var(--ok)} .p-new{background:var(--ai-bg);color:var(--ai)}
+.icon{font-size:30px;line-height:1}
+ul.tight{margin:.3em 0;padding-left:1.2em} ul.tight li{margin:.2em 0}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
+@media(max-width:980px){.hero{grid-template-columns:1fr}}
+.hero .stat{display:flex;gap:14px;margin-top:22px;flex-wrap:wrap}
+.hero .stat div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:140px}
+.hero .stat b{display:block;font-size:24px}
+.balance{background:#fff;border-radius:22px;padding:26px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.balance .side{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;margin:10px 0}
+.balance .side.y{background:var(--you-bg)} .balance .side.a{background:var(--ai-bg)} .balance .side.t{background:var(--tn-bg)}
+.balance .side .icon{font-size:34px}
+.flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:14px 2px 18px}
+.step{flex:1 1 0;min-width:165px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 14px;position:relative;box-shadow:var(--shadow);transition:all .35s}
+.step .n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:var(--ai);margin-bottom:8px}
+.step.y .n{background:var(--you)} .step.t .n{background:var(--tn)} .step.ok .n{background:var(--ok)}
+.step.y{background:var(--you-bg);border-color:#fcd9a0}
+.step.lit{box-shadow:0 0 0 4px rgba(8,145,178,.25),var(--shadow);transform:translateY(-4px)}
+.step.y.lit{box-shadow:0 0 0 4px rgba(245,158,11,.35),var(--shadow)}
+.arrow{flex:0 0 30px;display:grid;place-items:center;color:#9aa3b5;font-size:22px}
+.step h4{margin:0 0 6px;font-size:16px} .step p{margin:0;font-size:13.5px;color:var(--muted)}
+.gate{position:absolute;top:-11px;right:10px;background:var(--you);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 18px;font-size:14px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.diagram{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:10px;overflow-x:auto}
+.diagram svg{display:block;min-width:1000px;width:100%;height:auto}
+.diagram text{font-family:inherit}
+.anim .hot{stroke-width:4px!important}
+.anim .tok{filter:drop-shadow(0 0 6px currentColor)}
+.cap{margin-top:8px;min-height:30px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.cap .b{background:var(--tn);color:#fff;border-radius:999px;font-size:12px;padding:2px 10px;font-weight:800}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}
+th{background:#f0f2f8;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+.tblw{overflow-x:auto}
+.chain{display:flex;gap:0;flex-wrap:wrap;align-items:center;margin:16px 0}
+.chain .s{background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px 14px;text-align:center;min-width:140px}
+.chain .s b{display:block} .chain .s small{color:var(--muted)}
+.chain .s.done{border-color:var(--ok);background:var(--ok-bg)} .chain .s.bad{border-color:var(--warn);background:var(--warn-bg)} .chain .s.cur{border-color:var(--tn);background:var(--tn-bg);box-shadow:0 0 0 4px rgba(8,145,178,.12)}
+.chain .ar{padding:0 6px;color:#9aa3b5;font-size:20px}
+.tl{position:relative;padding-left:26px;margin:10px 0}
+.tl::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:3px;background:var(--line);border-radius:3px}
+.tl .e{position:relative;margin:0 0 12px}
+.tl .e::before{content:"";position:absolute;left:-23px;top:5px;width:13px;height:13px;border-radius:50%;background:var(--tn);border:3px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.tl .e.y::before{background:var(--you)} .tl .e.a::before{background:var(--ai)} .tl .e.ok::before{background:var(--ok)} .tl .e.w::before{background:var(--warn)}
+.tl .e b{font-size:14.5px} .tl .e div{font-size:13.5px;color:var(--muted)}
+.term{background:#0f1520;color:#cfd8e6;border-radius:12px;padding:12px 14px;font:13px/1.6 ui-monospace,Consolas,monospace;overflow-x:auto;white-space:pre}
+.term .g{color:#7fdbca}.term .y{color:#ffcb6b}.term .p{color:#c792ea}.term .d{color:#6b7489}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:#eef0f5;padding:1px 5px;border-radius:5px}
+.kbd{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:#eef0f5;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.tech{display:flex;flex-wrap:wrap;gap:10px}.tech div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);min-width:150px}.tech b{display:block}.tech small{color:var(--muted)}
+footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+#motionBtn{position:fixed;right:18px;bottom:18px;z-index:60;border:0;border-radius:999px;padding:10px 16px;font-weight:700;background:#1d2433;color:#fff;box-shadow:var(--shadow);cursor:pointer}
+@media (prefers-reduced-motion:reduce){.step{transition:none}}
+@media print{nav.top,#motionBtn,.cap{display:none}section{min-height:auto;page-break-after:always}}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="in">
+  <span class="brand">🐼 TERMNEST</span>
+  <a href="#s-why">Vì sao</a>
+  <a href="#s-who">Ai làm gì</a>
+  <a href="#s-flow">Luồng tổng</a>
+  <a href="#s-arch">Bên trong</a>
+  <a href="#s-reboot">Khi máy khởi động lại</a>
+  <a href="#s-examples">3 tình huống</a>
+  <a href="#s-move">Chuyển phiên · đổi máy</a>
+  <a href="#s-feat">Tính năng</a>
+  <a href="#s-ops">Vận hành</a>
+  <a href="#s-crew">Tự trông crew</a>
+  <a href="#s-safe">An toàn</a>
+  <a href="#s-tech">Công nghệ</a>
+</div></nav>
+
+<section id="s-hero">
+  <div class="hero">
+    <div>
+      <div class="kicker">Công cụ điều khiển AI agent · TERMNEST 1.1.10 · 11/2026</div>
+      <h1><span style="color:var(--ai)">Agent</span> làm việc.<br><span style="color:var(--you)">Bạn</span> ngủ ngon.<br><span style="color:var(--tn)">TERMNEST</span> canh chừng.</h1>
+      <p class="lead">Một màn hình cho mọi phiên Claude Code và Codex trên máy của bạn và hàng chục server. Biết ngay phiên nào cần bạn, trả lời từ máy tính hay điện thoại, và <b>không mất phiên nào</b> khi server khởi động lại.</p>
+      <div class="stat">
+        <div><b>1</b><span class="small muted">màn hình cho mọi máy</span></div>
+        <div><b>3 giây</b><span class="small muted">mỗi lần cập nhật trạng thái</span></div>
+        <div><b>Chỉ tmux</b><span class="small muted">là đủ, không cài gì thêm lên server</span></div>
+        <div><b>0</b><span class="small muted">phiên bị mất khi server khởi động lại</span></div>
+      </div>
+      <p class="small muted" style="margin-top:18px">Phím <span class="kbd">←</span> <span class="kbd">→</span> hoặc <span class="kbd">PgUp</span> <span class="kbd">PgDn</span> để chuyển trang khi trình chiếu.</p>
+    </div>
+    <div class="balance">
+      <div class="side y"><div class="icon">🧑‍💻</div><div><b>Bạn</b><div class="small muted">Giao việc · trả lời khi agent hỏi · duyệt kết quả · từ máy tính hoặc điện thoại</div></div></div>
+      <div class="side a"><div class="icon">🤖</div><div><b>Claude Code · Codex</b><div class="small muted">Chạy trong tmux ngay trên server · đọc code · sửa · chạy test · tiếp tục khi bạn tắt app</div></div></div>
+      <div class="side t"><div class="icon">🐼</div><div><b>TERMNEST</b><div class="small muted">Nhìn mọi máy · báo phiên cần bạn · terminal trên web · khôi phục và di chuyển phiên · theo dõi token</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="s-why">
+  <div class="kicker">01 · Vì sao cần</div>
+  <h2>Chạy nhiều agent, mệt nhất là phải để mắt tới chúng</h2>
+  <p class="lead">Agent viết code rất nhanh. Thứ tốn thời gian là đi tìm xem phiên nào đang chờ mình, mở lại những phiên bị mất, và đoán agent đã làm tới đâu.</p>
+  <div class="grid g3">
+    <div class="card warn"><div class="icon">🔍</div><h3>Phải mở từng cửa sổ SSH</h3><p class="small">14 phiên trên 3 máy = 14 cửa sổ. Phiên hỏi "y/n" lúc 2 giờ chiều, tới 5 giờ mới thấy.</p></div>
+    <div class="card warn"><div class="icon">⚡</div><h3>Server khởi động lại là mất hết phiên</h3><p class="small">Cập nhật đêm làm server bật lại: các phiên biến mất, phải nhớ phiên nào chạy chat nào để resume tay.</p></div>
+    <div class="card warn"><div class="icon">📊</div><h3>Không rõ mỗi tài khoản còn bao nhiêu quota</h3><p class="small">Nhiều tài khoản Claude/Codex, không rõ tài khoản nào sắp hết, hôm nay tốn bao nhiêu.</p></div>
+    <div class="card warn"><div class="icon">📄</div><h3>Muốn xem kết quả phải tải về</h3><p class="small">Agent viết tài liệu, báo cáo HTML trên server; muốn đọc thì phải chép về máy.</p></div>
+    <div class="card warn"><div class="icon">💻</div><h3>Đổi máy là phải cài lại từ đầu</h3><p class="small">Thêm lại từng server, mật khẩu, cài đặt; chat của các phiên trên máy cũ ở lại máy cũ.</p></div>
+    <div class="card warn"><div class="icon">🌙</div><h3>Đi ra ngoài là mất dấu</h3><p class="small">Rời bàn làm việc thì không biết agent vẫn đang chạy hay đang đợi mình trả lời.</p></div>
+  </div>
+</section>
+
+<section id="s-who">
+  <div class="kicker">02 · Ai làm gì</div>
+  <h2>Mỗi bên làm phần việc của mình</h2>
+  <div class="grid g3">
+    <div class="card you"><div class="icon">🧑‍💻</div><h3>Bạn</h3><ul class="tight small"><li>Tạo phiên, giao việc bằng lời</li><li>Trả lời khi agent hỏi</li><li>Xem tài liệu, kết quả ngay trong app</li><li>Quyết định chuyển phiên, khởi động lại server</li></ul></div>
+    <div class="card ai"><div class="icon">🤖</div><h3>Agent trên server</h3><ul class="tight small"><li>Claude Code hoặc Codex, chạy trong <b>tmux</b></li><li>Vẫn chạy khi bạn tắt app hay rớt mạng</li><li>Chat lưu ngay trên server</li></ul></div>
+    <div class="card tn"><div class="icon">🐼</div><h3>TERMNEST trên máy bạn</h3><ul class="tight small"><li>Nối tới mọi máy qua SSH có sẵn</li><li>Quét trạng thái mỗi 3 giây, báo khi cần</li><li>Ghi nhớ từng phiên và cuộc chat của nó để mở lại khi cần</li><li>Dữ liệu được mã hóa, không gửi đi đâu</li></ul></div>
+  </div>
+</section>
+
+<section id="s-flow">
+  <div class="kicker">03 · Luồng tổng</div>
+  <h2>Từ lúc giao việc tới khi xong, bạn chỉ cần làm hai việc</h2>
+  <div class="legend"><span style="--c:var(--you)">Bạn</span><span style="--c:var(--ai)">Agent tự làm</span><span style="--c:var(--tn)">TERMNEST</span><span style="--c:var(--ok)">Hoàn tất</span></div>
+  <div class="flow">
+    <div class="step y"><span class="gate">BẠN</span><div class="n">1</div><h4>Giao việc</h4><p>Tạo phiên Claude ở <code>~/xspire</code> trên dev-ubuntu-02, gõ yêu cầu.</p></div>
+    <div class="arrow">➜</div>
+    <div class="step"><div class="n">2</div><h4>Agent làm</h4><p>Đọc code, sửa, chạy test trong tmux. Bạn tắt app cũng không sao.</p></div>
+    <div class="arrow">➜</div>
+    <div class="step t"><div class="n">3</div><h4>TERMNEST theo dõi</h4><p>Mỗi 3 giây: đang chạy, đang hỏi, đã xong, bị lỗi; CPU/RAM máy.</p></div>
+    <div class="arrow">➜</div>
+    <div class="step t"><div class="n">4</div><h4>Báo đúng lúc</h4><p>🔔 chuông, số đỏ, thông báo hệ thống khi agent hỏi "Ghi đè tệp? (y/n)".</p></div>
+    <div class="arrow">➜</div>
+    <div class="step y"><span class="gate">BẠN</span><div class="n">5</div><h4>Trả lời</h4><p>Gõ "y" ngay trong ô của phiên ở tab "Tất cả", trên máy tính hoặc điện thoại.</p></div>
+    <div class="arrow">➜</div>
+    <div class="step ok"><div class="n">6</div><h4>Xong</h4><p>Xem tài liệu agent viết ở khung bên phải; giao việc tiếp hoặc dừng phiên.</p></div>
+  </div>
+  <div class="grid g3" style="margin-top:18px">
+    <div class="card"><b>🧭 Chỉ báo khi thật sự cần</b><p class="small muted">Đồng hồ hay thanh trạng thái tự nhảy không bị tính là có việc; chỉ khi agent thật sự hỏi thì chuông mới kêu.</p></div>
+    <div class="card"><b>📱 Ở đâu cũng trả lời được</b><p class="small muted">Mở trên điện thoại qua Tailscale/VPN, cài như ứng dụng.</p></div>
+    <div class="card"><b>🧩 Nhiều phiên một lúc</b><p class="small muted">Tab "Tất cả" xếp mọi phiên thành lưới, mỗi ô có ô trả lời riêng.</p></div>
+  </div>
+</section>
+
+<section id="s-arch">
+  <div class="kicker">04 · Bên trong <span class="pill p-live">ĐANG CHẠY</span></div>
+  <h2>Kết nối qua SSH có sẵn, không cài thêm gì lên server</h2>
+  <p class="lead">TERMNEST chạy ngay trên máy của bạn và chỉ mở cho chính máy đó (<code>127.0.0.1</code>). Server chỉ cần có tmux.</p>
+  <div class="diagram">
+  <svg class="anim" viewBox="0 0 1100 360" data-order="0|1|2,3,4|5|6" data-caps="① Bạn mở TERMNEST (app desktop hoặc trình duyệt), kết nối tới server TERMNEST ở 127.0.0.1|② Điện thoại vào qua VPN/Tailscale, cùng một giao diện|③ Mỗi 3 giây TERMNEST quét mọi máy qua SSH: tmux, màn hình, tiến trình, CPU/RAM|④ Bấm vào phiên: luồng terminal hai chiều qua WebSocket ↔ tmux attach|⑤ Server khởi động lại: TERMNEST mở lại phiên và chạy claude --resume đúng chat">
+    <defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#9aa3b5"/></marker></defs>
+    <g font-size="14">
+      <rect x="20" y="50" width="230" height="80" rx="14" fill="#fff7e6" stroke="#f59e0b" stroke-width="2"/><text x="40" y="82" font-weight="700">🖥 App desktop</text><text x="40" y="106" fill="#5b6478" font-size="12.5">Tauri · macOS / Windows / Ubuntu</text>
+      <rect x="20" y="200" width="230" height="80" rx="14" fill="#fff7e6" stroke="#f59e0b" stroke-width="2"/><text x="40" y="232" font-weight="700">📱 Điện thoại · trình duyệt</text><text x="40" y="256" fill="#5b6478" font-size="12.5">qua VPN / Tailscale</text>
+      <rect x="380" y="40" width="320" height="280" rx="16" fill="#e6f7fb" stroke="#0891b2" stroke-width="2"/><text x="400" y="72" font-weight="800">🐼 TERMNEST server (Node.js)</text>
+      <rect x="400" y="90" width="280" height="40" rx="10" fill="#fff"/><text x="414" y="115">🔐 Kho dữ liệu mã hóa AES-256</text>
+      <rect x="400" y="140" width="280" height="40" rx="10" fill="#fff"/><text x="414" y="165">⏱ Quét trạng thái mỗi 3 giây</text>
+      <rect x="400" y="190" width="280" height="40" rx="10" fill="#fff"/><text x="414" y="215">🖥 Luồng terminal (WebSocket)</text>
+      <rect x="400" y="240" width="280" height="40" rx="10" fill="#fff"/><text x="414" y="265">♻️ Ghi nhớ phiên, khôi phục, chuyển</text>
+      <text x="400" y="304" fill="#5b6478" font-size="12.5">chỉ nghe 127.0.0.1 · ssh2 · node-pty · ws</text>
+      <rect x="840" y="30" width="240" height="80" rx="14" fill="#eef0ff" stroke="#4f46e5" stroke-width="2"/><text x="860" y="62" font-weight="700">💻 Máy này</text><text x="860" y="86" fill="#5b6478" font-size="12.5">tmux · Claude · Codex</text>
+      <rect x="840" y="140" width="240" height="80" rx="14" fill="#eef0ff" stroke="#4f46e5" stroke-width="2"/><text x="860" y="172" font-weight="700">🐧 dev-ubuntu-02</text><text x="860" y="196" fill="#5b6478" font-size="12.5">11 phiên tmux · Claude · Codex</text>
+      <rect x="840" y="250" width="240" height="80" rx="14" fill="#eef0ff" stroke="#4f46e5" stroke-width="2"/><text x="860" y="282" font-weight="700">🐧 dev-ubuntu-03</text><text x="860" y="306" fill="#5b6478" font-size="12.5">2 phiên tmux</text>
+    </g>
+    <g fill="none" stroke-width="2.2" marker-end="url(#m)">
+      <path d="M250 90 H378" stroke="#f59e0b"/>
+      <path d="M250 240 H378" stroke="#f59e0b"/>
+      <path d="M700 110 C760 110 780 70 838 70" stroke="#0891b2"/>
+      <path d="M700 160 H838" stroke="#0891b2"/>
+      <path d="M700 200 C760 200 780 290 838 290" stroke="#0891b2"/>
+      <path d="M838 190 C780 190 760 210 702 210" stroke="#4f46e5"/>
+      <path d="M700 260 C770 260 780 175 838 175" stroke="#16a34a"/>
+    </g>
+    <text x="270" y="80" fill="#5b6478" font-size="12">HTTP + WebSocket</text><text x="740" y="150" fill="#5b6478" font-size="12">SSH</text>
+  </svg>
+  </div>
+</section>
+
+<section id="s-reboot">
+  <div class="kicker">05 · Khi server khởi động lại <span class="pill p-new">MỚI</span></div>
+  <h2>Sáng ra, mọi phiên vẫn còn nguyên và chat chạy tiếp</h2>
+  <p class="lead">Trong lúc phiên chạy, TERMNEST ghi nhớ thư mục, công cụ và <b>mã cuộc chat</b> của từng phiên. Máy bật lại thì mở lại y như cũ.</p>
+  <div class="chain">
+    <div class="s done"><b>Ghi nhớ</b><small>SV1 · ~/xspire · Claude · 1cbf2a9d…</small></div><span class="ar">➜</span>
+    <div class="s bad"><b>⚡ 03:10</b><small>dev-ubuntu-02 khởi động lại</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Nhận ra</b><small>mã khởi động máy đã đổi</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Mở lại</b><small>11 phiên, đúng thư mục</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Tiếp tục chat</b><small>claude --resume 1cbf2a9d…</small></div>
+  </div>
+  <div class="grid g2" style="margin-top:10px">
+    <div class="term"><span class="d"># TERMNEST tự gõ vào từng phiên sau khi server bật lại</span>
+<span class="g">root@dev-ubuntu-02:~/xspire$</span> claude --resume 1cbf2a9d-d71e-4998-868f-d2953df55c34
+<span class="y">&gt; Sửa lỗi upload ảnh trong src/Upload/ImageService.cs</span>
+<span class="p">● Đã thêm kiểm tra kích thước, test 42/42 đạt.</span>
+<span class="g">❯</span></div>
+    <div class="card ok"><b>Bật "Tự khôi phục" trong Cài đặt</b><p class="small muted">TERMNEST tự mở lại mà không cần bạn bấm. Không bật thì thanh "Khôi phục" hiện ở Tổng quan, bấm một lần là xong. Trước khi bạn chủ động khởi động lại server, TERMNEST liệt kê phiên đang chạy agent và thư mục còn code chưa commit/push.</p></div>
+  </div>
+</section>
+
+<section id="s-examples">
+  <div class="kicker">06 · Ba tình huống thường ngày</div>
+  <h2>Ba tình huống quen thuộc mỗi ngày</h2>
+  <div class="grid g3">
+    <div class="card you">
+      <h3>🔔 Agent hỏi giữa chừng</h3>
+      <p class="small"><i>Smart-Visibility: "Ghi đè tệp ImageService.cs? (y/n)"</i></p>
+      <div class="tl">
+        <div class="e"><b>08:31 · TERMNEST thấy câu hỏi</b><div>Phiên chuyển sang "Chờ bạn", thú cưng nhảy lên.</div></div>
+        <div class="e"><b>Chuông + thông báo</b><div>Kể cả khi đang ở ứng dụng khác.</div></div>
+        <div class="e y"><b>Bạn gõ "y" ở tab "Tất cả"</b><div>Không cần mở terminal riêng.</div></div>
+        <div class="e ok"><b>08:32 · Agent chạy tiếp</b><div>Phiên về "Đang chạy".</div></div>
+      </div>
+    </div>
+    <div class="card ai">
+      <h3>📄 Agent viết xong tài liệu</h3>
+      <p class="small"><i>GPS-Integrity tạo 00-INDEX.md và 16 tệp con.</i></p>
+      <div class="tl">
+        <div class="e a"><b>Bấm tên tệp trong chat</b><div>Mở ở khung bên phải: Markdown, HTML, ảnh.</div></div>
+        <div class="e"><b>Bấm link trong tài liệu</b><div>Mở tệp con ngay trong khung, có nút quay lại.</div></div>
+        <div class="e y"><b>Kéo tệp vào chat</b><div>Đường dẫn được gõ vào phiên để giao việc tiếp.</div></div>
+        <div class="e ok"><b>Gửi file cho agent</b><div>Ảnh, docx, html từ máy bạn hoặc server khác.</div></div>
+      </div>
+    </div>
+    <div class="card tn">
+      <h3>🌙 Ra ngoài buổi tối</h3>
+      <p class="small"><i>14 phiên vẫn chạy trên 3 máy.</i></p>
+      <div class="tl">
+        <div class="e"><b>Đóng laptop</b><div>Agent vẫn chạy trong tmux trên server.</div></div>
+        <div class="e y"><b>22:00 · mở trên điện thoại</b><div>Thấy 1 phiên đang chờ, trả lời một dòng.</div></div>
+        <div class="e"><b>Token AI</b><div>agent03 đã dùng 75% quota tuần, hôm nay $32.</div></div>
+        <div class="e ok"><b>Đi ngủ</b><div>Server có khởi động lại thì sáng mở lại đủ.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s-move">
+  <div class="kicker">07 · Chuyển phiên · đổi máy <span class="pill p-new">MỚI</span></div>
+  <h2>Chat đi theo bạn, dù mỗi máy để code một chỗ</h2>
+  <p class="lead">TERMNEST tìm đúng repo ở máy đích theo git <code>origin</code>, đặt chat vào đó, đổi đường dẫn cũ sang mới rồi mở lại. Chỉ cho phép khi cùng một tài khoản Claude/Codex.</p>
+  <div class="grid g2">
+    <div class="card tn">
+      <h3>⇄ Chuyển một phiên sang server khác</h3>
+      <div class="chain">
+        <div class="s"><b>dev-ubuntu-02</b><small>/root/thanhlg/…/hqsoft.xspire.sv</small></div><span class="ar">➜</span>
+        <div class="s done"><b>✓ Kiểm tra</b><small>cùng tài khoản · tìm repo</small></div><span class="ar">➜</span>
+        <div class="s cur"><b>dev-ubuntu-03</b><small>/home/thanhlg/projects/…/hqsoft.xspire.sv</small></div>
+      </div>
+      <p class="small muted">Chi tiết phiên → "⇄ Chuyển sang máy khác…" → chọn máy → Chuyển. Chat 3,4 MB đi qua SSH, đổi 37 chỗ đường dẫn, phiên mới chạy <code>claude --resume</code>.</p>
+    </div>
+    <div class="card you">
+      <h3>📦 Đổi sang máy tính mới</h3>
+      <div class="chain">
+        <div class="s"><b>Máy cũ</b><small>Cài đặt → Sao lưu → Xuất…</small></div><span class="ar">➜</span>
+        <div class="s done"><b>1 tệp .termnest</b><small>mã hóa · USB / AirDrop</small></div><span class="ar">➜</span>
+        <div class="s cur"><b>Máy mới</b><small>"Khôi phục từ máy cũ"</small></div>
+      </div>
+      <p class="small muted">Server tự kết nối lại; phiên trên server mở lại đúng chat; phiên của máy cũ được đặt vào đúng repo trên máy mới. Repo chưa có thì chờ, bấm "Thử lại sau khi clone".</p>
+    </div>
+  </div>
+</section>
+
+<section id="s-feat">
+  <div class="kicker">08 · Tính năng</div>
+  <h2>TERMNEST làm được những gì</h2>
+  <div class="grid g3">
+    <div class="card"><div class="icon">🖥</div><h3>Phiên và terminal</h3><ul class="tight small"><li>Tạo phiên shell / Claude / Codex</li><li>Tab "Tất cả": lưới mọi phiên xếp theo chờ bạn → đang chạy → đang nghỉ, trả lời nhanh</li><li>Chia màn hình, toàn màn hình, lệnh mẫu</li></ul></div>
+    <div class="card"><div class="icon">🔔</div><h3>Theo dõi</h3><ul class="tight small"><li>Đang chạy · chờ bạn · xong theo trạng thái Claude / Codex tự ghi</li><li>Tab Vận hành: thẻ từng máy, Cần bạn, Team crew, nhật ký</li><li>Tự trông crew 24/7 (mục 10)</li><li>CPU, RAM, ổ đĩa, dịch vụ lỗi</li><li>Ngữ cảnh còn lại, gợi ý handoff</li></ul></div>
+    <div class="card"><div class="icon">♻️</div><h3>Khôi phục và di chuyển</h3><ul class="tight small"><li>Mở lại phiên và chat sau khi máy bật lại</li><li>Chuyển phiên sang server khác</li><li>Đổi máy bằng một tệp</li></ul></div>
+    <div class="card"><div class="icon">📁</div><h3>Tệp</h3><ul class="tight small"><li>Duyệt, tìm, xem Markdown / HTML / ảnh</li><li>Bấm tên file trong terminal là mở ngay: chỉ mục tên tài liệu lập sẵn khi mở phiên</li><li>Gửi file vào phiên, lấy từ server khác</li><li>Thùng rác, file tạm, tự dọn</li></ul></div>
+    <div class="card"><div class="icon">📊</div><h3>Token AI</h3><ul class="tight small"><li>Nhiều tài khoản Claude / Codex</li><li>Quota 5 giờ, tuần; token và chi phí</li><li>Biểu đồ theo ngày, model, phiên</li></ul></div>
+    <div class="card"><div class="icon">🐱</div><h3>Thân thiện</h3><ul class="tight small"><li>Mỗi phiên một bạn thú, sân chơi, cây búa</li><li>Ghi chú, nhắc việc</li><li>Hiệu ứng, chế độ gọn, tiếng Việt / English</li></ul></div>
+  </div>
+</section>
+
+<section id="s-ops">
+  <div class="kicker">09 · Vận hành <span class="pill p-new">MỚI</span></div>
+  <h2>Biết chắc phiên nào đang làm, phiên nào đang chờ bạn</h2>
+  <p class="lead">Tab <b>Vận hành</b> gom việc cần để ý trên mọi máy. Nó <b>không đoán theo chữ trên màn hình</b>: trạng thái lấy từ tệp do chính Claude / Codex ghi, cộng với tiến trình và số đo của máy. Không đọc được tệp thì ghi rõ "chưa rõ trạng thái".</p>
+  <div class="chain">
+    <div class="s done"><b>Claude / Codex tự ghi</b><small>~/.claude*/sessions · jobs · rollout Codex</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>TERMNEST đọc</b><small>mỗi vài giây, qua SSH sẵn có</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Xếp loại</b><small>đang làm · chờ bạn · xong · việc nền</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Bạn quyết</b><small>Mở · Gửi nhắc · Bỏ qua</small></div>
+  </div>
+  <div class="tblw" style="margin-top:12px"><table>
+    <tr><th>Claude / Codex ghi</th><th>TERMNEST hiện</th><th>Ví dụ thật</th></tr>
+    <tr><td><code>busy</code> · <code>task_started</code></td><td><b>Đang chạy</b></td><td>Đang sửa code, chạy test</td></tr>
+    <tr><td><code>waiting</code></td><td><b>Chờ bạn trả lời</b></td><td>Khung xin quyền <code>Do you want to proceed?</code></td></tr>
+    <tr><td><code>idle</code> · <code>task_complete</code></td><td><b>Xong lượt</b> → quá 30 phút: <b>Xong lâu chưa có việc</b></td><td><code>done Friday 2:01 PM</code></td></tr>
+    <tr><td>việc nền <code>tempo: active</code></td><td><b>Đang chạy ngầm</b></td><td>Hội thoại đẩy xuống nền vẫn đang làm</td></tr>
+    <tr><td>việc nền <code>tempo: blocked</code> + <code>needs</code></td><td><b>Chờ bạn</b> + lý do Claude ghi</td><td>"send a prompt to start" → đã trả lời xong, chờ bạn nhắn tiếp · "hit your weekly limit" → hết lượt</td></tr>
+    <tr><td>tiến trình agent biến mất · pane chết</td><td><b>Agent đã thoát</b></td><td>Claude bị tắt giữa chừng</td></tr>
+  </table></div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card"><div class="icon">🔒</div><h3>Không làm thay bạn</h3><ul class="tight small"><li>Không bao giờ trả lời câu hỏi, xin quyền</li><li>Không dừng, khởi động lại hay triển khai gì</li><li>Phiên thường: chỉ gợi ý lời nhắc, bạn bấm mới gửi</li><li>Leader crew: tự nhắc khi bật Tự trông (mục 10)</li></ul></div>
+    <div class="card"><div class="icon">✅</div><h3>Kiểm được</h3><ul class="tight small"><li>Mỗi dòng có nhãn nguồn: Trạng thái agent · Tiến trình · Đo máy</li><li>Bảng "Trạng thái từng phiên agent" hiện đúng giá trị đã đọc</li><li>Lời nhắc chỉ tính "đã nhận" khi trạng thái agent đổi</li></ul></div>
+    <div class="card"><div class="icon">🧩</div><h3>Dùng chung cho mọi đội</h3><ul class="tight small"><li>Lõi không chứa luật dự án nào</li><li>Đội tự thêm luật riêng trong gói JSON, xuất / nhập để chia sẻ</li><li>Chỉnh ngưỡng phút, bật / tắt từng luật</li></ul></div>
+  </div>
+  <p class="small muted" style="margin-top:8px">Chưa có dữ kiện: Codex xin quyền chạy lệnh (Codex không ghi vào rollout); Codex chạy trên macOS hiện "chưa rõ trạng thái".</p>
+</section>
+
+<section id="s-crew">
+  <div class="kicker">10 · Tự trông crew 24/7 <span class="pill p-new">MỚI</span></div>
+  <h2>Nhiều team crew trên nhiều máy chạy liên tục, không ai phải canh</h2>
+  <p class="lead">Mỗi VM chạy 2–3 <b>crew session</b>: một <b>leader</b> (orchestrator) điều phối nhiều <b>worker</b>. Bật một công tắc trong
+    <b>Cài đặt › Tự trông crew</b>, TERMNEST tự nhận leader, nhắc leader rảnh mà còn task mở (cả ban đêm), chạy <b>ops-audit</b> định kỳ,
+    và chỉ báo bạn khi cần người quyết.</p>
+  <div class="chain">
+    <div class="s done"><b>Crew kit ghi</b><small>_crew/nudge.conf: pane leader ↔ task</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>TERMNEST quét</b><small>mỗi 30 giây: task, vòng, heartbeat</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Đối chiếu</b><small>trạng thái Claude tự ghi + tiến trình</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Hành động</b><small>nhắc leader · ops-audit · báo Cần bạn</small></div>
+  </div>
+  <div class="tblw" style="margin-top:12px"><table>
+    <tr><th>Tình huống</th><th>TERMNEST làm gì</th></tr>
+    <tr><td>Leader rảnh, task còn mở, worker không chạy</td><td><b>Tự nhắc</b> leader chạy tiếp (một lần mỗi lượt rảnh, chờ bằng chứng tiến độ rồi mới nhắc lại)</td></tr>
+    <tr><td>Leader hỏi quyền, chờ chọn phương án, hết quota</td><td><b>Báo Cần bạn</b>, không tự trả lời</td></tr>
+    <tr><td>Claude khởi động lại, VM reboot, leader resume ở phiên khác</td><td>Vẫn trông: leader được nhận lại từ <code>nudge.conf</code> mỗi lần quét; crew kit tự ghi lại pane mỗi khi leader chạy <code>crew-task.sh</code> / <code>crew-watch.sh</code></td></tr>
+    <tr><td>Task mở chưa có leader</td><td>Tab Vận hành › Team crew: chọn phiên → <b>Gắn leader</b> (gọi <code>crew-task.sh enroll</code> trên máy đó)</td></tr>
+    <tr><td>Task không đổi hơn 2 ngày</td><td>Gom thành một dòng "bỏ dở", không tính vào việc trông</td></tr>
+    <tr><td>Một team không muốn được trông</td><td>Bỏ tick team đó trong Cài đặt</td></tr>
+  </table></div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card"><div class="icon">📏</div><h3>Chỉ dữ kiện thật</h3><ul class="tight small"><li>Trạng thái từ tệp Claude / Codex tự ghi</li><li>Tiến độ từ <code>_crew/tasks</code>: phase, track, vòng</li><li>Thiếu dữ kiện thì "Chưa rõ", không bao giờ coi là rảnh</li></ul></div>
+    <div class="card"><div class="icon">🛡</div><h3>Không gửi trùng, không gửi nhầm</h3><ul class="tight small"><li>Khoá điều phối theo workspace: chỉ một TERMNEST được nhắc</li><li>Kiểm lại đúng tiến trình leader ngay lúc gửi</li><li>Không gửi khi worker còn chạy</li></ul></div>
+    <div class="card"><div class="icon">🐧</div><h3>Giới hạn</h3><ul class="tight small"><li>Tự nhắc chạy trên máy có tmux: Linux (server, desktop), macOS, Windows qua WSL. Windows không có WSL chỉ theo dõi</li><li>Leader chạy Codex chỉ theo dõi</li><li>Leader phải là phiên một pane</li></ul></div>
+  </div>
+</section>
+
+<section id="s-safe">
+  <div class="kicker">11 · Dữ liệu và an toàn</div>
+  <h2>Dữ liệu nằm trên máy của bạn và được mã hóa</h2>
+  <div class="tblw"><table>
+    <tr><th>Dữ liệu</th><th>Ở đâu</th><th>Bảo vệ</th></tr>
+    <tr><td><b>Server, khóa SSH, cài đặt, ghi chú</b></td><td>Thư mục dữ liệu TERMNEST trên máy bạn</td><td>AES-256-GCM, khóa từ mật khẩu TERMNEST · 10 bản sao tự động · có thể lưu thêm vào Google Drive / iCloud</td></tr>
+    <tr><td><b>Nội dung chat Claude / Codex</b></td><td>Trên từng server (<code>~/.claude</code>, <code>~/.codex</code>)</td><td>Không gửi đi đâu; chỉ chép qua SSH khi bạn chuyển, và chỉ giữa cùng một tài khoản</td></tr>
+    <tr><td><b>Màn hình terminal</b></td><td>Chỉ trong bộ nhớ</td><td>Không ghi xuống đĩa</td></tr>
+    <tr><td><b>Cài đặt Tự trông crew</b></td><td>Trong dữ liệu mã hóa của TERMNEST</td><td>Chỉ công tắc, chu kỳ, team loại trừ; leader không lưu mà đọc lại từ <code>_crew/nudge.conf</code> mỗi lần quét</td></tr>
+    <tr><td><b>Trạng thái agent</b></td><td>Tệp Claude / Codex tự ghi trên từng máy</td><td>Chỉ đọc; chỉ lấy trạng thái, tên việc, câu Claude ghi — không đọc nội dung chat</td></tr>
+    <tr><td><b>Máy chủ</b></td><td>Danh sách server trong TERMNEST</td><td>Mặc định chỉ thêm bằng khóa SSH; mật khẩu chỉ khi bật trong Cài đặt</td></tr>
+    <tr><td><b>Truy cập</b></td><td>127.0.0.1 trên máy bạn</td><td>Không mở ra Internet · khóa SSH server đổi thì dừng kết nối · sai mật khẩu nhiều lần thì khóa</td></tr>
+  </table></div>
+</section>
+
+<section id="s-tech">
+  <div class="kicker">12 · Công nghệ</div>
+  <h2>Gọn nhẹ, không cần cơ sở dữ liệu hay dịch vụ bên ngoài</h2>
+  <div class="tech">
+    <div><b>Node.js</b><small>server, chạy kèm sẵn trong bản cài</small></div>
+    <div><b>JavaScript thuần</b><small>giao diện web, không framework</small></div>
+    <div><b>Rust · Tauri 2</b><small>ứng dụng desktop</small></div>
+    <div><b>tmux</b><small>giữ phiên trên server</small></div>
+    <div><b>ssh2</b><small>kết nối server</small></div>
+    <div><b>node-pty</b><small>terminal trên máy này</small></div>
+    <div><b>xterm.js · WebSocket</b><small>terminal trên web</small></div>
+    <div><b>markdown-it</b><small>xem tài liệu</small></div>
+    <div><b>AES-256-GCM · scrypt</b><small>mã hóa dữ liệu</small></div>
+    <div><b>GitHub Actions</b><small>.dmg · .exe · .deb</small></div>
+  </div>
+</section>
+
+<footer>TERMNEST · by Jiaqing · bản 1.1.10 · các mục đánh dấu MỚI chờ phát hành 1.1.11</footer>
+<button id="motionBtn" type="button">⏸ Dừng chuyển động</button>
+
+<script>
+(function(){
+  // keyboard: next/previous section
+  const secs=[...document.querySelectorAll('section')];
+  function cur(){let i=0;secs.forEach((s,j)=>{if(s.getBoundingClientRect().top<120)i=j;});return i;}
+  document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+    if(['ArrowRight','PageDown'].includes(e.key)){e.preventDefault();secs[Math.min(secs.length-1,cur()+1)].scrollIntoView();}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();secs[Math.max(0,cur()-1)].scrollIntoView();}});
+  // nav highlight
+  const links=[...document.querySelectorAll('nav.top a')];
+  addEventListener('scroll',()=>{const id=secs[cur()].id;links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+id));},{passive:true});
+  // motion toggle
+  let on=!matchMedia('(prefers-reduced-motion: reduce)').matches;const btn=document.getElementById('motionBtn');
+  function setBtn(){btn.textContent=on?'⏸ Dừng chuyển động':'▶ Chạy chuyển động';}
+  btn.onclick=()=>{on=!on;setBtn();};
+  // animated diagram: a dot travels along each path in order, with a caption
+  const NS='http://www.w3.org/2000/svg';
+  document.querySelectorAll('svg.anim').forEach(svg=>{
+    const paths=[...svg.querySelectorAll('g[marker-end] path, g path[stroke]')].filter(p=>p.getAttribute('stroke'));
+    const steps=svg.dataset.order.split('|').map(x=>x.split(',').map(Number)),caps=svg.dataset.caps.split('|');
+    const cap=document.createElement('div');cap.className='cap';svg.closest('.diagram').after(cap);
+    let visible=false,k=0,busy=false;
+    new IntersectionObserver(es=>{visible=es[0].isIntersecting;if(visible&&!busy)run();},{threshold:.25}).observe(svg);
+    function travel(p){return new Promise(res=>{if(!p){res();return;}
+      const len=p.getTotalLength(),col=p.getAttribute('stroke'),dot=document.createElementNS(NS,'circle');
+      dot.setAttribute('r','7');dot.setAttribute('fill',col);dot.setAttribute('class','tok');dot.style.color=col;svg.appendChild(dot);
+      p.classList.add('hot');const dur=Math.max(700,len*4);let t0=null;
+      function f(ts){if(!t0)t0=ts;const u=Math.min(1,(ts-t0)/dur),pt=p.getPointAtLength(len*u);dot.setAttribute('cx',pt.x);dot.setAttribute('cy',pt.y);
+        if(u<1)requestAnimationFrame(f);else setTimeout(()=>{dot.remove();p.classList.remove('hot');res();},250);}
+      requestAnimationFrame(f);});}
+    const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    async function run(){busy=true;
+      while(visible){if(!on){await wait(400);continue;}
+        const n=steps.length,j=k%n;
+        cap.innerHTML='<span class="b">'+(j+1)+'/'+n+'</span>'+(caps[j]||'');
+        await Promise.all(steps[j].map(i=>travel(paths[i])));await wait(600);
+        k++;if(k%n===0)await wait(1400);}
+      busy=false;}
+  });
+  // flow: light each step in turn
+  const fs=[...document.querySelectorAll('.flow .step')];let fi=0;
+  setInterval(()=>{if(!on)return;fs.forEach((s,i)=>s.classList.toggle('lit',i===fi%fs.length));fi++;},1600);
+  setBtn();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup · Token AI · Dùng theo ngày</title>
+<link rel="stylesheet" href="../public/fonts/fonts.css">
+<style>
+:root{color-scheme:light;--bg:#eef3fb;--surface:#fff;--surface-2:#f2f5fb;--surface-3:#e5ebf6;--line:#dfe6f2;--line-strong:#c2cde0;--fg:#172036;--fg-2:#4a556f;--fg-3:#6c7891;--primary:#ff5c7a;--on-primary:#fff;--hero-a:#0fb5ae;--hero-b:#2f80ed;--ok:#0d9b63;--ok-soft:#dcf7ea;--wait:#b86e00;--wait-soft:#ffefcf;--idle:#7a879f;--shadow:0 14px 30px -18px rgba(38,58,110,.38);--claude:#3270f5;--codex:#ec7900;--sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0e1224;--surface:#171c33;--surface-2:#1f2642;--surface-3:#2a3254;--line:#2a3250;--line-strong:#404b72;--fg:#f0f3fc;--fg-2:#b2bcd4;--fg-3:#8691ad;--primary:#ff6f8a;--on-primary:#330713;--hero-a:#0b7f7b;--hero-b:#2358b8;--ok:#49dca0;--ok-soft:rgba(73,220,160,.15);--wait:#ffc55c;--wait-soft:rgba(255,197,92,.15);--shadow:0 16px 34px -20px rgba(0,0,0,.8)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--sans)}
+button,select,input{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.note{background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:9px 14px;color:var(--fg-2);font-size:12.5px}
+.note b{color:var(--fg)}
+.tag{font-size:10.5px;border-radius:999px;padding:1px 8px;background:var(--surface-3);color:var(--fg-2);font-weight:600;white-space:nowrap}
+.tag.real{background:var(--ok-soft);color:var(--ok)}
+/* hero, same recipe as the overview hero */
+.hero{position:relative;display:flex;align-items:center;gap:18px;padding:18px 22px;border-radius:22px;color:#fff;background:linear-gradient(115deg,var(--hero-a),var(--hero-b));overflow:hidden;flex-wrap:wrap}
+.hero::after{content:"";position:absolute;right:-60px;top:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.1)}
+.hero::before{content:"";position:absolute;right:110px;bottom:-110px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.07)}
+.mascots{display:flex;gap:2px;font-size:38px;line-height:1;position:relative;z-index:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+.mascots span:nth-child(2){transform:translateY(-6px) rotate(-6deg)}
+.hero-copy{flex:1;min-width:240px;position:relative;z-index:1}
+.hero h1{margin:0;font-size:21px;letter-spacing:.2px}
+.hero p{margin:2px 0 0;opacity:.92;font-size:13px}
+.hero-actions{position:relative;z-index:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stamp{font-size:12px;opacity:.9;min-width:132px;text-align:right}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:6px 14px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;transition:transform .12s,filter .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn.glass{background:rgba(255,255,255,.95);color:#12304f;border-color:transparent}
+.btn.ghost{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.35)}
+.spin{width:14px;height:14px;border:2.5px solid currentColor;border-right-color:transparent;border-radius:50%;display:none;animation:r .7s linear infinite}
+.busy .spin{display:inline-block}.busy .ico{display:none}.busy{pointer-events:none;opacity:.85}
+@keyframes r{to{transform:rotate(360deg)}}
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.tile{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:16px;box-shadow:0 0 0 1px var(--line);padding:11px 14px;min-width:0}
+.tile .em{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px}
+.tile small{display:block;color:var(--fg-3);font-size:12px}.tile b{display:block;font-size:19px;font-family:var(--mono);letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis}
+.tile .sub{font-size:11.5px;color:var(--fg-3)}
+.ring{--p:0;--c:var(--ok);flex:none;width:44px;height:44px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--surface-3) 0);position:relative;display:grid;place-items:center;font-size:11px;font-weight:700}
+.ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--surface)}.ring span{position:relative}
+/* filters */
+.panel{background:var(--surface);border-radius:18px;box-shadow:0 0 0 1px var(--line),var(--shadow);padding:14px 16px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row+.row{margin-top:10px}
+.sp{margin-left:auto}
+.chips{display:inline-flex;gap:3px;background:var(--surface-2);border-radius:999px;padding:3px;box-shadow:inset 0 0 0 1px var(--line)}
+.chips button{border:0;border-radius:999px;padding:5px 13px;background:transparent;color:var(--fg-2);cursor:pointer;font-size:12.5px;font-weight:500}
+.chips button[aria-pressed=true]{background:var(--surface);color:var(--fg);font-weight:700;box-shadow:0 1px 4px rgba(20,30,60,.2)}
+.acc{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 12px 3px 4px;cursor:pointer;font-size:12.5px;font-weight:600}
+.acc[aria-pressed=true]{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent)}
+.acc i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.acc small{color:var(--fg-3);font-weight:500}
+label.f{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-3)}
+input[type=date]{border:1.5px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--surface);font-size:12.5px}
+.sw{position:relative;width:34px;height:20px;border-radius:999px;background:var(--surface-3);cursor:pointer;transition:background .15s;flex:none}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.sw[aria-checked=true]{background:var(--hero-a)}.sw[aria-checked=true]::after{transform:translateX(14px)}
+/* chart */
+.chart{display:flex;align-items:flex-end;gap:10px;height:190px;padding:18px 6px 0;overflow-x:auto;border-bottom:1.5px dashed var(--line-strong)}
+.col{flex:1;min-width:44px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}
+.col .val{font:600 11px var(--mono);color:var(--fg-2);white-space:nowrap}
+.stack{width:44%;max-width:64px;display:flex;flex-direction:column-reverse;justify-content:flex-start;border-radius:9px 9px 3px 3px;overflow:hidden;box-shadow:0 6px 10px -6px rgba(30,50,100,.5)}
+.stack i{display:block;min-height:3px}
+.days{display:flex;gap:10px;padding:6px 6px 0}.days span{flex:1;min-width:44px;text-align:center;font-size:11.5px;color:var(--fg-3)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-2);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+/* table */
+.tw{overflow:auto;border-radius:14px;box-shadow:0 0 0 1px var(--line)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;white-space:nowrap}
+th{position:sticky;top:0;background:var(--surface-2);color:var(--fg-3);font-weight:600;text-align:right;padding:9px 9px;font-size:12px;border-bottom:1px solid var(--line-strong)}
+th:nth-child(-n+4){text-align:left}
+td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--mono)}
+td:nth-child(-n+4){text-align:left;font-family:var(--sans)}
+td.n{text-align:right;font-family:var(--mono)}
+tr.day td{background:var(--surface-2);font-weight:700;cursor:pointer}
+tr.day td:first-child{font-size:13px}
+tr.day .wk{font-weight:500;color:var(--fg-3);margin-left:6px;font-size:11.5px}
+tr.day .car{display:inline-block;transition:transform .15s;margin-right:6px;color:var(--fg-3)}
+tr.day.closed .car{transform:rotate(-90deg)}
+tr.agent td{font-weight:600}
+tr.model td{color:var(--fg-3);font-size:12px}tr.model td:nth-child(4){padding-left:22px}
+tr.total td{background:linear-gradient(90deg,color-mix(in srgb,var(--hero-a) 14%,var(--surface)),color-mix(in srgb,var(--hero-b) 14%,var(--surface)));font-weight:800;font-size:13px;border-top:2px solid var(--line-strong)}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 10px 2px 8px;font:600 12px var(--sans);background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c)}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.av{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--c);color:#fff;font:700 10px var(--sans);margin-right:6px;vertical-align:-4px}
+.mdl{display:inline-block;border-radius:8px;padding:1px 8px;background:var(--surface-3);color:var(--fg-2);margin-right:4px;font:500 11.5px var(--mono)}
+.cost{display:inline-block;border-radius:999px;padding:1px 10px;background:var(--ok-soft);color:var(--ok);font-weight:700}
+tr.model .cost{background:transparent;color:var(--fg-3);font-weight:500}
+.tk{position:relative;min-width:128px}.tk .bar{position:absolute;left:9px;bottom:2px;height:3px;width:calc((100% - 18px)*var(--r));border-radius:3px;background:var(--c,var(--hero-b));opacity:.6}
+.hide-model tr.model{display:none}tr.hidden{display:none}
+/* session cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.sc{background:var(--surface);border-radius:16px;box-shadow:0 0 0 1px var(--line);padding:11px 13px;display:flex;flex-direction:column;gap:7px;border-top:4px solid var(--c)}
+.sc .top{display:flex;align-items:center;gap:9px}.sc .pet{font-size:28px;line-height:1}
+.sc b{font-size:14px}.sc small{color:var(--fg-3);font-size:12px}
+.pill{margin-left:auto;white-space:nowrap;flex:none;border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700}
+.pill.run{background:var(--ok-soft);color:var(--ok)}.pill.wait{background:var(--wait-soft);color:var(--wait)}.pill.idle{background:var(--surface-3);color:var(--idle)}
+.sc .meter{height:7px;border-radius:99px;background:var(--surface-3);overflow:hidden}.sc .meter i{display:block;height:100%;background:var(--c);border-radius:99px}
+.sc .nums{display:flex;justify-content:space-between;font:600 12.5px var(--mono)}
+.empty{text-align:center;color:var(--fg-3);padding:26px}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.how .c{background:var(--surface);border-radius:16px;box-shadow:0 0 0 1px var(--line);padding:11px 15px;font-size:13px;color:var(--fg-2)}
+.how h3{margin:0 0 4px;font-size:13.5px;color:var(--fg)}.how code{font:12px var(--mono);background:var(--surface-3);border-radius:6px;padding:1px 6px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="note"><b>Mockup để duyệt, chưa sửa code.</b> <span class="tag real">số thật</span> lấy từ ảnh <code>ccusage daily</code> bạn gửi, <span class="tag">mẫu</span> là số minh hoạ (tài khoản thứ hai và vài ngày cuối tháng 10). Mọi nút đều bấm được: làm mới, tool, tài khoản, khoảng ngày, theo model, theo ngày / theo phiên, bấm tên ngày để thu gọn, đổi sáng/tối.</div>
+
+  <section class="hero">
+    <div class="mascots"><span>🦊</span><span>🐰</span><span>🐼</span></div>
+    <div class="hero-copy"><h1 id="hTitle">Token AI</h1><p id="hSub"></p></div>
+    <div class="hero-actions">
+      <span class="stamp" id="stamp">Cập nhật lúc 12:05</span>
+      <button class="btn glass" id="refresh" title="Đọc lại log ngay, bỏ qua bộ nhớ đệm"><span class="spin"></span><span class="ico">↻</span> Làm mới</button>
+      <button class="btn ghost" id="theme" title="Sáng / tối">◐</button>
+    </div>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="panel">
+    <div class="row">
+      <div class="chips" id="tool"><button aria-pressed="true" data-v="all">Tất cả</button><button aria-pressed="false" data-v="claude">Claude</button><button aria-pressed="false" data-v="codex">Codex</button></div>
+      <span id="accs" class="row" style="margin:0"></span>
+    </div>
+    <div class="row">
+      <div class="chips" id="range"><button aria-pressed="false" data-v="today">Hôm nay</button><button aria-pressed="false" data-v="week">7 ngày</button><button aria-pressed="true" data-v="month">Tháng này</button></div>
+      <label class="f">Từ <input type="date" id="from" value="2026-11-01"></label>
+      <label class="f">Đến <input type="date" id="to" value="2026-11-30"></label>
+      <span class="sp"></span>
+      <label class="f"><span class="sw" id="bk" role="switch" aria-checked="true" tabindex="0"></span> Theo model</label>
+      <div class="chips" id="view"><button aria-pressed="true" data-v="day">📅 Theo ngày</button><button aria-pressed="false" data-v="session">🐾 Theo phiên</button></div>
+    </div>
+  </section>
+
+  <section class="panel" id="chartPanel">
+    <div class="row" style="margin-bottom:6px"><b style="font-size:15px">Mỗi ngày dùng bao nhiêu?</b><span class="tag" title="Cột được co theo căn bậc hai để ngày dùng ít vẫn nhìn thấy">thang căn bậc hai</span>
+      <span class="sp"></span><div class="chips" id="metric"><button aria-pressed="true" data-v="cost">💰 Chi phí</button><button aria-pressed="false" data-v="tok">🔢 Token</button></div></div>
+    <div class="chart" id="chart"></div><div class="days" id="days"></div><div class="legend" id="legend"></div>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="margin-bottom:8px"><b style="font-size:15px" id="tTitle">Dùng theo ngày</b><span class="tag">thay cho “Phiên hôm nay”</span></div>
+    <div class="tw" id="dayWrap"><table id="t">
+      <thead><tr><th>Ngày</th><th>Công cụ</th><th>Tài khoản</th><th>Model</th><th>Input</th><th>Output</th><th>Cache tạo</th><th>Cache đọc</th><th>Tổng token</th><th>Chi phí</th></tr></thead>
+      <tbody id="tb"></tbody></table></div>
+    <div class="cards" id="sesWrap" hidden></div>
+    <p style="font-size:12px;color:var(--fg-3);margin:8px 2px 0">Chi phí là ước tính theo bảng giá của <code>ccusage</code>, không phải hoá đơn. Bấm một dòng ngày để thu gọn.</p>
+  </section>
+
+  <div class="how">
+    <div class="c"><h3>Nguồn dữ liệu (đề xuất)</h3>Server chạy <code>ccusage daily --json --breakdown --since … --until …</code> trên từng máy, đúng lệnh bạn đang dùng nên số khớp để đối chiếu. Mỗi tài khoản Claude chạy với <code>CLAUDE_CONFIG_DIR</code> riêng (như <code>~/.claude-tech2</code>) nên biết chính xác dòng nào của tài khoản nào; Codex theo <code>CODEX_HOME</code>. Email lấy từ phần quản lý tài khoản sẵn có. Giá do ccusage cung cấp, không ghi cứng trong code.</div>
+    <div class="c"><h3>Làm mới</h3>Nút <b>Làm mới</b> ở banner gọi lại ngay, bỏ qua đệm 30 giây, có vòng quay và giờ “Cập nhật lúc”. Nếu ccusage lỗi hoặc máy không có npx/mạng thì hiện lý do và giữ số lần trước.</div>
+    <div class="c"><h3>Cần bạn quyết</h3>① Máy nào cũng chạy được <code>npx</code> không? ② Bỏ hẳn bảng “Phiên hôm nay” cũ hay giữ “Theo phiên”? ③ Khoảng ngày mặc định: tháng này? ④ Thang căn bậc hai của biểu đồ có ổn không?</div>
+  </div>
+</div>
+<script>
+const ACC={tech:{n:'hqsoft.technology',t:'claude',c:'#3270f5',i:'T',pet:'🦊'},a03c:{n:'hqsoft.agent03',t:'claude',c:'#7b61ff',i:'A',pet:'🐰'},a03x:{n:'hqsoft.agent03',t:'codex',c:'#ec7900',i:'A',pet:'🐼'}};
+const TOOL={claude:{n:'Claude',c:'#3270f5'},codex:{n:'Codex',c:'#ec7900'}};
+// [day, account, model, input, output, cacheCreate, cacheRead, cost, real]
+const R=[
+ ['2026-10-29','tech','sonnet-5-5',6200,3100000,9200000,610000000,118.4,0],['2026-10-30','tech','sonnet-5-5',4100,2400000,7100000,480000000,91.2,0],['2026-10-31','tech','opus-5-5',900,420000,2300000,150000000,52.6,0],['2026-10-31','a03x','gpt-5.6-terra',900000,210000,0,22000000,19.8,0],
+ ['2026-11-01','tech','opus-5-5',20,13803,148257,1018985,1.67,1],['2026-11-01','tech','sonnet-5',10,6275,56932,198683,.33,1],['2026-11-01','tech','sonnet-5-5',8,2283,17073,120982,.10,1],
+ ['2026-11-02','tech','sonnet-5-5',13800,10857518,24791652,1703864683,349.21,1],['2026-11-02','tech','opus-5-5',1844,846496,4202215,353758088,121.31,1],
+ ['2026-11-02','a03x','gpt-5.6-terra',6751298,1210024,0,175502080,126.25,1],['2026-11-02','a03c','sonnet-5-5',1200,640000,1500000,90000000,18.40,0],
+ ['2026-11-03','tech','sonnet-5-5',364,142870,243730,61279260,8.53,1],['2026-11-03','tech','opus-5-5',16,4556,26275,344295,.37,1],['2026-11-03','a03c','opus-5-5',90,52000,120000,7400000,3.10,0]];
+const S=[// session, account, host, day, tokens, cost, state
+ ['Smart-Visibility','a03c','dev-ubuntu-02','2026-11-03',7572090,3.10,'run'],['Vifon-SV','a03x','Máy này','2026-11-03',2510000,0.94,'run'],['Token-ai','tech','dev-ubuntu-02','2026-11-03',62041366,8.90,'wait'],
+ ['Smart-Visibility','tech','dev-ubuntu-02','2026-11-02',1739527653,349.21,'idle'],['Vifon-SV','a03x','Máy này','2026-11-02',183463402,126.25,'idle'],['Token-ai','a03c','dev-ubuntu-02','2026-11-02',92141200,18.40,'idle']];
+const f=n=>n.toLocaleString('en-US'),usd=n=>'$'+n.toFixed(2),$=id=>document.getElementById(id);
+const short=n=>n>=1e9?(n/1e9).toFixed(2)+' tỷ':n>=1e6?(n/1e6).toFixed(1)+' triệu':n>=1e3?(n/1e3).toFixed(0)+' nghìn':String(n);
+const WK=['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+const st={tool:'all',acct:'all',from:'2026-11-01',to:'2026-11-30',model:true,view:'day',metric:'cost',closed:new Set()};
+const T=r=>r[3]+r[4]+r[5]+r[6];
+const sum=rows=>rows.reduce((a,r)=>[a[0]+r[3],a[1]+r[4],a[2]+r[5],a[3]+r[6],a[4]+T(r),a[5]+r[7]],[0,0,0,0,0,0]);
+const vals=r=>[r[3],r[4],r[5],r[6],T(r),r[7]];
+const real=r=>r[8]?'<span class="tag real">thật</span>':'<span class="tag">mẫu</span>';
+function fil(){return R.filter(r=>{const a=ACC[r[1]];return (st.tool==='all'||a.t===st.tool)&&(st.acct==='all'||r[1]===st.acct)&&r[0]>=st.from&&r[0]<=st.to});}
+function cellsH(v,max,c){return `<td class="n">${f(v[0])}</td><td class="n">${f(v[1])}</td><td class="n">${f(v[2])}</td><td class="n">${f(v[3])}</td><td class="n tk" style="--c:${c};--r:${Math.max(.02,v[4]/max).toFixed(3)}">${f(v[4])}<span class="bar"></span></td><td class="n"><span class="cost">${usd(v[5])}</span></td>`;}
+function draw(){
+  const rows=fil(),days=[...new Set(rows.map(r=>r[0]))].sort(),tot=sum(rows),out=[];
+  // hero + tiles
+  const L={all:'Tất cả công cụ',claude:'Claude',codex:'Codex'}[st.tool];
+  $('hTitle').textContent='Token AI · '+L;
+  $('hSub').textContent=rows.length?`Từ ${st.from} đến ${st.to} · ${st.acct==='all'?'mọi tài khoản':ACC[st.acct].n} · ${days.length} ngày có dùng`:'Chưa có dữ liệu trong khoảng này';
+  const hit=tot[4]?Math.round(tot[3]/tot[4]*100):0;
+  $('tiles').innerHTML=[
+   `<div class="tile"><div class="em" style="background:#dcebff">🔢</div><div><small>Tổng token</small><b>${f(tot[4])}</b><span class="sub">≈ ${short(tot[4])}</span></div></div>`,
+   `<div class="tile"><div class="em" style="background:var(--ok-soft)">💰</div><div><small>Chi phí ước tính</small><b>${usd(tot[5])}</b><span class="sub">${days.length?usd(tot[5]/days.length)+' / ngày':'—'}</span></div></div>`,
+   `<div class="tile"><div class="ring" style="--p:${hit};--c:var(--hero-a)"><span>${hit}%</span></div><div><small>Đọc từ cache</small><b>${short(tot[3])}</b><span class="sub">càng cao càng tiết kiệm</span></div></div>`,
+   `<div class="tile"><div class="em" style="background:#ffe8cf">✍️</div><div><small>Output (đã viết ra)</small><b>${f(tot[1])}</b><span class="sub">${short(tot[1])} token</span></div></div>`].join('');
+  // chart: stacked per day by account, sqrt scale
+  const key=st.metric==='cost'?r=>r[7]:T,per=days.map(d=>{const dr=rows.filter(r=>r[0]===d);return {d,v:dr.reduce((a,r)=>a+key(r),0),seg:[...new Set(dr.map(r=>r[1]))].map(k=>({k,v:dr.filter(r=>r[1]===k).reduce((a,r)=>a+key(r),0)}))}});
+  const mx=Math.max(1,...per.map(p=>Math.sqrt(p.v)));
+  $('chart').innerHTML=per.length?per.map(p=>{const h=Math.max(6,Math.round(Math.sqrt(p.v)/mx*128));return `<div class="col" title="${p.d}: ${st.metric==='cost'?usd(p.v):f(p.v)}"><span class="val">${st.metric==='cost'?usd(p.v):short(p.v)}</span><div class="stack" style="height:${h}px">${p.seg.map(s=>`<i style="flex:${Math.sqrt(s.v)};background:${ACC[s.k].c}" title="${ACC[s.k].n} (${TOOL[ACC[s.k].t].n})"></i>`).join('')}</div></div>`}).join(''):'<p class="empty" style="width:100%">Không có dữ liệu để vẽ</p>';
+  $('days').innerHTML=per.map(p=>`<span>${p.d.slice(5)}</span>`).join('');
+  $('legend').innerHTML=[...new Set(rows.map(r=>r[1]))].map(k=>`<span><i style="background:${ACC[k].c}"></i>${ACC[k].n} · ${TOOL[ACC[k].t].n}</span>`).join('');
+  $('chartPanel').hidden=st.view!=='day';
+  // table
+  const maxTok=Math.max(1,...rows.map(T),...days.map(d=>sum(rows.filter(r=>r[0]===d))[4]));
+  days.forEach(d=>{const dr=rows.filter(r=>r[0]===d),closed=st.closed.has(d),dt=new Date(d+'T00:00:00');
+    out.push(`<tr class="day${closed?' closed':''}" data-d="${d}"><td colspan="4"><span class="car">▾</span>${d}<span class="wk">${WK[dt.getDay()]}</span></td>${cellsH(sum(dr),maxTok,'var(--hero-b)')}</tr>`);
+    [...new Set(dr.map(r=>r[1]))].forEach(k=>{const a=ACC[k],ar=dr.filter(r=>r[1]===k);
+      out.push(`<tr class="agent${closed?' hidden':''}" data-g="${d}"><td></td><td><span class="badge" style="--c:${TOOL[a.t].c}">${TOOL[a.t].n}</span></td><td><span class="av" style="--c:${a.c}">${a.i}</span>${a.n}</td><td>${[...new Set(ar.map(r=>r[2]))].map(m=>`<span class="mdl">${m}</span>`).join('')}</td>${cellsH(sum(ar),maxTok,a.c)}</tr>`);
+      ar.forEach(r=>out.push(`<tr class="model${closed?' hidden':''}" data-g="${d}"><td></td><td></td><td>${real(r)}</td><td>└ ${r[2]}</td>${cellsH(vals(r),maxTok,a.c)}</tr>`));});});
+  out.push(`<tr class="total"><td colspan="4">🎉 Tổng cộng</td>${cellsH(tot,tot[4]||1,'var(--hero-a)')}</tr>`);
+  $('tb').innerHTML=rows.length?out.join(''):'<tr><td colspan="10" class="empty">Không có dữ liệu trong khoảng này 🐾</td></tr>';
+  $('t').classList.toggle('hide-model',!st.model);
+  // sessions as cards
+  const ss=S.filter(x=>{const a=ACC[x[1]];return (st.tool==='all'||a.t===st.tool)&&(st.acct==='all'||x[1]===st.acct)&&x[3]>=st.from&&x[3]<=st.to}).sort((a,b)=>b[3].localeCompare(a[3])||b[4]-a[4]);
+  const smx=Math.max(1,...ss.map(x=>x[4]));
+  $('sesWrap').innerHTML=ss.length?ss.map(x=>{const a=ACC[x[1]];return `<div class="sc" style="--c:${a.c}"><div class="top"><span class="pet">${a.pet}</span><div><b>${x[0]}</b><br><small>${x[2]} · ${x[3]}</small></div><span class="pill ${x[6]}">${{run:'Đang chạy',wait:'Chờ bạn',idle:'Đang nghỉ'}[x[6]]}</span></div><div><span class="badge" style="--c:${TOOL[a.t].c}">${TOOL[a.t].n}</span> <small><span class="av" style="--c:${a.c}">${a.i}</span>${a.n}</small></div><div class="meter"><i style="width:${Math.max(3,Math.round(x[4]/smx*100))}%"></i></div><div class="nums"><span>${f(x[4])}</span><span class="cost">${usd(x[5])}</span></div></div>`}).join(''):'<p class="empty" style="grid-column:1/-1">Không có phiên trong khoảng này 🐾</p>';
+  $('dayWrap').hidden=st.view!=='day';$('sesWrap').hidden=st.view!=='session';
+  $('tTitle').textContent=st.view==='day'?'Dùng theo ngày':'Dùng theo phiên';
+}
+function accounts(){
+  const keys=Object.keys(ACC).filter(k=>st.tool==='all'||ACC[k].t===st.tool);if(st.acct!=='all'&&!keys.includes(st.acct))st.acct='all';
+  $('accs').innerHTML=`<button class="acc" style="--c:var(--hero-b)" data-k="all" aria-pressed="${st.acct==='all'}"><i>★</i>Tất cả</button>`+keys.map(k=>`<button class="acc" style="--c:${ACC[k].c}" data-k="${k}" aria-pressed="${st.acct===k}"><i>${ACC[k].i}</i>${ACC[k].n} <small>${TOOL[ACC[k].t].n}</small></button>`).join('');
+}
+const press=(c,b)=>c.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+$('tool').onclick=e=>{const b=e.target.closest('button');if(!b)return;press($('tool'),b);st.tool=b.dataset.v;accounts();draw();};
+$('accs').onclick=e=>{const b=e.target.closest('button');if(!b)return;st.acct=b.dataset.k;accounts();draw();};
+$('view').onclick=e=>{const b=e.target.closest('button');if(!b)return;press($('view'),b);st.view=b.dataset.v;draw();};
+$('metric').onclick=e=>{const b=e.target.closest('button');if(!b)return;press($('metric'),b);st.metric=b.dataset.v;draw();};
+const flip=()=>{st.model=$('bk').getAttribute('aria-checked')!=='true';$('bk').setAttribute('aria-checked',st.model);draw();};
+$('bk').onclick=flip;$('bk').onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();flip();}};
+$('tb').onclick=e=>{const r=e.target.closest('tr.day');if(!r)return;const d=r.dataset.d;st.closed.has(d)?st.closed.delete(d):st.closed.add(d);draw();};
+const RANGES={today:['2026-11-03','2026-11-03'],week:['2026-10-28','2026-11-03'],month:['2026-11-01','2026-11-30']};
+$('range').onclick=e=>{const b=e.target.closest('button');if(!b)return;press($('range'),b);[st.from,st.to]=RANGES[b.dataset.v];$('from').value=st.from;$('to').value=st.to;draw();};
+['from','to'].forEach(id=>$(id).onchange=e=>{st[id]=e.target.value;$('range').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));draw();});
+$('theme').onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';};
+$('refresh').onclick=function(){if(this.classList.contains('busy'))return;this.classList.add('busy');$('stamp').textContent='Đang cập nhật…';setTimeout(()=>{this.classList.remove('busy');$('stamp').textContent='Cập nhật lúc '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false});},1400);};
+accounts();draw();
+</script>
+</body>
+</html>

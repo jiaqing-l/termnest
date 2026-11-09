@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Termnest – Setup trên Ubuntu server và dùng từ điện thoại</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--ink:#17202e;--mute:#5d6a7e;--line:#e1e6ee;--brand:#1f7a4a;--navy:#13294b;--note:#eaf2ff;--warn:#fff5e1;--ok:#e7f6ee;--bad:#fdecec;--code:#0e1622;--codeink:#e6edf3}
+@media(prefers-color-scheme:dark){:root{--bg:#0d121a;--card:#151c27;--ink:#e7ecf4;--mute:#97a3b6;--line:#263041;--brand:#4cc38a;--navy:#9db9ff;--note:#14243b;--warn:#33280f;--ok:#10301f;--bad:#3a1618}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:linear-gradient(135deg,#0f2142,#13294b 50%,#1f7a4a 130%);color:#fff;padding:36px 20px 56px}
+header .in,main{max-width:860px;margin:0 auto}
+h1{margin:0 0 6px;font-size:30px;line-height:1.2}header p{margin:0;opacity:.9}
+main{padding:0 20px 70px;margin-top:-28px}
+section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 28px;margin:0 0 18px;box-shadow:0 8px 24px rgba(19,41,75,.06)}
+h2{margin:0 0 6px;font-size:21px;color:var(--navy);display:flex;gap:10px;align-items:center}
+h2 .n{min-width:34px;height:34px;padding:0 8px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:16px}
+h3{margin:20px 0 6px;font-size:16px}
+.goal{color:var(--mute);margin:0 0 12px}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:10px 0}
+ol.steps>li{counter-increment:s;position:relative;padding:10px 12px 10px 52px;margin:0 0 9px;border:1px solid var(--line);border-radius:12px;background:rgba(127,127,127,.05)}
+ol.steps>li::before{content:counter(s);position:absolute;left:12px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+.box{border-radius:12px;padding:11px 15px;margin:12px 0;font-size:15px;border:1px solid transparent}
+.note{background:var(--note)}.warn{background:var(--warn)}.ok{background:var(--ok)}.bad{background:var(--bad)}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:rgba(127,127,127,.16);border-radius:5px;padding:1px 6px}
+pre{background:var(--code);color:var(--codeink);border-radius:12px;padding:13px 15px;overflow:auto;margin:10px 0;position:relative}
+pre code{background:none;padding:0;color:inherit}
+.cp{position:absolute;right:8px;top:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;border-radius:7px;font-size:12px;padding:3px 9px;cursor:pointer}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:15px}th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}tr:last-child td{border:0}th{background:rgba(127,127,127,.1);font-size:13px;color:var(--mute)}
+details{border:1px solid var(--line);border-radius:12px;padding:9px 15px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+@media(max-width:700px){h1{font-size:24px}section{padding:18px}}
+</style></head><body>
+<header><div class="in"><h1>Setup <b>Termnest</b> trên Ubuntu server và dùng từ điện thoại</h1>
+<p>Tài liệu nội bộ. Cài một <b>Termnest</b> trên máy chủ luôn bật, mở từ điện thoại và laptop qua Tailscale. Tắt laptop, phiên vẫn chạy.</p></div></header>
+<main>
+
+<section>
+<h2><span class="n">◎</span>Mô hình</h2>
+<p class="goal">Hiểu trước khi làm.</p>
+<div class="tw"><table>
+<tr><th>Thành phần</th><th>Vai trò</th></tr>
+<tr><td>Ubuntu server (luôn bật)</td><td>Chạy <b>Termnest</b> như dịch vụ <code>termnest</code>, giữ các phiên tmux, chạy Claude Code/Codex ở đây</td></tr>
+<tr><td>Tailscale</td><td>VPN riêng nối server, điện thoại, laptop. Không mở cổng ra Internet</td></tr>
+<tr><td>Điện thoại / laptop</td><td>Mở giao diện web của <b>Termnest</b> qua địa chỉ <code>https://&lt;tên-máy&gt;.&lt;tên-mạng&gt;.ts.net</code></td></tr>
+</table></div>
+<div class="box note"><b>Termnest</b> chỉ lắng nghe <code>127.0.0.1</code> trên server (không bao giờ mở thẳng ra mạng). <code>tailscale serve</code> chuyển tiếp từ mạng Tailscale vào cổng đó.</div>
+<div class="box warn">Server tắt hoặc mất mạng thì điện thoại không vào được và các phiên tmux trên server dừng. Máy làm server phải luôn bật.</div>
+</section>
+
+<section>
+<h2><span class="n">1</span>Chuẩn bị server</h2>
+<p class="goal">Cần quyền root (hoặc sudo), Ubuntu 22.04 trở lên (64-bit Intel/AMD) và tmux. Không cần Node.js, không cần mã nguồn: file cài đã kèm sẵn mọi thứ.</p>
+<ol class="steps">
+<li>Cài tmux:
+<pre><code>apt update
+apt install -y tmux curl</code></pre></li>
+<li>Chép file cài lên server (từ máy bạn):
+<pre><code>scp Termnest-amd64.deb root@&lt;địa-chỉ-server&gt;:/root/</code></pre>
+Để file ở <code>/root/</code> hoặc <code>/tmp/</code>. Để trong thư mục con riêng của root thì apt in ghi chú <code>Download is performed unsandboxed as root</code>. Đó chỉ là cảnh báo, cài vẫn thành công.</li>
+</ol>
+</section>
+
+<section>
+<h2><span class="n">2</span>Cài <b>Termnest</b> trên server</h2>
+<p class="goal">Kết quả: dịch vụ <code>termnest</code> chạy ở <code>127.0.0.1:7681</code> và tự bật lại khi server khởi động.</p>
+<ol class="steps">
+<li>Cài file <code>.deb</code> (apt tự kéo thư viện cần thêm; trên server không màn hình các thư viện giao diện vẫn được cài, bình thường):
+<pre><code>apt install -y /root/Termnest-amd64.deb</code></pre></li>
+<li>Tạo thư mục dữ liệu:
+<pre><code>mkdir -p /var/lib/termnest
+chmod 700 /var/lib/termnest</code></pre></li>
+<li>Tạo dịch vụ chạy nền (không cần màn hình):
+<pre><code>cat &gt; /etc/systemd/system/termnest.service &lt;&lt;'EOF'
+[Unit]
+Description=Termnest
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment=TW_PORT=7681
+Environment=TW_DATA=/var/lib/termnest
+Environment=TW_PACKAGED=1
+ExecStart=/usr/lib/Termnest/app/node-x64 /usr/lib/Termnest/app/server.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable --now termnest</code></pre></li>
+<li>Kiểm tra:
+<pre><code>systemctl status termnest --no-pager | head -5
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:7681/</code></pre>
+Phải thấy <code>active (running)</code> và mã <code>200</code>.</li>
+</ol>
+<div class="box note"><b>Termnest</b> dùng Node.js đi kèm trong file cài (<code>node-x64</code>), nên server không cần cài Node riêng.</div>
+<div class="box warn"><b>Chưa vào được từ điện thoại ngay.</b> Máy chủ chạy rồi nhưng Termnest còn chặn tên miền Tailscale. Làm tiếp mục 3 và 4 (đặc biệt bước đặt <code>TW_ALLOWED_HOSTS</code>) mới mở được trang.</div>
+
+<h3>Đặt mật khẩu lần đầu</h3>
+<p>Thư mục dữ liệu mới chưa có mật khẩu. Đặt qua trang web bằng mã thiết lập dùng một lần (làm sau khi xong mục 3 và 4 để mở được trang, hoặc tạm dùng SSH tunnel):</p>
+<ol class="steps">
+<li>Tạo mã và gắn vào dịch vụ:
+<pre><code>TOKEN=$(openssl rand -hex 24); echo "$TOKEN"
+mkdir -p /etc/systemd/system/termnest.service.d
+cat &gt; /etc/systemd/system/termnest.service.d/setup.conf &lt;&lt;EOF
+[Service]
+Environment=TW_SETUP_TOKEN=$TOKEN
+EOF
+systemctl daemon-reload &amp;&amp; systemctl restart termnest</code></pre></li>
+<li>Mở <code>https://&lt;tên-máy&gt;.&lt;tên-mạng&gt;.ts.net/#setup=&lt;MÃ-VỪA-IN-RA&gt;</code> bằng trình duyệt, nhập mật khẩu mới (ít nhất 10 ký tự) hai lần.</li>
+<li><b>Xóa mã thiết lập ngay sau khi đặt xong:</b>
+<pre><code>rm /etc/systemd/system/termnest.service.d/setup.conf
+systemctl daemon-reload &amp;&amp; systemctl restart termnest</code></pre></li>
+</ol>
+<div class="box warn"><b>Quên mật khẩu không lấy lại được.</b> Cách duy nhất là xóa <code>/var/lib/termnest/vault.json</code>, đặt lại mật khẩu bằng cách trên và thêm lại các máy chủ SSH.</div>
+<h3>Giữ mật khẩu và máy chủ đã thêm từ lần trước</h3>
+<p>Nếu có bản sao lưu thư mục <code>data/</code> của một lần chạy trước, chép vào thay cho bước đặt mật khẩu ở trên. Dừng dịch vụ trước khi chép:</p>
+<pre><code>systemctl stop termnest
+cp -a &lt;thư-mục-sao-lưu&gt;/. /var/lib/termnest/
+chmod 700 /var/lib/termnest
+systemctl start termnest</code></pre>
+<p>Nếu dịch vụ đã khởi động với thư mục trống thì vẫn chép được theo cách này, miễn là chưa đặt mật khẩu mới.</p>
+</section>
+
+<section>
+<h2><span class="n">3</span>Cài Tailscale</h2>
+<p class="goal">Kết quả: server, điện thoại, laptop cùng một mạng riêng.</p>
+<ol class="steps">
+<li>Tạo tài khoản miễn phí tại tailscale.com.</li>
+<li>Trên server:
+<pre><code>curl -fsSL https://tailscale.com/install.sh | sh
+tailscale up</code></pre>
+Lệnh in ra một link <code>login.tailscale.com/a/…</code>. Mở link, đăng nhập, cho phép máy.</li>
+<li>Trên điện thoại: cài app Tailscale (App Store / Google Play), đăng nhập <b>cùng tài khoản</b>, bật công tắc kết nối, chấp nhận yêu cầu tạo VPN.</li>
+<li>Kiểm tra trên server:
+<pre><code>tailscale status</code></pre>
+Phải thấy cả server và điện thoại. Trong app trên điện thoại cũng thấy server với chấm xanh.</li>
+</ol>
+<div class="box note">Cần bật <b>MagicDNS</b> và <b>HTTPS</b> trong trang quản trị Tailscale (login.tailscale.com/admin/dns) nếu <code>tailscale serve</code> báo chưa hỗ trợ.</div>
+</section>
+
+<section>
+<h2><span class="n">4</span>Đưa <b>Termnest</b> vào mạng Tailscale</h2>
+<p class="goal">Kết quả: có địa chỉ https riêng chỉ thiết bị trong mạng của bạn mở được.</p>
+<ol class="steps">
+<li>Chuyển tiếp cổng 7681:
+<pre><code>tailscale serve --bg 7681
+tailscale serve status</code></pre>
+Kết quả có dạng <code>https://&lt;tên-máy&gt;.&lt;tên-mạng&gt;.ts.net (tailnet only)</code>. Chép địa chỉ này.</li>
+<li>Lấy tên đầy đủ nếu cần (bỏ dấu chấm cuối):
+<pre><code>tailscale status --json | grep -m1 '"DNSName"'</code></pre></li>
+<li><b>Cho phép tên đó trong Termnest</b> (bắt buộc, nếu không sẽ báo “Bạn không có quyền xem trang này”, mã 403). Ghi thẳng bằng lệnh, đừng dùng trình soạn thảo của <code>systemctl edit</code>:
+<pre><code>mkdir -p /etc/systemd/system/termnest.service.d
+cat &gt; /etc/systemd/system/termnest.service.d/override.conf &lt;&lt;'EOF'
+[Service]
+Environment=TW_ALLOWED_HOSTS=&lt;tên-máy&gt;.&lt;tên-mạng&gt;.ts.net
+EOF
+systemctl daemon-reload
+systemctl restart termnest</code></pre>
+Chỉ có tên máy, <b>không</b> có <code>https://</code>. Nhiều tên thì ngăn cách bằng dấu phẩy.</li>
+<li>Kiểm tra (phải ra <code>200</code>):
+<pre><code>curl -s -o /dev/null -w "%{http_code}\n" -H "Host: &lt;tên-máy&gt;.&lt;tên-mạng&gt;.ts.net" http://127.0.0.1:7681/</code></pre></li>
+</ol>
+<div class="box note">File <code>override.conf</code> nằm riêng nên cài đè bản mới cũng không bị xóa. Nhưng nó gắn với <b>tên dịch vụ</b>: nếu bạn xóa dịch vụ <code>termnest</code> rồi tạo lại, hoặc đổi tên dịch vụ, phải tạo lại file này, nếu không điện thoại lại báo bị từ chối (403).</div>
+</section>
+
+<section>
+<h2><span class="n">5</span>Mở trên điện thoại</h2>
+<ol class="steps">
+<li>Bật Tailscale trên điện thoại (công tắc “Connected”).</li>
+<li>Mở Chrome/Safari, vào <code>https://&lt;tên-máy&gt;.&lt;tên-mạng&gt;.ts.net</code>.</li>
+<li>Màn đăng nhập phải ghi “Mật khẩu <b>Termnest</b>” và có logo. Đăng nhập.</li>
+<li>Muốn dùng như app: menu trình duyệt → <b>Thêm vào màn hình chính</b>.</li>
+</ol>
+<div class="box ok">Giao diện điện thoại có thanh điều hướng dưới: <b>Tổng quan</b> và <b>Terminal</b>. Thẻ phiên, Yes/No và trả lời nhanh dùng như trên máy tính.</div>
+</section>
+
+<section>
+<h2><span class="n">6</span>Bảo mật</h2>
+<ul>
+<li>Không dùng <code>tailscale funnel</code> và không mở cổng 7681 ra Internet. Chỉ <code>serve</code> (tailnet only).</li>
+<li>Chỉ mời đúng người cần vào mạng Tailscale. Ai vào được mạng là chạm tới màn đăng nhập <b>Termnest</b>, nên mật khẩu phải mạnh.</li>
+<li>Trên server dịch vụ chạy bằng root. Người đăng nhập <b>Termnest</b> điều khiển được terminal của root. Cân nhắc chạy dưới user riêng cho an toàn hơn.</li>
+<li>Không chia sẻ tên mạng Tailscale, địa chỉ <code>100.x.x.x</code> hay ảnh chụp màn hình có đường dẫn nội bộ ra ngoài.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="n">7</span>Sự cố thường gặp</h2>
+<details><summary>Điện thoại báo “Bạn không có quyền xem trang này” hoặc “Quyền truy cập bị từ chối” (403)</summary><p>Chưa đặt hoặc đặt sai <code>TW_ALLOWED_HOSTS</code>. Kiểm tra <code>systemctl show termnest -p Environment</code>: phải thấy biến này, đúng tên <code>.ts.net</code>, không có <code>https://</code>. Lỗi thường gặp: gõ dưới dòng <code>### Lines below…</code> trong trình soạn thảo nên bị bỏ qua, hoặc vừa tạo lại dịch vụ mà quên tạo lại <code>override.conf</code>.</p></details>
+<details><summary>Không mở được trang, hết thời gian chờ</summary><p>Tailscale trên điện thoại chưa bật, hoặc server chưa online. Chạy <code>tailscale status</code> trên server, xem app trên điện thoại có chấm xanh cho server không. Kiểm tra <code>tailscale serve status</code> có dòng proxy tới <code>127.0.0.1:7681</code>.</p></details>
+<details><summary>Đăng nhập được nhưng terminal không kết nối</summary><p>Nghi lỗi WebSocket qua tên <code>.ts.net</code>. Chính sách bảo mật của <b>Termnest</b> chỉ ghi rõ cho <code>ws://127.0.0.1</code>. Chrome thường chấp nhận cùng tên miền, Safari có thể không. Cần sửa nhỏ trong code, báo người phát triển kèm trình duyệt đang dùng.</p></details>
+<details><summary>Hiện đặt mật khẩu mới thay vì đăng nhập</summary><p>Thư mục <code>/var/lib/termnest</code> đang trống (hoặc <code>TW_DATA</code> trỏ sai). Nếu bạn muốn giữ dữ liệu cũ, đừng đặt mật khẩu vội, chép <code>data/</code> cũ vào rồi khởi động lại dịch vụ.</p></details>
+<details><summary><code>tailscale serve</code> báo lỗi cú pháp</summary><p>Cú pháp lệnh thay đổi giữa các phiên bản Tailscale. Xem <code>tailscale serve --help</code>.</p></details>
+<details><summary>Xem log dịch vụ</summary><pre><code>journalctl -u termnest -n 50 --no-pager</code></pre></details>
+</section>
+
+<section>
+<h2><span class="n">8</span>Giới hạn đã biết trên điện thoại</h2>
+<div class="tw"><table>
+<tr><th>Vấn đề</th><th>Tình trạng</th></tr>
+<tr><td>Vuốt trong terminal không cuộn được nội dung</td><td>Đã sửa trong code, chờ phát hành bản 1.1.5. Bản 1.1.4 vẫn còn lỗi này</td></tr>
+<tr><td>Chạm vào màn terminal là bật bàn phím</td><td>Đã sửa trong code, chờ phát hành bản 1.1.5. Sau khi sửa, bàn phím chỉ bật khi bấm nút <b>⌨ Bàn phím</b> ở hàng phím nhanh</td></tr>
+<tr><td>Phiên Codex dùng “màn hình thay thế” không cuộn được lịch sử</td><td>Giới hạn của chương trình đó. Chạy lại Codex với <code>--no-alt-screen</code> để cuộn được</td></tr>
+<tr><td>Thông báo khi đã đóng trình duyệt</td><td>Chưa có. Thông báo chỉ phát khi trang còn mở</td></tr>
+<tr><td>Claude Code/Codex</td><td>Phải đăng nhập và có mã dự án ngay trên server</td></tr>
+</table></div>
+</section>
+
+<section>
+<h2><span class="n">9</span>Cập nhật bản mới sau này</h2>
+<ol class="steps">
+<li>Sao lưu dữ liệu:
+<pre><code>cp -a /var/lib/termnest /var/lib/termnest.bak-$(date +%Y%m%d)</code></pre></li>
+<li>Chép <code>Termnest-amd64.deb</code> bản mới lên server rồi cài đè:
+<pre><code>apt install -y /root/Termnest-amd64.deb
+systemctl restart termnest</code></pre></li>
+</ol>
+<p>Dữ liệu trong <code>/var/lib/termnest</code> và biến <code>TW_ALLOWED_HOSTS</code> được giữ nguyên.</p>
+</section>
+
+<section>
+<h2><span class="n">10</span>Thử bản vá trước khi phát hành (cho người phát triển)</h2>
+<p class="goal">Chép tạm các file giao diện đã sửa lên server để thử ngay trên điện thoại, không cần dựng file cài mới.</p>
+<ol class="steps">
+<li>Từ thư mục dự án trên máy phát triển:
+<pre><code>scp public/app.js public/app.css public/index.html public/touch-scroll.js root@&lt;địa-chỉ-server&gt;:/usr/lib/Termnest/app/public/
+ssh root@&lt;địa-chỉ-server&gt; systemctl restart termnest</code></pre></li>
+<li>Trên điện thoại đóng hẳn tab rồi mở lại để tải bản mới.</li>
+</ol>
+<div class="box warn">Cách này chỉ để thử. Cài file <code>.deb</code> mới sau đó sẽ ghi đè lại các file này. Muốn bản sửa có mặt lâu dài thì phải phát hành bản mới và cài lại bằng <code>.deb</code> (mục 9).</div>
+</section>
+<section>
+<h2><span class="n">11</span>Dùng VPN công ty và SSH tunnel (Termius hoặc Termux)</h2>
+<p class="goal">Cho điện thoại đã có VPN công ty. Không cần Tailscale, không mở thêm cổng nào trên server: điện thoại bật VPN, rồi dùng SSH tạo “đường hầm” tới <b>Termnest</b>.</p>
+<div class="box note">Cách này chỉ cần dịch vụ <code>termnest</code> đang chạy (mục 2). Không cần <code>tailscale serve</code> và không cần <code>TW_ALLOWED_HOSTS</code>, vì trình duyệt sẽ mở <code>http://127.0.0.1:7681</code> trên chính điện thoại.</div>
+
+<h3>Chuẩn bị chung</h3>
+<ol class="steps">
+<li>Bật <b>VPN công ty</b> trên điện thoại.</li>
+<li>Xác định địa chỉ SSH của server (ví dụ <code>10.10.62.170</code>) và tài khoản (ví dụ <code>root</code>). Điện thoại phải tới được địa chỉ đó khi bật VPN.</li>
+</ol>
+
+<h3>A. Termius (iOS / Android)</h3>
+<ol class="steps">
+<li>Mở Termius, thêm máy: <b>Hosts → +</b>, nhập <b>Address</b> là địa chỉ server, <b>Username</b>, mật khẩu hoặc khóa SSH, lưu lại.</li>
+<li>Kiểm tra bằng cách mở máy vừa thêm: phải vào được dòng lệnh của server.</li>
+<li>Vào tab <b>Port Forwarding</b>, bấm <b>+ → New Rule</b>, chọn loại <b>Local</b>.</li>
+<li>Điền:
+<div class="tw"><table>
+<tr><th>Ô</th><th>Giá trị</th></tr>
+<tr><td>Local port number</td><td><code>7681</code></td></tr>
+<tr><td>Bind address</td><td><code>127.0.0.1</code></td></tr>
+<tr><td>Destination address</td><td><code>127.0.0.1</code></td></tr>
+<tr><td>Destination port number</td><td><code>7681</code></td></tr>
+<tr><td>Host</td><td>chọn máy server vừa thêm</td></tr>
+</table></div></li>
+<li>Lưu rồi bấm vào quy tắc để <b>bật</b> (trạng thái Connected).</li>
+<li>Mở Chrome/Safari, vào <code>http://127.0.0.1:7681</code>. Thấy màn đăng nhập <b>Termnest</b> là xong.</li>
+</ol>
+<div class="box warn">Tôi chưa kiểm tra bản Termius miễn phí có cho dùng Port Forwarding hay không (có thể thuộc gói trả phí). Nếu bị khóa, dùng Termux hoặc ConnectBot (mục B, C).</div>
+
+<h3>B. Termux (Android)</h3>
+<ol class="steps">
+<li>Cài OpenSSH (một lần):
+<pre><code>pkg install openssh</code></pre></li>
+<li>Mở đường hầm (thay địa chỉ và tài khoản của bạn), giữ phiên Termux này chạy:
+<pre><code>ssh -N -L 7681:127.0.0.1:7681 root@10.10.62.170</code></pre>
+Nhập mật khẩu SSH. Lệnh đứng yên là bình thường, nghĩa là đường hầm đang mở.</li>
+<li>Mở trình duyệt, vào <code>http://127.0.0.1:7681</code>.</li>
+</ol>
+<div class="box note">Android có thể tắt Termux khi chạy nền. Nên vào cài đặt pin của máy, cho Termux chạy nền không giới hạn, hoặc dùng <code>termux-wake-lock</code>.</div>
+
+<h3>C. ConnectBot (Android) hoặc app SSH khác có Port Forwarding</h3>
+<p>Thêm máy, vào phần <b>Port forwards</b>, tạo quy tắc <b>Local</b>: nguồn <code>7681</code>, đích <code>127.0.0.1:7681</code>. Bật rồi mở <code>http://127.0.0.1:7681</code>.</p>
+
+<h3>Bị lỗi?</h3>
+<details><summary>Không mở được <code>127.0.0.1:7681</code></summary><p>Đường hầm chưa bật hoặc đã rớt (app bị hệ điều hành tắt nền). Bật lại quy tắc. Kiểm tra VPN còn kết nối và điện thoại vẫn SSH được vào server.</p></details>
+<details><summary>SSH không kết nối được tới server</summary><p>VPN chưa bật, hoặc VPN công ty không cho điện thoại tới server đó. Hỏi bộ phận IT. Thử từ điện thoại: mở dòng lệnh SSH thường tới server trước khi tạo đường hầm.</p></details>
+<details><summary>Đăng nhập được nhưng trang trắng hoặc báo từ chối</summary><p>Cổng cục bộ <code>7681</code> trên điện thoại đang bị quy tắc khác chiếm. Tắt các quy tắc cũ rồi bật lại, hoặc đổi Local port sang <code>7682</code> và mở <code>http://127.0.0.1:7682</code>.</p></details>
+
+<div class="box ok"><b>Bảo mật:</b> server không phải mở cổng ra ngoài. Phải qua VPN, rồi đăng nhập SSH, rồi mới tới màn mật khẩu <b>Termnest</b>.</div>
+</section>
+</main>
+<script>
+document.querySelectorAll('pre').forEach(function(p){var b=document.createElement('button');b.className='cp';b.textContent='Sao chép';b.onclick=function(){var t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Đã chép ✓'},function(){b.textContent='Chọn rồi Ctrl+C'});setTimeout(function(){b.textContent='Sao chép'},2000)};p.appendChild(b)});
+</script>
+</body></html>

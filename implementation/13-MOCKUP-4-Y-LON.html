@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4 ý lớn cho Termnest · Mockup</title>
+<link rel="stylesheet" href="../public/fonts/fonts.css">
+<style>
+:root{color-scheme:light;--bg:#eef3fb;--surface:#fff;--surface-2:#f2f5fb;--surface-3:#e5ebf6;--line:#dfe6f2;--line-strong:#c2cde0;--fg:#172036;--fg-2:#4a556f;--fg-3:#6c7891;--primary:#ff5c7a;--on-primary:#fff;--hero-a:#0fb5ae;--hero-b:#2f80ed;--ok:#0d9b63;--ok-soft:#dcf7ea;--wait:#b86e00;--wait-soft:#ffefcf;--bad:#d8344a;--bad-soft:#ffe3e7;--idle:#7a879f;--term:#101527;--term-fg:#dfe6f5;--term-dim:#7c89a6;--claude:#3270f5;--codex:#ec7900;--shadow:0 14px 30px -18px rgba(38,58,110,.38);--sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0e1224;--surface:#171c33;--surface-2:#1f2642;--surface-3:#2a3254;--line:#2a3250;--line-strong:#404b72;--fg:#f0f3fc;--fg-2:#b2bcd4;--fg-3:#8691ad;--primary:#ff6f8a;--on-primary:#330713;--hero-a:#0b7f7b;--hero-b:#2358b8;--ok:#49dca0;--ok-soft:rgba(73,220,160,.15);--wait:#ffc55c;--wait-soft:rgba(255,197,92,.15);--bad:#ff8a96;--bad-soft:rgba(255,138,150,.14);--idle:#8691ad;--term:#0a0d1a;--shadow:0 16px 34px -20px rgba(0,0,0,.8)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.hero{position:relative;display:flex;align-items:center;gap:16px;padding:18px 22px;border-radius:22px;color:#fff;background:linear-gradient(115deg,var(--hero-a),var(--hero-b));overflow:hidden;flex-wrap:wrap}
+.hero::after{content:"";position:absolute;right:-60px;top:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.1)}
+.hero>*{position:relative;z-index:1}.hero>div{flex:1 1 320px;min-width:0}.hero h1{margin:0;font-size:21px}.hero p{margin:2px 0 0;font-size:13px;opacity:.93}.hero .em{font-size:38px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+.btn{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:5px 14px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;transition:transform .12s}
+.btn:hover{transform:translateY(-1px)}.btn.primary{background:var(--primary);color:var(--on-primary);border-color:transparent}.btn.danger{background:var(--bad-soft);color:var(--bad);border-color:transparent}.btn.glass{margin-left:auto;background:rgba(255,255,255,.95);color:#12304f;border-color:transparent}
+.panel{background:var(--surface);border-radius:18px;box-shadow:0 0 0 1px var(--line),var(--shadow);padding:14px 16px}
+.tag{font-size:10.5px;border-radius:999px;padding:1px 8px;background:var(--surface-3);color:var(--fg-2);font-weight:600;white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.wait{background:var(--wait-soft);color:var(--wait)}.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sp{margin-left:auto}
+h2{margin:0;font-size:16px}h3{margin:0;font-size:14px}small,.dim{color:var(--fg-3)}
+/* overview table */
+.tw{overflow:auto;border-radius:14px;box-shadow:0 0 0 1px var(--line)}table{border-collapse:collapse;width:100%;font-size:13px}th{background:var(--surface-2);color:var(--fg-3);text-align:left;padding:8px 11px;font-size:12px}td{padding:8px 11px;border-top:1px solid var(--line);vertical-align:top}
+.stars{color:#e0a100;letter-spacing:1px;white-space:nowrap}.eff{white-space:nowrap}
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--fg-2)}
+.tabs button[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.idea[hidden]{display:none}.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.why{display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--fg-2)}.why b{color:var(--fg)}.why ul{margin:2px 0 0;padding-left:18px}
+.mock{border-radius:16px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);padding:12px;display:flex;flex-direction:column;gap:10px}
+.mock-t{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--fg-3);font-weight:700}
+.card{background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:10px 12px}
+.meter{height:9px;border-radius:99px;background:var(--surface-3);overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--hero-a),var(--hero-b))}.meter.warn i{background:linear-gradient(90deg,#ffb938,#ff7a45)}.meter.bad i{background:var(--bad)}
+.ring{--p:0;--c:var(--hero-a);width:60px;height:60px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--surface-3) 0);position:relative;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}.ring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--surface)}.ring span{position:relative}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:10px 12px;background:var(--bad-soft);color:var(--bad)}.alert b{color:inherit}.alert .dim{color:var(--fg-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font:600 12px var(--mono);background:var(--surface-3);color:var(--fg-2)}.chip.bad{background:var(--bad-soft);color:var(--bad)}.chip button{border:0;background:none;cursor:pointer;color:inherit;padding:0}
+.term{background:var(--term);color:var(--term-fg);border-radius:12px;padding:10px 12px;font:12px/1.55 var(--mono);overflow:auto;white-space:pre}.term .hl{background:#ffd166;color:#10162b;border-radius:3px;padding:0 2px}.term .d{color:var(--term-dim)}
+.track{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.track .id{font:700 12px var(--mono);width:30px}.track .pet{font-size:22px;width:28px;text-align:center}.track .t{flex:1;min-width:0}.track .t small{display:block}
+.pill{border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.run{background:#dcebff;color:var(--claude)}.pill.wait{background:var(--wait-soft);color:var(--wait)}.pill.idle{background:var(--surface-3);color:var(--idle)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.palette{border-radius:16px;background:var(--surface);box-shadow:0 20px 40px -16px rgba(20,30,60,.45),0 0 0 1px var(--line);overflow:hidden}
+.palette input{width:100%;border:0;border-bottom:1px solid var(--line);padding:12px 14px;background:transparent;font-size:15px;outline:none}
+.hit{padding:8px 14px;border-bottom:1px solid var(--line);cursor:pointer}.hit:hover,.hit.on{background:var(--surface-2)}.hit .h{display:flex;align-items:center;gap:8px;font-weight:700}.hit .ln{font:12px var(--mono);color:var(--fg-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hit mark{background:#ffd166;color:#10162b;border-radius:3px;padding:0 2px}
+kbd{font:600 11px var(--mono);background:var(--surface-3);border-radius:6px;padding:1px 6px;box-shadow:inset 0 -1px 0 var(--line-strong)}
+.sz{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}.sz .n{flex:1;min-width:0;font:12px var(--mono);overflow:hidden;text-overflow:ellipsis}.sz b{font:700 12.5px var(--mono)}
+input[type=checkbox]{accent-color:var(--hero-a);width:16px;height:16px}
+.sn{display:flex;flex-direction:column;gap:6px;background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:10px 12px}.sn code{font:12px var(--mono);background:var(--surface-3);border-radius:8px;padding:6px 8px;white-space:pre-wrap}
+.var{background:#fff3c4;color:#7a5800;border-radius:5px;padding:0 4px}
+.tl{display:flex;flex-direction:column;gap:0}.tl .e{display:flex;gap:10px;padding:7px 0;position:relative}.tl .e::before{content:"";position:absolute;left:11px;top:26px;bottom:-7px;width:2px;background:var(--line)}.tl .e:last-child::before{display:none}.tl .dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--surface);box-shadow:0 0 0 1px var(--line);font-size:13px;flex:none;z-index:1}.tl time{font:11.5px var(--mono);color:var(--fg-3);width:42px;flex:none;padding-top:3px}
+.md{background:var(--term);color:var(--term-fg);border-radius:12px;padding:10px 12px;font:12px/1.55 var(--mono);white-space:pre-wrap}
+.note{font-size:12px;color:var(--fg-3)}
+</style>
+<style>
+.fact{display:flex;gap:10px;padding:8px 11px;border-radius:12px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);font-size:13px;color:var(--fg-2)}.fact b{color:var(--fg)}
+.lim{border-radius:12px;background:var(--wait-soft);color:var(--wait);padding:8px 12px;font-size:12.5px}.lim b{color:inherit}
+.rule{display:grid;grid-template-columns:1.1fr 1.3fr auto;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line);font:12px var(--mono)}
+.mat{width:100%;border-collapse:collapse;font-size:12.5px}.mat th{background:var(--surface-3);color:var(--fg-3);text-align:left;padding:6px 9px;font-size:11.5px}.mat td{padding:6px 9px;border-top:1px solid var(--line)}.mat .x{display:inline-block;width:22px;height:22px;border-radius:7px;text-align:center;line-height:22px;font-weight:800;font-size:12px}.x.on{background:#dcebff;color:var(--claude)}.x.hot{background:var(--bad-soft);color:var(--bad)}
+.bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--surface-3)}.bar i{display:block;height:100%}
+.pk{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;background:var(--surface);box-shadow:0 0 0 1px var(--line);font:12px var(--mono)}.pk span:first-child{flex:1;overflow:hidden;text-overflow:ellipsis}
+.big{font:800 22px var(--mono)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero"><span class="em">🎯</span><div><h1>4 ý lớn, bám vào thực tế của bạn</h1><p>Bỏ hết việc vặt. Cả 4 ý cùng giải quyết một vấn đề cốt lõi khi chạy nhiều AI tự làm việc song song: <b>ai kiểm chứng, ai giữ luật, ai thấy xung đột, ai tính được chi phí thật</b>. Tất cả bằng code thường, không tốn token AI.</p></div><button class="btn glass" id="theme">◐ Sáng / tối</button></section>
+
+  <section class="panel"><h2>Vì sao mình chọn đúng 4 ý này</h2>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-top:8px">
+      <div class="fact"><span>🚫</span><div><b>Luật bị vi phạm mà không ai biết.</b> Trên máy này có <b>162 phiên Codex dùng gpt-6-astra</b> trong tháng 11 dù đã cấm từ 06/10. Phát hiện chỉ vì bạn tình cờ mở báo cáo. Đây là điểm yếu chung: luật nằm trong tài liệu, không ai canh lúc chạy.</div></div>
+      <div class="fact"><span>⚔️</span><div><b>Nhiều AI sửa cùng một nơi.</b> Có thư mục <code>sfa-conflict-backup-20261025</code>, <b>169 task crew</b> trong đó <b>25 task có file cảnh báo va chạm</b>, và <code>crew-dispatch</code> có cả thông báo “base drift”. Xung đột chỉ lộ ra lúc rebase hoặc gộp, tức là sau khi công sức đã bỏ ra.</div></div>
+      <div class="fact"><span>🧠</span><div><b>Mất mạch khi đổi phiên.</b> Quy tắc của bạn: một task một phiên, phiên mới bắt đầu từ file trạng thái. Việc gom file trạng thái và tình trạng nhánh hiện nay làm tay, và AI phải tự khám phá lại, tốn token.</div></div>
+      <div class="fact"><span>💰</span><div><b>Chi phí AI không gắn được vào công việc.</b> Có báo cáo theo ngày, theo tài khoản, nhưng chưa ai trả lời được “tính năng này, khách hàng này tốn bao nhiêu đô để làm ra?”. Đó là con số cần cho ước lượng và báo giá.</div></div>
+    </div>
+    <p class="note" style="margin-top:8px">Mình chưa khảo sát thị trường nên không dám khẳng định “chưa ai làm”; điều chắc chắn là bốn việc này chưa có trong Termnest và chưa thấy trong quy trình hiện tại của bạn.</p></section>
+
+  <div class="tabs" id="tabs"><button aria-pressed="true" data-i="1">1 · Trạm gác luật (Watchdog)</button><button aria-pressed="false" data-i="2">2 · Radar xung đột</button><button aria-pressed="false" data-i="3">3 · Gói khởi động phiên mới</button><button aria-pressed="false" data-i="4">4 · Chi phí theo công việc</button></div>
+
+  <!-- 1 -->
+  <section class="idea" data-i="1"><div class="grid">
+    <div class="panel why"><h2>🛡️ Trạm gác luật: canh AI từ bên ngoài</h2>
+      <p><b>Vấn đề:</b> AI chạy lệnh trong shell riêng của nó; Termnest chỉ thấy màn hình. Luật đỏ của bạn (không migrate DB dùng chung, không force-push nhánh bảo vệ, không kích hoạt deploy, không xoá Redis dùng chung) hiện chỉ tồn tại trên giấy. Một lần vi phạm đã để lại <b>15 migration mồ côi</b> không nhánh nào tạo lại được.</p>
+      <b>Cách hoạt động (không AI):</b>
+      <ul><li>Tệp <b>luật khai báo</b> trong repo (mẫu tiến trình + điều kiện môi trường + hành động), do bạn viết dựa trên luật hiện có.</li><li>Termnest đã đọc bảng tiến trình mỗi chu kỳ; thêm bước so với luật: lệnh (<code>dotnet ef database update</code>, <code>git push --force</code>…), biến môi trường (<code>ConnectionStrings</code> trỏ DB dùng chung, <code>Redis__InstanceName</code> trùng).</li><li>Khớp luật thì: báo ngay lên đầu màn hình và <b>Đóng băng</b> cả cây tiến trình (<code>SIGSTOP</code>, hoàn tác được). Bạn chọn <b>Cho chạy tiếp</b>, <b>Dừng hẳn</b>, hoặc <b>Bỏ qua</b> kèm lý do.</li><li>Mọi vi phạm vào một nhật ký: giờ, phiên, lệnh, quyết định của bạn. Dùng làm bằng chứng khi kiểm toán crew.</li></ul>
+      <div class="lim"><b>Giới hạn thật:</b> dựa trên lấy mẫu tiến trình nên có thể bỏ sót lệnh chạy dưới 1–2 giây; hiệu quả với migration, build, test, push kéo dài vài giây trở lên. Muốn chặn chắc chắn <i>trước</i> khi chạy phải cài thêm lớp bọc lệnh (<code>git</code>, <code>dotnet</code>) ở máy; mình để làm tuỳ chọn. Chỉ bảo vệ khỏi sai sót, không chống người cố tình lách.</div></div>
+    <div class="mock"><div class="mock-t">Mockup · cảnh báo đỏ ở đầu màn hình</div>
+      <div class="alert" style="align-items:center"><span style="font-size:26px">⛔</span><div style="flex:1"><b>Smart-Visibility đang chạy lệnh vi phạm luật</b><br><span class="dim"><code>dotnet ef database update</code> · DB đích <b>Xspire_BlazorServer_Dev</b> (dùng chung) · luật R-03 “Không migrate DB dùng chung” · đã chạy 6 giây</span>
+        <div class="row" style="margin-top:8px"><button class="btn primary">❄ Đã đóng băng</button><button class="btn">▶ Cho chạy tiếp</button><button class="btn danger">✖ Dừng hẳn</button><button class="btn">Bỏ qua…</button></div></div></div>
+      <div class="card"><h3>Luật đang bật <span class="tag">đọc từ policy.json trong repo</span></h3>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          <div class="rule"><span>R-01 · model cấm</span><span>codex.model ~ "astra"</span><span class="tag wait">cảnh báo</span></div>
+          <div class="rule"><span>R-03 · migrate dùng chung</span><span>cmd ~ "database update" &amp; env.DB ∈ shared</span><span class="tag bad">đóng băng</span></div>
+          <div class="rule"><span>R-05 · force push</span><span>cmd ~ "push .*--force" &amp; branch ∈ protected</span><span class="tag bad">đóng băng</span></div>
+          <div class="rule"><span>R-07 · Redis chung</span><span>env.Redis__InstanceName == "Xspire-dev"</span><span class="tag wait">cảnh báo</span></div></div></div>
+      <div class="card"><h3>Nhật ký</h3><div class="tw" style="margin-top:6px"><table style="font-size:12px"><tr><th>Giờ</th><th>Phiên</th><th>Luật</th><th>Quyết định</th></tr><tr><td>11:42</td><td>Smart-Visibility</td><td>R-03</td><td>Dừng hẳn</td></tr><tr><td>10:15</td><td>Vifon-SV</td><td>R-01</td><td>Bỏ qua: “chạy thử, đã biết”</td></tr></table></div></div></div></div></section>
+
+  <!-- 2 -->
+  <section class="idea" data-i="2" hidden><div class="grid">
+    <div class="panel why"><h2>📡 Radar xung đột giữa các phiên</h2>
+      <p><b>Vấn đề:</b> khi 3–6 AI cùng làm trong một workspace nhiều repo, chúng có thể sửa cùng một tệp, cùng một nhánh, hoặc dựng trên một nhánh gốc đã đi tiếp. Mỗi AI chỉ thấy phần của mình nên chỉ biết khi rebase hoặc gộp thất bại.</p>
+      <b>Cách hoạt động (không AI):</b>
+      <ul><li>Với thư mục của mỗi phiên, Termnest lấy <code>git status --porcelain</code>, <code>git diff --name-only</code> và vị trí so với nhánh gốc (chỉ đọc), gom theo repo trên mọi máy.</li><li><b>Ma trận “ai chạm tệp nào”</b>: ô đỏ khi hai phiên cùng sửa một tệp, vàng khi cùng một nhánh hoặc cùng worktree.</li><li><b>Trôi gốc:</b> nhánh gốc đã thêm N commit so với chỗ phiên bắt đầu, nhắc rebase sớm.</li><li>Báo <b>trước</b> khi xung đột xảy ra, kèm lối tắt mở hai phiên liên quan.</li></ul>
+      <div class="lim"><b>Giới hạn thật:</b> phát hiện trùng ở mức tệp, không biết hai thay đổi khác dòng có mâu thuẫn về ý nghĩa hay không; chỉ thấy các thay đổi chưa commit và commit cục bộ trên máy đã kết nối.</div></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Xung đột</div>
+      <div class="alert"><span style="font-size:22px">⚔️</span><div><b>2 phiên cùng sửa một tệp</b><br><span class="dim">hqsoft.xspire.shared · <code>…/ModuleScreenSeedData.cs</code></span><div class="row" style="margin-top:6px"><button class="btn">Mở Smart-Visibility</button><button class="btn">Mở Token-ai</button></div></div></div>
+      <table class="mat"><tr><th>Repo / tệp</th><th>Smart-Visibility</th><th>Token-ai</th><th>Vifon-SV</th></tr>
+        <tr><td>shared · ModuleScreenSeedData.cs</td><td><span class="x hot">✎</span></td><td><span class="x hot">✎</span></td><td></td></tr>
+        <tr><td>shared · en.json / vi.json</td><td><span class="x on">✎</span></td><td></td><td></td></tr>
+        <tr><td>salesdistribution · Mobile/…Controller.cs</td><td></td><td><span class="x on">✎</span></td><td><span class="x on">✎</span></td></tr></table>
+      <div class="card" style="box-shadow:0 0 0 2px var(--wait)"><div class="row"><span style="font-size:20px">🧭</span><div><b>Trôi gốc · worktree W6</b><br><small>develop đã thêm 3 commit từ lúc W6 bắt đầu (10:12)</small></div><button class="btn sp">Xem commit</button></div></div>
+      <p class="note" style="margin:0">Dữ liệu mẫu.</p></div></div></section>
+
+  <!-- 3 -->
+  <section class="idea" data-i="3" hidden><div class="grid">
+    <div class="panel why"><h2>🧳 Gói khởi động phiên mới từ trạng thái thật</h2>
+      <p><b>Vấn đề:</b> quy tắc của bạn là không kéo dài phiên, mà bắt đầu phiên mới từ file trạng thái. Nhưng gom đúng thông tin (file tracking, nhánh, thay đổi chưa commit, test đang đỏ, bước kế tiếp) đang làm tay, và phiên mới thường phải <b>tự khám phá lại từ đầu, tốn token</b>.</p>
+      <b>Cách hoạt động (không AI):</b>
+      <ul><li>Một nút “Đóng gói để chuyển phiên” tạo <b>một tệp Markdown nhỏ</b> từ dữ liệu có thật: file tracking của work-stream, nhánh và MR, <code>git status</code> và <code>diff --stat</code>, đuôi của lệnh test lỗi gần nhất, các mục chưa tick trong checklist.</li><li>Hiện <b>kích thước và ước tính token</b> trước khi dùng; bạn bỏ bớt mục nào cũng được.</li><li>“Mở phiên mới với gói này” tạo phiên cùng thư mục và dán <b>một dòng</b> trỏ tới tệp gói.</li></ul>
+      <div class="lim"><b>Giới hạn thật:</b> phụ thuộc quy ước thư mục của bạn (<code>Implementation/&lt;stream&gt;/*TRACKING*.md</code>), nên cần khai báo mẫu tìm tệp; không tóm tắt nội dung, chỉ đưa nguyên văn và số liệu.</div></div>
+    <div class="mock"><div class="mock-t">Mockup · đóng gói phiên Smart-Visibility</div>
+      <div class="card"><div class="row"><h3>Gói chuyển phiên</h3><span class="sp tag ok">6,4 KB · ≈ 1.700 token</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          <div class="pk"><input type="checkbox" checked><span>Implementation/Smart-Visibility/…TRACKING.md (mục chưa xong)</span><b>2,1 KB</b></div>
+          <div class="pk"><input type="checkbox" checked><span>Nhánh crew/20261102-sv-ev-photo-perf · MR !482 · pipeline xanh</span><b>0,2 KB</b></div>
+          <div class="pk"><input type="checkbox" checked><span>git status + diff --stat (3 tệp, +86/−12)</span><b>0,7 KB</b></div>
+          <div class="pk"><input type="checkbox" checked><span>Đuôi test lỗi gần nhất (npm test, 14:02)</span><b>1,2 KB</b></div>
+          <div class="pk"><input type="checkbox"><span>Toàn bộ log W6 (đã bỏ chọn, quá dài)</span><b>48 KB</b></div></div></div>
+      <div class="card"><h3>Dòng sẽ dán vào phiên mới</h3><div class="term" style="margin-top:6px;white-space:pre-wrap">Đọc /tmp/termnest-pack/20261103-sv-ev-photo-perf.md rồi tiếp tục từ bước W6, không cần khám phá lại.</div>
+        <div class="row" style="margin-top:8px"><button class="btn primary">▶ Mở phiên mới với gói này</button><button class="btn">Lưu gói</button></div></div></div></div></section>
+
+  <!-- 4 -->
+  <section class="idea" data-i="4" hidden><div class="grid">
+    <div class="panel why"><h2>📊 Chi phí AI theo công việc, không chỉ theo tài khoản</h2>
+      <p><b>Vấn đề:</b> báo cáo hiện có cho biết đã tiêu bao nhiêu theo ngày, tài khoản, model. Nhưng người làm phần mềm cần câu hỏi khác: <b>tính năng này, dự án khách này, đợt này tốn bao nhiêu để làm ra</b>. Đó là con số để ước lượng lần sau, báo giá, và cân nhắc “giao cho AI có lời không”.</p>
+      <b>Cách hoạt động (không AI):</b>
+      <ul><li>Lấy chi phí <b>theo từng phiên</b> từ ccusage (đã dùng cho báo cáo hiện có), kèm thư mục dự án của phiên.</li><li><b>Luật gán</b> do bạn khai báo: thư mục hoặc nhánh khớp mẫu thì thuộc work-stream nào (ví dụ <code>Implementation/Smart-Visibility</code> → “Smart-Visibility”). Phần không khớp vào nhóm “Chưa gán”, kèm nút tạo luật.</li><li>Bảng theo work-stream: số phiên, token, chi phí, theo tuần; so với ngân sách bạn đặt; xuất CSV để đưa vào bảng tính.</li></ul>
+      <div class="lim"><b>Giới hạn thật:</b> gán dựa trên thư mục và nhánh nên là ước lượng, không chính xác tuyệt đối khi một phiên làm nhiều việc; chi phí Codex không có theo model nên tính ở mức ngày.</div></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Chi phí theo công việc · tháng 11</div>
+      <div class="card"><div class="bar"><i style="width:42%;background:#3270f5" title="Smart-Visibility"></i><i style="width:24%;background:#7b61ff"></i><i style="width:16%;background:#0fb5ae"></i><i style="width:18%;background:var(--surface-3)"></i></div><div class="row" style="margin-top:6px"><span class="note">■ Smart-Visibility · ■ Token-ai · ■ Vifon-SV · □ Chưa gán 18%</span></div></div>
+      <div class="tw"><table style="font-size:12.5px"><thead><tr><th>Work-stream</th><th>Phiên</th><th>Token</th><th>Chi phí</th><th>Ngân sách</th></tr></thead><tbody>
+        <tr><td><b>Smart-Visibility</b><br><small>luật: Implementation/Smart-Visibility/**</small></td><td>14</td><td>0,98 tỷ</td><td><b>$243,10</b></td><td><div class="meter warn" style="width:90px"><i style="width:81%"></i></div><small>81% của $300</small></td></tr>
+        <tr><td><b>Token-ai</b></td><td>9</td><td>0,56 tỷ</td><td><b>$138,40</b></td><td><div class="meter" style="width:90px"><i style="width:46%"></i></div><small>46% của $300</small></td></tr>
+        <tr><td><b>Vifon-SV</b></td><td>5</td><td>0,21 tỷ</td><td><b>$92,05</b></td><td><small>chưa đặt</small></td></tr>
+        <tr><td><span class="tag wait">Chưa gán</span> 7 phiên</td><td>7</td><td>0,25 tỷ</td><td><b>$104,31</b></td><td><button class="btn">+ Tạo luật gán</button></td></tr></tbody></table></div>
+      <div class="row"><button class="btn">⬇ Xuất CSV</button><span class="note sp">Dữ liệu mẫu</span></div></div></div></section>
+
+  <section class="panel"><h2>Thứ tự mình đề xuất, và vì sao</h2>
+    <p style="margin:6px 0 0;color:var(--fg-2)"><b>1 → 4 → 2 → 3.</b> Ý <b>1 (Trạm gác luật)</b> quan trọng nhất vì là thứ duy nhất ngăn được sai sót không hoàn tác (migration vào DB dùng chung, force-push) thay vì chỉ báo sau khi xảy ra. Ý <b>4 (Chi phí theo công việc)</b> là ý có giá trị kinh doanh rõ nhất và tận dụng trực tiếp báo cáo vừa làm. Ý <b>2</b> và <b>3</b> có ích rõ khi bạn chạy từ 3 phiên song song trở lên. Mockup chỉ minh hoạ, số liệu mẫu; chưa có dòng code nào.</p></section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));document.querySelectorAll('.idea').forEach(s=>s.hidden=s.dataset.i!==b.dataset.i);};
+$('theme').onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';};
+</script>
+</body>
+</html>
