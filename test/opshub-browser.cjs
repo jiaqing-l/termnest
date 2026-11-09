@@ -106,6 +106,7 @@ let chrome, ws;
   await send('Runtime.enable'); await send('Page.enable');
   await send('Page.navigate', { url: 'http://127.0.0.1:' + server.address().port });
   await until('!!document.querySelector(".hub-title") && document.querySelector(".hub-title").textContent.length > 5 && !/Đang tải/.test(document.querySelector(".hub-title").textContent)', 'hero');
+  if (process.env.DARK === '1') await evaluate("document.documentElement.setAttribute('data-theme','dark')");
   const real = process.env.REAL_LOCAL === '1';
   if (!real) {
     assert.match(await evaluate('document.querySelector(".hub-title").textContent'), /1 team đang chạy · 1 việc cần anh/);

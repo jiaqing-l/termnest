@@ -52,10 +52,12 @@ test('a signal is sent only when pid and command line still match, and freeze/re
 // with the database name and never the rest of the connection string.
 test('migration rule reports only shared databases and never leaks the connection string', { skip: process.platform === 'win32' }, async (t) => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), cp = require('node:child_process');
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-wd-'))), bin = path.join(dir, 'DbMigrator');
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-wd-'))), bin = path.join(dir, 'HQSOFT.Xspire.DbMigrator');
   fs.symlinkSync(process.execPath, bin);
   const start = (db) => cp.spawn(bin, ['-e', 'setTimeout(()=>{},20000)'], { env: { ...process.env, ConnectionStrings__Default: `Host=x;Database=${db};Password=s3cret` }, stdio: 'ignore' });
-  const kids = [start('Xspire_dev_me'), start('Xspire_BlazorServer_Dev')];
+  const kids = [start('Xspire_dev_me'), start('Xspire_BlazorServer_Dev'),
+    // No database in its environment and no appsettings in its folder: unknown, never reported.
+    cp.spawn(bin, ['-e', 'setTimeout(()=>{},20000)'], { env: { PATH: process.env.PATH }, cwd: dir, stdio: 'ignore' })];
   t.after(() => { kids.forEach((k) => k.kill()); fs.rmSync(dir, { recursive: true, force: true }); });
   await new Promise((r) => setTimeout(r, 800));
   const w = require('../lib/features/watchdog');
@@ -63,4 +65,10 @@ test('migration rule reports only shared databases and never leaks the connectio
   const mine = r.found.filter((f) => f.args.includes(bin));
   assert.deepEqual(mine.map((f) => f.db), ['Xspire_BlazorServer_Dev']);
   assert.ok(!JSON.stringify(r).includes('s3cret'));
+  // Building the DbMigrator project is not a migration.
+  const rule = w.DEFAULT_RULES.find((x) => x.id === 'ef-update'), on = (c) => new RegExp(rule.argsRegex).test(c) && !new RegExp(rule.unlessRegex).test(c);
+  assert.equal(on('dotnet build src/HQSOFT.Xspire.DbMigrator/HQSOFT.Xspire.DbMigrator.csproj'), false);
+  assert.equal(on('/usr/share/dotnet/dotnet /usr/share/dotnet/sdk/10.0/MSBuild.dll src/HQSOFT.Xspire.DbMigrator'), false);
+  assert.equal(on('dotnet bin/Debug/net10.0/HQSOFT.Xspire.DbMigrator.dll'), true);
+  assert.equal(on('dotnet ef database update'), true);
 });

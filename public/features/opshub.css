@@ -1,4 +1,7 @@
 /* Ops hub ("Trạm Ops") — app tokens only, so light and dark follow the app theme. */
+/* "Running" blue that stays readable on dark surfaces (the brand --hero-b is too dark there). */
+:root{--hub-run:#2f80ed}
+:root[data-theme="dark"]{--hub-run:#7fb0ff}
 .hub{display:flex;flex-direction:column;gap:12px;min-width:0}
 .hub .hub-mono{font-family:var(--mono,ui-monospace,monospace)}
 .hub-hero{position:relative;display:flex;align-items:stretch;gap:16px;padding:16px 20px;border-radius:20px;color:#fff;background:linear-gradient(115deg,var(--hero-a,#0fb5ae),var(--hero-b,#2f80ed));overflow:hidden;min-width:0}
@@ -64,7 +67,7 @@
 .hub-tag{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap;flex:none}
 .hub-tag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .t-ok{background:var(--ok-soft);color:var(--ok)}.t-wait{background:var(--wait-soft);color:var(--wait)}.t-bad{background:var(--bad-soft);color:var(--bad)}
-.t-idle{background:var(--surface-3);color:var(--fg-3)}.t-run{background:color-mix(in srgb,var(--hero-b,#2f80ed) 14%,var(--surface));color:var(--hero-b,#2f80ed)}
+.t-idle{background:var(--surface-3);color:var(--fg-3)}.t-run{background:color-mix(in srgb,var(--hub-run) 14%,var(--surface));color:var(--hub-run)}
 .hub-bad{color:var(--bad);font-weight:700}.hub-ok{color:var(--ok);font-weight:700}
 
 .hub-wq{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:10px 14px;border-bottom:1px solid var(--line)}
@@ -78,14 +81,14 @@
 .hub-acct-t b{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hub-acct-t .hub-badge{flex:none;margin-left:0}
 .hub-acct-t span{font-size:11.5px;color:var(--fg-3);white-space:nowrap}
-.hub-badge{font:800 10px var(--round,inherit);background:color-mix(in srgb,var(--hero-b,#2f80ed) 14%,var(--surface));color:var(--hero-b,#2f80ed);border-radius:6px;padding:1px 6px;margin-left:6px}
+.hub-badge{font:800 10px var(--round,inherit);background:color-mix(in srgb,var(--hub-run) 14%,var(--surface));color:var(--hub-run);border-radius:6px;padding:1px 6px;margin-left:6px}
 .hub-meter{height:6px;border-radius:6px;background:var(--surface-3);overflow:hidden}
 .hub-meter i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--hero-a,#0fb5ae),var(--hero-b,#2f80ed))}
 .hub-meter.warn i{background:var(--wait-line,#ffb938)}.hub-meter.bad i{background:var(--bad)}
 
 .hub-task{display:flex;flex-direction:column;gap:9px;padding:13px 14px;border-radius:14px;background:var(--surface-2);min-width:0}
 .hub-task-h{display:flex;gap:10px;align-items:center;min-width:0}
-.hub-ava{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;font:900 16px var(--round,inherit);background:color-mix(in srgb,var(--hero-b,#2f80ed) 18%,var(--surface));color:var(--hero-b,#2f80ed)}
+.hub-ava{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;font:900 16px var(--round,inherit);background:color-mix(in srgb,var(--hub-run) 18%,var(--surface));color:var(--hub-run)}
 .hub-task-who{flex:1;min-width:0;display:flex;flex-direction:column}
 .hub-task-who b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hub-task-who small{font-size:12px;color:var(--fg-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -95,7 +98,7 @@
 .hub-stack{flex:1;display:flex;gap:2px;height:9px;border-radius:9px;overflow:hidden;background:var(--surface-3)}
 .hub-stack i{display:block;height:100%}
 .hub-prog b{font-size:12px;white-space:nowrap}
-.c-ok{--c:var(--ok)}.c-wait{--c:var(--wait-line,#ffb938)}.c-run{--c:var(--hero-b,#2f80ed)}.c-bad{--c:var(--bad)}.c-idle{--c:var(--fg-3)}
+.c-ok{--c:var(--ok)}.c-wait{--c:var(--wait-line,#ffb938)}.c-run{--c:var(--hub-run)}.c-bad{--c:var(--bad)}.c-idle{--c:var(--fg-3)}
 .hub-stack i,.hub-legend i{background:var(--c)}
 .hub-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--fg-3)}
 .hub-legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
@@ -127,7 +130,7 @@ dl.hub-sum dd{margin:0;overflow-wrap:anywhere}
 .hub-kpi{background:var(--surface-2);border-radius:12px;padding:8px 12px}
 .hub-kpi b{display:block;font:900 21px var(--round,inherit)}
 .hub-kpi span{font-size:11.5px;color:var(--fg-3);letter-spacing:.03em}
-.hub-kpi.bad b{color:var(--bad)}.hub-kpi.wait b{color:var(--wait)}.hub-kpi.run b{color:var(--hero-b,#2f80ed)}
+.hub-kpi.bad b{color:var(--bad)}.hub-kpi.wait b{color:var(--wait)}.hub-kpi.run b{color:var(--hub-run)}
 .hub-aihead{display:flex;gap:10px;align-items:center}
 .hub-aisum{margin:0;font-size:14px;line-height:1.55}
 .hub-find{display:grid;grid-template-columns:82px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
@@ -137,7 +140,7 @@ dl.hub-sum dd{margin:0;overflow-wrap:anywhere}
 .hub-ev{font:500 11.5px var(--mono,monospace);color:var(--fg-3);margin-top:3px;overflow-wrap:anywhere}
 .hub-sev{font:800 10.5px var(--round,inherit);letter-spacing:.04em;border-radius:7px;padding:3px 6px;text-align:center}
 .s-BLOCKER{background:var(--bad-soft);color:var(--bad)}.s-WASTE{background:var(--wait-soft);color:var(--wait)}
-.s-DRIFT{background:color-mix(in srgb,var(--hero-b,#2f80ed) 14%,var(--surface));color:var(--hero-b,#2f80ed)}.s-INFO{background:var(--surface-3);color:var(--fg-3)}
+.s-DRIFT{background:color-mix(in srgb,var(--hub-run) 14%,var(--surface));color:var(--hub-run)}.s-INFO{background:var(--surface-3);color:var(--fg-3)}
 .hub-rulesbox summary{cursor:pointer;font-size:12.5px;color:var(--fg-3);padding:6px 0}
 
 .hub-chat{display:flex;flex-direction:column;gap:10px;min-height:120px}
