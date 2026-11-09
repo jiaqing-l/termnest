@@ -141,7 +141,8 @@
   const zMinus=doc.createElement('button'),zPlus=doc.createElement('button');
   [[zMinus,'A−',-0.1,'fileviewer.chu_nho'],[zPlus,'A+',0.1,'fileviewer.chu_to']].forEach(([b,t,d,k])=>{b.type='button';b.className='btn viewer-tool';b.textContent=t;b.title=i18n(k);b.setAttribute('aria-label',i18n(k));
    b.onclick=()=>{scale=Math.round(Math.max(0.7,Math.min(1.8,scale+d))*10)/10;applyScale();try{localStorage.setItem('tw-viewer-scale',String(scale));}catch{/* optional */}};});
-  const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';};
+  const zoomFrame=()=>{const f=body.querySelector('iframe');if(f&&f.contentWindow)f.contentWindow.postMessage({tw:'zoom',scale},'*');};
+  const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';zoomFrame();};
   zoom.append(zMinus,zPlus);applyScale();
   insert.className+=' viewer-insert';close.className+=' viewer-close';
   head.append(title,back,insert,zoom,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
@@ -211,7 +212,7 @@
     if(file.kind==='image'){showImage(file,host,session);return;}
     if(file.kind==='html'){
      const note=doc.createElement('p');note.className='viewer-note';note.textContent=i18n('fileviewer.ban_html_chay_trong_khung');body.append(note);
-     const frame=htmlFrame(doc,'');frame.removeAttribute('srcdoc');frame.src='/api/file-preview?'+query;body.append(frame);
+     const frame=htmlFrame(doc,'');frame.removeAttribute('srcdoc');frame.src='/api/file-preview?'+query;frame.addEventListener('load',zoomFrame);body.append(frame);
     }else if(file.kind==='markdown'){
      const content=doc.createElement('article');content.className='document';body.append(content);
      worker=new Worker('/markdown-worker.js');

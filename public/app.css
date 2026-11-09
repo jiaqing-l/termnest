@@ -1339,7 +1339,7 @@ dialog.drop-remote{display:none}
 .file-content pre,.file-content .document{font-size:calc(1em * 1)}
 .file-content .document{font-size:calc(15px * var(--viewer-scale,1))}
 .file-content pre{font-size:calc(13px * var(--viewer-scale,1))}
-.file-content iframe{zoom:var(--viewer-scale,1)}
+/* The frame fills the viewer; A-/A+ zoom only the page inside it (sent by postMessage), never the frame box. */
 /* Trash and temp files: a clean list, a friendly empty state, one short footnote */
 .viewer-list-head{padding:4px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:6px}
 .viewer-list-head b{font-size:15px}
