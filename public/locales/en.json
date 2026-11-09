@@ -313,7 +313,7 @@
   "fileviewer.khong_sao_chep_duoc_duong": "Could not copy. Full path: {0}",
   "fileviewer.khong_luu_duoc": "Could not save",
   "fileviewer.dang_doc_tep": "Reading file…",
-  "fileviewer.ban_html_chay_trong_khung": "The HTML runs in an isolated frame. Pictures and CSS in the session folder are embedded for you; scripts outside the file and network resources are not loaded; inline CSS and scripts still work.",
+  "fileviewer.ban_html_chay_trong_khung": "The HTML runs in an isolated frame. Images, CSS and scripts (.js) in the session's folder are embedded; network resources are not loaded.",
   "fileviewer.khong_dung_duoc_markdown_hay": "Could not render Markdown. Download it or reload.",
   "fileviewer.ban_xem_truoc_van_ban": "The text preview shows at most 200,000 characters / 2,000 lines. Download to see the whole file (up to 5 MB).",
   "fileviewer.chon_tep_khac": "Choose another file…",

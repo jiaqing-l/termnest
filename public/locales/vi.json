@@ -313,7 +313,7 @@
   "fileviewer.khong_sao_chep_duoc_duong": "Không sao chép được. Đường dẫn đầy đủ: {0}",
   "fileviewer.khong_luu_duoc": "Không lưu được",
   "fileviewer.dang_doc_tep": "Đang đọc tệp…",
-  "fileviewer.ban_html_chay_trong_khung": "Bản HTML chạy trong khung cách ly. Ảnh và CSS nằm trong thư mục của phiên được nhúng sẵn; script ngoài tệp và tài nguyên từ mạng không được tải; CSS và script nội tuyến vẫn hoạt động.",
+  "fileviewer.ban_html_chay_trong_khung": "Bản HTML chạy trong khung cách ly. Ảnh, CSS và script (.js) nằm trong thư mục của phiên được nhúng sẵn; tài nguyên từ mạng không được tải.",
   "fileviewer.khong_dung_duoc_markdown_hay": "Không dựng được Markdown. Hãy tải xuống hoặc tải lại.",
   "fileviewer.ban_xem_truoc_van_ban": "Bản xem trước văn bản tối đa 200.000 ký tự / 2.000 dòng. Tải xuống để xem toàn bộ tệp (tối đa 5 MB).",
   "fileviewer.chon_tep_khac": "Chọn tệp khác…",
