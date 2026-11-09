@@ -111,6 +111,12 @@ let chrome, ws, closeBrowser, chromeError = '';
   assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'no overflow at ' + width);
   const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true }); fs.writeFileSync(path.join(shots, 'crew-autopilot-' + width + '.png'), Buffer.from(shot.data, 'base64'));
  }
+ // Session side panel: a leader gets a Crew block with its task and workers; a plain session gets none.
+ const side = await evaluate(`(()=>{const a=document.createElement('div'),b=document.createElement('div');document.body.append(a,b);
+  TW.renderDetail(a,{v:{id:'vm2'},s:{name:'crew-sfa'}});TW.renderDetail(b,{v:{id:'mac'},s:{name:'PG-App'}});
+  const ca=a.querySelector('.ops-crew-detail'),cb=b.querySelector('.ops-crew-detail');return [ca&&!ca.hidden?ca.textContent:'',cb&&!cb.hidden?'shown':'']})()`);
+ assert.ok(side[0].includes('20261108-sfa-route-kpi') && side[0].includes('1 worker'), 'leader side panel: ' + side[0]);
+ assert.equal(side[1], '', 'no crew block for a non-leader session');
  // Exclude one team.
  await evaluate('[...document.querySelectorAll(".ops-crew-team")].find(r=>r.textContent.includes("crew-dex")).querySelector("input").click()');
  await until('[...document.querySelectorAll(".ops-crew-team")].find(r=>r.textContent.includes("crew-dex")).textContent.includes("Không trông")', 'excluded read back');

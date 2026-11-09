@@ -377,3 +377,9 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .ops-crew-pick{font:inherit;font-size:13px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:inherit;max-width:100%}
 .ops-crew-dormant summary{cursor:pointer}
 .ops-crew-ids{font:11.5px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}
+
+/* Session side panel: the crew work this leader runs */
+.ops-crew-detail{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.ops-crew-detail h3{margin:0;font-size:13px}
+.ops-crew-detail .ops-crew-tasks{margin:4px 0}
+.ops-crew-detail .btn{margin-top:6px}

@@ -115,13 +115,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     if (!hostFresh(s) || ['progressing', 'idle', 'waiting_owner', 'blocked', 'stalled', 'unknown', 'completed'].indexOf(t.status) < 0) return 'unknown';
     var progress = new Date(t.lastProgressAt || 0).getTime();
     if (t.status === 'progressing' && (!Number.isFinite(progress) || progress <= 0 || progress > Date.now())) return 'unknown';
+    // The agent reports itself busy but crew has recorded no round yet: say exactly that, not "unknown".
+    var code = t.reason && t.reason.code;
+    if (t.status === 'unknown' && code === 'awaiting_task_progress' && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy'; }
     return t.status;
   }
 
   // Crew autopilot settings. Every value shown comes from the backend: the agent's own status file (Claude/Codex),
   // crew files (_crew/tasks, _crew/nudge.conf) and the process table. Missing data is shown as unknown, never inferred.
   var CREW_STATE = { progressing: ['ok', 's_progressing'], idle: ['idle', 's_idle'], waiting_owner: ['wait', 's_waiting'], blocked: ['bad', 's_blocked'],
-    stalled: ['wait', 's_stalled'], completed: ['ok', 's_completed'], unknown: ['idle', 's_unknown'] };
+    stalled: ['wait', 's_stalled'], completed: ['ok', 's_completed'], unknown: ['idle', 's_unknown'], busy: ['ok', 's_busy'] };
   var crewBody = null, crewSwitch = null, crewSwitchNote = null, crewInterval = null, crewMessage = '';
   function c(key, params) { return i18n('ops.crew.' + key, params); }
   function ago(at) {
@@ -268,6 +271,26 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     if (inSettings && crewOn() && last) m.append(el('p', 'ops-note', c('audit_last', [ago(last.createdAt) || stamp(last.createdAt), explanation(last.reason)])));
     return m;
   }
+  // Session side panel: what crew work this session leads (only when it is a discovered leader), from the same data.
+  var crewDetails = {};
+  function crewDetail(box, serverId, name) {
+    box.textContent = '';
+    var server = crewOn() && list(supervision.servers).find(function (v) { return v.id === serverId; });
+    var d = server && list(server.discovered).find(function (x) { return x.session === name; });
+    box.hidden = !d; if (!d) return;
+    var team = list(server.teams).find(function (t) { return t.session === name && t.root === d.root; });
+    var head = el('div', 'ops-crew-head'); head.append(el('h3', '', c('detail_title')), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(team ? teamState(server, team) : 'unknown'));
+    box.append(head, el('div', 'ops-crew-tasks', ids(d.taskIds).join(' · ') || '—'), el('div', 'ops-note', agentLine(serverId, name)));
+    if (team) box.append(el('div', 'ops-note', team.lastProgressAt ? c('progress', [ago(team.lastProgressAt) || stamp(team.lastProgressAt)]) : c('no_progress')));
+    box.append(button(c('detail_open'), 'ghost', function () { TW.app().setView('ops'); }));
+  }
+  function refreshCrewDetails() {
+    Object.keys(crewDetails).forEach(function (k) { var e = crewDetails[k]; if (!e.box.isConnected) { delete crewDetails[k]; return; } crewDetail(e.box, e.serverId, e.name); });
+  }
+  if (TW.addDetailSection) TW.addDetailSection(function (x) {
+    var box = el('section', 'ops-crew-detail'); box.hidden = true;
+    crewDetails[x.v.id + '/' + x.s.name] = { box: box, serverId: x.v.id, name: x.s.name }; crewDetail(box, x.v.id, x.s.name); return box;
+  });
   function needYou() {
     var out = [];
     if (!crewOn()) return out;
@@ -287,6 +310,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     list(supervision.auditReadiness).forEach(function (a) {
       if (!a.requiresOwner || a.code === 'host_unavailable') return;
       var server = list(supervision.servers).find(function (s) { return s.id === a.serverId; });
+      // ops-audit only matters where a crew leader works: a workspace with no team needs no audit account.
+      if (server && !list(server.discovered).some(function (d) { return d.root === a.root && !d.excluded; })) return;
       if (server) out.push({ server: server, who: c('audit_account_who'), why: explanation(a.code) + ' · ' + text(a.root), tasks: [], bad: false });
     });
     return out;
@@ -335,7 +360,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       if (!r || typeof r.enabled !== 'boolean' || !Array.isArray(r.servers)) throw Error('invalid supervision');
       supervision = r; supervisionError = false;
     }).catch(function () { if (revision === supervisionRevision) { supervision = null; supervisionError = true; } })
-      .finally(function () { supervisionFetching = false; renderSupervision(); draw(); });
+      .finally(function () { supervisionFetching = false; renderSupervision(); draw(); refreshCrewDetails(); });
   }
 
   // Short status for the second half of a row ("<session> — <status>"); the session or job name is the first half.
