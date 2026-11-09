@@ -254,3 +254,15 @@ test('local readiness/action helper uses an asynchronous isolated exec transport
   const status = await running.facade.status(); assert.equal(status.auditReadiness[0].code, 'audit_account_required');
   assert.equal(commands.length, 1); assert.ok(commands[0].startsWith('node -e ')); assert.ok(commands[0].includes('coordination_platform_unavailable'));
 });
+
+test('track popup data: rounds, failure files with time, log tail; tokens masked; nothing outside the task', async (t) => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-track-'))); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const dir = path.join(root, '_crew', 'tasks', 'T1', 'tracks', 'W0'); fs.mkdirSync(path.join(dir, 'logs'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'ROUNDS.tsv'), '1\t2026-11-09T11:43:06+07:00\t2026-11-09T11:44:11+07:00\t65\t7\t47240\tfix\tcodex\tgpt-6.1-sol\thigh\tbackend\n');
+  fs.writeFileSync(path.join(dir, 'FAILED'), 'verify failed; token=glpat-abcdefghijklmnop');
+  fs.writeFileSync(path.join(dir, 'logs', 'codex-1.log'), 'line\npassword=hunter22 end');
+  const r = await cp.trackRuntime()({ root, task: 'T1', id: 'W0' });
+  assert.equal(r.rounds[0].exit, '7'); assert.equal(r.rounds[0].kind, 'fix');
+  assert.ok(r.files.FAILED.at > 0); assert.ok(!r.files.FAILED.text.includes('abcdefghijklmnop')); assert.ok(!r.log.includes('hunter22'));
+  assert.equal((await cp.trackRuntime()({ root, task: 'T1', id: 'W9' })).error, 'missing');
+});

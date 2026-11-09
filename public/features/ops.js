@@ -302,7 +302,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         var chips = el('div', 'ops-crew-chips');
         tr.forEach(function (k) {
           var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
-          chips.append(el('span', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : '')));
+          var chip = el('button', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : ''));
+          chip.type = 'button'; chip.title = c('track_open');
+          chip.onclick = function () { trackPopup(serverId, d.root, t, k, running); };
+          chips.append(chip);
         });
         card.append(chips);
       }
@@ -311,6 +314,37 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     box.append(el('div', 'ops-note', agentLine(serverId, name)));
     if (team) box.append(el('div', 'ops-note', team.lastProgressAt ? c('progress', [ago(team.lastProgressAt) || stamp(team.lastProgressAt)]) : c('no_progress')));
     box.append(button(c('detail_open'), 'ghost', function () { TW.app().setView('ops'); }));
+  }
+  // What one track really did: its rounds, why it failed or is blocked (newest file first, with its time), the worker's last
+  // message and report, and the tail of its newest log. Read from the track folder on its machine.
+  function trackPopup(serverId, root, t, k, running) {
+    var dlg = el('dialog', 'ops-track-dlg'), head = el('div', 'ops-track-head'), body = el('div', 'ops-track-body');
+    head.append(el('b', '', text(k.id) + ' · ' + (text(t.title) || text(t.id))), button(i18n('ops.dong'), 'ghost', function () { dlg.close(); }));
+    body.append(el('p', 'ops-note', c('track_state', [trackLabel(k.state), running ? c('track_running') : '—', text(t.id)])), el('p', 'ops-note', i18n('ops.loading')));
+    dlg.append(head, body); document.body.append(dlg); dlg.addEventListener('close', function () { dlg.remove(); });
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    var q = 'server=' + encodeURIComponent(serverId) + '&root=' + encodeURIComponent(root) + '&task=' + encodeURIComponent(t.id) + '&track=' + encodeURIComponent(k.id);
+    TW.api('GET', '/api/features/crewpack/track?' + q).then(function (r) {
+      body.lastChild.remove();
+      var rounds = list(r.rounds);
+      if (rounds.length) {
+        var last = rounds[rounds.length - 1];
+        body.append(el('p', 'ops-track-last', c('track_last', [text(last.round), text(last.kind), text(last.exit), Math.round((last.seconds || 0) / 60), text(last.executor) + ' ' + text(last.model) + ' ' + text(last.effort), stamp(Date.parse(last.endedAt))])));
+        var table = el('table', 'ops-track-rounds'), hr = el('tr');
+        ['#', c('col_kind'), c('col_exit'), c('col_time'), c('col_model'), c('col_end')].forEach(function (h) { hr.append(el('th', '', h)); }); table.append(hr);
+        rounds.slice().reverse().forEach(function (x) { var tr = el('tr'); [x.round, x.kind, x.exit, Math.round((x.seconds || 0) / 60) + "'", text(x.model) + ' ' + text(x.effort), stamp(Date.parse(x.endedAt))].forEach(function (v) { tr.append(el('td', '', text(v))); }); table.append(tr); });
+        body.append(table);
+      } else body.append(el('p', 'ops-note', c('track_no_rounds')));
+      var files = r.files && typeof r.files === 'object' ? Object.keys(r.files).map(function (n) { return { n: n, f: r.files[n] }; }) : [];
+      files.sort(function (a, b) { return (b.f.at || 0) - (a.f.at || 0); });
+      files.forEach(function (x) {
+        var sec = el('details', 'ops-track-file'); if (x === files[0]) sec.open = true;
+        sec.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', text(x.f.text)));
+        body.append(sec);
+      });
+      if (r.log) { var lg = el('details', 'ops-track-file'); lg.append(el('summary', '', c('track_log', [text(r.logName)])), el('pre', '', text(r.log))); body.append(lg); }
+      if (r.dispatch) { var dp = el('details', 'ops-track-file'); dp.append(el('summary', '', 'dispatch.out'), el('pre', '', text(r.dispatch))); body.append(dp); }
+    }).catch(function () { body.lastChild.textContent = c('track_unavailable'); });
   }
   function refreshCrewDetails() {
     Object.keys(crewDetails).forEach(function (k) { var e = crewDetails[k]; if (!e.box.isConnected) { delete crewDetails[k]; return; } crewDetail(e.box, e.serverId, e.name); });
