@@ -1251,6 +1251,7 @@
   "srv.move.khong_phai_agent": "Phiên này không chạy Claude hay Codex.",
   "srv.move.chua_biet_hoi_thoai": "Chưa biết mã hội thoại của phiên này. Đợi vài giây cho TERMNEST đọc xong rồi thử lại.",
   "srv.move.khong_thay_tep_chat": "Không thấy tệp chat của phiên trên máy cũ.",
+  "srv.move.loi_khong_ro": "lỗi không rõ (thử lại; nếu lặp lại, kiểm tra kết nối SSH và Node.js trên máy)",
   "srv.move.khong_doc_duoc": "Không đọc được: {0}",
   "srv.move.chua_dang_nhap": "Một trong hai máy chưa đăng nhập {0}.",
   "srv.move.khac_tai_khoan": "Khác tài khoản ({0} và {1}): không chuyển.",

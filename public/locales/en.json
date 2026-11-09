@@ -1268,6 +1268,7 @@
   "srv.move.khong_phai_agent": "This session is not running Claude or Codex.",
   "srv.move.chua_biet_hoi_thoai": "The conversation id of this session is not known yet. Wait a few seconds and try again.",
   "srv.move.khong_thay_tep_chat": "The chat file of this session was not found on the old machine.",
+  "srv.move.loi_khong_ro": "unknown error (retry; if it repeats, check SSH and Node.js on the machine)",
   "srv.move.khong_doc_duoc": "Could not read: {0}",
   "srv.move.chua_dang_nhap": "One of the machines is not signed in to {0}.",
   "srv.move.khac_tai_khoan": "Different accounts ({0} and {1}): not moved.",

@@ -108,3 +108,22 @@ test('without a known conversation id the user picks it from the folder\'s recen
     assert.deepEqual(fails, []); assert.equal(started[0].run, 'shell'); assert.ok(b.launches[0].includes(cur));
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
+
+// "Không đọc được:" used to end with nothing: the dialog now names the machine and the reason.
+test('a survey failure names the machine and the reason instead of an empty message', { skip: process.platform === 'win32' }, async () => {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-move-err-'))), A = path.join(base, 'a'), B = path.join(base, 'b');
+  try {
+    const cwd = path.join(A, 'work'); fs.mkdirSync(cwd, { recursive: true }); fs.mkdirSync(B, { recursive: true });
+    signIn(A, 'me@example.com'); signIn(B, 'me@example.com');
+    const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34', proj = path.join(A, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-'));
+    fs.mkdirSync(proj, { recursive: true }); fs.writeFileSync(path.join(proj, id + '.jsonl'), JSON.stringify({ cwd, message: 'hi' }) + '\n');
+    const a = machine(A, [{ name: 'SV1', path: cwd, cmd: 'claude', aiTool: 'claude', aiSessionId: id }]);
+    const b = machine(B, []); const real = b.exec;
+    b.exec = function (cmd, ...rest) { if (cmd.includes('function placeRuntime')) return Promise.reject(new Error('Máy chủ phản hồi quá lâu.')); return real.call(this, cmd, ...rest); };
+    const routes = {}, fails = [];
+    move.register({ route: (m, p, h) => { routes[m + p] = h; }, backendOf: (x) => ({ a, b }[x] || null), shq, readJson: async (req) => req.body,
+      send: () => {}, fail: (res, c, msg) => fails.push(msg), sessions: { start: async () => {}, stop: async () => true } });
+    await routes['GET/check']({ res: {}, url: new URL('http://x/check?server=a&session=SV1&to=b') });
+    assert.equal(fails.length, 1); assert.match(fails[0], /b — Máy chủ phản hồi quá lâu\./, fails[0]);
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});
