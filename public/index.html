@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="/termnest-icon.svg">
 <link rel="stylesheet" href="/vendor/xterm.css">
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css">
+<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css">
 </head>
 <body>
 <div id="stage"><div id="app">
@@ -38,6 +38,14 @@
           <div class="err" id="setup-err" role="status"></div>
           <button class="btn primary" type="submit" data-i18n="html.tao_mat_khau"></button>
         </form>
+        <button type="button" class="btn link-btn" id="setup-restore" hidden data-i18n="settings.setup_restore"></button>
+        <form id="form-setup-restore" class="f" hidden>
+          <label><span data-i18n="settings.setup_restore_file"></span><input id="setup-restore-file" type="file" accept=".termnest,.json,application/json" required></label>
+          <label><span data-i18n="settings.restore_pass"></span><input id="setup-restore-pass" type="password" required autocomplete="off"></label>
+          <div class="err" id="setup-restore-err" role="status"></div>
+          <button class="btn primary" type="submit" data-i18n="settings.restore_go"></button>
+          <button class="btn" type="button" id="setup-restore-back" data-i18n="tokenui.huy"></button>
+        </form>
       </div>
     </div>
   </div>
@@ -61,7 +69,7 @@
       <div class="health" id="health" data-i18n-attrs="aria-label:html.tai_nguyen_may_chu"></div>
     </aside>
     <main class="main">
-      <div class="main-top"><label class="pet-toggle"><input id="pets-enabled" type="checkbox" checked> <span data-i18n="app.thu_cung"></span></label><div class="seg" role="group" data-i18n-attrs="aria-label:html.che_do_xem">
+      <div class="main-top"><div class="seg" role="group" data-i18n-attrs="aria-label:html.che_do_xem">
         <button id="tab-over" aria-pressed="true" data-i18n="html.tong_quan"></button>
         <button id="tab-focus" aria-pressed="false">Terminal</button>
       </div></div>
@@ -95,14 +103,16 @@
           <div class="term-wrap" id="term-wrap">
             <div id="wall" class="wall" hidden data-i18n-attrs="aria-label:wall.aria"></div>
             <div id="split" class="one"></div>
-            <div id="cmds" data-i18n-attrs="aria-label:html.lenh_mau_va_chia_man"><div id="command-list"></div><div class="text-controls" role="group" data-i18n-attrs="aria-label:html.co_chu_va_toan_man">
-              <button class="btn" id="mouse-mode" aria-pressed="true" data-i18n="app.chon_chu"></button><button class="btn" id="copy-sel" data-i18n-attrs="title:html.sao_chep_doan_chu_dang" data-i18n="html.sao_chep"></button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-fullscreen" data-i18n-attrs="aria-label:viewcontrols.toan_man_hinh;title:viewcontrols.toan_man_hinh">⛶</button>
-            </div></div>
-            <div class="terminal-copy-help" data-i18n="html.keo_chuot_de_chon_chu"></div>
-            <div class="tmux-bar"><span id="bar-s"></span><span id="bar-h"></span></div>
+            <div class="term-tools">
             <div class="keybar" data-i18n-attrs="aria-label:html.phim_nhanh">
-              <button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" data-i18n-attrs="title:html.bat_tat_ban_phim_tren" data-i18n="html.ban_phim"></button><button class="btn" id="open-file" data-k="file" data-i18n-attrs="title:html.mo_file_trong_thu_muc" data-i18n="html.mo_file"></button><button class="btn" data-k="ctrlc">Ctrl+C</button><button class="btn" data-k="esc">Esc</button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" data-i18n-attrs="title:html.xuong_dong_trong_o_soan" data-i18n="html.dong_moi"></button>
+              <button class="btn" id="open-file" data-k="file" data-i18n-attrs="title:html.mo_file_trong_thu_muc" data-i18n="html.mo_file"></button><button class="btn" data-k="ctrlc" data-i18n-attrs="title:term.interrupt_title">⏹ <span data-i18n="term.interrupt"></span></button><button class="btn" data-k="esc">Esc</button><span class="key-more-wrap"><button type="button" class="btn key-more-btn" id="key-more-btn" aria-expanded="false" data-i18n-attrs="title:term.more_keys"><span data-i18n="term.keys"></span> ▾</button><span class="key-more pop" id="key-more" hidden><button class="btn" id="kbd-toggle" data-k="kbd" aria-pressed="false" data-i18n-attrs="title:html.bat_tat_ban_phim_tren" data-i18n="html.ban_phim"></button><button class="btn" data-k="tab">Tab</button><button class="btn" data-k="up">↑</button><button class="btn" data-k="down">↓</button><button class="btn" data-k="ctrlb">Ctrl+B</button><button class="btn" data-k="nl" data-i18n-attrs="title:html.xuong_dong_trong_o_soan" data-i18n="html.dong_moi"></button></span></span>
             </div>
+            <div id="cmds" data-i18n-attrs="aria-label:html.lenh_mau_va_chia_man"><div id="command-list"></div><div class="text-controls" role="group" data-i18n-attrs="aria-label:html.co_chu_va_toan_man">
+              <button class="btn" id="mouse-mode" aria-pressed="true" data-i18n="app.chon_chu"></button><button class="btn" id="copy-sel" data-i18n-attrs="title:html.sao_chep_doan_chu_dang" data-i18n="html.sao_chep"></button><button class="btn" id="term-font-minus">A−</button><button class="btn" id="term-font-plus">A+</button><button class="btn" id="term-font-reset">⟲</button><button class="btn" id="term-help-btn" type="button" aria-expanded="false" data-i18n-attrs="title:term.help_title">?</button><button class="btn" id="term-fullscreen" data-i18n-attrs="aria-label:viewcontrols.toan_man_hinh;title:viewcontrols.toan_man_hinh">⛶</button>
+            </div></div>
+            </div>
+            <div class="terminal-copy-help" id="term-help" hidden data-i18n="html.keo_chuot_de_chon_chu"></div>
+            <div class="tmux-bar" hidden><span id="bar-s"></span><span id="bar-h"></span></div>
           </div>
           <aside class="detail" id="detail" data-i18n-attrs="aria-label:html.chi_tiet_phien"></aside>
           <div id="sheet-backdrop" hidden></div>
@@ -147,11 +157,9 @@
   <h2><span data-i18n="app.them_may_chu_2"></span></h2>
   <div class="two"><label for="s-host"><span data-i18n="html.dia_chi_may_chu"></span><input id="s-host" data-i18n-attrs="placeholder:html.ph_host" autocomplete="off"></label><label for="s-port"><span data-i18n="html.cong"></span><input id="s-port" value="22" inputmode="numeric"></label></div>
   <label for="s-user"><span data-i18n="tokenui.tai_khoan"></span><input id="s-user" data-i18n-attrs="placeholder:html.ph_user" autocomplete="off"></label>
-  <label for="s-auth"><span data-i18n="html.cach_dang_nhap"></span><select id="s-auth"><option value="password" data-i18n="html.mat_khau"></option><option value="key" data-i18n="html.khoa_ssh"></option></select></label>
-  <label for="s-pass" id="s-pl"><span data-i18n="html.mat_khau"></span><input id="s-pass" type="password" autocomplete="off"></label>
-  <label for="s-key" id="s-kl" hidden><span data-i18n="html.file_khoa_ssh_rieng_tu"></span><input id="s-key" type="file"></label>
-  <label for="s-phrase" id="s-ppl" hidden><span data-i18n="html.mat_khau_cua_khoa_neu"></span><input id="s-phrase" type="password" autocomplete="off"></label>
-  <p class="hint" id="s-hint" data-i18n="app.khong_luu_mat_khau_web"></p>
+  <label for="s-key" id="s-kl"><span data-i18n="html.file_khoa_ssh_rieng_tu"></span><span class="file-pick"><input id="s-key" type="file"><span class="btn" aria-hidden="true" data-i18n="ssh.pick_key"></span><span id="s-key-name" class="fname" data-i18n="ssh.no_key"></span></span></label>
+  <label for="s-phrase" id="s-ppl"><span data-i18n="html.mat_khau_cua_khoa_neu"></span><input id="s-phrase" type="password" autocomplete="off"></label>
+  <p class="hint" id="s-hint" data-i18n="ssh.hint_key_only"></p>
   <div class="err" id="s-err"></div>
   <div class="dlg-actions"><button type="button" class="btn" id="s-cancel" data-i18n="tokenui.huy"></button><button class="btn primary" type="submit" id="s-ok" data-i18n="html.them"></button></div>
 </form></dialog>
@@ -179,6 +187,7 @@
 <dialog id="dlg-reboot" aria-labelledby="reboot-title"><form id="form-reboot" class="f">
   <h2 id="reboot-title" data-i18n="html.khoi_dong_lai_may_chu"></h2>
   <p id="reboot-warning"></p>
+  <div id="reboot-check" class="reboot-check" role="status"></div>
   <label for="reboot-name"><span data-i18n="html.nhap_chinh_xac_ten_may"></span><input id="reboot-name" autocomplete="off" required></label>
   <p id="reboot-error" role="alert"></p>
   <div class="dlg-actions"><button type="button" class="btn" data-close data-i18n="tokenui.huy"></button><button id="reboot-ok" class="btn danger-solid" disabled data-i18n="app.khoi_dong_lai"></button></div>
@@ -188,6 +197,7 @@
 
 <dialog id="dlg-detail" class="wide">
   <div class="dlg-h"><h2 id="dt-title"></h2><div class="seg2" id="dt-range"><button type="button" data-r="1h" data-i18n="notes.1_gio"></button><button type="button" data-r="6h" data-i18n="html.6_gio"></button><button type="button" data-r="24h" data-i18n="html.24_gio"></button></div></div>
+  <div id="dt-key" class="key-warn" hidden></div>
   <div id="dt-chart"></div>
   <div class="legend"><span><i style="--c:#ff5c7a"></i>CPU</span><span><i style="--c:#8c6dff"></i>RAM</span><span><i style="--c:#0fb5ae"></i>Disk</span></div>
   <div class="two-col">
@@ -205,28 +215,72 @@
   <label><span data-i18n="html.mu_theo_mua"></span><select id="pet-hat"><option value="" data-i18n="html.khong_mu"></option><option value="flower" data-i18n="html.hoa_xuan"></option><option value="summer" data-i18n="html.mu_he"></option><option value="pumpkin" data-i18n="html.bi_ngo"></option><option value="winter" data-i18n="html.mu_dong"></option></select></label>
   <p id="pet-error" role="status"></p><button class="btn primary" data-i18n="tokenui.luu"></button>
 </form></dialog>
-<dialog id="dlg-set" class="wide">
-  <div class="dlg-h"><h2><span data-i18n="html.cai_dat"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
-  <section class="st"><h3><span data-i18n="settings.language"></span></h3>
-    <label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label>
-    <div class="style-sec"><b data-i18n="settings.style_label"></b><p class="hint" data-i18n="settings.style_hint"></p><div id="set-style" class="style-grid" role="radiogroup"></div><label class="sw"><span data-i18n="settings.fx_amount"></span><select id="set-fx-amount"><option value="few" data-i18n="settings.fx_few"></option><option value="normal" data-i18n="settings.fx_normal"></option><option value="many" data-i18n="settings.fx_many"></option></select></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label></div>
+<dialog id="dlg-set" class="wide set-dlg">
+  <div class="dlg-h set-head"><h2><span data-i18n="html.cai_dat"></span></h2><button type="button" class="btn" data-close data-i18n="fileviewer.dong"></button></div>
+  <div class="set-body">
+  <nav class="set-nav" role="tablist"><button type="button" class="set-tab" role="tab" data-tab="look" data-i18n="settings.tab_look"></button><button type="button" class="set-tab" role="tab" data-tab="alerts" data-i18n="settings.tab_alerts"></button><button type="button" class="set-tab" role="tab" data-tab="servers" data-i18n="settings.tab_servers"></button><button type="button" class="set-tab" role="tab" data-tab="sessions" data-i18n="settings.tab_sessions"></button><button type="button" class="set-tab" role="tab" data-tab="backup" data-i18n="settings.tab_backup"></button><button type="button" class="set-tab" role="tab" data-tab="plugins" data-i18n="pl.tieu_de"></button><button type="button" class="set-tab" role="tab" data-tab="commands" data-i18n="settings.tab_commands"></button><button type="button" class="set-tab" role="tab" data-tab="connect" data-i18n="settings.tab_connect"></button><button type="button" class="set-tab" role="tab" data-tab="more" data-i18n="settings.tab_more"></button></nav>
+  <div class="set-panes">
+  <section class="set-pane" data-pane="look">
+    <div class="set-group"><label class="sw"><span data-i18n="settings.pets_label"></span><input id="pets-enabled" type="checkbox" checked></label><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label></div>
+    <h4 data-i18n="look.theme"></h4>
+    <div class="set-free"><p class="hint" data-i18n="look.theme_hint"></p><div id="set-theme" class="style-grid" role="radiogroup"></div></div>
+    <h4 data-i18n="settings.style_label"></h4>
+    <div class="set-free"><p class="hint" data-i18n="settings.style_hint"></p><div id="set-style" class="style-grid" role="radiogroup"></div></div>
+    <div class="set-group"><label class="sw"><span data-i18n="settings.fx_amount"></span><select id="set-fx-amount"><option value="few" data-i18n="settings.fx_few"></option><option value="normal" data-i18n="settings.fx_normal"></option><option value="many" data-i18n="settings.fx_many"></option></select></label></div>
   </section>
-  <section class="st"><h3><span data-i18n="html.thong_bao"></span></h3>
-    <label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label>
-    <label class="sw"><span data-i18n="html.tieng_meo_khi_bat_dau"></span><input type="checkbox" id="set-sound"></label>
-    <label class="sw"><span data-i18n="html.bao_tren_trinh_duyet_khi"></span><input type="checkbox" id="set-browser"></label>
+  <section class="set-pane" data-pane="alerts">
+    <div class="set-group"><label class="sw"><span data-i18n="html.tieng_meo_khi_bat_dau"></span><input type="checkbox" id="set-sound"></label><label class="sw"><span data-i18n="html.bao_tren_trinh_duyet_khi"></span><input type="checkbox" id="set-browser"></label></div>
+    <h4 data-i18n="settings.alerts_title"></h4><p class="hint" data-i18n="settings.alerts_hint"></p>
+    <div class="set-group" id="set-alert-cats"></div>
   </section>
-  <section class="st"><h3><span data-i18n="settings.alerts_title"></span></h3><p><span data-i18n="settings.alerts_hint"></span></p><div id="set-alert-cats"></div></section>
-  <section class="st"><h3><span data-i18n="html.nguong_canh_bao"></span></h3><p><span data-i18n="html.vuot_nguong_thi_the_may"></span></p>
-    <div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_cpu"><b id="lim-cpu-v"></b></div>
+  <section class="set-pane" data-pane="servers">
+    <h4 data-i18n="settings.restore_title"></h4>
+    <div class="set-group"><label class="sw"><span data-i18n="html.tu_khoi_phuc_phien_may"></span><input type="checkbox" id="set-auto-restore"></label><label class="sw"><span data-i18n="settings.auto_restore_remote"></span><input type="checkbox" id="set-auto-restore-remote"></label></div>
+    <h4 data-i18n="html.nguong_canh_bao"></h4><p class="hint" data-i18n="html.vuot_nguong_thi_the_may"></p>
+    <div class="set-group set-ranges"><div class="rng"><span>CPU</span><input type="range" id="lim-cpu" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_cpu"><b id="lim-cpu-v"></b></div>
     <div class="rng"><span>RAM</span><input type="range" id="lim-ram" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_ram"><b id="lim-ram-v"></b></div>
-    <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div>
+    <div class="rng"><span>Disk</span><input type="range" id="lim-disk" min="50" max="100" data-i18n-attrs="aria-label:html.nguong_disk"><b id="lim-disk-v"></b></div></div>
   </section>
-  <section class="st"><h3><span data-i18n="html.lenh_mau"></span></h3><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" required data-i18n-attrs="aria-label:html.lenh_moi;placeholder:html.ph_command"><button class="btn" type="submit" data-i18n="html.them"></button></form></section>
-  <button type="button" class="btn" id="set-quit" hidden data-i18n="html.thoat_ung_dung"></button>
+  <section class="set-pane" data-pane="sessions"><div id="ops-settings-mount"></div></section>
+  <section class="set-pane" data-pane="backup">
+    <div id="server-backup-settings-mount"></div>
+    <h3 data-i18n="settings.config_backup"></h3>
+    <h4 data-i18n="move2.title"></h4>
+    <div class="set-group">
+      <div class="sw"><span data-i18n="move2.export_label"></span><button type="button" class="btn sm primary" id="mv2-open" data-i18n="move2.export_btn"></button></div>
+      <form class="sw set-stack bk-restore" id="mv2-form" hidden><span id="mv2-sum"></span><label class="mv2-opt" id="mv2-srv-row" hidden><input type="checkbox" id="mv2-srv"><span id="mv2-srv-t"></span></label><input type="password" id="mv2-pass" autocomplete="current-password" required data-i18n-attrs="placeholder:move2.pass;aria-label:move2.pass"><button class="btn sm primary" type="submit" data-i18n="move2.export_go"></button><button class="btn sm" type="button" id="mv2-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="move2.export_warn"></small></form>
+      <div class="sw set-stack" id="mv2-done" hidden><span id="mv2-done-t"></span><code id="mv2-path"></code><small class="hint" data-i18n="move2.next"></small></div>
+      <div class="sw set-stack" id="mv2-wait" hidden><span data-i18n="move2.waiting"></span><small class="hint" id="mv2-wait-list"></small><button type="button" class="btn sm" id="mv2-retry" data-i18n="move2.retry"></button></div>
+    </div>
+    <h4 data-i18n="settings.backup_title"></h4>
+    <div class="set-group">
+      <label class="sw"><span data-i18n="settings.backup_every"></span><select id="set-backup-every"><option value="15" data-i18n="settings.min_15"></option><option value="60" data-i18n="settings.hour_1"></option><option value="360" data-i18n="settings.hour_6"></option><option value="1440" data-i18n="settings.hour_24"></option></select></label>
+      <div class="sw"><span data-i18n="settings.backup_last_label"></span><span class="set-val" id="bk-last"></span><button type="button" class="btn sm" id="bk-now" data-i18n="settings.backup_now"></button></div>
+      <label class="sw"><span data-i18n="settings.backup_extra"></span><select id="bk-target"></select></label>
+      <div class="sw"><span data-i18n="settings.restore_label"></span><button type="button" class="btn sm" id="bk-restore" data-i18n="settings.restore_pick"></button></div>
+      <form class="sw set-stack bk-restore" id="bk-restore-form" hidden><span id="bk-restore-file"></span><input type="password" id="bk-restore-pass" autocomplete="off" required data-i18n-attrs="placeholder:settings.restore_pass;aria-label:settings.restore_pass"><button class="btn sm danger" type="submit" data-i18n="settings.restore_go"></button><button class="btn sm" type="button" id="bk-restore-cancel" data-i18n="tokenui.huy"></button><small class="hint" data-i18n="settings.restore_warn"></small></form>
+      <input type="file" id="bk-restore-input" accept=".termnest,.json,application/json" hidden>
+    </div>
+    <p class="hint set-foot"><span data-i18n="settings.backup_foot"></span> <code id="bk-dir"></code></p>
+    <p id="bk-note" class="hint" role="status"></p>
+    <h4 data-i18n="settings.cleanup_title"></h4>
+    <div class="set-group"><label class="sw"><span data-i18n="settings.temp_days"></span><select id="set-temp-days"><option value="1" data-i18n="settings.days_1"></option><option value="3" data-i18n="settings.days_3"></option><option value="7" data-i18n="settings.days_7"></option><option value="30" data-i18n="settings.days_30"></option><option value="0" data-i18n="settings.keep_by_hand"></option></select></label><label class="sw"><span data-i18n="settings.trash_days"></span><select id="set-trash-days"><option value="0" data-i18n="settings.never_auto"></option><option value="7" data-i18n="settings.days_7"></option><option value="14" data-i18n="settings.days_14"></option><option value="30" data-i18n="settings.days_30"></option><option value="90" data-i18n="settings.days_90"></option></select></label></div>
+    <p class="hint set-foot" data-i18n="settings.cleanup_hint"></p>
+  </section>
+  <section class="set-pane" data-pane="plugins"><div id="plugins-settings-mount"></div></section>
+  <section class="set-pane" data-pane="commands">
+    <h4 data-i18n="html.lenh_mau"></h4><p class="hint" data-i18n="settings.commands_hint"></p>
+    <div class="set-free"><div id="set-commands" class="chips-f"></div><form id="form-command" class="dir-input"><input id="command-text" maxlength="200" required data-i18n-attrs="aria-label:html.lenh_moi;placeholder:html.ph_command"><button class="btn" type="submit" data-i18n="html.them"></button></form></div>
+  </section>
+  <section class="set-pane" data-pane="connect"><div id="forge-pane"></div></section>
+  <section class="set-pane" data-pane="more">
+    <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p><div><button type="button" class="btn primary" id="set-guide" data-i18n="settings.phone_guide"></button></div></section>
+    <section class="st" id="pwa-sec" hidden><h3><span data-i18n="settings.pwa_title"></span></h3><p class="hint" id="pwa-desc"></p><div><button type="button" class="btn primary" id="set-pwa" data-i18n="settings.pwa_button" hidden></button></div></section>
+    <div class="set-free"><button type="button" class="btn" id="set-quit" hidden data-i18n="html.thoat_ung_dung"></button></div>
+  </section>
   <p id="set-note" role="status"></p>
-  <section class="st" id="phone-sec" hidden><h3><span data-i18n="settings.phone_title"></span></h3><p class="hint"><span data-i18n="settings.phone_desc"></span></p><div><button type="button" class="btn primary" id="set-guide" data-i18n="settings.phone_guide"></button></div></section>
-  <section class="st" id="pwa-sec" hidden><h3><span data-i18n="settings.pwa_title"></span></h3><p class="hint" id="pwa-desc"></p><div><button type="button" class="btn primary" id="set-pwa" data-i18n="settings.pwa_button" hidden></button></div></section>
+  </div>
+  </div>
 </dialog>
 
 
@@ -254,5 +308,6 @@
 <script src="/view-controls.js"></script>
 <script src="/fx.js"></script>
 <script src="/app.js"></script>
+<script src="/look.js"></script>
 </body>
 </html>

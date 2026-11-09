@@ -67,7 +67,9 @@ test('inside interactions and pointerdown inside followed by release outside sta
 test('resize drag released outside stays open and still resizes',async()=>{
  const f=fixture();await f.open();
  f.event('pointerdown',f.handle);
- f.event('pointermove',f.handle,{clientX:400});assert.equal(f.panel.style.width,'1000px');
+ f.event('pointermove',f.handle,{clientX:500});assert.equal(f.panel.style.width,'900px');
+ // never wider than the window minus 480px for the sidebar and terminal (1400 - 480)
+ f.event('pointermove',f.handle,{clientX:10});assert.equal(f.panel.style.width,'920px');
  // Browsers retarget captured pointerup to the resize handle.
  f.event('pointerup',f.handle,{clientX:400});f.flush();assert.equal(f.panel.hidden,false);
  assert.equal(f.handle.hasPointerCapture(1),false);
@@ -127,5 +129,5 @@ test('a contextmenu after pointerup cancels pending dismissal',async()=>{
 test('Escape and the close button still close',async()=>{
  const f=fixture();await f.open();
  const e=f.event('keydown',f.doc,{key:'Escape'});assert.equal(e.defaultPrevented,true);assert.equal(f.panel.hidden,true);
- await f.open();f.click(f.head.children[4]);assert.equal(f.panel.hidden,true);   // title, back, insert, more, close
+ await f.open();f.click(f.head.children[6]);assert.equal(f.panel.hidden,true);   // title, back, insert, full window, text size, more, close
 });

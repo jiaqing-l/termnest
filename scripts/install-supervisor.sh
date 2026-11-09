@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Install a Linux systemd *user* service. Run as the Unix user that owns the SSH keys and tmux sessions.
+# To migrate: stop the old backend, copy its encrypted DATA (vault.json, backups and encrypted extras) using a secure
+# channel, chmod DATA to 700 and vault files to 600, then use --data-dir. Never replace an existing destination vault.
+# Copy source/package-lock only; run npm ci on Linux. Do not carry macOS node_modules or plaintext credentials.
+# Root is supported only by explicitly running this script as root; it still installs a root *user* unit, never sudo.
+# For startup before login the owner/admin must separately enable their user manager at boot (loginctl enable-linger).
+set -euo pipefail
+usage() {
+  cat <<'USAGE'
+Usage: bash scripts/install-supervisor.sh [--dry-run] [--password-file FILE] [--data-dir DIR] [--port PORT] [--node-path FILE]
+Installs termnest-supervisor.service for the current systemd user. HTTP binds only to 127.0.0.1.
+Default DATA: ${XDG_STATE_HOME:-$HOME/.local/state}/termnest; default port: 7681.
+Use an existing protected, single-line password file (Unix owner only, mode 600/400).
+Without one, an interactive terminal may create the default secret once. Noninteractive installation fails immediately.
+Existing secrets and vaults are never overwritten. --dry-run prints the unit and performs no mutations or prompts.
+Uses adjacent app/node-x64 or app/node-arm64, an explicit --node-path, then source PATH Node >=18.
+Install tmux and source dependencies in the Linux application directory. Enable user lingering separately for boot.
+USAGE
+}
+dry=0
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/termnest"
+data_dir="$state_dir"
+password_file=""
+port=7681
+node_path=""
+while (($#)); do
+  case "$1" in
+    --dry-run) dry=1; shift ;;
+    --password-file|--data-dir|--port|--node-path)
+      (($# >= 2)) || { usage >&2; exit 2; }
+      case "$1" in --password-file) password_file="$2";; --data-dir) data_dir="$2";; --port) port="$2";; --node-path) node_path="$2";; esac
+      shift 2 ;;
+    --help|-h) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+[[ "$port" =~ ^[0-9]{1,5}$ ]] && ((10#$port >= 1 && 10#$port <= 65535)) || { echo RUNTIME_PORT_INVALID >&2; exit 2; }
+[[ "$data_dir" = /* ]] || { echo RUNTIME_PATH_INVALID >&2; exit 2; }
+if [[ -z "$password_file" ]]; then password_file="$state_dir/password"; fi
+[[ "$password_file" = /* ]] || { echo RUNTIME_PATH_INVALID >&2; exit 2; }
+app_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+# Validate the selected runtime before any secret/state/unit or service-manager action (also in dry-run).
+[[ "$(uname -s)" = Linux ]] || { echo RUNTIME_LINUX_REQUIRED >&2; exit 2; }
+case "$(uname -m)" in
+  x86_64|amd64) node_arch=x64 ;;
+  aarch64|arm64) node_arch=arm64 ;;
+  *) echo RUNTIME_NODE_ARCH_UNSUPPORTED >&2; exit 2 ;;
+esac
+if [[ -n "$node_path" ]]; then
+  node_bin="$node_path"
+elif [[ -e "$app_dir/node-$node_arch" || -L "$app_dir/node-$node_arch" ]]; then
+  node_bin="$app_dir/node-$node_arch"
+else
+  node_bin="$(command -v node || true)"
+fi
+[[ "$node_bin" = /* && -f "$node_bin" && -x "$node_bin" ]] || { echo RUNTIME_NODE_REQUIRED >&2; exit 2; }
+"$node_bin" -e 'if(process.platform!=="linux" || process.arch!==process.argv[1] || Number(process.versions.node.split(".")[0])<18)process.exit(2)' "$node_arch" >/dev/null 2>&1 || { echo RUNTIME_NODE_INCOMPATIBLE >&2; exit 2; }
+unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+if (( ! dry )); then
+  [[ "$(uname -s)" = Linux ]] || { echo RUNTIME_LINUX_REQUIRED >&2; exit 2; }
+  command -v systemctl >/dev/null || { echo RUNTIME_SYSTEMD_REQUIRED >&2; exit 2; }
+  # Check before creating secrets, directories or units. Enabling linger is an explicit owner/admin decision.
+  command -v loginctl >/dev/null || { echo RUNTIME_LINGER_UNKNOWN >&2; exit 2; }
+  runtime_linger="$(loginctl show-user "$(id -u)" --property=Linger --value 2>/dev/null)" || { echo RUNTIME_LINGER_UNKNOWN >&2; exit 2; }
+  [[ "$runtime_linger" = yes ]] || { echo RUNTIME_LINGER_REQUIRED >&2; exit 2; }
+  if [[ ! -e "$password_file" && ! -L "$password_file" ]]; then
+    [[ -t 0 ]] || { echo RUNTIME_PASSWORD_FILE_REQUIRED >&2; exit 2; }
+    umask 077
+    mkdir -p -- "$(dirname -- "$password_file")"
+    read -r -s -p 'Vault password: ' runtime_password
+    printf '\n' >&2
+    [[ -n "$runtime_password" ]] || { echo RUNTIME_PASSWORD_INVALID >&2; exit 2; }
+    (set -o noclobber; printf '%s\n' "$runtime_password" > "$password_file")
+    unset runtime_password
+  fi
+fi
+# Only paths and options cross argv. The file content is never in argv, Environment, or stdout.
+"$node_bin" - "$app_dir" "$data_dir" "$password_file" "$port" "$unit_dir" "$dry" "$node_bin" <<'NODE'
+'use strict';
+const fs = require('node:fs'), path = require('node:path');
+const [app, data, password, port, unitDir, dry, node] = process.argv.slice(2);
+const { readPassword } = require(path.join(app, 'lib/service-runtime'));
+function fail(code) { console.error(code); process.exit(2); }
+for (const v of [app, data, password, unitDir, node]) if (!path.isAbsolute(v) || /[\x00-\x1f\x7f]/.test(v)) fail('RUNTIME_PATH_INVALID');
+try { if (fs.existsSync(password) || fs.lstatSync(password)) readPassword(password); }
+catch (e) { if (dry !== '1' || e.code !== 'ENOENT') fail('RUNTIME_PASSWORD_FILE_INVALID'); }
+// systemd performs %-specifier expansion even inside quotes. ExecStart additionally expands $ variables.
+const quote = (v, exec = false) => '"' + v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/%/g, '%%').replace(/\$/g, exec ? '$$$$' : '$$') + '"';
+// User managers need not inherit login PATH. Include native Claude's usual location without copying the caller's environment.
+// Omit unrepresentable optional directories; ExecStart still uses the absolute selected Node executable.
+const toolPath = [...new Set([path.dirname(node), path.join(process.env.HOME, '.local/bin'),
+  '/usr/local/bin', '/usr/bin', '/bin', '/usr/local/sbin', '/usr/sbin', '/sbin']
+  .filter(dir => path.isAbsolute(dir) && dir.length <= 4096 && !/[\x00-\x1f\x7f:]/.test(dir)))].join(':');
+const text = `# Generated by Termnest install-supervisor.sh; contains paths only, never the vault password.
+[Unit]
+Description=Termnest unattended backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=${quote(app)}
+ExecStart=${quote(node, true)} ${quote(path.join(app, 'server.js'), true)}
+Environment=${quote('PATH=' + toolPath)}
+Environment=${quote('TW_DATA=' + data)}
+Environment=${quote('TW_PASSWORD_FILE=' + password)}
+Environment=${quote('TW_PORT=' + port)}
+StandardInput=null
+UMask=0077
+NoNewPrivileges=true
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=90s
+KillSignal=SIGTERM
+# Local tmux servers may have been started by this backend. Restarting the HTTP service must preserve their sessions.
+KillMode=process
+
+[Install]
+WantedBy=default.target
+`;
+if (dry === '1') { process.stdout.write(text); process.exit(0); }
+try {
+  fs.mkdirSync(data, { recursive: true, mode: 0o700 });
+  const st = fs.lstatSync(data);
+  if (!st.isDirectory() || st.uid !== process.getuid() || (st.mode & 0o077)) fail('RUNTIME_UNSAFE_DATA');
+  // Installation never creates, changes or unlocks the vault.
+  if (!fs.existsSync(path.join(data, 'vault.json'))) fail('RUNTIME_EXISTING_VAULT_REQUIRED');
+  fs.mkdirSync(unitDir, { recursive: true, mode: 0o700 });
+  const file = path.join(unitDir, 'termnest-supervisor.service');
+  if (fs.existsSync(file) || (() => { try { return fs.lstatSync(file); } catch { return false; } })()) {
+    const st = fs.lstatSync(file);
+    if (!st.isFile() || st.uid !== process.getuid() || !fs.readFileSync(file, 'utf8').startsWith('# Generated by Termnest install-supervisor.sh;')) fail('RUNTIME_EXISTING_UNIT_UNMANAGED');
+    if (fs.readFileSync(file, 'utf8') === text) process.exit(0);
+  }
+  const temp = file + '.' + process.pid + '.tmp';
+  try { fs.writeFileSync(temp, text, { flag: 'wx', mode: 0o600 }); fs.renameSync(temp, file); }
+  finally { try { fs.unlinkSync(temp); } catch {} }
+} catch { fail('RUNTIME_INSTALL_FAILED'); }
+NODE
+if (( ! dry )); then
+  systemctl --user daemon-reload
+  systemctl --user enable --now termnest-supervisor.service
+  # enable --now is idempotent and leaves an already-running backend in place. Apply changed config via an explicit restart.
+  echo 'RUNTIME_SERVICE_INSTALLED_LINGER_VERIFIED'
+fi

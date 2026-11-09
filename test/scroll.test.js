@@ -1,4 +1,5 @@
 'use strict';
+const { paneCommand } = require('./helpers/tmux-fixture');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { scrollScript, parseScrollState, MAX_LINES } = require('../lib/scroll');
@@ -51,13 +52,16 @@ test('a pane on the alternate screen never enters copy-mode, a normal one does',
   const env = { ...process.env, PATH: dir + ':' + process.env.PATH };
   const sh = (script) => cp.execFileSync('sh', ['-c', script], { env, encoding: 'utf8' });
   try {
-    run('new-session', '-d', '-s', 's1', '-x', '80', '-y', '10', "seq 1 200; sleep 30");
+    run('new-session', '-d', '-s', 's1', '-x', '80', '-y', '10', paneCommand(Array.from({ length: 200 }, (_, i) => String(i + 1))));
     await new Promise((r) => setTimeout(r, 600));
     assert.equal(parseScrollState(sh(scrollScript('s1', 'up', 3))).inMode, true);
     sh(scrollScript('s1', 'bottom'));
-    run('send-keys', '-t', '=s1:', '-l', ''); run('respawn-pane', '-k', '-t', '=s1:', "seq 1 200; printf '\\033[?1049h'; sleep 30");
+    run('send-keys', '-t', '=s1:', '-l', ''); run('respawn-pane', '-k', '-t', '=s1:', paneCommand(Array.from({ length: 200 }, (_, i) => String(i + 1)), { alternate: true }));
     await new Promise((r) => setTimeout(r, 600));
     const st = parseScrollState(sh(scrollScript('s1', 'up', 3)));
     assert.equal(st.alternate, true); assert.equal(st.inMode, false);
-  } finally { cp.spawnSync('tmux', ['-L', sock, 'kill-server']); }
+  } finally {
+    cp.spawnSync('tmux', ['-L', sock, 'kill-server']);
+    require('node:fs').rmSync(dir, { recursive: true, force: true });
+  }
 });

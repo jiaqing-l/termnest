@@ -6,6 +6,8 @@
   var CREW_POLL_MS = 1500;
   var LABEL = { run: i18n('app.dang_chay'), wait: i18n('app.cho_ban'), idle: i18n('app.dang_nghi') };
   var HP = { cpu: ['CPU', '#ff5c7a'], ram: ['RAM', '#8c6dff'], disk: ['Disk', '#0fb5ae'] };
+  var ALL_ICON = '<svg class="i srv-i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>';
+  var PC_ICON = '<svg class="i srv-i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2.5 19h19"/></svg>';
   var SRV_ICON = '<svg class="i srv-i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/></svg>';
   var servers = [], scope = 'all', view = 'over', cur = null, online = true, signature = '', pollTimer = null, tokenTimer = null, firstState = true;
   var cardRefs = {}, delTarget = null, passTarget = null, killTarget = null;
@@ -68,7 +70,6 @@
   }
   function matches(s) { return (filter === 'all' || s.state === filter) && (!query || (s.name + ' ' + s.path + ' ' + (s.lines || []).join(' ')).toLowerCase().indexOf(query) >= 0); }
   function cnt(st) { return vis().filter(function (x) { return x.s.state === st; }).length; }
-  function workers() { var n = 0; scoped().forEach(function (v) { n += v.workers.length; }); return n; }
   function curItem() {
     if (!cur) return null;
     var v = srv(cur.id), s = v && v.sessions.filter(function (x) { return x.name === cur.name; })[0];
@@ -89,31 +90,55 @@
     sel.value = scope;
   }
   function renderHero() {
-    var w = cnt('wait'), r = cnt('run'), on = servers.filter(function (v) { return v.on; }).length, n = workers();
-    $('hero-t').textContent = !servers.length ? i18n('app.them_may_chu_dau_tien') : w ? (i18n('app.co_viec_dang_cho_ban', [w])) : (r || n) ? i18n('app.moi_viec_dang_chay_tot') : i18n('app.chua_co_viec_nao_dang');
+    var w = cnt('wait'), r = cnt('run'), on = servers.filter(function (v) { return v.on; }).length;
+    $('hero-t').textContent = !servers.length ? i18n('app.them_may_chu_dau_tien') : w ? (i18n('app.co_viec_dang_cho_ban', [w])) : r ? i18n('app.moi_viec_dang_chay_tot') : i18n('app.chua_co_viec_nao_dang');
     var box = $('chips'); box.textContent = '';
     function chip(num, t, c) { var e = el('span', 'chip ' + (c || '')); e.append(el('b', '', num), t); box.append(e); }
     chip(on + '/' + servers.length, i18n('app.may_chu')); chip(vis().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
-    if (n) chip(n, 'worker Crew');
     if (w) chip(w, i18n('app.cho_ban_2'), 'alert');
     box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
+    // The first session waiting for you gets a reply button right in the summary.
+    var first = vis().filter(function (x) { return x.s.state === 'wait'; })[0];
+    // One waiting session: reply to it. Several: show only the waiting ones (the "Chờ bạn" filter) and scroll to them.
+    var waiting = vis().filter(function (x) { return x.s.state === 'wait'; });
+    if (waiting.length === 1) { var reply = el('button', 'btn primary hero-reply', i18n('look.reply_to', [first.s.name])); reply.type = 'button'; reply.onclick = function () { openSession(first.v.id, first.s.name); }; box.append(reply); }
+    else if (waiting.length > 1) {
+      var all = el('button', 'btn primary hero-reply', i18n('look.see_waiting', [waiting.length])); all.type = 'button';
+      all.onclick = function () { var f = document.querySelector('#f button[data-f="wait"]'); if (f) f.click(); var g = $('grid') || document.querySelector('#v-over .grid'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+      box.append(all);
+    }
     $('shelf').innerHTML = scoped().flatMap(function (v) { return (v.houseSessions || v.sessions).map(function (s) { return { v: v, s: s }; }); }).slice(0, 5).map(function (x) { return pet(petFor(x.v, x.s), x.s.state); }).join('');
   }
+  // Without pets (or in the narrow sidebar) a session shows the first letters of its name instead of an empty tile.
+  function initials(name) { var parts = String(name).split(/[-_\s.]+/).filter(Boolean); return ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : (parts[0] || '').slice(1, 2))).toUpperCase(); }
+  // The sidebar can shrink to a rail of icons (remembered on this device).
+  var sideMini = false; try { sideMini = localStorage.getItem('tw-side-mini') === '1'; } catch (e) { /* optional */ }
+  function applySideMini() { $('app').classList.toggle('side-mini', sideMini); }
+  applySideMini();
   function renderSide() {
     var box = $('side'); box.textContent = '';
-    box.append(el('div', 'group', i18n('app.may_chu_2')));
-    function row(id, title, sub, count, off) {
-      var b = el('button', 'sess srv-row'); b.style.setProperty('--c', off ? '#7a879f' : '#2f80ed');
+    var tog = el('button', 'btn side-toggle'); tog.type = 'button';
+    tog.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="' + (sideMini ? 'M13 10l2 2-2 2' : 'M16 10l-2 2 2 2') + '"/></svg>';
+    tog.title = i18n(sideMini ? 'side.expand' : 'side.collapse'); tog.setAttribute('aria-label', tog.title); tog.setAttribute('aria-expanded', String(!sideMini));
+    tog.onclick = function () { sideMini = !sideMini; try { localStorage.setItem('tw-side-mini', sideMini ? '1' : ''); } catch (e) { /* optional */ } applySideMini(); renderSide(); if (typeof sizeTerm === 'function') requestAnimationFrame(sizeTerm); };
+    box.append(tog);
+    box.append(el('div', 'group g-srv', i18n('app.may_chu_2')));
+    // Short code shown on the collapsed rail so machines can be told apart: the trailing number ("dev-ubuntu-02" → 02), else initials.
+    function srvCode(name) { var m = String(name || '').match(/(\d{1,3})\s*$/); return m ? m[1] : initials(name); }
+    function row(id, title, sub, count, off, kind) {
+      var b = el('button', 'sess srv-row srv-' + kind); b.style.setProperty('--c', off ? '#7a879f' : kind === 'all' ? '#7c5cff' : kind === 'local' ? '#0fa58a' : '#2f80ed');
       b.setAttribute('aria-current', scope === id ? 'true' : 'false');
-      var a = el('span', 'ava'); a.innerHTML = SRV_ICON; a.append(el('span', 'flag ' + (off ? 'off' : 'run')));
-      var t = el('span', 'txt'); t.append(el('span', 'n', title), el('span', 's', sub));
+      var a = el('span', 'ava'); a.innerHTML = kind === 'all' ? ALL_ICON : kind === 'local' ? PC_ICON : SRV_ICON;
+      if (kind === 'remote') a.append(el('span', 'srv-code', srvCode(title)));
+      a.append(el('span', 'flag ' + (off ? 'off' : 'run')));
+      var t = el('span', 'txt'); t.append(el('span', 'n', title), el('span', 's', sub)); b.title = title;
       b.append(a, t); if (count) b.append(el('span', 'badge', count));
       b.onclick = function () { setScope(id); }; box.append(b);
     }
     function waitOf(v) { return v.sessions.filter(function (s) { return s.state === 'wait'; }).length; }
     var total = 0; servers.forEach(function (v) { total += waitOf(v); });
-    row('all', i18n('app.tat_ca_may_chu'), i18n('app.tai_khoan', [servers.length]), total, false);
-    servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on); });
+    row('all', i18n('app.tat_ca_may_chu'), i18n('app.so_may_chu', [servers.length]), total, false, 'all');
+    servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
     [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
       var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s); }); if (!list.length) return;
@@ -121,7 +146,8 @@
       list.forEach(function (x) {
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'flag ' + x.s.state));
+        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
+        b.title = x.s.name + ' · ' + x.v.name;
         var t = el('span', 'txt'); t.append(el('span', 'n', x.s.name), el('span', 's', scope === 'all' ? x.v.name : subOf(x.s)));
         b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
       });
@@ -149,7 +175,7 @@
     var h = el('div', 'card-head'); h.append(petSlot(v, s));
     var t = el('div', 't'), sub = el('span', 's', subOf(s)); t.append(el('span', 'n', s.name), sub); h.append(t, el('span', 'pill ' + s.state, LABEL[s.state]));
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
-    var f = el('div', 'card-foot'); band(v,s,f);f.append(ref.foot, ref.path);
+    var f = el('div', 'card-foot'); f.append(ref.foot, ref.path);
     c.append(h, ref.mini, f); fillCard(ref, s); cardRefs[v.id + '/' + s.name] = ref;
     if (window.TW) window.TW.decorateCard(c, v, s);
     c.setAttribute('role', 'button'); c.tabIndex = 0;
@@ -206,48 +232,8 @@
     catch (e) { /* decoration is optional */ }
   }
   function petEvent(id, name, type) { try { if (window.PetScene) window.PetScene.event(id, name, type); } catch (e) { /* optional */ } }
-  function owned(v, s) { return v.workers.filter(function (w) { return w.owner && w.owner.name === s.name && w.owner.created === s.created; }); }
   function petSlot(v, s) {
     var n = el('div', 'pet-slot'); n.dataset.key = v.id + '/' + s.name + '/' + s.created; return n;
-  }
-  function band(v, s, node) { var count = owned(v, s).length; if (count) node.append(el('span', 'crew-band', '🎽 ' + count)); }
-  function renderWorkers(v, sec, session) {
-    var list = session ? owned(v, session) : v.workers.filter(function (w) { return !w.owner || !v.sessions.some(function (s) { return w.owner.name === s.name && w.owner.created === s.created; }); });
-    if (!list.length) return;
-    var box = el('div', 'crew');
-    box.append(el('div', 'crew-t', (session ? i18n('app.crew_dang_chay') : i18n('app.tong_quan_crew')) + list.length));
-    if (session) {
-      var tasks = Array.from(new Set(list.map(function (w) { return w.task; })));
-      tasks.forEach(function (task) {
-        var celebrating = list.some(function (w) { return w.task === task && w.finishedAt && w.result === 'DONE' && window.PetState && Date.now() - w.resultAt < window.PetState.LIMITS.effect; });
-        var room = el('div', 'meeting-room' + (celebrating ? ' meeting-celebrate' : '')); room.title = task; room.append(el('b', 'meeting-table', 'Crew'));
-        list.filter(function (w) { return w.task === task; }).forEach(function (w) {
-          var member = el('button', 'meeting-member' + (w.finishedAt ? ' meeting-left' : '') + (w.finishedAt && window.PetState && Date.now() - w.finishedAt < window.PetState.LIMITS.effect ? ' meeting-departing' : ''));
-          member.innerHTML = pet(petOf(w.track), w.finishedAt ? 'idle' : 'run'); member.append(el('span', 'crew-band', '🎽 ' + w.track), el('small', '', w.finishedAt ? i18n('app.da_roi_ban', [w.result]) : i18n('app.dang_lam')));
-          member.onclick = function () { openCrew(v, w); }; room.append(member);
-        }); box.append(room);
-      });
-    }
-    list.forEach(function (w) {
-      var r = el(session ? 'button' : 'div', 'crew-row' + (session ? ' crew-worker-button' : ''));
-      if (session) { r.type = 'button'; r.title = (w.lines || []).join('\n'); }
-      if (w.task && w.track) {
-        r.onclick = function () { openCrew(v, w); };
-        if (!session) r.append(el('button', 'btn', i18n('app.xem_log')));
-      }
-      var mascot = el('span', 'crew-pet' + (w.finishedAt && w.result === 'DONE' && window.PetState && Date.now() - w.resultAt < window.PetState.LIMITS.effect ? ' high-five' : ''));
-      mascot.innerHTML = pet('fox', w.finishedAt ? 'idle' : 'run') + pet('cat', w.finishedAt ? 'idle' : 'run');
-      mascot.append(el('span', 'team-band', 'CREW')); if (!session) r.append(mascot);
-      var head = el('div', 'crew-h');
-      head.append(el('span', 'pill run', w.finishedAt ? (w.result === 'unknown' ? i18n('app.da_ket_thuc_chua_ro') : w.result) : (session ? i18n('app.dang_chay') : (w.kind || 'worker'))));
-      head.append(el('b', '', w.track ? w.track + (session ? '' : ' · ' + w.task) : (w.cwd || i18n('app.khong_ro_thu_muc'))));
-      head.append(el('span', 'crew-time', span(w.elapsed)));
-      if (!session) head.append(el('span', '', w.owner ? i18n('app.phien_da_dong', [w.owner.name]) : i18n('app.chua_ro_phien')));
-      r.append(head);
-      if (!session && w.lines && w.lines.length) { var m = el('div', 'crew-log'); w.lines.forEach(function (l) { m.append(el('div', '', l)); }); r.append(m); }
-      box.append(r);
-    });
-    sec.append(box);
   }
   function renderGrid() {
     var active = document.activeElement, selection = active && active.tagName === 'INPUT' ? [active.selectionStart, active.selectionEnd] : null;
@@ -270,14 +256,16 @@
       if (!v.on) {
         var o = el('div', 'off-tile'), r = el('button', 'btn primary', i18n('app.ket_noi_lai')), tx = el('div');
         tx.append(el('b', '', v.error || i18n('app.khong_vao_duoc_may_chu')), el('span', '', i18n('app.viec_tren_may_chu_khong')));
-        r.onclick = function () { connectAgain(v, r); }; o.append(tx, r); sec.append(o); renderWorkers(v, sec); box.append(sec); return;
+        r.onclick = function () { connectAgain(v, r); }; o.append(tx, r); sec.append(o); box.append(sec); return;
       }
       if (!v.hasTmux) {
         var n = el('div', 'off-tile'), nt = el('div');
         nt.append(el('b', '', i18n('app.may_chu_nay_chua_co')), el('span', 'mono', v.guidance || 'sudo apt install tmux')); n.append(nt); sec.append(n);
       } else {
         var g = el('div', 'grid');
-        v.sessions.filter(matches).forEach(function (s) {
+        // Grouped by state like the sidebar: waiting for you, then running, then idle (the usual order inside each group).
+        var RANK = { wait: 0, run: 1, idle: 2 };
+        v.sessions.filter(matches).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
           var key = v.id + '/' + s.name, old = previous[key];
           if (old && old.input && (old.input === active || old.input.value)) { var message = old.card.querySelector('.pet-message'); if (message) message.classList.remove('message-arrives'); cardRefs[key] = old; g.append(old.card); signature = '';  }
           else g.append(sessionCard(v, s));
@@ -286,7 +274,6 @@
         add.setAttribute('aria-label', i18n('app.tao_phien_moi_tren', [v.name])); add.onclick = function () { newDlg(v.id); }; g.append(add);
         sec.append(g);
       }
-      renderWorkers(v, sec);
       box.append(sec);
     });
     if (active && active.isConnected && selection) { active.focus({ preventScroll: true }); active.setSelectionRange(selection[0], selection[1]); }
@@ -326,6 +313,36 @@
     renderTabs(); renderDetail(); renderBar();
     sayUndo(say_, i18n('app.hoan_tac'), function () { keys.forEach(function (k) { tabHide.show(k); }); renderTabs(); }, 5000);
   }
+  function termMenu(p, ev) {
+    ev.preventDefault(); ev.stopPropagation();
+    var old = document.querySelector('.tab-menu'); if (old) old.remove();
+    var mac = /Mac/.test(navigator.platform || ''), sel = p.term.getSelection(), x = p.cur && srv(p.cur.id) ? { v: srv(p.cur.id), name: p.cur.name } : null;
+    var menu = el('div', 'tab-menu term-menu'); menu.setAttribute('role', 'menu');
+    function paste() {
+      var got = window.TW_DESKTOP ? window.TW_DESKTOP.paste() : (navigator.clipboard && navigator.clipboard.readText ? navigator.clipboard.readText() : Promise.reject());
+      Promise.resolve(got).then(function (t) { if (t) { p.ime.preparePaste(); p.term.paste(t); } focusTerminal(p); }).catch(function () { say(i18n('app.khong_dan_duoc'), false, 4000); });
+    }
+    function clearHistory() { if (!x) return Promise.resolve(); return api('POST', '/api/servers/' + x.v.id + '/sessions/' + encodeURIComponent(x.name) + '/keys', { clearHistory: true, text: '' }); }
+    [[i18n('term.copy'), mac ? '⌘C' : 'Ctrl+C', function () { copySelection(p); }, !!sel],
+     [i18n('term.paste'), mac ? '⌘V' : 'Ctrl+V', paste, true],
+     [i18n('term.select_all'), mac ? '⌘A' : '', function () { p.term.selectAll(); }, true],
+     null,
+     [i18n('term.clear'), 'Ctrl+L', function () { p.term.clear(); paneSend(p, '\x0c'); clearHistory().catch(function () {}); focusTerminal(p); }, !!x],
+     [i18n('term.clear_history'), '', function () { p.term.clear(); clearHistory().then(function () { say(i18n('term.history_cleared'), true, 2000); }).catch(function (e) { say(e.message, false, 3000); }); }, !!x],
+     null,
+     [i18n('term.interrupt'), 'Ctrl+C', function () { paneSend(p, '\x03'); focusTerminal(p); }, !!x]
+    ].forEach(function (row) {
+      if (!row) { menu.append(el('div', 'term-menu-sep')); return; }
+      var it = el('button', 'tab-menu-item', row[0]); it.setAttribute('role', 'menuitem'); it.disabled = !row[3];
+      if (row[1]) it.append(el('kbd', '', row[1]));
+      it.onclick = function () { menu.remove(); row[2](); }; menu.append(it);
+    });
+    document.body.append(menu);
+    menu.style.left = Math.max(8, Math.min(ev.clientX, innerWidth - menu.offsetWidth - 8)) + 'px'; menu.style.top = Math.max(8, Math.min(ev.clientY, innerHeight - menu.offsetHeight - 8)) + 'px';
+    function gone() { menu.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); }
+    function away(e) { if (!menu.contains(e.target)) gone(); } function esc(e) { if (e.key === 'Escape') gone(); }
+    document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true);
+  }
   function tabContextMenu(x, ev) {
     ev.preventDefault(); ev.stopPropagation();
     var old = document.querySelector('.tab-menu'); if (old) old.remove();
@@ -353,7 +370,7 @@
     vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name); band(x.v, x.s, b);
+      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name);
       if (tabHide) {
         var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', i18n('app.dong_tab', [x.s.name])); close.title = i18n('app.dong_tab_phien_van_chay');
         close.onclick = function (e) { e.stopPropagation(); closeTab(x); }; b.append(close);
@@ -381,10 +398,9 @@
   var detailSignature = '';
   function renderDetail() {
     var box = $('detail'), x = curItem();
-    var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], owned(x.v,x.s).map(function(w) { return [w.task,w.track,w.owner,w.finishedAt,w.result,w.resultAt,span(w.elapsed),w.lines]; }), prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
+    var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
     if (nextSignature === detailSignature) return;
     detailSignature = nextSignature; box.textContent = ''; if (!x) return;
-    renderWorkers(x.v, box, x.s);
     var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s));
     w.append(el('b', '', x.s.name), el('span', 'pill ' + x.s.state, LABEL[x.s.state]));
     var a = el('div'); a.append(el('h3', '', i18n('app.thong_tin')));
@@ -593,10 +609,13 @@
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
     function send(d) { paneSend(p, d); }
     scrollbar(p);
-    p.ime = window.TerminalIME.attach(p.term, send, { onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
+    p.ime = window.TerminalIME.attach(p.term, send, { enabled: (function () { var m = ''; try { m = localStorage.getItem('tw-ime') || ''; } catch (e) { /* optional */ } return m === 'on' ? true : m === 'off' ? false : undefined; })(), onIdle: function () { paneInputIdle(); viewControls.flush(); viewControls.applyTerminalFont(); } });
+    // Right-click menu, like VS Code's terminal: copy, paste, select all, clear the screen, clear the scrollback, interrupt.
+    p.host.addEventListener('contextmenu', function (ev) { termMenu(p, ev); });
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
-      if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey) && p.term.getSelection()) {
+      // Copy: ⌘C on a Mac; Ctrl+Shift+C anywhere; on Windows/Linux plain Ctrl+C copies while text is selected (else it interrupts).
+      if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey || event.ctrlKey && !event.altKey && !/Mac/.test(navigator.platform || '')) && p.term.getSelection()) {
         event.preventDefault(); copySelection(p);
       }
       // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
@@ -663,15 +682,32 @@
   function openSession(id, name) { if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
+  $('key-more-btn').onclick = function (e) { e.stopPropagation(); popToggle(this, $('key-more')); };
+  $('key-more').addEventListener('click', function () { this.hidden = true; $('key-more-btn').setAttribute('aria-expanded', 'false'); });
+  $('term-help-btn').onclick = function () { var h = $('term-help'); h.hidden = !h.hidden; this.setAttribute('aria-expanded', String(!h.hidden)); };
   function detach() { toggleSheet(false); if (cur) petEvent(cur.id, cur.name, 'wave'); var n = cur && cur.name; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } cur = null; if (n) say(i18n('app.da_roi_viec_van_chay', [n]), true, 2800); setView('over'); }
 
   /* Overview tools */
   // Claude and Codex draw a status bar under the conversation; it is never the question, so skip it when quoting the screen.
-  var CHROME = /auto mode|shift\+tab|for shortcuts|esc to interrupt|bypass permissions|accept edits|ctrl\+[a-z]|⏵⏵|▸▸|^[\s─━═\-_•·|]+$|^\s*[❯>]\s*$/i;
+  // Lines the agents draw themselves (footer, update notices, "✻ Crunched for 1m 45s · done 3:00 PM"): never the question.
+  var CHROME = /enter to select|to navigate|esc to cancel|auto mode|shift\+tab|for shortcuts|esc to interrupt|bypass permissions|accept edits|ctrl\+[a-z]|⏵⏵|▸▸|^[\s─━═\-_•·|]+$|^\s*[❯>]\s*$|new task\?|\/clear to save|\d+(\.\d+)?k tokens|update installed|restart to (apply|update)|auto-updating|update available|context left|\b[a-z]+ed for (\d+h ?)?(\d+m ?)?\d+s\b|· done\b/i;
+  var DONE_AT = /\b[a-z]+ed for [^·]*·\s*done\s+(?:[A-Za-z]+\s+)?(\d{1,2}:\d{2}(?:\s?[AP]M)?)/i;
   // A line like "──────── Load ảnh màn ────" keeps its words but loses the rule; a bare rule disappears.
   function plain(line) { return line.replace(/[─━═]{2,}/g, ' ').replace(/\s+/g, ' ').trim(); }
   function question(s) {
     var lines = (s.lines || []).filter(function (line) { return line.trim() && !CHROME.test(line); }).map(plain).filter(Boolean);
+    // The agent's own status decides what is said; the screen only supplies the wording of the question itself.
+    var st = s.stateSource === 'status' && s.aiStatus;
+    if (st) {
+      var at = st.at ? new Date(st.at).toLocaleTimeString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+      if (s.asking) { var q = lines.filter(function (l) { return /\?\s*$/.test(l); }).slice(-1)[0]; return q || i18n('app.agent_cho_tra_loi'); }
+      if (st.status === 'aborted') return i18n('app.luot_bi_ngat', [at]);
+      return at ? i18n('app.xong_luc_cho_tiep', [at]) : i18n('app.da_xong_cho_tiep');
+    }
+    if (s.asking && lines.length) return lines.slice(-1)[0];
+    // Not a question: the agent finished its turn. Say so in plain words (with the time it printed, when there is one).
+    var done = null; (s.lines || []).forEach(function (l) { var m = l.match(DONE_AT); if (m) done = m[1]; });
+    if (!s.asking) return done ? i18n('app.xong_luc_cho_tiep', [done]) : i18n('app.da_xong_cho_tiep');
     return lines.slice(-1)[0] || i18n('app.phien_dang_cho_ban_co');
   }
   // Animal names come from the language files; a character registered with its own label keeps that label.
@@ -698,7 +734,7 @@
   function addLost(sec, v) {
     if (!(v.lost || []).length && !restoreNotes[v.id]) return;
     var box = el('div', 'lost'), text = el('div'), restore = el('button', 'btn primary', i18n('app.khoi_phuc')), dismiss = el('button', 'btn', i18n('app.bo_qua'));
-    text.append(el('b', '', i18n('app.phien_co_the_khoi_phuc', [(v.lost || []).length])), el('span', '', restoreNotes[v.id] || (v.lost.map(function (s) { return s.name; }).join(' · ') + (v.local && v.lost.some(function (s) { return s.run === 'codex'; }) ? i18n('app.codex_chon_hoi_thoai_trong') : ''))));
+    text.append(el('b', '', i18n('app.phien_co_the_khoi_phuc', [(v.lost || []).length])), el('span', '', restoreNotes[v.id] || (v.lost.map(function (s) { return s.name; }).join(' · ') + (v.local && v.lost.some(function (s) { return s.run === 'codex' && !s.resumes; }) ? i18n('app.codex_chon_hoi_thoai_trong') : ''))));
     restore.disabled = !v.on || !v.lost.length;
     restore.onclick = function () {
       restore.disabled = true;
@@ -713,7 +749,7 @@
     box.append(text, restore, dismiss); sec.append(box);
   }
   function hot(v, k) { return v.on && v[k] != null && v[k] >= prefs.limits[k]; }
-  function problems(v) { if (!v.on) return [i18n('app.mat_ket_noi_3')]; return Object.keys(HP).filter(function (k) { return hot(v, k); }).map(function (k) { return i18n('app.cao_nguong', [HP[k][0], number(v[k]), prefs.limits[k]]); }); }
+  function problems(v) { if (!v.on) return [i18n('app.mat_ket_noi_3')]; if (v.noData) return [i18n('app.khong_lay_duoc_du_lieu')]; return Object.keys(HP).filter(function (k) { return hot(v, k); }).map(function (k) { return i18n('app.cao_nguong', [HP[k][0], number(v[k]), prefs.limits[k]]); }); }
   function number(n) { return Number.isFinite(n) ? Math.round(n * 100) / 100 : '—'; }
   function compactNumber(n) { return Number.isFinite(n) ? Math.round(n * 10) / 10 : '—'; }
   function ring(v, k, label, value) {
@@ -742,19 +778,28 @@
         }
       }
       var tags = el('div', 'tags'), waits = v.sessions.filter(function (s) { return s.state === 'wait'; }).length;
-      tags.append(el('span', 'tg', i18n('app.phien_2', [v.sessions.length])));
-      if (waits) tags.append(el('span', 'tg w', i18n('app.cho_ban_5', [waits])));
-      if (v.workers.length) tags.append(el('span', 'tg', v.workers.length + ' worker Crew'));
+      // One machine in view: the hero already says how many sessions and how many wait, so the card shows only problems.
+      if (scoped().length > 1) {
+        tags.append(el('span', 'tg', i18n('app.phien_2', [v.sessions.length])));
+        if (waits) tags.append(el('span', 'tg w', i18n('app.cho_ban_5', [waits])));
+      }
       if (sys && (sys.failed || []).length) tags.append(el('span', 'tg b', i18n('app.dich_vu_loi', [sys.failed.length])));
       if (sys && sys.rebootRequired) {
         if (!v.local) {
-          var reboot = el('button', 'btn danger reboot', v.rebooting ? i18n('app.dang_khoi_dong_lai') : i18n('app.khoi_dong_lai'));
-          reboot.type = 'button'; reboot.disabled = !v.on || v.rebooting;
+          // Ubuntu asks for a restart after updates (/var/run/reboot-required): say so plainly; the click still asks before doing it.
+          var reboot = el('button', 'btn reboot reboot-ask', v.rebooting ? i18n('app.dang_khoi_dong_lai') : '⟳ ' + i18n('app.can_khoi_dong_lai_cap_nhat'));
+          reboot.title = i18n('app.can_khoi_dong_lai_title'); reboot.type = 'button'; reboot.disabled = !v.on || v.rebooting;
           reboot.onclick = function () { rebootDlg(v); }; tags.append(reboot);
         } else tags.append(el('span', 'tg b', i18n('app.can_khoi_dong_lai')));
       }
       if (sys && sys.updates) tags.append(el('span', 'tg w', i18n('app.ban_cap_nhat', [sys.updates])));
-      card.append(tags); box.append(card);
+      if (v.noData) {
+        // Connected over SSH but the data request fails: say why and offer a fresh connection.
+        var nd = el('div', 'fc-nodata'), ndb = el('button', 'btn primary', i18n('app.ket_noi_lai'));
+        nd.append(el('span', '', i18n('app.khong_lay_duoc_du_lieu_chi_tiet', [v.pollError || i18n('app.chua_co_phan_hoi')])));
+        ndb.type = 'button'; ndb.onclick = function () { connectAgain(v, ndb); }; nd.append(ndb); card.append(nd);
+      }
+      if (tags.children.length) card.append(tags); box.append(card);
     });
   }
   function rebootDlg(v) {
@@ -762,6 +807,15 @@
     $('reboot-warning').textContent = i18n('app.khoi_dong_lai_se_ket', [v.name, v.sessions.length]);
     $('reboot-name').value = ''; $('reboot-error').textContent = ''; $('reboot-ok').disabled = true;
     $('dlg-reboot').showModal(); $('reboot-name').focus();
+    // What the reboot would interrupt: agents at work, and unsaved work in git (not committed / not pushed).
+    var box = $('reboot-check'); box.textContent = i18n('app.reboot_dang_kiem');
+    api('GET', '/api/servers/' + v.id + '/reboot-check').then(function (c) {
+      if (rebootTarget !== v) return;
+      box.textContent = '';
+      if (!c.agents.length && !c.changed.length) { box.append(el('p', 'ok', i18n('app.reboot_khong_co_gi'))); return; }
+      if (c.agents.length) { box.append(el('b', '', i18n('app.reboot_agent_dang_chay', [c.agents.length]))); var ul = el('ul'); c.agents.forEach(function (a) { ul.append(el('li', '', a.name)); }); box.append(ul); }
+      if (c.changed.length) { box.append(el('b', '', i18n('app.reboot_chua_luu_git', [c.changed.length]))); var ul2 = el('ul'); c.changed.forEach(function (d) { ul2.append(el('li', '', d.dir + ' · ' + [d.changes ? i18n('app.reboot_thay_doi', [d.changes]) : '', d.ahead ? i18n('app.reboot_chua_push', [d.ahead]) : ''].filter(Boolean).join(', '))); }); box.append(ul2); }
+    }).catch(function () { if (rebootTarget === v) box.textContent = ''; });
   }
   $('reboot-name').oninput = function () { $('reboot-ok').disabled = rebootBusy || !rebootTarget || this.value !== rebootTarget.name; };
   $('form-reboot').onsubmit = function (e) {
@@ -777,7 +831,7 @@
   var readAlerts = {}; try { readAlerts = JSON.parse(localStorage.getItem('tw-alerts-read') || '{}') || {}; } catch (e) { readAlerts = {}; }
   function saveRead() { try { localStorage.setItem('tw-alerts-read', JSON.stringify(readAlerts)); } catch (e) { /* optional */ } }
   // Which kinds of alert are worth interrupting for. The rest stay quiet (the bell, red number and browser notices all follow this).
-  var ALERT_CATS = ['ask', 'quiet', 'load', 'service', 'restart', 'offline'], alertCats = { ask: true, quiet: false, load: false, service: true, restart: true, offline: true };
+  var ALERT_CATS = ['ask', 'quiet', 'load', 'service', 'restart', 'offline'], alertCats = { ask: true, quiet: true, load: false, service: true, restart: true, offline: true };
   try { Object.assign(alertCats, JSON.parse(localStorage.getItem('tw-alert-cats') || '{}')); } catch (e) { /* defaults */ }
   function wantAlert(cat) { return alertCats[cat] !== false; }
   function waitCat(s) { return s.asking ? 'ask' : 'quiet'; }
@@ -798,6 +852,10 @@
   function markRead(list) { list.forEach(function (a) { readAlerts[a.id] = 1; }); saveRead(); renderBell(); }
   function renderAlertList() {
     var box = $('al-list'), list = alerts(), fresh = unread(list); box.textContent = '';
+    // Say plainly whether these also reach the computer's notification centre, with the switch right here.
+    var os = el('div', 'al-os' + (browserOn ? ' on' : '')); os.append(el('span', '', i18n(browserOn ? 'alerts.os_on' : 'alerts.os_off')));
+    if (!browserOn) { var turn = el('button', 'btn primary', i18n('alerts.os_turn_on')); turn.type = 'button'; turn.onclick = function () { var c = $('set-browser'); c.checked = true; c.onchange.call(c); setTimeout(renderAlertList, 600); }; os.append(turn); }
+    box.append(os);
     $('al-read').disabled = !fresh.length;
     if (!list.length) box.append(el('p', 'hint', i18n('app.khong_co_canh_bao_nao')));
     else if (!fresh.length) box.append(el('p', 'hint', i18n('app.da_doc_het_canh_bao')));
@@ -831,7 +889,9 @@
       o.connect(g); g.connect(audioContext.destination); o.start(t); o.stop(t + .32); o.onended = function () { o.disconnect(); g.disconnect(); };
     } catch (e) { /* optional sound never interrupts input */ }
   }
+  $('set-backup-every').onchange = function () { savePrefs({ backupMinutes: Number(this.value) }).catch(settingsError); };
   $('set-auto-restore').onchange = function () { savePrefs({ autoRestoreLocal: this.checked }).catch(settingsError); };
+  $('set-auto-restore-remote').onchange = function () { savePrefs({ autoRestoreRemote: this.checked }).catch(settingsError); };
   $('set-sound').onchange = function () { var on = this.checked; prefs.sound = on; if (on) armAudio(); savePrefs({ sound: on }).catch(settingsError); };
   var editingPet = null;
   // Grid picker: automatic, then every registered pet, grouped. The hidden #pet-kind keeps the form code unchanged.
@@ -862,6 +922,13 @@
   };
   var waitCalls = new Map(), deliveries = new Map();
   try { deliveries = new Map(JSON.parse(sessionStorage.getItem('tw-deliveries') || '[]')); } catch (e) { /* optional */ }
+  // One computer notification per state change of a session, remembered across reloads and restarts of the app; a session
+  // that already finished before the app opened is not announced again (it is still in the bell list).
+  var notified = new Set(), pageStart = Date.now();
+  try { notified = new Set(JSON.parse(localStorage.getItem('tw-notified') || '[]')); } catch (e) { /* optional */ }
+  function markNotified(k) { notified.add(k); var all = Array.from(notified); if (all.length > 400) { all = all.slice(-300); notified = new Set(all); } try { localStorage.setItem('tw-notified', JSON.stringify(all)); } catch (e) { /* optional */ } }
+  // The moment the state began: the agent's own timestamp when it writes one, else when TERMNEST first saw it.
+  function stateAt(s) { var st = s.stateSource === 'status' && s.aiStatus; return st ? ((st.parked && st.job && st.job.at) || st.at || s.stateSince) : s.stateSince; }
   function notifyWaits() {
     var next = {}, live = new Set();
     servers.forEach(function (v) { (v.houseSessions || v.sessions).forEach(function (s) {
@@ -870,9 +937,15 @@
       if (s.state !== 'wait') { waitCalls.delete(key); deliveries.delete(key); return; }
       if (waitStates && waitStates[key] && waitStates[key] !== 'wait' && wantAlert(waitCat(s))) meow();
       var since = s.stateSince;
-      if (!Number.isFinite(since) || Date.now() - since < window.PetState.LIMITS.wait || waitCalls.get(key) === since ||
+      // A question is reported after a few seconds; a session that finished after 30 quiet seconds (it may only be pausing).
+      var settle = s.asking ? 5000 : 30000;
+      if (!Number.isFinite(since) || Date.now() - since < settle || waitCalls.get(key) === since ||
           !wantAlert(waitCat(s)) || !browserOn || !('Notification' in window) || Notification.permission !== 'granted') return;
       waitCalls.set(key, since);
+      var once = key + '/' + (s.asking ? 'ask' : 'done') + '/' + (stateAt(s) || since);
+      if (notified.has(once)) return;
+      markNotified(once);
+      if (!s.asking && (stateAt(s) || since) < pageStart - 60000) return;
       // Rasterise local SVG artwork; no remote image or push service.
       var img = new Image();
       img.onload = function () {
@@ -881,7 +954,7 @@
           if (!browserOn || !current.on || !session || session.state !== 'wait' || session.stateSince !== since) return;
           var canvas = document.createElement('canvas'); canvas.width = canvas.height = 96;
           canvas.getContext('2d').drawImage(img, 0, 0, 96, 96);
-          var n = new Notification(i18n('app.cho_ban_hon_2_phut', [s.name]), { body: v.name + ': ' + question(session), tag: key, icon: canvas.toDataURL('image/png') });
+          var n = new Notification(i18n(session.asking ? 'alerts.notify_ask' : 'alerts.notify_done', [s.name]), { body: v.name + ': ' + question(session), tag: key, icon: canvas.toDataURL('image/png') });
           n.onclick = function () { window.focus(); openSession(v.id, s.name); n.close(); };
         } catch (e) { /* notification support varies */ }
       };
@@ -926,10 +999,27 @@
     });
     $('recent').textContent = ''; prefs.recentDirs.forEach(function (dir) { var b = el('button', 'btn', dir); b.type = 'button'; b.onclick = function () { $('n-dir').value = dir; }; $('recent').append(b); });
   }
+  // Small menus above the terminal bar ("Phím", "Lệnh mẫu"): one open at a time, closed by a click elsewhere or Esc.
+  function popToggle(btn, menu) {
+    var open = menu.hidden;
+    document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; });
+    document.querySelectorAll('.term-tools .key-more-btn').forEach(function (x) { x.setAttribute('aria-expanded', 'false'); });
+    menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    cmdOpen = menu.id === 'cmd-pop' && open;
+  }
+  var cmdOpen = false;
+  document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.key-more-wrap')) { cmdOpen = false; document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); });
   function renderCommands() {
     var box = $('command-list'); box.textContent = '';
-    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), i18n('app.o', [n])); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
-    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; box.append(b); });
+    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), '⊞ ' + n); b.title = i18n('app.o', [n]); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
+    // Saved commands live in one "Lệnh mẫu ▾" menu instead of a row of chips.
+    var wrap = el('span', 'key-more-wrap'), mb = el('button', 'btn key-more-btn', '⚡ ' + i18n('term.commands') + ' ▾'), menu = el('span', 'key-more pop');
+    // Redrawn on every poll: the menu stays open across redraws until a click elsewhere closes it.
+    menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap);
+    menu.addEventListener('click', function () { cmdOpen = false; menu.hidden = true; mb.setAttribute('aria-expanded', 'false'); });
+    mb.onclick = function (e) { e.stopPropagation(); popToggle(mb, menu); };
+    prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.title = c; b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; menu.append(b); });
   }
   // ---- Effects: Settings → Hiệu ứng. The usual look stays; public/fx.js adds a light layer of particles over it.
   var EFFECTS = [["none", ["#eef3fb", "#ffffff", "#ff5c7a", "#0fb5ae"]], ["noel", ["#d62839", "#2e9e5b", "#ffffff", "#f2c94c"]], ["phaohoa", ["#ff5c7a", "#ffd23f", "#4dd2ff", "#c77dff"]]];
@@ -957,9 +1047,23 @@
   }
   try { if (localStorage.getItem('tw-density') === 'compact') document.documentElement.setAttribute('data-density', 'compact'); } catch (e) { /* optional */ }
   renderFx();
+  // Settings → Clean-up: how long "Send file" keeps what it stored and how long the trash keeps items (kept on the server).
+  function renderCleanup() {
+    var t = $('set-temp-days'), r = $('set-trash-days'); if (!t || !r) return;
+    var save = function (patch) { api('POST', '/api/features/browse/cleanup', patch).catch(settingsError); };
+    api('GET', '/api/features/browse/cleanup').then(function (c) { t.value = String(c.tempDays); r.value = String(c.trashDays); }).catch(function () { /* older server */ });
+    t.onchange = function () { save({ tempDays: Number(t.value) }); };
+    r.onchange = function () { save({ trashDays: Number(r.value) }); };
+  }
+  // Settings → Giao diện → Vietnamese typing in the terminal: automatic (WebKit apps), always or never (tw-ime). Applies to
+  // terminals opened afterwards; read where each terminal is created.
   function renderSettings() {
     renderStylePicker();
+    var ime = $('set-ime'); if (ime) { try { ime.value = localStorage.getItem('tw-ime') || 'auto'; } catch (e) { ime.value = 'auto'; } ime.onchange = function () { try { localStorage.setItem('tw-ime', ime.value === 'auto' ? '' : ime.value); } catch (e) { /* optional */ } $('set-note').textContent = i18n('settings.ime_reopen'); }; }
+    renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
+    $('set-backup-every').value = String(prefs.backupMinutes || 60);
+    $('set-auto-restore-remote').checked = !!prefs.autoRestoreRemote;
     $('set-sound').checked = !!prefs.sound;
     $('set-browser').checked = browserOn;
     Object.keys(HP).forEach(function (k) { $('lim-' + k).value = prefs.limits[k]; $('lim-' + k + '-v').textContent = prefs.limits[k] + '%'; });
@@ -995,7 +1099,14 @@
     table($('dt-disks'), sys ? (sys.disks || []).map(function (d) { return [d.mount, number(d.usedGb) + '/' + number(d.totalGb) + ' GB · ' + number(d.pct) + '%']; }) : [[i18n('app.so_lieu'), i18n('app.dang_cho')]]);
     table($('dt-top'), sys ? (sys.top || []).map(function (p) { return [p.cmd, number(p.cpu) + '% · ' + number(p.memGb) + ' GB']; }) : [[i18n('app.so_lieu'), i18n('app.dang_cho')]]);
     var rows = [[i18n('app.ket_noi'), v.on ? i18n('app.da_ket_noi') : i18n('app.mat_ket_noi_3')]];
-    if (sys) rows = rows.concat([[i18n('app.he_dieu_hanh'), sys.os], [i18n('app.thoi_gian_chay'), span(sys.uptimeSec)], [i18n('app.dich_vu_loi_3'), (sys.failed || []).join(', ') || i18n('app.khong_co')], [i18n('app.khoi_dong_lai'), sys.rebootRequired ? i18n('app.can_khoi_dong_lai') : i18n('app.chua_can')], [i18n('app.ban_cap_nhat_2'), sys.updates == null ? i18n('app.chua_co_so_lieu') : sys.updates]]);
+    if (sys) rows = rows.concat([[i18n('app.he_dieu_hanh'), sys.os], [i18n('app.thoi_gian_chay'), span(sys.uptimeSec)], [i18n('app.dich_vu_loi_3'), (sys.failed || []).join(', ') || i18n('app.khong_co')], [i18n('app.khoi_dong_lai'), sys.rebootRequired ? i18n('app.can_khoi_dong_lai') : i18n('app.chua_can')], [i18n('app.ban_cap_nhat_2'), sys.updates == null ? i18n('app.chua_co_so_lieu') : sys.updates], [i18n('app.tai_1_phut'), number(sys.load1) + ' / ' + sys.cores], ['Swap', number(sys.swapUsedGb) + ' / ' + number(sys.swapTotalGb) + ' GB'], [i18n('app.mang'), '↓' + number(sys.downMBs) + ' ↑' + number(sys.upMBs) + ' MB/s']]);
+    var kw = $('dt-key'); kw.textContent = ''; kw.hidden = !(!v.local && v.auth === 'password');
+    if (!kw.hidden) {
+      var go = el('button', 'btn primary sm', i18n('ssh.switch')); go.type = 'button'; go.disabled = !v.on;
+      var msg = el('span', '', v.on ? i18n('ssh.uses_password') : i18n('ssh.uses_password_off'));
+      go.onclick = function () { go.disabled = true; go.textContent = i18n('ssh.switching'); api('POST', '/api/servers/' + v.id + '/use-key').then(function () { kw.textContent = '✓ ' + i18n('ssh.switched'); return refresh(true); }).catch(function (err) { msg.textContent = err.message; go.disabled = false; go.textContent = i18n('ssh.switch'); }); };
+      kw.append(el('b', '', '🔑'), msg, go);
+    }
     table($('dt-sys'), rows); if (!$('dlg-detail').open) $('dlg-detail').showModal(); loadHistory(24);
   }
   $('q').oninput = function () { query = this.value.trim().toLowerCase(); renderSide(); renderGrid(); };
@@ -1011,7 +1122,108 @@
       label.append(text, input); box.append(label);
     });
   })();
-  $('set').onclick = function () { renderSettings(); renderInstall(); $('set-note').textContent = ''; $('dlg-set').showModal(); };
+  // Settings tabs: one pane at a time, the last one used comes back next time.
+  var settingsReturnFocus = null;
+  var setTab = 'look'; try { setTab = localStorage.getItem('tw-set-tab') || 'look'; } catch (e) { /* optional */ }
+  function showSetTab(tab) {
+    var tabs = document.querySelectorAll('#dlg-set .set-tab'), panes = document.querySelectorAll('#dlg-set .set-pane');
+    if (![].some.call(tabs, function (t) { return t.dataset.tab === tab; })) tab = 'look';
+    setTab = tab; try { localStorage.setItem('tw-set-tab', tab); } catch (e) { /* optional */ }
+    [].forEach.call(tabs, function (t) { var on = t.dataset.tab === tab; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; if (on) t.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
+    [].forEach.call(panes, function (p) { p.hidden = p.dataset.pane !== tab; });
+    var box = document.querySelector('#dlg-set .set-panes'); if (box) box.scrollTop = 0;
+    if (tab === 'backup') { renderBackup(); renderTransfer(); }
+  }
+  [].forEach.call(document.querySelectorAll('#dlg-set .set-tab'), function (t) {
+    t.onclick = function () { showSetTab(t.dataset.tab); };
+    t.onkeydown = function (e) { if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); var all = [].slice.call(document.querySelectorAll('#dlg-set .set-tab')), i = all.indexOf(t) + (e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1); var n = all[(i + all.length) % all.length]; showSetTab(n.dataset.tab); n.focus(); };
+  });
+  // Backup: when the last encrypted copy was made, "Back up now", and one choice for an extra copy: none, a synced cloud folder
+  // found on this computer (its app uploads it), or any other folder picked in the folder browser.
+  var BK_KIND = { gdrive: 'Google Drive', icloud: 'iCloud Drive', onedrive: 'OneDrive', dropbox: 'Dropbox' }, bkData = null;
+  function bkLabel(dir) { var parts = String(dir).split(/[\\/]/).filter(Boolean); return parts.slice(-2).join('/') || dir; }
+  function bkShow(b) {
+    bkData = b;
+    $('bk-dir').textContent = b.dir; $('bk-dir').title = b.dir;
+    $('bk-last').textContent = b.lastAt ? new Date(b.lastAt).toLocaleTimeString(i18n('lang.locale'), { hour: '2-digit', minute: '2-digit' }) + ' · ' + new Date(b.lastAt).toLocaleDateString(i18n('lang.locale'), { day: '2-digit', month: '2-digit' }) : i18n('settings.backup_none');
+    var sel = $('bk-target'), extra = b.extra ? b.extra.replace(/[\\/]TERMNEST-backup$/, '') : '';
+    sel.textContent = '';
+    var add = function (value, text, title) { var o = el('option', '', text); o.value = value; if (title) o.title = title; sel.append(o); return o; };
+    add('', i18n('settings.backup_extra_none'));
+    var known = false;
+    (b.suggestions || []).forEach(function (c) { add(c.path, '☁ ' + (BK_KIND[c.kind] || c.kind), c.path); if (c.path === extra) known = true; });
+    if (extra && !known) add(extra, '📁 ' + bkLabel(extra), extra);
+    add('*', i18n('settings.backup_pick'));
+    sel.value = extra; sel.title = extra;
+    var note = $('bk-note'); note.className = 'hint' + (b.extraError ? ' bad' : '');
+    note.textContent = b.extraError ? i18n('settings.backup_extra_failed') : '';
+  }
+  function bkError(err) { var note = $('bk-note'); note.className = 'hint bad'; note.textContent = err.message; if (bkData) { var keep = bkData; setTimeout(function () { $('bk-target').value = keep.extra ? keep.extra.replace(/[\\/]TERMNEST-backup$/, '') : ''; }, 0); } }
+  function bkSet(dir) { api('POST', '/api/backup/folder', { dir: dir }).then(function (b) { bkShow(Object.assign(b, { suggestions: bkData && bkData.suggestions })); }).catch(bkError); }
+  function renderBackup() { api('GET', '/api/backup').then(bkShow).catch(bkError); }
+  $('bk-target').onchange = function () {
+    var v = this.value;
+    if (v !== '*') { bkSet(v); return; }
+    var me = servers.find(function (s) { return s.local; }), keep = bkData;
+    if (keep) bkShow(keep);   // until a folder is picked the choice stays as it was
+    if (me) browseDir(me.id, '', bkSet);
+  };
+  // Restore from a backup file (moving to another computer, or going back to an earlier moment). The file's own password opens it.
+  var bkFile = null;
+  $('bk-restore').onclick = function () { $('bk-restore-input').value = ''; $('bk-restore-input').click(); };
+  $('bk-restore-input').onchange = function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    f.text().then(function (text) { bkFile = text; $('bk-restore-file').textContent = '📄 ' + f.name; $('bk-restore-form').hidden = false; $('bk-restore-pass').value = ''; $('bk-restore-pass').focus(); });
+  };
+  $('bk-restore-cancel').onclick = function () { bkFile = null; $('bk-restore-form').hidden = true; };
+  $('bk-restore-form').onsubmit = function (e) {
+    e.preventDefault(); if (!bkFile) return;
+    var go = this.querySelector('[type=submit]'); go.disabled = true;
+    api('POST', '/api/backup/restore', { backup: bkFile, password: $('bk-restore-pass').value }).then(function (r) {
+      bkFile = null; $('bk-restore-form').hidden = true; $('dlg-set').close();
+      say(r.chats ? i18n('move2.restored', [r.servers, r.chats - (r.waiting || 0), r.waiting || 0]) : i18n('settings.restore_done', [r.servers]), true, 9000);
+      api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); });
+      refresh(true);
+    }).catch(bkError).finally(function () { go.disabled = false; });
+  };
+  // "Chuyển máy": one file with everything (data + the chats of this computer's sessions), saved on the Desktop.
+  function mvSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function mvWaiting(list) {
+    $('mv2-wait').hidden = !(list && list.length);
+    $('mv2-wait-list').textContent = (list || []).map(function (w) { return w.name + (w.server ? ' (' + w.server + ')' : '') + (w.origin ? ' · ' + w.origin : ''); }).join(' — ');
+  }
+  function renderTransfer() { api('GET', '/api/transfer').then(function (t) { mvWaiting(t.waiting); }).catch(function () { /* older server */ }); }
+  $('mv2-open').onclick = function () {
+    $('mv2-done').hidden = true; $('mv2-form').hidden = false; $('mv2-sum').textContent = i18n('move2.reading'); $('mv2-pass').value = ''; $('mv2-pass').focus();
+    $('mv2-srv-row').hidden = true; $('mv2-srv').checked = false;
+    api('GET', '/api/transfer?servers=1').then(function (t) {
+      if (t.serverChats && t.serverChats.count) { $('mv2-srv-row').hidden = false; $('mv2-srv-t').textContent = i18n('move2.with_servers', [t.serverChats.count, mvSize(t.serverChats.bytes)]); }
+      $('mv2-sum').textContent = i18n('move2.summary2', [t.servers, t.onServers || 0, t.localSessions || 0, t.chats.length, mvSize(t.bytes), t.dir]) + (t.skipped.length ? ' ' + i18n('move2.skipped', [t.skipped.map(function (x) { return x.name; }).join(', ')]) : '');
+      mvWaiting(t.waiting);
+    }).catch(bkError);
+  };
+  $('mv2-cancel').onclick = function () { $('mv2-form').hidden = true; };
+  $('mv2-form').onsubmit = function (e) {
+    e.preventDefault(); var go = this.querySelector('[type=submit]'); go.disabled = true; go.textContent = i18n('move2.exporting');
+    api('POST', '/api/transfer/export', { password: $('mv2-pass').value, withServers: $('mv2-srv').checked }).then(function (r) {
+      $('mv2-form').hidden = true; $('mv2-done').hidden = false;
+      $('mv2-done-t').textContent = '✓ ' + i18n('move2.done', [r.chats, mvSize(r.bytes)]) + (r.serverChats ? ' ' + i18n('move2.done_servers', [r.serverChats]) : ''); $('mv2-path').textContent = r.path;
+    }).catch(bkError).finally(function () { go.disabled = false; go.textContent = i18n('move2.export_go'); });
+  };
+  $('mv2-retry').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/transfer/retry').then(function (r) { mvWaiting(r.waiting); refresh(true); }).catch(bkError).finally(function () { b.disabled = false; }); };
+  $('bk-now').onclick = function () { var b = this; b.disabled = true; api('POST', '/api/backup/now').then(function (r) { bkShow(Object.assign(r, { suggestions: bkData && bkData.suggestions })); }).catch(bkError).finally(function () { b.disabled = false; }); };
+  function openSettings(tab) {
+    var dlg = $('dlg-set');
+    renderSettings(); renderInstall(); $('set-note').textContent = ''; showSetTab(tab || setTab);
+    if (!dlg.open) { settingsReturnFocus = document.activeElement; dlg.showModal(); }
+    var selected = dlg.querySelector('.set-tab[aria-selected="true"]'); if (selected) { selected.focus(); selected.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  }
+  $('set').onclick = function () { openSettings(); };
+  $('dlg-set').addEventListener('close', function () {
+    var target = settingsReturnFocus;
+    if (!target || !target.isConnected || target.closest('#dlg-set') || !target.getClientRects().length) target = $('set');
+    settingsReturnFocus = null; target.focus();
+  });
   document.querySelectorAll('dialog [data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });
   $('dt-see').onclick = function () { $('dlg-detail').close(); setScope(detailId); setView('over'); };
   document.querySelectorAll('#dt-range button').forEach(function (b) { b.onclick = function () { loadHistory(Number(b.dataset.r.replace('h', ''))); }; });
@@ -1096,15 +1308,15 @@
     $('n-pet').innerHTML = pet('frog', 'run'); $('n-name').value = ''; $('n-dir').value = ''; $('n-err').textContent = ''; renderTemplates(); $('dlg-new').showModal(); $('n-name').focus();
   }
   function addDlg() {
-    ['s-host', 's-user', 's-pass', 's-phrase', 's-key'].forEach(function (i) { $(i).value = ''; });
-    $('s-port').value = '22'; $('s-err').textContent = ''; $('dlg-srv').showModal(); $('s-host').focus();
+    ['s-host', 's-user', 's-phrase', 's-key'].forEach(function (i) { $(i).value = ''; });
+    $('s-port').value = '22'; $('s-err').textContent = ''; $('s-key-name').textContent = i18n('ssh.no_key'); $('dlg-srv').showModal(); $('s-host').focus();
   }
   function delDlg(v) { delTarget = v; $('d-title').textContent = i18n('app.go_3', [(v.local ? i18n('app.may_nay', [v.hostname]) : v.user + '@' + v.name)]); $('dlg-del').showModal(); $('d-cancel').focus(); }
   function killDlg() { killTarget = curItem(); if (!killTarget) return; $('k-title').textContent = i18n('app.dung_2', [killTarget.s.name]); $('k-err').textContent = ''; $('dlg-kill').showModal(); $('k-cancel').focus(); }
   function connectAgain(v, b) {
     if (v.needsPassword) { passTarget = v; $('p-title').textContent = i18n('app.ket_noi_2', [(v.local ? i18n('app.may_nay', [v.hostname]) : v.user + '@' + v.name)]); $('p-pass').value = ''; $('p-err').textContent = ''; $('dlg-pass').showModal(); $('p-pass').focus(); return; }
     b.disabled = true; b.textContent = i18n('app.dang_ket_noi');
-    api('POST', '/api/servers/' + v.id + '/connect', {}).then(function () { say(i18n('app.da_ket_noi_lai_viec', [v.name]), true, 3000); return refresh(true); })
+    api('POST', '/api/servers/' + v.id + '/connect', v.noData ? { force: true } : {}).then(function () { say(i18n('app.da_ket_noi_lai_viec', [v.name]), true, 3000); return refresh(true); })
       .catch(function (e) { say(e.message, false, 4000); b.disabled = false; b.textContent = i18n('app.ket_noi_lai'); });
   }
 
@@ -1126,10 +1338,8 @@
   $('p-cancel').onclick = function () { $('dlg-pass').close(); };
   $('k-cancel').onclick = function () { $('dlg-kill').close(); };
   $('d-cancel').onclick = function () { $('dlg-del').close(); };
-  $('s-auth').onchange = function () {
-    var k = this.value === 'key'; $('s-kl').hidden = !k; $('s-ppl').hidden = !k; $('s-pl').hidden = k;
-    $('s-hint').textContent = k ? i18n('app.khoa_duoc_ma_hoa_khi') : i18n('app.khong_luu_mat_khau_web');
-  };
+  // Adding a server: one way only — the user's own SSH private key file (and its passphrase, if any).
+  $('s-key').onchange = function () { var f = this.files[0]; $('s-key-name').textContent = f ? f.name : i18n('ssh.no_key'); };
   $('form-new').onsubmit = function (e) {
     e.preventDefault(); var n = $('n-name').value.trim(), id = $('n-srv').value;
     if (!/^[A-Za-z0-9_-]+$/.test(n)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong_2'); return; }
@@ -1139,7 +1349,7 @@
   };
   $('form-srv').onsubmit = function (e) {
     e.preventDefault();
-    var auth = $('s-auth').value, body = { host: $('s-host').value.trim(), port: Number($('s-port').value), user: $('s-user').value.trim(), auth: auth };
+    var body = { host: $('s-host').value.trim(), port: Number($('s-port').value), user: $('s-user').value.trim(), auth: 'key' };
     if (!body.host) { $('s-err').textContent = i18n('app.nhap_dia_chi_may_chu'); return; }
     if (!body.user) { $('s-err').textContent = i18n('app.nhap_tai_khoan'); return; }
     var send = function () {
@@ -1147,10 +1357,6 @@
       api('POST', '/api/servers', body).then(function (r) { $('dlg-srv').close(); return refresh(true).then(function () { setScope(r.id); say(i18n('app.da_them_may_chu'), true, 2500); }); })
         .catch(function (err) { $('s-err').textContent = err.message; }).finally(function () { $('s-ok').disabled = false; });
     };
-    if (auth === 'password') {
-      body.password = $('s-pass').value; if (!body.password) { $('s-err').textContent = i18n('app.nhap_mat_khau'); return; }
-      send(); return;
-    }
     var f = $('s-key').files[0]; if (!f) { $('s-err').textContent = i18n('app.chon_file_khoa_ssh'); return; }
     body.passphrase = $('s-phrase').value;
     f.text().then(function (t) { body.key = t; send(); });
@@ -1182,7 +1388,7 @@
     var t = e.target;
     if (t && t.classList && t.scrollTop && $('app').classList.contains('compact') && (t.id === 'app' || t.id === 'v-focus' || t.classList.contains('main') || t.classList.contains('focus-body') || t.classList.contains('term-wrap'))) t.scrollTop = 0;
   }, true);
-  // Phone: the detail column is hidden, so a button opens it as a bottom sheet (context window, tokens, Crew of this session).
+  // Phone: the detail column is hidden, so a button opens it as a bottom sheet (context window and tokens).
   function toggleSheet(on) {
     var d = $('detail'), b = $('sheet-backdrop'); if (!d || !b) return;
     on = on === undefined ? !d.classList.contains('sheet') : on;
@@ -1223,7 +1429,7 @@
       return [v.id, v.name, v.on, v.hasTmux, v.error, v.lost, v.sessions.map(function (s) { return [s.name, s.state, s.cmd, s.diary]; }), v.workers.map(function (w) { return [w.finishedAt, w.result, w.kind, w.task, w.track, w.owner, w.elapsed >> 6, (w.lines || []).join()]; })];
     }));
   }
-  function refresh(force) {
+  function refresh(force, strict) {
     return api('GET', '/api/state').then(function (st) {
       servers = st.servers;
       servers.forEach(function (v) { if (v.local) v.name = i18n('app.local_name'); });
@@ -1247,6 +1453,7 @@
       if (view === 'focus' && ended && !terminalComposing()) { say(i18n('app.phien_da_ket_thuc'), true, 2500); if (paneCount === 1) setView('over'); }
       if (firstState) { firstState = false; if (!servers.length) addDlg(); }
     }).catch(function (e) {
+      if (strict) throw e;
       if (e.status === 401) { showLogin(); return; }
       if (online) { online = false; $('app').classList.add('offline'); say(i18n('app.mat_ket_noi_toi_web')); if (view === 'over') renderHero(); petSync(); }
     });
@@ -1262,6 +1469,16 @@
       setupToken = null; $('setup-pass').value = ''; $('setup-confirm').value = ''; showLogin();
     }).catch(function (err) { $('setup-err').textContent = err.message; });
   };
+  // First run: start from a backup made on another computer instead of a new password.
+  $('setup-restore').onclick = function () { $('form-setup').hidden = true; $('setup-restore').hidden = true; $('form-setup-restore').hidden = false; };
+  $('setup-restore-back').onclick = function () { $('form-setup-restore').hidden = true; $('form-setup').hidden = false; $('setup-restore').hidden = false; };
+  $('form-setup-restore').onsubmit = function (e) {
+    e.preventDefault(); $('setup-restore-err').textContent = '';
+    var f = $('setup-restore-file').files[0]; if (!f) return;
+    f.text().then(function (text) { return api('POST', '/api/setup/restore', { backup: text, password: $('setup-restore-pass').value, setupToken: setupToken }); })
+      .then(function () { setupToken = null; $('setup-restore-pass').value = ''; $('form-setup-restore').hidden = true; showLogin(); })
+      .catch(function (err) { $('setup-restore-err').textContent = err.message; });
+  };
   $('set-quit').onclick = function () {
     api('POST', '/api/quit').then(function () { stopPolling(); $('dlg-set').close(); say(i18n('app.ung_dung_da_dung_ban'), false); }).catch(settingsError);
   };
@@ -1269,17 +1486,23 @@
     stopPolling(); fileViewer.close(); tokens.clear(); closeCrew(); closeTerm(); cur = null; firstState = true; waitStates = null; document.title = 'TERMNEST';
     document.querySelectorAll('dialog[open]').forEach(function (d) { d.close(); });
     $('login').hidden = false; $('login-pass').value = '';
-    api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
+    api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-restore').hidden = !(s.webSetup && setupToken); $('form-setup-restore').hidden = true; $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
   }
   (function wireSelectionButtons() {
     var m = $('mouse-mode'), c = $('copy-sel');
     if (m) { m.onclick = toggleMouseMode; setMouseLabel(); }
     if (c) c.onclick = function () { copySelection(panes[focusedPane]); };
   })();
-  function enter() { $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSession: openSession, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  // The desktop app asks macOS / Windows / Linux for permission once, so alerts reach the notification centre by default.
+  function desktopNotifyDefault() {
+    var asked = null; try { asked = localStorage.getItem('tw-notifications'); } catch (e) { /* optional */ }
+    if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
+    var c = $('set-browser'); c.checked = true; c.onchange.call(c);
+  }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
-    api('POST', '/api/login', { password: $('login-pass').value }).then(enter).catch(function (err) { $('login-err').textContent = err.message; });
+    api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });
   };
   $('logout').onclick = function () { api('POST', '/api/logout').finally(showLogin); };
 

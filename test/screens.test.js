@@ -205,3 +205,88 @@ test('the Node.js guide lists a Windows command and picks it for a Windows host'
   const win = { cfg: { local: false }, exec: async () => ({ code: 1, out: '', err: "'node' is not recognized as an internal or external command" }) };
   return runOnHost(win, () => async () => ({}), {}).then(() => assert.fail('should throw'), (e) => assert.equal(e.code, 'no-node'));
 });
+
+test('the trash can delete one item or everything for good, and expires old items; only its own slots are touched', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { fsopRuntime } = require('../lib/features/browse');
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-purge-')));
+  try {
+    const op = fsopRuntime(), run = (o) => op({ cwd: root, ...o });
+    for (const n of ['a.txt', 'b.txt', 'c.txt']) fs.writeFileSync(path.join(root, n), 'x'.repeat(10));
+    const a = await run({ op: 'trash', path: 'a.txt' }); await run({ op: 'trash', path: 'b.txt' }); await run({ op: 'trash', path: 'c.txt' });
+    fs.mkdirSync(path.join(root, '.termnest-trash', 'notours1'));   // a folder without info.json is never removed
+    let list = await run({ op: 'list' });
+    assert.equal(list.count, 3); assert.equal(list.bytes, 30); assert.equal(list.items[0].bytes, 10);
+    assert.equal((await run({ op: 'purge', id: a.id })).ok, true);
+    assert.equal((await run({ op: 'purge', id: a.id })).code, 'notfound');
+    for (const bad of ['../x', '', 'a/b', '..']) assert.equal((await run({ op: 'purge', id: bad })).code, 'notfound');
+    // expire: make one item look 10 days old
+    list = await run({ op: 'list' });
+    const old = path.join(root, '.termnest-trash', list.items[1].id, 'info.json'), info = JSON.parse(fs.readFileSync(old, 'utf8'));
+    fs.writeFileSync(old, JSON.stringify({ ...info, at: Date.now() - 10 * 86400000 }));
+    assert.equal((await run({ op: 'expire', days: 0 })).code, 'invalid');
+    assert.equal((await run({ op: 'expire', days: 7 })).removed, 1);
+    assert.equal((await run({ op: 'list' })).count, 1);
+    assert.equal((await run({ op: 'empty' })).removed, 1);
+    assert.equal((await run({ op: 'list' })).count, 0);
+    assert.ok(fs.existsSync(path.join(root, '.termnest-trash', 'notours1')));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('temp files of Send file: listed, deleted by name or all, expired by age; nothing outside that folder', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { tempRuntime } = require('../lib/features/browse');
+  const tmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-temp-'))), saved = process.env.TMPDIR;
+  process.env.TMPDIR = tmp;
+  try {
+    const dir = path.join(tmp, 'termnest-drop-' + (process.getuid ? process.getuid() : 0)); fs.mkdirSync(dir);
+    for (const n of ['1.png', '2.pdf', '3.txt']) fs.writeFileSync(path.join(dir, n), 'abcd');
+    fs.writeFileSync(path.join(tmp, 'outside.txt'), 'keep');
+    const t = tempRuntime();
+    const list = await t({ op: 'list' }); assert.equal(list.count, 3); assert.equal(list.bytes, 12); assert.equal(list.dir, dir);
+    for (const bad of [['../outside.txt'], [], ['a/b'], 'x']) assert.equal((await t({ op: 'delete', names: bad })).code, 'invalid');
+    assert.equal((await t({ op: 'delete', names: ['1.png', 'missing.txt'] })).removed, 1);
+    const past = (Date.now() - 5 * 86400000) / 1000; fs.utimesSync(path.join(dir, '2.pdf'), past, past);
+    assert.equal((await t({ op: 'expire', days: 3 })).removed, 1);
+    assert.equal((await t({ op: 'all' })).removed, 1);
+    assert.equal((await t({ op: 'list' })).count, 0);
+    assert.ok(fs.existsSync(path.join(tmp, 'outside.txt')));
+  } finally { if (saved === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = saved; fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('clean-up settings accept only the offered choices, and Send file uses the temp choice', async () => {
+  const browse = require('../lib/features/browse'), { storeScript } = require('../lib/features/drop');
+  assert.deepEqual(browse.cleanupOf({}), { tempDays: 1, trashDays: 0 });
+  assert.deepEqual(browse.cleanupOf({ tempDays: 7, trashDays: 30 }), { tempDays: 7, trashDays: 30 });
+  assert.deepEqual(browse.cleanupOf({ tempDays: 2, trashDays: -1 }), { tempDays: 1, trashDays: 0 });
+  assert.match(storeScript('a.txt', 1), /-mtime \+0 /); assert.match(storeScript('a.txt', 7), /-mtime \+6 /); assert.doesNotMatch(storeScript('a.txt', 0), /find/);
+  const routes = {}, sent = [], fails = [];
+  let stored = null;
+  browse.register({ route: (m, p, h) => { routes[m + p] = h; }, remotes: () => [], backendOf: () => null, send: (res, c, b) => sent.push(b), fail: (res, c, m) => fails.push(m),
+    readJson: async (req) => req.body, shq: (x) => x, settings: { get: () => stored || { tempDays: 3 }, set: (v) => { stored = v; } } });
+  await routes['GET/cleanup']({ res: {} }); assert.deepEqual(sent.at(-1), { tempDays: 3, trashDays: 0 });
+  await routes['POST/cleanup']({ req: { body: { trashDays: 30 } }, res: {} }); assert.deepEqual(stored, { tempDays: 3, trashDays: 30 });
+  await routes['POST/cleanup']({ req: { body: { trashDays: 5 } }, res: {} }); assert.equal(fails.length, 1); assert.deepEqual(stored, { tempDays: 3, trashDays: 30 });
+  assert.equal(browse.cleanupSettings().tempDays, 3);
+});
+
+test('the file feature loads while TERMNEST is still locked (its settings are read only when needed)', () => {
+  const browse = require('../lib/features/browse');
+  assert.doesNotThrow(() => browse.register({ route() {}, remotes: () => [], backendOf: () => null, send() {}, fail() {}, readJson: async () => ({}), shq: (x) => x,
+    settings: { get: () => { throw new TypeError("Cannot read properties of null (reading 'features')"); }, set() {} } }));
+  assert.deepEqual(browse.cleanupSettings(), { tempDays: 1, trashDays: 0 });
+});
+
+test('a temp file opens with the same reader, rooted at the private Send file folder; other names are refused', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { readTempFile } = require('../lib/file-viewer');
+  const tmp = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-tview-'))), saved = process.env.TMPDIR;
+  process.env.TMPDIR = tmp;
+  try {
+    const dir = path.join(tmp, 'termnest-drop-' + (process.getuid ? process.getuid() : 0)); fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, '20261106-ab.md'), '# Xin chào');
+    const local = { cfg: { local: true }, mode: 'native' };
+    const ok = await readTempFile(local, '20261106-ab.md'); assert.equal(ok.kind, 'markdown'); assert.equal(ok.text, '# Xin chào');
+    for (const bad of ['../x.md', '/etc/passwd', 'a/b.md', '']) assert.ok((await readTempFile(local, bad)).error);
+  } finally { if (saved === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = saved; fs.rmSync(tmp, { recursive: true, force: true }); }
+});

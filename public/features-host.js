@@ -36,6 +36,7 @@ window.TW = (function () {
     setView: function (name) {
       views.forEach(function (v) {
         var on = v.def.id === name; v.section.classList.toggle('on', on); v.tab.setAttribute('aria-pressed', String(on));
+        if (on) v.tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         if (on && v.def.onShow) safe(v.def.onShow);
       });
     },

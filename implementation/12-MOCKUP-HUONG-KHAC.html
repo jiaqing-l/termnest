@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hướng khác cho Termnest · Mockup</title>
+<link rel="stylesheet" href="../public/fonts/fonts.css">
+<style>
+:root{color-scheme:light;--bg:#eef3fb;--surface:#fff;--surface-2:#f2f5fb;--surface-3:#e5ebf6;--line:#dfe6f2;--line-strong:#c2cde0;--fg:#172036;--fg-2:#4a556f;--fg-3:#6c7891;--primary:#ff5c7a;--on-primary:#fff;--hero-a:#0fb5ae;--hero-b:#2f80ed;--ok:#0d9b63;--ok-soft:#dcf7ea;--wait:#b86e00;--wait-soft:#ffefcf;--bad:#d8344a;--bad-soft:#ffe3e7;--idle:#7a879f;--term:#101527;--term-fg:#dfe6f5;--term-dim:#7c89a6;--claude:#3270f5;--codex:#ec7900;--shadow:0 14px 30px -18px rgba(38,58,110,.38);--sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0e1224;--surface:#171c33;--surface-2:#1f2642;--surface-3:#2a3254;--line:#2a3250;--line-strong:#404b72;--fg:#f0f3fc;--fg-2:#b2bcd4;--fg-3:#8691ad;--primary:#ff6f8a;--on-primary:#330713;--hero-a:#0b7f7b;--hero-b:#2358b8;--ok:#49dca0;--ok-soft:rgba(73,220,160,.15);--wait:#ffc55c;--wait-soft:rgba(255,197,92,.15);--bad:#ff8a96;--bad-soft:rgba(255,138,150,.14);--idle:#8691ad;--term:#0a0d1a;--shadow:0 16px 34px -20px rgba(0,0,0,.8)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.hero{position:relative;display:flex;align-items:center;gap:16px;padding:18px 22px;border-radius:22px;color:#fff;background:linear-gradient(115deg,var(--hero-a),var(--hero-b));overflow:hidden;flex-wrap:wrap}
+.hero::after{content:"";position:absolute;right:-60px;top:-90px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.1)}
+.hero>*{position:relative;z-index:1}.hero>div{flex:1 1 320px;min-width:0}.hero h1{margin:0;font-size:21px}.hero p{margin:2px 0 0;font-size:13px;opacity:.93}.hero .em{font-size:38px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+.btn{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:5px 14px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;transition:transform .12s}
+.btn:hover{transform:translateY(-1px)}.btn.primary{background:var(--primary);color:var(--on-primary);border-color:transparent}.btn.danger{background:var(--bad-soft);color:var(--bad);border-color:transparent}.btn.glass{margin-left:auto;background:rgba(255,255,255,.95);color:#12304f;border-color:transparent}
+.panel{background:var(--surface);border-radius:18px;box-shadow:0 0 0 1px var(--line),var(--shadow);padding:14px 16px}
+.tag{font-size:10.5px;border-radius:999px;padding:1px 8px;background:var(--surface-3);color:var(--fg-2);font-weight:600;white-space:nowrap}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.wait{background:var(--wait-soft);color:var(--wait)}.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sp{margin-left:auto}
+h2{margin:0;font-size:16px}h3{margin:0;font-size:14px}small,.dim{color:var(--fg-3)}
+/* overview table */
+.tw{overflow:auto;border-radius:14px;box-shadow:0 0 0 1px var(--line)}table{border-collapse:collapse;width:100%;font-size:13px}th{background:var(--surface-2);color:var(--fg-3);text-align:left;padding:8px 11px;font-size:12px}td{padding:8px 11px;border-top:1px solid var(--line);vertical-align:top}
+.stars{color:#e0a100;letter-spacing:1px;white-space:nowrap}.eff{white-space:nowrap}
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--fg-2)}
+.tabs button[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.idea[hidden]{display:none}.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.why{display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--fg-2)}.why b{color:var(--fg)}.why ul{margin:2px 0 0;padding-left:18px}
+.mock{border-radius:16px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);padding:12px;display:flex;flex-direction:column;gap:10px}
+.mock-t{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--fg-3);font-weight:700}
+.card{background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:10px 12px}
+.meter{height:9px;border-radius:99px;background:var(--surface-3);overflow:hidden}.meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--hero-a),var(--hero-b))}.meter.warn i{background:linear-gradient(90deg,#ffb938,#ff7a45)}.meter.bad i{background:var(--bad)}
+.ring{--p:0;--c:var(--hero-a);width:60px;height:60px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--surface-3) 0);position:relative;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}.ring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--surface)}.ring span{position:relative}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:14px;padding:10px 12px;background:var(--bad-soft);color:var(--bad)}.alert b{color:inherit}.alert .dim{color:var(--fg-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font:600 12px var(--mono);background:var(--surface-3);color:var(--fg-2)}.chip.bad{background:var(--bad-soft);color:var(--bad)}.chip button{border:0;background:none;cursor:pointer;color:inherit;padding:0}
+.term{background:var(--term);color:var(--term-fg);border-radius:12px;padding:10px 12px;font:12px/1.55 var(--mono);overflow:auto;white-space:pre}.term .hl{background:#ffd166;color:#10162b;border-radius:3px;padding:0 2px}.term .d{color:var(--term-dim)}
+.track{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.track .id{font:700 12px var(--mono);width:30px}.track .pet{font-size:22px;width:28px;text-align:center}.track .t{flex:1;min-width:0}.track .t small{display:block}
+.pill{border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:700;white-space:nowrap}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.run{background:#dcebff;color:var(--claude)}.pill.wait{background:var(--wait-soft);color:var(--wait)}.pill.idle{background:var(--surface-3);color:var(--idle)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.palette{border-radius:16px;background:var(--surface);box-shadow:0 20px 40px -16px rgba(20,30,60,.45),0 0 0 1px var(--line);overflow:hidden}
+.palette input{width:100%;border:0;border-bottom:1px solid var(--line);padding:12px 14px;background:transparent;font-size:15px;outline:none}
+.hit{padding:8px 14px;border-bottom:1px solid var(--line);cursor:pointer}.hit:hover,.hit.on{background:var(--surface-2)}.hit .h{display:flex;align-items:center;gap:8px;font-weight:700}.hit .ln{font:12px var(--mono);color:var(--fg-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hit mark{background:#ffd166;color:#10162b;border-radius:3px;padding:0 2px}
+kbd{font:600 11px var(--mono);background:var(--surface-3);border-radius:6px;padding:1px 6px;box-shadow:inset 0 -1px 0 var(--line-strong)}
+.sz{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}.sz .n{flex:1;min-width:0;font:12px var(--mono);overflow:hidden;text-overflow:ellipsis}.sz b{font:700 12.5px var(--mono)}
+input[type=checkbox]{accent-color:var(--hero-a);width:16px;height:16px}
+.sn{display:flex;flex-direction:column;gap:6px;background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:10px 12px}.sn code{font:12px var(--mono);background:var(--surface-3);border-radius:8px;padding:6px 8px;white-space:pre-wrap}
+.var{background:#fff3c4;color:#7a5800;border-radius:5px;padding:0 4px}
+.tl{display:flex;flex-direction:column;gap:0}.tl .e{display:flex;gap:10px;padding:7px 0;position:relative}.tl .e::before{content:"";position:absolute;left:11px;top:26px;bottom:-7px;width:2px;background:var(--line)}.tl .e:last-child::before{display:none}.tl .dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--surface);box-shadow:0 0 0 1px var(--line);font-size:13px;flex:none;z-index:1}.tl time{font:11.5px var(--mono);color:var(--fg-3);width:42px;flex:none;padding-top:3px}
+.md{background:var(--term);color:var(--term-fg);border-radius:12px;padding:10px 12px;font:12px/1.55 var(--mono);white-space:pre-wrap}
+.note{font-size:12px;color:var(--fg-3)}
+</style>
+<style>
+.theme{font-size:11px;font-weight:700;border-radius:999px;padding:2px 10px;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);white-space:nowrap}
+.step{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.step.done{opacity:.62}.step .n{width:24px;height:24px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font:700 12px var(--mono);flex:none}.step.done .n{background:var(--ok-soft);color:var(--ok)}
+.step code{display:block;margin-top:4px;font:12px var(--mono);background:var(--term);color:var(--term-fg);border-radius:8px;padding:6px 9px;white-space:pre-wrap}
+table.res{border-collapse:collapse;width:100%;font:12px var(--mono)}table.res th{background:var(--surface-3);color:var(--fg-3);text-align:left;padding:5px 8px}table.res td{border-top:1px solid var(--line);padding:5px 8px}
+.diffl{display:grid;grid-template-columns:1fr 1fr;gap:0;font:12px var(--mono);border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px var(--line)}.diffl div{padding:3px 9px;white-space:pre;overflow:hidden;text-overflow:ellipsis}.diffl .a{background:var(--surface)}.diffl .del{background:var(--bad-soft);color:var(--bad)}.diffl .add{background:var(--ok-soft);color:var(--ok)}.diffl .h{background:var(--surface-3);color:var(--fg-3);font-weight:700}
+.wtabs{display:flex;gap:4px;align-items:center}.wtabs span{border-radius:10px 10px 0 0;padding:5px 12px;background:var(--surface-3);font:600 12px var(--mono);color:var(--fg-2)}.wtabs span.on{background:var(--term);color:var(--term-fg)}
+.panes{display:grid;grid-template-columns:1.4fr 1fr;grid-template-rows:1fr 1fr;gap:6px;height:150px}.panes .term{margin:0;padding:7px 9px;font-size:11px;overflow:hidden}.panes .term:first-child{grid-row:1/3}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero"><span class="em">🧭</span><div><h1>Những hướng khác cho Termnest</h1><p>Các ý trước xoay quanh theo dõi phiên và token. Đây là các mảng việc khác hẳn: quy trình, tự động hoá, mạng, dữ liệu, môi trường, file, cộng tác. Tất cả đều là code thường, không tốn token AI.</p></div><button class="btn glass" id="theme">◐ Sáng / tối</button></section>
+
+  <section class="panel"><div class="row" style="margin-bottom:8px"><h2>8 hướng mới, mỗi hướng một mảng</h2><span class="tag">chọn số để xem mockup</span></div>
+    <div class="tw"><table><thead><tr><th>#</th><th>Tiện ích</th><th>Mảng việc</th><th>Giải quyết việc gì</th><th>Giá trị</th><th>Công sức</th></tr></thead><tbody>
+      <tr><td>1</td><td><b>Sổ quy trình chạy từng bước</b></td><td><span class="theme" style="--c:#7b61ff">Quy trình</span></td><td>Biến checklist (deploy, bootstrap máy, khôi phục DB) thành các bước bấm gửi lệnh vào phiên và tick</td><td class="stars">★★★★★</td><td class="eff">Vừa</td></tr>
+      <tr><td>2</td><td><b>Lịch chạy lệnh định kỳ</b></td><td><span class="theme" style="--c:#0fb5ae">Tự động hoá</span></td><td>Hẹn giờ chạy lệnh trên máy xa (làm mới DB mẫu, dọn dẹp, kiểm tra), lưu lịch sử và báo khi lỗi</td><td class="stars">★★★★★</td><td class="eff">Vừa</td></tr>
+      <tr><td>3</td><td><b>Đường hầm SSH một chạm</b></td><td><span class="theme" style="--c:#2f80ed">Mạng</span></td><td>Mở và đóng tunnel tới Postgres, Redis, Elasticsearch qua máy trung gian, copy chuỗi kết nối</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td></tr>
+      <tr><td>4</td><td><b>Truy vấn dữ liệu chỉ đọc</b></td><td><span class="theme" style="--c:#d8344a">Dữ liệu</span></td><td>Chạy SELECT, lưu truy vấn hay dùng, xem bảng kết quả, xuất CSV, không thể sửa dữ liệu</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td></tr>
+      <tr><td>5</td><td><b>Bác sĩ môi trường dev</b></td><td><span class="theme" style="--c:#0d9b63">Môi trường</span></td><td>Kiểm tra máy đã đủ git, dotnet, node, quyền NuGet, kết nối Redis… và chỉ lệnh sửa từng lỗi</td><td class="stars">★★★★☆</td><td class="eff">Nhỏ</td></tr>
+      <tr><td>6</td><td><b>Hai bảng file và so sánh</b></td><td><span class="theme" style="--c:#ec7900">File</span></td><td>Duyệt thư mục hai máy cạnh nhau, so sánh file cấu hình, chép qua lại có xác nhận</td><td class="stars">★★★★☆</td><td class="eff">Vừa</td></tr>
+      <tr><td>7</td><td><b>Mời xem phiên và bàn giao</b></td><td><span class="theme" style="--c:#c2409a">Cộng tác</span></td><td>Tạo link chỉ-xem có hạn cho đồng nghiệp, kèm ghi chú bàn giao gắn với phiên</td><td class="stars">★★★☆☆</td><td class="eff">Vừa</td></tr>
+      <tr><td>8</td><td><b>Cửa sổ và ô chia trong phiên tmux</b></td><td><span class="theme" style="--c:#3270f5">Giao diện</span></td><td>Chuyển cửa sổ tmux, tách ô, đổi tên ngay trong Termnest thay vì gõ phím Ctrl+B</td><td class="stars">★★★☆☆</td><td class="eff">Nhỏ</td></tr>
+    </tbody></table></div></section>
+
+  <div class="tabs" id="tabs"><button aria-pressed="true" data-i="1">1 · Sổ quy trình</button><button aria-pressed="false" data-i="2">2 · Lịch chạy lệnh</button><button aria-pressed="false" data-i="3">3 · Đường hầm SSH</button><button aria-pressed="false" data-i="4">4 · Truy vấn chỉ đọc</button><button aria-pressed="false" data-i="5">5 · Bác sĩ môi trường</button><button aria-pressed="false" data-i="6">6 · Hai bảng file</button><button aria-pressed="false" data-i="7">7 · Mời xem phiên</button><button aria-pressed="false" data-i="8">8 · Cửa sổ tmux</button></div>
+
+  <section class="idea" data-i="1"><div class="grid">
+    <div class="panel why"><h2>Sổ quy trình chạy từng bước <span class="theme" style="--c:#7b61ff">Quy trình</span></h2>
+      <p><b>Vấn đề thật:</b> những việc lặp lại nhiều bước (bootstrap máy mới, khôi phục DB cá nhân, làm theo thứ tự deploy) nằm trong tài liệu; mỗi lần phải mở tài liệu, copy từng lệnh, dán, rồi nhớ mình đã làm tới bước nào.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Quy trình viết bằng <b>Markdown thường</b> (các khối code là lệnh), lưu thành file, đưa vào git như tài liệu.</li><li>Mỗi bước có nút <b>Gửi vào phiên</b>, tick “đã làm”, ghi chú; tiến độ lưu lại để quay lại hôm sau.</li><li>Biến điền một lần (tên DB, cặp cổng) dùng cho mọi bước.</li><li>Lệnh nguy hiểm vẫn qua hộp xác nhận (nếu có lưới an toàn).</li></ul>
+      <p class="note">Khác “prompt nhanh”: đây là chuỗi có thứ tự và trạng thái, không phải mẫu một câu.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · quy trình “Làm mới DB cá nhân”</div>
+      <div class="row"><b>3 / 5 bước</b><div class="meter" style="flex:1"><i style="width:60%"></i></div><span class="tag">phiên: Token-ai</span></div>
+      <div class="step done"><span class="n">✓</span><div style="flex:1"><b>Dừng host cặp 44</b></div></div>
+      <div class="step done"><span class="n">✓</span><div style="flex:1"><b>Đặt lại DB từ bản mẫu</b><code>xspire-devdb.sh reset --migrate</code></div></div>
+      <div class="step" style="box-shadow:0 0 0 2px var(--hero-a)"><span class="n">3</span><div style="flex:1"><b>Chạy DbMigrator</b> <span class="tag">đang ở bước này</span><code>cd src/HQSOFT.Xspire.DbMigrator &amp;&amp; dotnet run --no-launch-profile</code><div class="row" style="margin-top:6px"><button class="btn primary">▶ Gửi vào phiên</button><button class="btn">✓ Đã làm</button></div></div></div>
+      <div class="step"><span class="n">4</span><div style="flex:1"><b>Khởi động host cặp 44</b></div></div></div></div></section>
+
+  <section class="idea" data-i="2" hidden><div class="grid">
+    <div class="panel why"><h2>Lịch chạy lệnh định kỳ <span class="theme" style="--c:#0fb5ae">Tự động hoá</span></h2>
+      <p><b>Vấn đề thật:</b> những việc chạy đều (làm mới DB mẫu mỗi đêm, dọn worktree cuối tuần, kiểm tra sức khoẻ) hoặc phải nhớ chạy tay, hoặc phải dựng cron riêng trên từng máy mà không ai xem được kết quả.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Đặt lịch ngay trong Termnest: lệnh <b>do bạn viết</b>, máy, giờ (hằng ngày, thứ trong tuần, mỗi N phút).</li><li>Lịch sử mỗi lần chạy: giờ, thời gian, mã thoát, đoạn cuối đầu ra.</li><li>Báo chuông khi lỗi; có nút “Chạy ngay” và tạm dừng.</li><li>Cần Termnest chạy liên tục (trên một máy luôn bật); lần bị lỡ giờ được đánh dấu “bỏ lỡ”, không tự chạy bù trừ khi bạn chọn.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Lịch chạy</div>
+      <div class="card"><div class="row"><b>Làm mới DB mẫu</b><span class="tag">hằng ngày 02:00</span><span class="tag">dev-ubuntu-02</span><span class="pill ok sp">✔ 02:00 · 31 giây</span></div><div class="row" style="margin-top:6px"><button class="btn">Chạy ngay</button><button class="btn">Tạm dừng</button><button class="btn">Lịch sử</button></div></div>
+      <div class="card"><div class="row"><b>Dọn worktree đã gộp</b><span class="tag">Chủ nhật 22:00</span><span class="tag">Máy này</span><span class="pill ok sp">✔ tuần trước · 4,3 GB</span></div></div>
+      <div class="card" style="box-shadow:0 0 0 2px var(--bad)"><div class="row"><b>Kiểm tra cổng 44–47</b><span class="tag">mỗi 30 phút</span><span class="pill bad sp">✖ 10:30 · mã 2</span></div><div class="term" style="margin-top:6px"><span class="d">10:30:04</span> port 45373 refused</div></div></div></div></section>
+
+  <section class="idea" data-i="3" hidden><div class="grid">
+    <div class="panel why"><h2>Đường hầm SSH một chạm <span class="theme" style="--c:#2f80ed">Mạng</span></h2>
+      <p><b>Vấn đề thật:</b> muốn dùng công cụ trên máy mình (DBeaver, redis-cli, trình duyệt) để nhìn Postgres, Redis, Elasticsearch ở mạng nội bộ thì phải nhớ lệnh <code>ssh -L</code> và cổng nào.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Lưu sẵn các đường hầm (đích, cổng cục bộ, máy trung gian); bật/tắt bằng một nút, thấy đang mở bao lâu.</li><li>Nút sao chép chuỗi kết nối cục bộ (<b>không chứa mật khẩu</b>, mật khẩu vẫn do bạn nhập ở công cụ).</li><li>Tự đóng khi Termnest tắt hoặc sau N giờ.</li></ul>
+      <p class="note">Danh sách đích và cổng bạn tự khai báo, không ghi cứng trong code. Tunnel mở trên máy chạy Termnest.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · tab Đường hầm</div>
+      <div class="card"><div class="row"><span style="font-size:20px">🐘</span><div><b>Postgres dev</b><br><small>10.10.62.109:5432 → localhost:15432</small></div><span class="pill ok sp">● mở 2 giờ</span></div><div class="row" style="margin-top:6px"><button class="btn">Sao chép chuỗi kết nối</button><button class="btn danger">Đóng</button></div></div>
+      <div class="card"><div class="row"><span style="font-size:20px">🧰</span><div><b>Redis dev</b><br><small>10.10.62.19:36379 → localhost:16379</small></div><span class="pill idle sp">tắt</span></div><div class="row" style="margin-top:6px"><button class="btn primary">Mở đường hầm</button></div></div>
+      <div class="card"><div class="row"><span style="font-size:20px">🔎</span><div><b>Elasticsearch</b><br><small>10.10.62.109:9200 → localhost:19200</small></div><span class="pill idle sp">tắt</span></div></div></div></div></section>
+
+  <section class="idea" data-i="4" hidden><div class="grid">
+    <div class="panel why"><h2>Truy vấn dữ liệu chỉ đọc <span class="theme" style="--c:#d8344a">Dữ liệu</span></h2>
+      <p><b>Vấn đề thật:</b> kiểm tra nhanh một con số hay một dòng dữ liệu phải mở công cụ DB riêng, nhập lại kết nối, và luôn có nguy cơ gõ nhầm câu lệnh ghi.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Ô soạn truy vấn, kết quả dạng bảng, xuất CSV, lưu các truy vấn hay dùng theo dự án.</li><li><b>Chỉ đọc theo thiết kế:</b> chỉ nhận <code>SELECT</code>, tự thêm <code>LIMIT</code> và giới hạn thời gian; kết nối bằng <b>tài khoản DB chỉ-đọc</b> riêng.</li><li>Hiện rõ đang nối vào DB nào; viền màu theo nhãn môi trường.</li></ul>
+      <p class="note"><b>Cần bạn quyết:</b> có tạo tài khoản DB chỉ-đọc cho việc này không (đề xuất bắt buộc, không dùng tài khoản ghi). Chặn chỉ ở phía ứng dụng là chưa đủ an toàn.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · truy vấn Xspire_dev_thanhlg</div>
+      <div class="row"><span class="tag ok">chỉ đọc</span><span class="tag">Xspire_dev_thanhlg</span><span class="tag">tối đa 1000 dòng · 15 giây</span></div>
+      <div class="term" style="white-space:pre-wrap">SELECT "Code", "Name", "CreationTime"
+FROM "SalesDistributionCustomers"
+ORDER BY "CreationTime" DESC LIMIT 5;</div>
+      <div class="row"><button class="btn primary">▶ Chạy</button><button class="btn">★ Lưu truy vấn</button><button class="btn">⬇ CSV</button><span class="note sp">5 dòng · 0,03 giây</span></div>
+      <table class="res"><tr><th>Code</th><th>Name</th><th>CreationTime</th></tr><tr><td>KH0009</td><td>Cửa hàng A</td><td>2026-11-03 09:12</td></tr><tr><td>KH0008</td><td>Đại lý B</td><td>2026-11-02 16:40</td></tr><tr><td>KH0007</td><td>Cửa hàng C</td><td>2026-11-02 11:05</td></tr></table>
+      <p class="note" style="margin:0">Dữ liệu mẫu.</p></div></div></section>
+
+  <section class="idea" data-i="5" hidden><div class="grid">
+    <div class="panel why"><h2>Bác sĩ môi trường dev <span class="theme" style="--c:#0d9b63">Môi trường</span></h2>
+      <p><b>Vấn đề thật:</b> máy mới hoặc máy vừa cập nhật hay hỏng vì một thứ nhỏ (thiếu quyền NuGet, sai phiên bản .NET, Redis không với tới) và mất thời gian dò từng chỗ.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Một nút “Kiểm tra máy” chạy loạt phép thử nhanh trên máy được chọn: git, dotnet, node, Chrome, ổ đĩa, kết nối tới DB/Redis, quyền feed NuGet…</li><li>Mỗi mục xanh/vàng/đỏ, kèm <b>lệnh sửa</b> để gửi vào phiên (không tự sửa).</li><li>Danh sách phép thử là file cấu hình, thêm bớt theo dự án.</li></ul>
+      <p class="note">Rất hợp với người mới vào nhóm: chạy một lần là biết thiếu gì.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · kiểm tra máy dev-ubuntu-02</div>
+      <div class="sz"><span class="pill ok">OK</span><span class="n">git 2.45 · đã đăng nhập GitLab</span></div>
+      <div class="sz"><span class="pill ok">OK</span><span class="n">.NET SDK 10.0 · node 22</span></div>
+      <div class="sz"><span class="pill ok">OK</span><span class="n">Redis 10.10.62.19 với tới được</span></div>
+      <div class="sz" style="box-shadow:0 0 0 2px var(--bad)"><span class="pill bad">Lỗi</span><span class="n">NuGet feed trả 401 (HQSOFT.*)</span><button class="btn">Gửi lệnh sửa</button></div>
+      <div class="term"><span class="d">gợi ý:</span> bash workspace-setup/setup-nuget-feed-auth.sh</div>
+      <div class="sz"><span class="pill wait">Chú ý</span><span class="n">Ổ đĩa còn 6,8 GB (khuyến nghị ≥ 10 GB)</span></div></div></div></section>
+
+  <section class="idea" data-i="6" hidden><div class="grid">
+    <div class="panel why"><h2>Hai bảng file và so sánh <span class="theme" style="--c:#ec7900">File</span></h2>
+      <p><b>Vấn đề thật:</b> “máy này chạy được mà máy kia thì không” thường do file cấu hình lệch nhau; so sánh phải copy về rồi mở công cụ diff.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Hai bảng thư mục cạnh nhau (máy này / máy xa, hoặc hai máy xa), tải lên, tải xuống, đổi tên.</li><li><b>So sánh</b> hai file văn bản: tô dòng khác nhau; chọn chép chiều nào.</li><li>Ghi file chỉ khi bạn xác nhận; giữ bản sao lưu cạnh file cũ; không đụng thư mục hệ thống.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · so sánh appsettings.json</div>
+      <div class="row"><span class="tag">Máy này</span><span class="note">↔</span><span class="tag">dev-ubuntu-02</span><span class="sp"></span><button class="btn">⟵ Chép sang trái</button><button class="btn primary">Chép sang phải ⟶</button></div>
+      <div class="diffl"><div class="h">Máy này</div><div class="h">dev-ubuntu-02</div>
+        <div class="a">"App": {</div><div class="a">"App": {</div>
+        <div class="del">  "SelfUrl": "https://localhost:44390",</div><div class="add">  "SelfUrl": "https://localhost:45390",</div>
+        <div class="a">  "CorsOrigins": "…",</div><div class="a">  "CorsOrigins": "…",</div>
+        <div class="del">  "Redis": "…:36379"</div><div class="add">  "Redis": "…:36379,instanceName=Xspire-dev-p45"</div></div>
+      <small>2 chỗ khác nhau · chép sẽ tạo bản sao lưu appsettings.json.bak</small></div></div></section>
+
+  <section class="idea" data-i="7" hidden><div class="grid">
+    <div class="panel why"><h2>Mời xem phiên và bàn giao <span class="theme" style="--c:#c2409a">Cộng tác</span></h2>
+      <p><b>Vấn đề thật:</b> khi cùng điều tra một lỗi, đồng nghiệp phải chụp màn hình gửi qua chat, hoặc bạn phải chia sẻ cả màn hình máy; và lúc đổi người trực không có chỗ ghi “đang làm tới đâu”.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Tạo <b>link chỉ-xem</b> cho một phiên: hết hạn sau N giờ, huỷ được bất kỳ lúc nào, người xem không gõ được gì.</li><li>Xem danh sách người đang xem; có cảnh báo “màn hình có thể chứa bí mật”, kèm tuỳ chọn che mẫu nhạy cảm.</li><li><b>Ghi chú bàn giao</b> gắn với phiên: đang làm gì, đã thử gì, việc kế tiếp.</li></ul>
+      <p class="note">Chỉ dùng được khi đồng nghiệp truy cập được Termnest qua mạng nội bộ. Cần quyết định bảo mật trước khi làm.</p></div>
+    <div class="mock"><div class="mock-t">Mockup · mời xem phiên Smart-Visibility</div>
+      <div class="card"><div class="row"><h3>🔗 Link chỉ-xem</h3><span class="pill ok sp">đang bật</span></div><div class="term" style="margin-top:6px">https://termnest.internal/v/9fK3-…-Qx2  <span class="d">· hết hạn 12:45</span></div>
+        <div class="row" style="margin-top:8px"><button class="btn">Sao chép link</button><button class="btn danger">Huỷ link</button><span class="note sp">Đang xem: 1 người</span></div></div>
+      <div class="card"><h3>📝 Ghi chú bàn giao</h3><div style="margin-top:4px;font-size:13px">Đang chờ W6 chạy xong để đo lại lần gọi hai. Đã thử cache manifest (OK). Việc kế tiếp: mở MR sau khi gộp, chú ý thứ tự shared → common → salesdistribution.</div><small>Sửa lúc 11:40 bởi bạn</small></div></div></div></section>
+
+  <section class="idea" data-i="8" hidden><div class="grid">
+    <div class="panel why"><h2>Cửa sổ và ô chia trong phiên tmux <span class="theme" style="--c:#3270f5">Giao diện</span></h2>
+      <p><b>Vấn đề thật:</b> một phiên tmux có thể có nhiều cửa sổ và ô chia, nhưng Termnest chỉ nối vào cả phiên; muốn chuyển phải nhớ phím <kbd>Ctrl+B</kbd> rồi phím số, nhất là trên máy tính bảng hay điện thoại.</p>
+      <b>Tiện ích:</b>
+      <ul><li>Thanh tab cửa sổ tmux phía trên terminal: bấm để chuyển, nút ＋ tạo mới, bấm đúp để đổi tên, ✕ để đóng (có xác nhận).</li><li>Nút tách ô ngang/dọc, phóng to một ô.</li><li>Đọc danh sách bằng <code>tmux list-windows</code>, điều khiển bằng lệnh tmux; không thay đổi gì ngoài tmux.</li></ul></div>
+    <div class="mock"><div class="mock-t">Mockup · phiên Smart-Visibility</div>
+      <div class="wtabs"><span class="on">1:claude</span><span>2:logs</span><span>3:tests</span><span style="background:none;color:var(--fg-3)">＋</span><span style="background:none;margin-left:auto">⬒ ⬓ ⛶</span></div>
+      <div class="panes"><div class="term"><span class="d">claude ›</span> Đã gộp W5, chờ W6…</div><div class="term"><span class="d">logs</span>
+tail -f W6.log</div><div class="term"><span class="d">tests</span>
+npm test ✔</div></div>
+      <small>Bấm tab để đổi cửa sổ; các nút ở góc để tách hoặc phóng to ô.</small></div></div></section>
+
+  <section class="panel"><div class="row"><h2>Còn vài hướng nhỏ khác</h2><span class="tag">chưa làm mockup</span></div>
+    <ul style="margin:6px 0 0;padding-left:18px;color:var(--fg-2)">
+      <li><b>Tìm trong mã nguồn</b> (ripgrep) ngay trong thư mục của phiên, bấm kết quả mở ở trình xem file.</li>
+      <li><b>Hẹn giờ nhắc / đồng hồ đếm ngược</b> gắn với phiên (“15:00 xem lại pipeline”).</li>
+      <li><b>Khoá màn hình tự động và xác thực hai lớp</b> khi mở Termnest, dành cho máy dùng chung.</li>
+      <li><b>Đồng bộ cài đặt</b> (phiên mẫu, tài khoản AI, thú cưng) giữa các máy bằng một tệp mã hoá.</li>
+      <li><b>Thú cưng lớn lên</b> theo số việc xong trong tuần (chỉ để vui, theo phong cách của app).</li></ul></section>
+
+  <section class="panel"><div class="row"><h2>Mình đề xuất chọn</h2></div><p class="dim" style="margin:6px 0 0">Nếu chỉ chọn ít: <b>1 (Sổ quy trình)</b> và <b>5 (Bác sĩ môi trường)</b> vì nhỏ gọn và dùng ngay được; <b>2 (Lịch chạy lệnh)</b> nếu bạn có việc chạy đều. Các ý 3, 4, 7 cần bạn quyết thêm về bảo mật (tài khoản DB chỉ-đọc, link chia sẻ). Mockup chỉ minh hoạ, số liệu mẫu; chưa có dòng code nào.</p></section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));document.querySelectorAll('.idea').forEach(s=>s.hidden=s.dataset.i!==b.dataset.i);};
+$('theme').onclick=()=>{const r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';};
+</script>
+</body>
+</html>

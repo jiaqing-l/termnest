@@ -8,10 +8,46 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { start } = require('../packaging/smoke');
 const { dataDir } = require('../packaging/launcher');
-const { copyTree, keep } = require('../packaging/assemble');
+const { copyTree, keep, copyRuntimeSupport } = require('../packaging/assemble');
 const { checkPayload } = require('../packaging/check-payload');
 const { Vault } = require('../lib/vault');
 const password = 'test-password-at-least-ten';
+
+test('native runtime support copies only installers, health CLI and root runbook with original modes', () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-support-test-'));
+  const source = path.join(temp, 'source'), out = path.join(temp, 'payload');
+  const allowed = ['scripts/install-supervisor.sh', 'scripts/install-supervisor-macos.sh',
+    'scripts/install-supervisor.ps1', 'scripts/supervisor-check.js', 'docs/supervisor.md'];
+  try {
+    for (const file of [...allowed, 'scripts/developer.js', 'scripts/.env', 'scripts/vault.json',
+      'scripts/private.key', 'scripts/native.node', 'docs/private.md', 'data/vault.json']) {
+      const full = path.join(source, file);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, `fixture:${file}`);
+      fs.chmodSync(full, file.endsWith('.sh') ? 0o755 : 0o644);
+    }
+    copyRuntimeSupport(source, out);
+    const entries = fs.readdirSync(out, { recursive: true }).map(e => String(e).split(path.sep).join('/')).sort();
+    assert.deepEqual(entries, ['SUPERVISOR.md', 'scripts', ...allowed.filter(f => f.startsWith('scripts/'))].sort());
+    for (const file of allowed) {
+      const target = path.join(out, file === 'docs/supervisor.md' ? 'SUPERVISOR.md' : file);
+      assert.deepEqual(fs.readFileSync(target), fs.readFileSync(path.join(source, file)));
+      if (process.platform !== 'win32') assert.equal(fs.statSync(target).mode & 0o777, fs.statSync(path.join(source, file)).mode & 0o777);
+    }
+    checkPayload(out);
+    fs.unlinkSync(path.join(source, 'scripts/install-supervisor-macos.sh'));
+    copyRuntimeSupport(source, path.join(temp, 'partial'));
+    assert.equal(fs.existsSync(path.join(temp, 'partial/scripts/install-supervisor-macos.sh')), false);
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(path.join(source, 'scripts/private.key'), path.join(source, 'scripts/install-supervisor-macos.sh'));
+      assert.throws(() => copyRuntimeSupport(source, path.join(temp, 'linked')), /Unsafe runtime support file/);
+      fs.unlinkSync(path.join(source, 'scripts/install-supervisor-macos.sh'));
+      fs.renameSync(path.join(source, 'scripts'), path.join(source, 'private-scripts'));
+      fs.symlinkSync(path.join(source, 'private-scripts'), path.join(source, 'scripts'));
+      assert.throws(() => copyRuntimeSupport(source, path.join(temp, 'linked-parent')), /Unsafe runtime support directory/);
+    }
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+});
 
 const chrome = process.env.CHROME_BIN || [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',

@@ -1,0 +1,179 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { CrewSupervisor } = require('../lib/crew-supervisor');
+const clone = v => JSON.parse(JSON.stringify(v));
+
+// One VM, two leaders in one workspace. Crew's own nudge.conf says which pane runs which task.
+function fixture(initial = {}, ioOverrides = {}) {
+  const start = 1800000000000; let now = start, serial = 0;
+  let disk = { enabled: true, autoRecovery: true, intervalMinutes: 30, autoEnroll: true, ...initial };
+  const leader = (name, pane, pid) => ({ name, id: '$' + pane, created: 100 + pane, paneIds: ['%' + pane], path: '/ws', aiPid: pid,
+    aiStatus: { tool: 'claude', status: 'busy', cfg: '.claude-team', startedAt: start - 3600000, at: start } });
+  const r = { cfg: { id: 'vm0' }, ready: true, lastPoll: now, snapshot: { bootId: 'boot', workers: [], sessions: [leader('crew-a', 1, 701), leader('crew-b', 2, 702)] } };
+  const task = (id, status = 'executing') => ({ id, title: id, status, blocked: '', heartbeat: {},
+    tracks: [{ id: 'W1', state: 'running', rounds: 1, fixRounds: 0, lastRound: { round: '1', result: '', kind: 'new' } }] });
+  const data = { roots: [{ root: '/ws', nudge: [['%1', 'task-a'], ['%2', 'task-b'], ['%9', 'task-gone']], tasks: [task('task-a'), task('task-b'), task('task-old', 'done')] }] };
+  const sent = [], accounts = [];
+  const io = {
+    scan: async () => clone(data),
+    validateLeader: async (_, l) => ({ processStart: 'ps-' + l.identity.agentPid }),
+    coordinate: async () => ({ code: 'coordination_owner', token: { epoch: 1 } }),
+    auditReady: async (_, a) => { if (a.confirmation) accounts.push(clone(a)); return { code: a.confirmation ? 'audit_account_registration_required' : 'audit_ready', accountRef: 'a'.repeat(64) }; },
+    open: async () => {}, send: async () => {}, report: async () => ({ code: 'report_missing' }), revoke: async () => {},
+    recover: async (_, s, l) => { sent.push({ session: s.name, taskIds: [...l.taskIds], pid: s.aiPid }); s.aiStatus.status = 'busy'; s.aiStatus.at = now; return { code: 'action_delivered', receipt: { delivery: 'delivered' } }; },
+    ...ioOverrides,
+  };
+  const core = new CrewSupervisor({ load: () => clone(disk), save: s => { disk = clone(s); }, io, now: () => now, newId: () => 'tn-' + (++serial).toString(16).padStart(32, '0') });
+  return {
+    core, r, data, sent, accounts, get disk() { return disk; },
+    session: name => r.snapshot.sessions.find(s => s.name === name),
+    async tick(ms = 15000) { now += ms; r.lastPoll = now; await core.tick([r]); },
+    idle(name) { const s = r.snapshot.sessions.find(s => s.name === name); s.aiStatus.status = 'idle'; s.aiStatus.at = now; },
+  };
+}
+
+test('auto mode enrolls leaders from crew nudge.conf with their open tasks only', async () => {
+  const f = fixture();
+  await f.tick(); await f.tick();
+  const found = f.core.status([f.r]).servers[0].discovered;
+  assert.deepEqual(found.map(d => [d.session, d.taskIds, d.excluded]), [['crew-a', ['task-a'], false], ['crew-b', ['task-b'], false]]);
+  const teams = f.core.status([f.r]).servers[0].teams;
+  assert.deepEqual(teams.filter(t => t.session).map(t => t.session).sort(), ['crew-a', 'crew-b']);
+  assert.equal(teams.some(t => t.reason.code === 'registration_required'), false);
+});
+
+test('an idle auto-enrolled leader with open work is reminded once, also at night', async () => {
+  const f = fixture();
+  await f.tick(); await f.tick();
+  f.idle('crew-a');
+  for (let i = 0; i < 30; i++) await f.tick(30000); // 15 minutes, crossing no quiet-hour rule
+  assert.equal(f.sent.length, 1);
+  assert.deepEqual(f.sent[0], { session: 'crew-a', taskIds: ['task-a'], pid: 701 });
+});
+
+test('a restarted Claude (new pid) stays enrolled without any owner action', async () => {
+  const f = fixture();
+  await f.tick(); await f.tick();
+  const s = f.session('crew-a'); s.aiPid = 801; s.aiStatus.startedAt += 5000;
+  await f.tick(); await f.tick();
+  f.idle('crew-a');
+  for (let i = 0; i < 30; i++) await f.tick(30000);
+  assert.deepEqual(f.sent.map(x => [x.session, x.pid]), [['crew-a', 801]]);
+});
+
+test('an excluded leader is listed but never reminded', async () => {
+  const f = fixture({ excluded: [{ serverId: 'vm0', session: 'crew-b' }] });
+  await f.tick(); await f.tick();
+  assert.equal(f.core.status([f.r]).servers[0].discovered.find(d => d.session === 'crew-b').excluded, true);
+  f.idle('crew-b');
+  for (let i = 0; i < 30; i++) await f.tick(30000);
+  assert.equal(f.sent.length, 0);
+});
+
+test('without auto mode nothing is enrolled implicitly (previous behaviour)', async () => {
+  const f = fixture({ autoEnroll: false });
+  await f.tick(); await f.tick();
+  f.idle('crew-a');
+  for (let i = 0; i < 30; i++) await f.tick(30000);
+  assert.equal(f.sent.length, 0);
+});
+
+test('a leader whose agent status is unknown is never treated as idle', async () => {
+  const f = fixture();
+  await f.tick(); await f.tick();
+  delete f.session('crew-a').aiStatus;
+  for (let i = 0; i < 30; i++) await f.tick(30000);
+  assert.equal(f.sent.length, 0);
+});
+
+test('auto mode binds the audit account to the profile the leaders use, once', async () => {
+  const f = fixture();
+  await f.tick(); await f.tick(); await f.tick();
+  assert.equal(f.accounts.length, 1);
+  assert.equal(f.accounts[0].config, '.claude-team');
+  assert.deepEqual(f.disk.workspaces, [{ serverId: 'vm0', root: '/ws', auditConfig: '.claude-team', auditAccount: 'a'.repeat(64) }]);
+});
+
+test('control accepts autoEnroll and excluded and rejects malformed exclusions', async () => {
+  const f = fixture({ autoEnroll: false });
+  const out = await f.core.control({ enabled: true, autoRecovery: true, autoEnroll: true, excluded: [{ serverId: 'vm0', session: 'crew-a' }] }, [f.r]);
+  assert.equal(out.autoEnroll, true); assert.deepEqual(out.excluded, [{ serverId: 'vm0', session: 'crew-a' }]);
+  await assert.rejects(f.core.control({ enabled: true, excluded: [{ serverId: 'vm0', session: 'bad name;' }] }, [f.r]), /invalid_control/);
+});
+
+test('open tasks without a leader are split into recent and dormant (untouched for over 2 days)', async () => {
+  const f = fixture();
+  const start = 1800000000000;
+  f.data.roots[0].tasks.push({ id: 'task-fresh', title: '', status: 'executing', blocked: '', heartbeat: {}, tracks: [], activeAt: start },
+    { id: 'task-stale', title: '', status: 'planning', blocked: '', heartbeat: {}, tracks: [], activeAt: start - 3 * 86400000 });
+  await f.tick(); await f.tick();
+  const teams = f.core.status([f.r]).servers[0].teams.filter(t => !t.session);
+  const by = Object.fromEntries(teams.map(t => [t.taskIds[0], t.dormant]));
+  assert.equal(by['task-fresh'], false); assert.equal(by['task-stale'], true);
+  assert.equal(f.core.status([f.r]).servers[0].teams.find(t => t.session === 'crew-a').dormant, false);
+});
+
+// parsePoll used to delete the tmux session id, so every real leader identity was invalid (only fixtures had one).
+test('a parsed poll keeps the tmux session id that a live leader identity needs', () => {
+  const { parsePoll } = require('../lib/parse');
+  const { liveIdentity, validIdentity } = require('../lib/supervision-state');
+  const S = '|~|', out = ['@@SESS', ['$6', 'lead', '1', '1794157564', '1794157600', 'claude', '200x50', '/ws'].join(S),
+    '@@OWNERS', ['$6', '18217', '%6'].join(S)].join('\n');
+  const s = parsePoll(out, 1794157700).sessions[0];
+  assert.equal(s.id, '$6'); assert.deepEqual(s.paneIds, ['%6']);
+  Object.assign(s, { aiPid: 19763, aiStatus: { startedAt: 1794157576179, cfg: '.claude-tech2' } });
+  assert.equal(validIdentity(liveIdentity({ snapshot: { bootId: 'darwin:1' } }, s)), true);
+});
+
+test('boot ids: a platform prefix is ignored for leader identity, and the macOS format change is not a reboot', () => {
+  const { liveIdentity } = require('../lib/supervision-state');
+  const { syncKnown } = require('../lib/parse');
+  const s = { id: '$6', created: 5, paneIds: ['%6'], aiPid: 9, aiStatus: { startedAt: 1, cfg: '.claude' } };
+  assert.equal(liveIdentity({ snapshot: { bootId: 'darwin:AB34EF13-F8D2-4483-B8A3-520D1E5353EF' } }, s).bootId, 'AB34EF13-F8D2-4483-B8A3-520D1E5353EF');
+  assert.equal(liveIdentity({ snapshot: { bootId: 'linux:abc' } }, s).bootId, 'abc');
+  const known = { bootId: 'darwin:1793880616', sessions: { gone: { dir: '/w', run: 'claude' } }, lost: [] };
+  assert.deepEqual(syncKnown(known, 'darwin:AB34EF13-F8D2-4483-B8A3-520D1E5353EF', []).record.lost || [], []);
+  assert.deepEqual(syncKnown(known, 'darwin:1793889999', []).record.lost, ['gone'], 'a real reboot still marks sessions lost');
+});
+
+test('Operations: a dormant blocked team does not become a "needs you" row; a recent one does', () => {
+  const { opsSessionRows } = require('../public/features/ops.js');
+  const now = Date.now();
+  const team = (id, dormant) => ({ id, session: '', root: '/ws', status: 'blocked', reason: { code: 'task_blocked' }, requiresOwner: true, taskIds: [id], dormant });
+  const board = { servers: [{ id: 'm', name: 'M', online: true, sessions: [], findings: [] }] };
+  const supervision = { enabled: true, servers: [{ id: 'm', online: true, observedAt: now, freshness: { snapshotFresh: true, taskEvidenceFresh: true, maxAgeMs: 60000 },
+    teams: [team('old', true), team('new', false)], audits: [] }] };
+  const owners = opsSessionRows(board, supervision).filter(r => r.f.rule === 'owner').map(r => r.f.key);
+  assert.deepEqual(owners, ['super/m/new']);
+});
+
+test('a Claude session waiting on background shells ("shell") keeps its pid and reads as busy', () => {
+  const { parsePoll } = require('../lib/parse');
+  const S = '|~|', out = ['@@SESS', ['$6', 'lead', '1', '1794157564', '1794157600', 'claude', '200x50', '/ws'].join(S),
+    '@@OWNERS', ['$6', '18217', '%6'].join(S), '@@DETAIL', ['$6', '18217', '0', ''].join(S), '@@PS', '18217 1219 1 -zsh', '19763 18217 1 claude', '@@FOREGROUND', '18217 18217 19763', '19763 19763 19763',
+    '@@AGENTIDS', 'claude 19763 91818af2-7c92-4ba8-9694-d9e6db0f0c75 /ws', 'claudestat 19763 interactive shell 1794199747425 - 0 1794157576179 .claude-tech2 ws'].join('\n');
+  const s = parsePoll(out, 1794199800).sessions[0];
+  assert.equal(s.aiStatus && s.aiStatus.status, 'busy'); assert.equal(s.aiPid, 19763);
+});
+
+test('a machine with only dormant leftovers gets no ops-audit (no Claude session, no quota spent)', async () => {
+  const f = fixture();
+  const start = 1800000000000;
+  f.data.roots[0].nudge = [];
+  f.data.roots[0].tasks = [{ id: 'old-1', title: '', status: 'planning', blocked: '', heartbeat: {}, tracks: [], activeAt: start - 5 * 86400000 }];
+  await f.tick(); await f.tick();
+  await f.core.schedule(f.r);
+  assert.equal(f.core.host('vm0').active || null, null);
+});
+
+test('Operations: a failed track while the leader is busy is not paged; an explicit blocker still is', () => {
+  const { opsSessionRows } = require('../public/features/ops.js');
+  const now = Date.now();
+  const team = (id, code) => ({ id, session: 'lead-' + id, root: '/ws', status: 'blocked', reason: { code }, requiresOwner: true, taskIds: [id] });
+  const board = { servers: [{ id: 'm', name: 'M', online: true, sessions: ['lead-a', 'lead-b'].map(name => ({ name, ai: { status: 'busy' } })), findings: [] }] };
+  const supervision = { enabled: true, servers: [{ id: 'm', online: true, observedAt: now, freshness: { snapshotFresh: true, taskEvidenceFresh: true, maxAgeMs: 60000 },
+    teams: [team('a', 'task_track_failed'), team('b', 'task_blocked')], audits: [] }] };
+  const owners = opsSessionRows(board, supervision).filter(r => r.f.rule === 'owner').map(r => r.f.key);
+  assert.deepEqual(owners, ['super/m/b']);
+});

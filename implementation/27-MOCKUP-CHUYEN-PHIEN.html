@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERMNEST · Chuyển phiên sang máy khác (mockup)</title>
+<style>
+:root{--bg:#eef2f8;--surface:#fff;--surface-2:#f3f6fb;--line:#e2e7f0;--fg:#1b2230;--fg-2:#3b4558;--fg-3:#6b7489;--primary:#ff5c7a;--bad:#e0344f;--ok:#22a06b;--warn:#e0a100;--term:#10151f;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#0f131b;--surface:#171c27;--surface-2:#1e2532;--line:#2a3242;--fg:#e8ecf3;--fg-2:#c3cad7;--fg-3:#8c95a8}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}.sub{color:var(--fg-3);margin:0 0 18px}
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.steps button{border:1px solid var(--line);background:var(--surface);color:var(--fg-2);border-radius:999px;padding:6px 12px;font:600 13px inherit;cursor:pointer}
+.steps button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.stage{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.ph{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700}
+.ph small{color:var(--fg-3);font-weight:500}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
+.machines{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+@media(max-width:560px){.machines{grid-template-columns:1fr}}
+.m{border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
+.m h4{margin:0 0 6px;font-size:13px;display:flex;align-items:center;gap:6px}.m h4 small{color:var(--fg-3);font-weight:500}
+.sess{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;background:var(--surface-2);margin-top:6px;min-width:0;transition:opacity .4s,transform .4s}
+.sess.ghost{opacity:.35;transform:scale(.98)}.sess.new{outline:2px solid var(--primary);animation:pop .5s}
+@keyframes pop{0%{transform:scale(.9);opacity:0}100%{transform:none;opacity:1}}
+.sess>div{min-width:0}.sess b{display:block;font-size:13px}.sess small{display:block;color:var(--fg-3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tool{flex:none;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;color:#fff;background:#d99458}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:7px 12px;font:600 13px inherit;cursor:pointer}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}.btn:disabled{opacity:.5;cursor:default}
+.detail{padding:12px 14px;border-top:1px solid var(--line)}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:12.5px;margin:0 0 10px}.kv dt{color:var(--fg-3)}.kv dd{margin:0;word-break:break-all}
+/* the dialog, same layout as in the app */
+.dlg{border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:0 20px 50px -25px rgba(0,0,0,.45);overflow:hidden}
+.dh{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}.dh h3{margin:0;flex:1;font-size:16px}
+.db{padding:13px 16px;display:grid;gap:11px}
+.src{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:12px;background:var(--surface-2);min-width:0}.src>div{min-width:0}.src b{display:block}.src small{display:block;color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--fg-2)}.row:last-child{border-bottom:0}
+.row>span{flex:0 0 92px}.row select,.row input{flex:1;min-width:0;font:13px var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--fg)}
+@media(max-width:560px){.row{flex-wrap:wrap}.row>span,.row select,.row input{flex-basis:100%}}
+.opt{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--fg-2)}.opt input{margin-top:2px;accent-color:var(--primary)}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:12.5px}.checks li{display:flex;gap:8px;overflow-wrap:anywhere}
+.checks i{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:800;color:#fff;background:var(--fg-3)}
+.ok i{background:var(--ok)}.bad i{background:var(--bad)}.bad{color:var(--bad)}.warn i{background:var(--warn)}.wait i{animation:blink 1s infinite}@keyframes blink{50%{opacity:.3}}
+.df{display:flex;justify-content:flex-end;gap:8px;padding:11px 16px;border-top:1px solid var(--line)}
+.term{background:var(--term);color:#d6deeb;font:12.5px/1.55 var(--mono);padding:12px 14px;min-height:190px;white-space:pre-wrap;word-break:break-word}
+.term .p{color:#7fdbca}.term .u{color:#ffcb6b}.term .a{color:#c792ea}.term .dim{color:#6b7489}
+.how{margin-top:16px}
+.how table{width:100%;border-collapse:collapse;font-size:12.5px}.how th,.how td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}.how th{background:var(--surface-2)}
+.how code{font:12px var(--mono);word-break:break-all}
+.tbl{overflow-x:auto}
+.note{font-size:12.5px;color:var(--fg-3);padding:10px 14px}
+.prog{display:grid;gap:6px;font-size:13px}.prog div{display:flex;gap:8px;align-items:center;color:var(--fg-3)}.prog div.on{color:var(--fg)}.prog div.done{color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Chuyển phiên sang máy khác</h1>
+<p class="sub">Mockup chạy thử với ví dụ thật: phiên <b>Smart-Visibility</b> (Claude) đang chạy trên <b>dev-ubuntu-02</b> được chuyển sang <b>dev-ubuntu-03</b>. Repo nằm ở hai đường dẫn khác nhau trên hai máy. Bấm các bước, hoặc làm theo nút trong khung bên phải.</p>
+<div class="steps" id="steps"><button data-s="1" class="on">1. Phiên đang chạy</button><button data-s="2">2. Mở hộp chuyển</button><button data-s="3">3. Máy đích khác tài khoản</button><button data-s="4">4. Đang chuyển</button><button data-s="5">5. Mở lại chat ở máy mới</button></div>
+
+<div class="stage">
+  <div class="panel">
+    <div class="ph"><span class="dot"></span>TERMNEST · Tổng quan <small>4 máy chủ</small></div>
+    <div class="machines">
+      <div class="m"><h4><span class="dot"></span>dev-ubuntu-02 <small>root</small></h4>
+        <div class="sess" id="old"><span class="tool">Claude</span><div><b>Smart-Visibility</b><small>/root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv</small></div></div>
+        <div class="sess"><span class="tool">Claude</span><div><b>Devkit-AI</b><small>/root/thanhlg/xspire-workspaces</small></div></div>
+      </div>
+      <div class="m"><h4><span class="dot"></span>dev-ubuntu-03 <small>thanhlg</small></h4>
+        <div class="sess"><span class="tool" style="background:#388a8b">Codex</span><div><b>Tools</b><small>/home/thanhlg/projects/xspire-workspaces/tools</small></div></div>
+        <div id="newslot"></div>
+      </div>
+    </div>
+    <div class="detail" id="detail">
+      <dl class="kv"><dt>Máy chủ</dt><dd>root@dev-ubuntu-02</dd><dt>Đang chạy</dt><dd>claude · hội thoại 1cbf2a9d…</dd><dt>Thư mục</dt><dd>/root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv</dd></dl>
+      <button class="btn" id="openmove">⇄ Chuyển sang máy khác…</button>
+    </div>
+    <div class="term" id="term"><span class="dim">dev-ubuntu-02 · Smart-Visibility</span>
+<span class="u">&gt; Sửa lỗi upload ảnh trong src/Upload/ImageService.cs</span>
+<span class="a">● Đã đọc /root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv/src/Upload/ImageService.cs</span>
+<span class="a">● Thêm kiểm tra kích thước ảnh, chạy test: 42/42 đạt.</span>
+<span class="p">❯ </span></div>
+  </div>
+
+  <div>
+    <div class="dlg" id="dlg" hidden>
+      <div class="dh"><h3>Chuyển phiên sang máy khác</h3><button class="btn" id="dclose">Đóng</button></div>
+      <div class="db" id="dbody">
+        <div class="src"><span class="tool">Claude</span><div><b>Smart-Visibility</b><small>dev-ubuntu-02 · /root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv</small></div></div>
+        <div class="rows">
+          <label class="row"><span>Máy đích</span><select id="target"><option value="03">dev-ubuntu-03</option><option value="mac">MacBook-Air (Máy này)</option></select></label>
+          <label class="row"><span>Thư mục</span><select id="place"></select></label>
+          <label class="row"><span>Tên phiên</span><input id="name" value="Smart-Visibility"></label>
+        </div>
+        <label class="opt"><input type="checkbox" checked> Đổi đường dẫn thư mục cũ sang thư mục mới trong chat (để agent tìm đúng tệp)</label>
+        <label class="opt"><input type="checkbox" id="stopold"> Dừng phiên ở máy cũ sau khi chuyển xong</label>
+        <ul class="checks" id="checks"></ul>
+      </div>
+      <div class="df" id="dfoot"><button class="btn" id="dcancel">Hủy</button><button class="btn primary" id="go" disabled>Chuyển</button></div>
+    </div>
+    <div class="panel" id="hint"><div class="note">Bấm <b>⇄ Chuyển sang máy khác…</b> trong chi tiết phiên (khung bên trái) để mở hộp chuyển.</div></div>
+  </div>
+</div>
+
+<div class="panel how">
+  <div class="ph">Bên dưới, TERMNEST làm gì (ví dụ này)</div>
+  <div class="tbl"><table>
+    <tr><th></th><th>dev-ubuntu-02 (máy cũ)</th><th>dev-ubuntu-03 (máy đích)</th></tr>
+    <tr><td>Tài khoản Claude</td><td>hqsoft.agent03@gmail.com (đọc từ <code>~/.claude.json</code>)</td><td>hqsoft.agent03@gmail.com: cùng tài khoản thì mới cho chuyển</td></tr>
+    <tr><td>Repo</td><td><code>/root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv</code><br>origin <code>git@gitlab.hqsoft.vn:xspire/hqsoft.xspire.sv.git</code></td><td>Tìm repo có cùng origin (kể cả dạng https): <code>/home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv</code></td></tr>
+    <tr><td>Tệp chat</td><td><code>~/.claude/projects/-root-thanhlg-xspire-workspaces-modules-hqsoft-xspire-sv/1cbf2a9d-….jsonl</code> (3,4 MB)</td><td><code>~/.claude/projects/-home-thanhlg-projects-xspire-workspaces-modules-hqsoft-xspire-sv/1cbf2a9d-….jsonl</code> (quyền chỉ chủ tài khoản đọc)</td></tr>
+    <tr><td>Đường dẫn trong chat</td><td><code>/root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv/src/…</code></td><td>→ <code>/home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv/src/…</code> (37 chỗ)</td></tr>
+    <tr><td>Mở lại</td><td>Giữ nguyên, hoặc dừng nếu chọn</td><td>Phiên tmux mới <b>Smart-Visibility</b> trong thư mục trên, chạy <code>claude --resume 1cbf2a9d-…</code></td></tr>
+  </table></div>
+  <div class="note">Dữ liệu đi qua kết nối SSH sẵn có của TERMNEST, không qua dịch vụ ngoài. Codex làm giống vậy với <code>~/.codex/auth.json</code> và <code>~/.codex/sessions/năm/tháng/ngày/rollout-….jsonl</code>. Nơi lưu luôn đọc theo từng máy (<code>$HOME</code>, <code>CLAUDE_CONFIG_DIR</code>, <code>CODEX_HOME</code>), nên mỗi máy để ở đâu cũng được. Nếu máy đích đã có bản chat dài hơn (đã chat tiếp ở đó), bản đó được giữ.</div>
+</div>
+</div>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var PLACES={'03':[['★ /home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv','repo']],'mac':[['★ /Users/admin/Documents/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv','repo']]};
+  var BODY=$('dbody').innerHTML,FOOT=$('dfoot').innerHTML;
+  function bind(){$('target').onchange=function(){survey(this.value);};$('go').onclick=function(){run();};$('dcancel').onclick=function(){step(1);};}
+  var stopOld=false;
+  var timers=[];function later(f,ms){timers.push(setTimeout(f,ms));}
+  function clear(){timers.forEach(clearTimeout);timers=[];}
+  function checks(list){var c=$('checks');c.textContent='';list.forEach(function(x){var li=document.createElement('li');li.className=x[0];var i=document.createElement('i');i.textContent=x[0]==='ok'?'✓':x[0]==='bad'?'✕':x[0]==='warn'?'!':'…';var s=document.createElement('span');s.textContent=x[1];li.append(i,s);c.append(li);});}
+  function fillPlace(t){var p=$('place');p.textContent='';PLACES[t].forEach(function(x){var o=document.createElement('option');o.textContent=x[0];p.append(o);});var o=document.createElement('option');o.textContent='Chọn thư mục khác…';p.append(o);}
+  function survey(t){
+    clear();$('go').disabled=true;checks([['wait','Đang kiểm tra hai máy…']]);fillPlace(t);
+    later(function(){
+      if(t==='03'){checks([['ok','Cùng tài khoản Claude: hqsoft.agent03@gmail.com'],['ok','Tệp chat: 3.4 MB'],['ok','Tìm thấy cùng repo ở máy đích: /home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv']]);$('go').disabled=false;}
+      else{checks([['bad','Khác tài khoản: máy cũ hqsoft.agent03@gmail.com, máy đích hqsoft.technology@gmail.com. Chỉ chuyển được khi cùng tài khoản.'],['ok','Tệp chat: 3.4 MB'],['ok','Tìm thấy cùng repo ở máy đích: /Users/admin/Documents/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv']]);}
+    },900);
+  }
+  function reset(){
+    clear();$('dlg').hidden=true;$('hint').hidden=false;$('old').className='sess';$('newslot').textContent='';
+    $('dbody').innerHTML=BODY;$('dfoot').innerHTML=FOOT;bind();
+    $('term').innerHTML='<span class="dim">dev-ubuntu-02 · Smart-Visibility</span>\n<span class="u">&gt; Sửa lỗi upload ảnh trong src/Upload/ImageService.cs</span>\n<span class="a">● Đã đọc /root/thanhlg/xspire-workspaces/modules/hqsoft.xspire.sv/src/Upload/ImageService.cs</span>\n<span class="a">● Thêm kiểm tra kích thước ảnh, chạy test: 42/42 đạt.</span>\n<span class="p">❯ </span>';
+  }
+  function openDlg(){reset();$('dlg').hidden=false;$('hint').hidden=true;survey($('target').value);}
+  function run(){
+    clear();stopOld=!!($('stopold')&&$('stopold').checked);$('go').disabled=true;$('go').textContent='Đang chuyển…';
+    var d=$('dbody');d.innerHTML='<div class="prog" id="prog"><div>1. Đọc tệp chat ở dev-ubuntu-02 (3.4 MB)</div><div>2. Đổi đường dẫn /root/thanhlg/… → /home/thanhlg/projects/… (37 chỗ)</div><div>3. Ghi vào ~/.claude/projects/… của dev-ubuntu-03 qua SSH</div><div>4. Mở phiên tmux mới, chạy claude --resume 1cbf2a9d-…</div></div>';
+    var rows=d.querySelectorAll('.prog div');rows.forEach(function(r,i){later(function(){if(i)rows[i-1].className='done';r.className='on';},500+i*700);});
+    later(function(){rows[3].className='done';done();},500+4*700);
+  }
+  function done(){
+    $('dbody').innerHTML='<div style="display:grid;gap:6px"><b style="font-size:15px">✓ Đã chuyển sang dev-ubuntu-03, phiên mới “Smart-Visibility” đang mở lại chat.</b><small style="color:var(--fg-3)">/home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv · 3.4 MB · đổi 37 chỗ đường dẫn'+(stopOld?' · đã dừng phiên ở máy cũ':'')+'</small></div>';
+    $('dfoot').innerHTML='';var a=document.createElement('button');a.className='btn';a.textContent='Đóng';a.onclick=reset;var b=document.createElement('button');b.className='btn primary';b.textContent='Mở phiên mới';b.onclick=function(){step(5);};$('dfoot').append(a,b);
+    if(stopOld)$('old').className='sess ghost';
+    $('newslot').innerHTML='<div class="sess new"><span class="tool">Claude</span><div><b>Smart-Visibility</b><small>/home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv</small></div></div>';
+  }
+  function resumed(){
+    $('term').innerHTML='<span class="dim">dev-ubuntu-03 · Smart-Visibility</span>\n<span class="p">thanhlg@dev-ubuntu-03:~/projects/xspire-workspaces/modules/hqsoft.xspire.sv$</span> claude --resume 1cbf2a9d-d71e-4998-868f-d2953df55c34\n<span class="u">&gt; Sửa lỗi upload ảnh trong src/Upload/ImageService.cs</span>\n<span class="a">● Đã đọc /home/thanhlg/projects/xspire-workspaces/modules/hqsoft.xspire.sv/src/Upload/ImageService.cs</span>\n<span class="a">● Thêm kiểm tra kích thước ảnh, chạy test: 42/42 đạt.</span>\n<span class="u">&gt; Tiếp tục: thêm test cho ảnh lớn hơn 10 MB</span>\n<span class="a">● Đang viết test trong tests/Upload/ImageServiceTests.cs…</span>\n<span class="p">❯ </span>';
+  }
+  function step(n){
+    document.querySelectorAll('#steps button').forEach(function(b){b.classList.toggle('on',+b.dataset.s===n);});
+    if(n===1)reset();
+    if(n===2)openDlg();
+    if(n===3){openDlg();$('target').value='mac';survey('mac');}
+    if(n===4){openDlg();clear();$('stopold').checked=true;later(run,200);}
+    if(n===5){if($('newslot').textContent==='')done();$('dlg').hidden=false;$('hint').hidden=true;resumed();}
+  }
+  document.querySelectorAll('#steps button').forEach(function(b){b.onclick=function(){step(+b.dataset.s);};});
+  $('openmove').onclick=function(){step(2);};
+  $('dclose').onclick=function(){step(1);};
+  reset();
+})();
+</script>
+</body>
+</html>

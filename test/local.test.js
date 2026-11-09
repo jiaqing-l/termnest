@@ -19,7 +19,7 @@ test('Windows selects runnable WSL or PowerShell; Unix stays native', async () =
   assert.equal(await selectMode('darwin', () => { throw Error('unexpected probe'); }), 'native');
 });
 test('boot identity uses stable OS boot data and refuses an invented fallback', async () => {
-  assert.equal(await bootId('darwin', async () => ({ code: 0, out: '{ sec = 123456, usec = 99 }' })), 'darwin:123456');
+  assert.equal(await bootId('darwin', async () => ({ code: 0, out: 'AB34EF13-F8D2-4483-B8A3-520D1E5353EF\n' })), 'darwin:AB34EF13-F8D2-4483-B8A3-520D1E5353EF');
   assert.equal(await bootId('linux', async () => ({ code: 0, out: 'abc-def\n' })), 'linux:abc-def');
   assert.equal(await bootId('win32', async () => ({ code: 0, out: '2026-11-01T00:00:00Z\r\n' })), 'win32:2026-11-01T00:00:00Z');
   assert.equal(await bootId('darwin', async () => ({ code: 1, out: '' })), '');

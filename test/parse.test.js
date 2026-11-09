@@ -754,3 +754,234 @@ test('the poll reports the pane size and keeps the path intact', () => {
   assert.equal(sessions[0].size, '120x40'); assert.equal(sessions[0].path, '/home/a b|~|c');
   assert.equal(sessions[1].size, ''); assert.equal(sessions[1].path, '/tmp');
 });
+
+test('a reboot resumes the conversation each agent held: ids are read while it runs and used on restore', async (t) => {
+  const { parsePoll, agentId } = require('../lib/parse');
+  const cid = '1cbf2a9d-d71e-4998-868f-d2953df55c34', xid = '019a1b2c-3d4e-7f60-8a9b-0c1d2e3f4a5b';
+  assert.deepEqual(agentId('claude', `${cid} /work/my app`), { tool: 'claude', id: cid, cwd: '/work/my app' });
+  assert.deepEqual(agentId('claude', cid), { tool: 'claude', id: cid, cwd: '' });
+  assert.equal(agentId('claude', `${cid} relative/dir`).cwd, '');
+  assert.deepEqual(agentId('codex', `rollout-2026-11-06T09-00-00-${xid}.jsonl`), { tool: 'codex', id: xid });
+  for (const bad of ['nope /x', '', `${cid}x /x`, '$(rm -rf /) /x']) assert.equal(agentId('claude', bad), null);
+  assert.equal(agentId('codex', 'rollout-x.jsonl'), null);
+  // Claude started by hand in a shell (pane 10 → 41), Codex below a node wrapper (pane 20 → 51 → 52); 99 belongs to no session.
+  const snap = parsePoll(['@@PS', '41 10 50 claude', '51 20 50 node /usr/bin/codex', '52 51 50 codex', '99 1 5 claude', '@@AGENTIDS',
+    `claude 41 ${cid} /work/app`, `codex 52 /home/u/.codex/sessions/2026/11/06/rollout-2026-11-06T09-00-00-${xid}.jsonl`,
+    `claude 99 ${xid}`, '@@SESS', '$0|~|a|~|0|~|100|~|200|~|claude|~|/work', '$1|~|b|~|0|~|100|~|200|~|node|~|/srv',
+    '@@DETAIL', '$0|~|10|~|0|~|', '$1|~|20|~|0|~|', '@@END'].join('\n'), 300);
+  const [a, b] = snap.sessions;
+  const reused = parsePoll(['@@PS', '41 10 50 -bash', '@@AGENTIDS', `claude 41 ${cid}`, '@@SESS', '$0|~|a|~|0|~|100|~|200|~|bash|~|/work', '@@DETAIL', '$0|~|10|~|0|~|', '@@END'].join('\n'), 300);
+  assert.equal(reused.sessions[0].aiSessionId, undefined);   // a pid reused by a shell is not that Claude
+  assert.equal(a.aiTool, 'claude'); assert.equal(a.aiSessionId, cid); assert.equal(a.aiCwd, '/work/app');
+  assert.equal(b.aiTool, 'codex'); assert.equal(b.aiSessionId, xid);
+  const now = 1000 * 1000;
+  const seen = syncKnown(undefined, 'boot1', [{ ...a, name: 'a', path: '/work', created: 100 }, { ...b, name: 'b', path: '/srv', created: 100 }], now).record;
+  assert.deepEqual(seen.sessions.a, { dir: '/work/app', run: 'claude', resume: cid });
+  assert.deepEqual(seen.sessions.b, { dir: '/srv', run: 'codex', resume: xid });
+  // Right after a start the pane is still a shell: the conversation is kept. A settled shell means the agent was left.
+  const young = { name: 'a', path: '/work/app', cmd: 'bash', created: now / 1000 - 30 };
+  assert.deepEqual(syncKnown(seen, 'boot1', [young, { ...b, name: 'b', path: '/srv', created: 100 }], now).record.sessions.a, seen.sessions.a);
+  // A settled shell must last a minute (a reboot may stop the agent just before tmux): first sight only notes the time.
+  const first = syncKnown(seen, 'boot1', [{ ...young, created: 100 }], now).record;
+  assert.deepEqual(first.sessions.a, { ...seen.sessions.a, shellAt: now });
+  assert.deepEqual(syncKnown(first, 'boot1', [{ ...young, created: 100 }], now + 30000).record.sessions.a, first.sessions.a);
+  assert.deepEqual(syncKnown(first, 'boot1', [{ ...young, created: 100 }], now + 61000).record.sessions.a, { dir: '/work/app', run: 'shell' });
+  assert.deepEqual(syncKnown(first, 'boot1', [{ ...a, name: 'a', path: '/work', created: 100 }], now + 1000).record.sessions.a, seen.sessions.a);   // back in Claude: forgotten
+  assert.equal(syncKnown(seen, 'boot1', [{ ...young, cmd: 'vim', created: 100 }], now).record.sessions.a.resume, cid);   // another program in front keeps it
+  // Restore: Claude resumes its recorded id when the transcript exists; Codex resumes by id.
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const id = '22222222-2222-2222-2222-222222222222', cfg = { id };
+  h.vault.data.servers.push(cfg);
+  h.vault.data.known[id] = { bootId: 'boot1', sessions: seen.sessions, lost: [] };
+  const calls = [];
+  const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/work/app\n\0' }; }, poll: async () => {} };
+  h.remotes.set(id, r);
+  h.onPoll(r, { bootId: 'boot2', sessions: [] });
+  const result = await h.request('POST', `/api/servers/${id}/restore`, {});
+  assert.deepEqual(result.body.restored.sort(), ['a', 'b']);
+  assert.ok(calls.some((cmd) => cmd.includes(`${cid}.jsonl`) && cmd.includes('claude --resume')));
+  assert.ok(calls.some((cmd) => cmd.includes(`codex resume ${xid}`)));
+  assert.equal(h.vault.data.known[id].sessions.a.resume, cid);
+  // The page sees whether a session will resume, never the id or the agent's folder.
+  const view = (await h.request('GET', '/api/servers')).body;
+  assert.ok(!JSON.stringify(view).includes(cid) && !JSON.stringify(view).includes(xid));
+});
+
+test('one conversation is never resumed into two sessions', async (t) => {
+  const cid = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const id = '33333333-3333-3333-3333-333333333333', cfg = { id };
+  h.vault.data.servers.push(cfg);
+  h.vault.data.known[id] = { bootId: 'boot1', sessions: { a: { dir: '/w', run: 'claude', resume: cid }, b: { dir: '/w', run: 'claude', resume: cid } }, lost: [] };
+  const calls = [];
+  const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/w\n\0' }; }, poll: async () => {} };
+  h.remotes.set(id, r);
+  h.onPoll(r, { bootId: 'boot2', sessions: [] });
+  await h.request('POST', `/api/servers/${id}/restore`, {});
+  assert.equal(calls.filter((cmd) => cmd.includes(`${cid}.jsonl`)).length, 1);
+});
+
+test('other servers restore their sessions by themselves after a reboot only when that is switched on', async (t) => {
+  assert.equal(mergePrefs().autoRestoreRemote, false);
+  assert.equal(cleanPrefs({ autoRestoreRemote: true }).autoRestoreRemote, true);
+  assert.throws(() => cleanPrefs({ autoRestoreRemote: 1 }));
+  for (const on of [false, true]) {
+    const h = backendHarness(t);
+    await h.request('POST', '/api/login', { password: 'test' });
+    const id = on ? '55555555-5555-5555-5555-555555555555' : '44444444-4444-4444-4444-444444444444', cfg = { id };
+    h.vault.data.servers.push(cfg); h.vault.data.prefs = { ...mergePrefs(h.vault.data.prefs), autoRestoreRemote: on };
+    h.vault.data.known[id] = { bootId: 'boot1', sessions: { s: { dir: '/w', run: 'shell' } }, lost: [] };
+    const calls = [];
+    const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/w\n\0' }; }, poll: async () => {} };
+    h.remotes.set(id, r);
+    h.onPoll(r, { bootId: 'boot2', hasTmux: true, sessions: [] });
+    await new Promise((done) => setTimeout(done, 50));
+    assert.equal(calls.some((c) => c.includes('new-session')), on);
+  }
+});
+
+test('before a reboot the dialog learns which agents run and which folders hold unsaved git work', async () => {
+  const { rebootCheck } = require('../lib/reboot');
+  const shq = (x) => "'" + String(x).replace(/'/g, "'\\''") + "'";
+  let script = '';
+  const backend = { ready: true, snapshot: { sessions: [{ name: 'a', cmd: 'claude', path: '/w/app', state: 'run' }, { name: 'b', cmd: 'bash', path: '/w/app/sub' }, { name: 'c', cmd: 'bash', path: '/w/clean' }, { name: 'd', cmd: 'bash', path: "/w/it's" }] },
+    exec: async (cmd) => { script = cmd; return { code: 0, out: '3\t1\t/w/app\n2\t0\t/w/app\n0\t0\t/w/clean\n0\t-\t/w/its\n' }; } };
+  const c = await rebootCheck(backend, shq);
+  assert.deepEqual(c.agents, [{ name: 'a', state: 'run' }]);
+  assert.deepEqual(c.changed, [{ dir: '/w/app', changes: 3, ahead: 1 }]);   // one repository is listed once
+  assert.ok(script.includes('/w/clean'));   // every session folder is looked at, each one quoted
+  const failing = await rebootCheck({ ...backend, exec: async () => { throw new Error('x'); } }, shq);
+  assert.deepEqual(failing.changed, []);
+  await assert.rejects(rebootCheck({ ready: false }, shq));
+});
+
+test('restoring a backup while signed in swaps the data, copies the old data first, and drops the other computer\'s own sessions', async (t) => {
+  const { Vault } = require('../lib/vault');
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const local = '00000000-0000-4000-8000-000000000001', gone = '66666666-6666-6666-6666-666666666666';
+  const closed = [];
+  h.remotes.set(gone, { cfg: { id: gone }, close: () => closed.push(gone) });
+  h.vault.data.servers.push({ id: gone });
+  const other = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-other-')), 'vault.json');
+  new Vault(other).create('other-pass', { servers: [], prefs: { backupMinutes: 360 }, known: { [local]: { bootId: 'x', sessions: { mine: { dir: '/Users/x', run: 'shell' } }, lost: ['mine'] } }, features: { notes: { notes: [] } } });
+  const backup = fs.readFileSync(other, 'utf8');
+  assert.equal((await h.request('POST', '/api/backup/restore', { backup, password: 'nope' })).code, 400);
+  const before = fs.readdirSync(path.join(path.dirname(h.vault.file), 'backups')).length;
+  const ok = await h.request('POST', '/api/backup/restore', { backup, password: 'other-pass' });
+  assert.equal(ok.code, 200);
+  assert.deepEqual(closed, [gone]); assert.ok(!h.remotes.has(gone));
+  assert.equal(h.vault.data.prefs.backupMinutes, 360);
+  assert.equal(h.vault.data.known[local], undefined);
+  assert.ok(fs.readdirSync(path.join(path.dirname(h.vault.file), 'backups')).length > before);
+  const again = new Vault(h.vault.file); assert.equal(again.unlock('test'), true);   // this computer keeps its own password
+});
+
+test('macOS ps without etimes: elapsed time in [[dd-]hh:]mm:ss still maps sessions to their agents', () => {
+  const { parsePoll } = require('../lib/parse');
+  const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude', '30 1 05:07 /usr/sbin/cron', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '@@DETAIL', '$0|~|1226|~|0|~|', '@@END'].join('\n'), 300);
+  assert.equal(snap.sessions[0].aiSessionId, id);
+  assert.equal(snap.workersReliable, true);
+});
+
+test('servers are added with SSH keys only unless password login is allowed in Settings', async (t) => {
+  assert.equal(mergePrefs().allowPassword, false);
+  assert.equal(cleanPrefs({ allowPassword: true }).allowPassword, true);
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const r = await h.request('POST', '/api/servers', { host: 'example.com', user: 'me', auth: 'password', password: 'x' });
+  assert.equal(r.code, 400); assert.match(r.body.error, /SSH key|khóa/i);
+  const k = await h.request('POST', '/api/ssh-key/new', {});
+  assert.match(k.body.publicKey, /^ssh-ed25519 /); assert.match(k.body.command, /authorized_keys/); assert.ok(!JSON.stringify(k.body).includes('PRIVATE KEY'));
+});
+
+test('the terminal menu can clear a pane\'s tmux scrollback', async (t) => {
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const id = '77777777-7777-7777-7777-777777777777', cfg = { id }, calls = [];
+  h.vault.data.servers.push(cfg);
+  h.remotes.set(id, { cfg, ready: true, mode: 'native', snapshot: { sessions: [] }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '' }; }, poll: async () => {} });
+  const r = await h.request('POST', `/api/servers/${id}/sessions/SV1/keys`, { clearHistory: true, text: '' });
+  assert.equal(r.code, 200); assert.match(calls[0], /tmux clear-history -t '=SV1:'/);
+});
+
+test("the agent's own status file reaches the session: Claude status, parked flag, background sessions, Codex turn event", () => {
+  const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude', '777 1300 01:00 codex', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
+    'claudestat 21127 interactive idle 1793948461283 - 1 1793900000000 .claude PG review', 'claudestat 39545 bg waiting 1794029355684 permission 0 1794000000000 .claude-tech2 Lỗi nghiệp vụ',
+    'claudestat 1 interactive weird 1 - 0 1 .claude x', 'codexstat 777 task_started 1794029000',
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '$1|~|CX|~|0|~|100|~|200|~|codex|~|/Users/me/ws',
+    '@@DETAIL', '$0|~|1226|~|0|~|', '$1|~|1300|~|0|~|', '@@END'].join('\n'), 300);
+  assert.deepEqual(snap.sessions[0].aiStatus, { tool: 'claude', status: 'idle', at: 1793948461283, waitingFor: '', parked: true, startedAt: 1793900000000, cfg: '.claude' });
+  assert.deepEqual(snap.sessions[1].aiStatus, { tool: 'codex', status: 'busy', at: 1794029000000, waitingFor: '' });
+  assert.deepEqual(snap.bgAgents.map((b) => [b.name, b.status, b.waitingFor]), [['Lỗi nghiệp vụ', 'waiting', 'permission']]);
+  // Every view follows the agent's own status: the parked pane is idle, the busy Codex pane is running.
+  assert.deepEqual(snap.sessions.map((s) => [s.state, s.stateSource]), [['idle', 'status'], ['run', 'status']]);
+});
+
+test('officialState maps the status file onto run / wait / idle and marks the source', () => {
+  const { officialState } = require('../lib/parse');
+  const of = (aiStatus, base = { state: 'run', asking: false }) => { const s = { ...base, aiStatus }; officialState(s); return [s.state, s.asking, s.stateSource]; };
+  assert.deepEqual(of({ status: 'busy' }, { state: 'wait', asking: true }), ['run', false, 'status']);
+  assert.deepEqual(of({ status: 'waiting' }), ['wait', true, 'status']);
+  assert.deepEqual(of({ status: 'idle' }), ['wait', false, 'status']);
+  assert.deepEqual(of({ status: 'aborted' }), ['wait', false, 'status']);
+  assert.deepEqual(of({ status: 'idle', parked: true }), ['idle', false, 'status']);
+  assert.deepEqual(of(undefined), ['run', false, 'screen']);
+});
+
+test('Claude background jobs are read from state.json as Claude writes them', () => {
+  const snap = parsePoll(['@@JOBS', '@@J 85d488e5', '"state": "working"', '"detail": "Không nên cho merge P1"', '"tempo": "blocked"', '"tasks": 0', '"needs": "send a prompt to start"',
+    '"name": "Lỗi nghiệp vụ PG cũ"', '"updatedAt": "2026-11-07T05:29:15.468Z"', '"state": "ignored second value"', '@@J ../x', '"state": "done"', '@@SESS', '@@END'].join('\n'), 300);
+  assert.deepEqual(snap.jobs, [{ id: '85d488e5', state: 'working', tempo: 'blocked', at: Date.parse('2026-11-07T05:29:15.468Z'), tasks: 0, needs: 'send a prompt to start', detail: 'Không nên cho merge P1', name: 'Lỗi nghiệp vụ PG cũ' }]);
+});
+
+test('a pane with an interactive Claude and its background process: the interactive one is the session, the background one its conversation', () => {
+  const snap = parsePoll(['@@PS', '100 50 01:00 claude', '200 100 01:00 claude', '@@PSOK', '1', '@@AGENTIDS',
+    'claudestat 200 bg idle 1794029355684 - 0 1794029355462 .claude Lỗi PG', 'claudestat 100 interactive idle 1793948461283 - 1 1793882085088 .claude main',
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/w', '@@DETAIL', '$0|~|50|~|0|~|', '@@END'].join('\n'), 300);
+  const st = snap.sessions[0].aiStatus;
+  assert.equal(st.parked, true); assert.equal(st.startedAt, 1793882085088);
+  assert.deepEqual(st.job, { status: 'idle', at: 1794029355684, waitingFor: '', startedAt: 1794029355462 });
+  assert.deepEqual([snap.sessions[0].state, snap.sessions[0].stateSource], ['wait', 'status']);
+});
+
+test('launch options kept across a restore are the listed flags only, values checked', () => {
+  const { safeFlags, cleanFlags } = require('../lib/agent-flags');
+  assert.deepEqual(safeFlags('claude', 'claude --model opus --permission-mode=acceptEdits --resume 1234 -p "rm -rf /" --add-dir /etc --dangerously-skip-permissions'),
+    ['--model', 'opus', '--permission-mode', 'acceptEdits', '--dangerously-skip-permissions']);
+  assert.deepEqual(safeFlags('codex', 'codex -m gpt-6 --sandbox workspace-write -a never --full-auto exec "do it"'), ['-m', 'gpt-6', '--sandbox', 'workspace-write', '-a', 'never', '--full-auto']);
+  assert.deepEqual(safeFlags('claude', 'claude --model $(whoami)'), []);
+  assert.deepEqual(cleanFlags('claude', ['--model', 'opus', '; rm -rf ~', '--model', 'x']), ['--model', 'opus']);
+  assert.deepEqual(cleanFlags('shell', ['--model', 'opus']), []);
+});
+
+test('the flags an agent ran with are recorded with its session for the restore', () => {
+  const id = '1cbf2a9d-d71e-4998-868f-d2953df55c34';
+  const snap = parsePoll(['@@PS', '21127  1226 02-03:04:05 claude --model opus --permission-mode plan', '@@PSOK', '1', '@@AGENTIDS', `claude 21127 ${id} /Users/me/ws`,
+    '@@SESS', '$0|~|PG-App|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '@@DETAIL', '$0|~|1226|~|0|~|', '@@END'].join('\n'), 300);
+  assert.deepEqual(snap.sessions[0].aiFlags, ['--model', 'opus', '--permission-mode', 'plan']);
+  const r = syncKnown({ bootId: 'b', sessions: {}, lost: [] }, 'b', snap.sessions);
+  assert.deepEqual(r.record.sessions['PG-App'].flags, ['--model', 'opus', '--permission-mode', 'plan']);
+});
+
+test('a restore starts the agent with the model and mode it ran with (listed flags only)', async (t) => {
+  const h = backendHarness(t);
+  await h.request('POST', '/api/login', { password: 'test' });
+  const cid = '33333333-3333-3333-3333-333333333333', xid = '44444444-4444-4444-4444-444444444444', id = '55555555-5555-5555-5555-555555555555', cfg = { id };
+  h.vault.data.servers.push(cfg);
+  h.vault.data.known[id] = { bootId: 'boot1', lost: [], sessions: {
+    a: { dir: '/work', run: 'claude', resume: cid, flags: ['--model', 'opus', '--permission-mode', 'plan', '$(boom)'] },
+    b: { dir: '/srv', run: 'codex', resume: xid, flags: ['-m', 'gpt-6', '--full-auto'] } } };
+  const calls = [];
+  const r = { cfg, lost: [], snapshot: { bootId: 'boot2' }, exec: async (cmd) => { calls.push(cmd); return { code: 0, out: '\0TW_DIR\0/work\n\0' }; }, poll: async () => {} };
+  h.remotes.set(id, r); h.onPoll(r, { bootId: 'boot2', sessions: [] });
+  await h.request('POST', `/api/servers/${id}/restore`, {});
+  assert.ok(calls.some((c) => c.includes('claude --resume') && c.includes('--model') && c.includes('opus') && c.includes('plan')));
+  assert.ok(!calls.some((c) => c.includes('boom')));
+  assert.ok(calls.some((c) => c.includes(`codex resume ${xid}`) && c.includes('gpt-6') && c.includes('--full-auto')));
+});

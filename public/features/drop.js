@@ -72,7 +72,7 @@
     input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 5).forEach(send); input.value = ''; });
     var b = el('button', 'btn', i18n('drop.gui_anh')); b.type = 'button'; b.id = 'drop-pick'; b.title = i18n('drop.gui_anh_hoac_file_vao');
     b.addEventListener('click', function () { chooseFile(b, input); });
-    var kbd = document.getElementById('kbd-toggle'); bar.insertBefore(b, kbd ? kbd.nextSibling : bar.firstChild); document.body.append(input);
+    bar.insertBefore(b, bar.firstChild); document.body.append(input);
     return true;
   }
   // "Send file" opens a small menu when there is another connected server: from this computer, or from another server. From another

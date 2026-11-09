@@ -1122,3 +1122,321 @@ dialog.drop-remote{display:none}
 #fx.burst i{top:var(--y);width:0;height:0;background:none;animation:none}
 #fx.burst b{position:absolute;left:0;top:0;width:var(--s);height:var(--s);margin:calc(var(--s)/-2);border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);opacity:0;animation:fx-spark var(--d) cubic-bezier(.1,.7,.3,1) var(--dl) infinite}
 @keyframes fx-spark{0%{transform:translate(0,0) scale(1);opacity:1}70%{opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(.2);opacity:0}}
+/* Trash and temp files lists: a header with the count and size, confirm-in-place buttons, checkbox rows */
+.viewer-list-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 6px}
+.viewer-list-head small{color:var(--fg-3);margin-right:auto}
+.viewer-confirm{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.viewer-confirm .viewer-ask{flex:0 1 auto}
+.viewer-pick{cursor:pointer}
+.viewer-pick input{margin:0 4px 0 0}
+.reboot-check{font-size:13.5px;margin:6px 0;max-height:220px;overflow:auto}
+.reboot-check ul{margin:4px 0 8px;padding-left:18px;word-break:break-all}
+.reboot-check b{color:var(--bad)}
+.reboot-check .ok{color:var(--fg-3)}
+/* Settings: fixed header, tabs on the left (a scrolling row on phones), one pane at a time, grouped rows */
+#dlg-set.set-dlg{padding:0;width:min(94vw,880px)!important;height:min(86vh,720px);max-height:none;overflow:hidden}
+#dlg-set.set-dlg[open]{display:flex;flex-direction:column}
+#dlg-set .set-head{margin:0;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);flex:none}
+#dlg-set .set-body{flex:1;min-height:0;display:grid;grid-template-columns:190px minmax(0,1fr)}
+#dlg-set .set-nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;border-right:1px solid var(--line);overflow:auto}
+#dlg-set .set-tab{all:unset;cursor:pointer;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--fg-2)}
+#dlg-set .set-tab:hover{background:var(--line)}
+#dlg-set .set-tab:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+#dlg-set .set-tab[aria-selected="true"]{background:var(--primary);color:var(--surface)}
+#dlg-set .set-panes{overflow:auto;padding:16px 22px 24px;min-width:0}
+#dlg-set .set-pane{display:grid;gap:10px;align-content:start}
+#dlg-set .set-pane[hidden]{display:none}
+#dlg-set .set-pane h4{margin:8px 0 0;font:800 12px var(--round);letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
+#dlg-set .set-pane h4:first-child{margin-top:0}
+#dlg-set .set-pane .hint{margin:-4px 0 0;font-size:12.5px;color:var(--fg-3)}
+#dlg-set .set-group{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+#dlg-set .set-group>.sw,#dlg-set .set-group>label.sw{padding:11px 14px;margin:0;border-bottom:1px solid var(--line);font-weight:600}
+#dlg-set .set-group>.sw:last-child{border-bottom:0}
+#dlg-set .set-group select{width:auto;min-width:150px;max-width:240px;flex:none}
+#dlg-set .set-group .sw>span:first-child{flex:1;min-width:0}
+#dlg-set .set-ranges{padding:10px 14px;display:grid;gap:10px}
+#dlg-set .set-pad{padding:12px 14px;display:grid;gap:10px}
+#dlg-set .set-stack{flex-wrap:wrap}
+#dlg-set .set-stack code{flex:1 1 100%;order:3;font-size:12px;word-break:break-all;color:var(--fg-3);background:transparent;padding:0}
+#dlg-set .set-stack small{color:var(--fg-3);font-weight:500}
+#dlg-set .set-free{display:grid;gap:10px}
+#dlg-set .set-free .style-grid{margin:0}
+#dlg-set #set-note:empty{display:none}
+#dlg-set #bk-note:empty{display:none}
+#dlg-set #bk-note.bad{color:var(--bad)}
+#dlg-set .dir-input input{flex:1;min-width:0}
+#dlg-set .set-pane>.st{border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+@media (max-width:640px){
+  #dlg-set.set-dlg{width:100vw!important;height:100dvh;border-radius:0}
+  #dlg-set .set-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+  #dlg-set .set-nav{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px 10px;gap:6px}
+  #dlg-set .set-tab{white-space:nowrap;padding:7px 12px;background:var(--line)}
+  #dlg-set .set-panes{padding:14px 14px 28px}
+  #dlg-set .set-group select{min-width:120px;max-width:55vw}
+}
+@media (max-width:640px){#dlg-set .set-stack>span:first-child{flex-basis:100%}#dlg-set .dir-input{flex-wrap:wrap}#dlg-set .dir-input input{flex-basis:100%}}
+.viewer-link{all:unset;cursor:pointer;font-weight:700;word-break:break-all}
+.viewer-link:hover{text-decoration:underline;color:var(--primary)}
+.viewer-link:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+/* Long paths in notes wrap instead of running off a phone screen; wide tables scroll inside the document */
+.viewer-note{overflow-wrap:anywhere}
+.document table{display:block;max-width:100%;overflow-x:auto}
+#dlg-set .set-pad>*,#dlg-set .set-pane>*{min-width:0;overflow-wrap:break-word}
+@media (max-width:640px){#dlg-set .set-group .set-stack>span:first-child{flex:1 1 100%}}
+@media (max-width:640px){#dlg-set.set-dlg{margin:0;inset:0;max-width:100vw;max-height:100dvh}}
+#dlg-set .set-val{color:var(--fg-3);font-weight:500;font-size:12.5px;white-space:nowrap}
+#dlg-set .btn.sm{padding:5px 10px;font-size:12.5px;min-height:0}
+#dlg-set .set-foot{margin-top:-2px}
+#dlg-set .set-foot code{font-size:11.5px;color:var(--fg-3);background:transparent;padding:0;word-break:break-all}
+#dlg-set #bk-target{max-width:220px}
+/* AI accounts dialog: fixed header with Add and Close, compact account lines, fields only for the row being edited */
+.token-config.token-config{padding:0;width:min(640px,95vw);max-height:86vh;overflow:hidden}
+.token-config[open]{display:flex;flex-direction:column}
+.token-config .acc-form{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;gap:0;max-height:86vh}
+.token-config .acc-head{margin:0;padding:14px 18px;border-bottom:1px solid var(--line);gap:8px;flex:none}
+.token-config .acc-body{overflow:auto;padding:14px 18px;display:grid;gap:8px;min-height:0;flex:1 1 auto}
+.token-config .acc-actions{padding:12px 18px;border-top:1px solid var(--line);margin:0;align-items:center;flex:none}
+.token-config .acc-actions .err{margin:0 auto 0 0;font-size:12px}
+.acc-list{display:grid;gap:8px}
+.acc{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.acc.open{border-color:var(--primary)}
+.acc-sum{display:flex;align-items:center;gap:10px;padding:9px 12px;min-width:0}
+.acc-tool{flex:none;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;color:#fff;background:#d99458}
+.acc-tool.codex{background:#388a8b}
+.acc-text{flex:1;min-width:0}
+.acc-text>*{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-text b{font-size:13.5px}
+.acc-text small{font-size:11.5px;color:var(--fg-3)}
+.acc .btn.sm{padding:5px 10px;font-size:12px;min-height:0;flex:none}
+.acc-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;padding:4px 12px 12px;border-top:1px dashed var(--line)}
+.acc-fields[hidden]{display:none}
+.acc-f{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--fg-2);min-width:0}
+.acc-f input,.acc-f select{width:100%;min-width:0}
+.accf-directory{grid-column:1/-1}
+.acc-empty{margin:4px 0;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--fg-3);font-size:13px}
+.acc-empty[hidden]{display:none}
+@media(max-width:640px){.token-config.token-config{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;inset:0;border-radius:0}.token-config .acc-form{max-height:100dvh;height:100%}.acc-fields{grid-template-columns:1fr}.acc-sum{gap:8px;padding:8px 10px}}
+.style-card .sw-colors{width:100%;align-self:stretch;flex:none}
+.token-config .acc-body{align-content:start}
+#dlg-set .bk-restore{flex-wrap:wrap;gap:8px;background:var(--surface-2)}
+#dlg-set .bk-restore>span:first-child{flex:1 1 100%;font-weight:600;word-break:break-all}
+#dlg-set .bk-restore input{flex:1 1 180px;min-width:0}
+#dlg-set .bk-restore small{flex:1 1 100%;margin:0}
+.link-btn{background:transparent;border:0;color:var(--primary);text-decoration:underline;padding:6px 0;box-shadow:none}
+#dlg-set .bk-restore .pw{flex:1 1 220px;min-width:0}
+#dlg-set .bk-restore .pw input{width:100%}
+/* Hammer mode in the playground: a hammer cursor, a swing, a squash, spinning stars, and a dizzy pet after five quick bonks */
+#pet-yard2.hammer,#pet-yard2.hammer .yw{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext x='2' y='26' font-size='26'%3E%F0%9F%94%A8%3C/text%3E%3C/svg%3E") 6 6,crosshair}
+.yd-hammer[aria-pressed="true"]{background:var(--primary);color:var(--surface);border-color:var(--primary)}
+.yd-ham{font-size:30px;transform-origin:80% 85%;animation:yd-ham .42s ease-in forwards}
+@keyframes yd-ham{0%{transform:rotate(-70deg) translate(-6px,-10px);opacity:1}45%{transform:rotate(25deg)}60%{transform:rotate(10deg)}100%{transform:rotate(18deg);opacity:0}}
+.yd-pow{font:900 15px var(--round);color:#ff4d4d;text-shadow:0 1px 0 #fff;animation:yd-pow .7s ease-out forwards}
+@keyframes yd-pow{0%{transform:scale(.4);opacity:0}30%{transform:scale(1.25);opacity:1}100%{transform:translateY(-22px) scale(1);opacity:0}}
+.yd-star{font-size:12px;animation:yd-star .9s ease-out forwards}
+@keyframes yd-star{to{transform:translateY(-20px) rotate(220deg);opacity:0}}
+.yp.bonked svg{animation:yd-squash .7s ease-out}
+@keyframes yd-squash{0%{transform:none}15%{transform:scale(1.25,.45) translateY(12px)}45%{transform:scale(.9,1.12)}70%{transform:scale(1.04,.96)}100%{transform:none}}
+.yp.dizzy svg{animation:yd-dizzy .5s ease-in-out infinite}
+.yp.dizzy::after{content:'💫';position:absolute;left:50%;top:-14px;transform:translateX(-50%);font-size:15px;animation:yd-bob 1s ease-in-out infinite;pointer-events:none}
+@keyframes yd-dizzy{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@media (prefers-reduced-motion:reduce){.yp.bonked svg,.yp.dizzy svg{animation:none}}
+.yp.dizzy{position:relative}
+.yd-ham{font-size:34px}
+#dlg-set .set-group .bk-restore>span:first-child{flex:1 1 100%;font-weight:600}
+#dlg-set .mv2-opt{flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:13px;color:var(--fg-2)}
+#dlg-set .mv2-opt input{width:16px;height:16px;margin-top:2px;flex:none;accent-color:var(--primary)}
+.key-warn{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:0 0 10px;border-radius:12px;background:var(--wait-soft);color:var(--fg);font-size:13px}
+.key-warn span{flex:1 1 240px}.key-warn .btn.sm{padding:5px 12px;font-size:12.5px;min-height:0}
+.key-manual{display:grid;gap:8px}.key-manual pre{margin:0;padding:10px 12px;border-radius:10px;background:#0f1520;color:#cfd8e6;font:12px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+/* Phones: the pets switch and the view tabs stay on one line each (they wrapped word by word) */
+@media (max-width:640px){
+  .main-top{align-items:center;gap:8px;flex-wrap:nowrap}
+  .pet-toggle{white-space:nowrap;font-size:12.5px;flex:none}
+  .main-top .seg{flex:1;min-width:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .main-top .seg button{white-space:nowrap;flex:1 0 auto;padding:4px 9px}
+}
+@media (max-width:760px) and (min-width:340px){.token-windows{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Terminal tools: one bar (keys left, layout/text right); rare keys and saved commands in small menus; help behind "?" */
+.term-tools{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface);border-top:1px solid var(--line);flex:none;min-width:0}
+.term-tools .keybar{display:flex!important;padding:0;background:transparent;overflow:visible;flex:none;gap:6px}
+.term-tools .keybar .btn,.term-tools #cmds .btn{min-height:32px;padding:3px 10px;font:600 12.5px var(--mono)}
+.term-tools #cmds{flex:1;min-width:0;border-top:0;padding:0;background:transparent;overflow:visible;justify-content:flex-end}
+.term-tools #command-list{display:flex;gap:6px;align-items:center;margin-right:auto}
+.key-more-wrap{position:relative;display:inline-flex}
+.pop{position:absolute;bottom:calc(100% + 6px);left:0;z-index:30;display:flex;flex-direction:column;gap:4px;min-width:170px;max-height:60vh;overflow:auto;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px -16px rgba(10,20,50,.45)}
+.pop[hidden]{display:none}
+.pop .btn{justify-content:flex-start;text-align:left;width:100%;min-height:34px}
+#cmds .pop{left:0}
+.terminal-copy-help[hidden]{display:none}
+.tmux-bar[hidden]{display:none!important}
+@media (max-width:760px){.term-tools{flex-wrap:wrap;overflow-x:auto}.term-tools #cmds{flex-basis:100%;justify-content:flex-start;overflow-x:auto}.pop{position:fixed;left:10px!important;right:10px;bottom:76px;min-width:0}}
+/* Quick notices float as a small toast at the bottom instead of a full-width bar that pushed the page down */
+#banner{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);z-index:95;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--fg);box-shadow:0 18px 40px -18px rgba(10,20,50,.5);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;display:block!important}
+#banner.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#banner.good{background:var(--surface);color:var(--fg);border-left:4px solid var(--ok)}
+#banner.show:not(.good){border-left:4px solid var(--wait-line,#e39b00)}
+#banner.text-hint{left:auto;right:14px;bottom:105px;transform:none}
+@media (max-width:760px){#banner{bottom:calc(78px + env(safe-area-inset-bottom,0px))}}
+/* Header: AI accounts as small chips (dot + short name + %), no long dark strip; the server picker only where the sidebar is hidden */
+.token-mini{background:transparent!important;color:var(--fg)!important;border:0!important;box-shadow:none!important;display:inline-flex;gap:6px;align-items:center;padding:0!important;max-width:46vw;overflow:hidden}
+.token-mini-item{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--surface-2,#eef2f8);border:1px solid var(--line);font-size:12px;white-space:nowrap;margin:0!important}
+.token-mini-item b{font-weight:700}.token-mini-item span{color:var(--fg-2);font-variant-numeric:tabular-nums}
+.token-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;flex:none}
+.token-mini-item[data-level=warm] .token-dot{background:#e39b00}.token-mini-item[data-level=hot] .token-dot{background:#dc2626}.token-mini-item[data-level=none] .token-dot{background:#9aa3b5}
+@media (min-width:1000px){.top select.host{display:none}}
+@media (max-width:760px){.token-mini-item:not(:first-child){display:none}}
+/* Token AI first read: skeleton tiles */
+.us-tile.us-skel{min-height:74px}
+.us-tile.us-skel i,.us-tile.us-skel div{display:block;border-radius:10px;background:linear-gradient(90deg,var(--line) 0%,var(--surface-2,#f3f6fb) 50%,var(--line) 100%);background-size:200% 100%;animation:us-sk 1.2s linear infinite}
+.us-tile.us-skel i{width:40px;height:40px;flex:none}.us-tile.us-skel div{flex:1;height:30px}
+@keyframes us-sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.us-tile.us-skel i,.us-tile.us-skel div{animation:none}}
+.token-info{all:unset;cursor:pointer;color:var(--fg-3);font-size:12px;padding:0 3px;border-radius:6px}.token-info:hover,.token-info:focus-visible{color:var(--primary);outline:1px solid var(--line)}
+.token-tip{display:block;margin-top:4px;padding:6px 8px;border-radius:8px;background:var(--surface-2,#f3f6fb);color:var(--fg-2);font-size:11.5px}.token-tip[hidden]{display:none}
+/* Overview: a waiting session still shows its last lines like the others (the question and reply box follow below) */
+#v-over .card.wait .mini{display:flex}
+/* Server cards share the row: one or two machines fill it instead of leaving the right side empty */
+#fleet{grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))}
+/* Phones: the hero is one compact block (title + chips); the machine illustration is left for wider screens */
+@media (max-width:640px){
+  .hero{padding:12px 14px;gap:8px;min-height:0}
+  .hero .scene,.hero .hero-wx{display:none}
+  .hero h1{font-size:19px;margin:0}
+}
+#banner{top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;transform:translate(-50%,-8px)}
+#banner.show{transform:translate(-50%,0)}
+@media (max-width:760px){#banner{top:calc(64px + env(safe-area-inset-top,0px));bottom:auto}}
+.term-tools{flex-wrap:wrap;row-gap:6px}
+.term-tools #cmds{flex:1 1 auto;justify-content:space-between;overflow:visible;flex-wrap:wrap;row-gap:6px}
+.term-tools .pane-opt{padding:3px 8px!important}
+.term-tools #command-list{overflow:visible!important}
+.term-tools #command-list{-webkit-mask-image:none;mask-image:none;flex:0 1 auto}
+/* Overview hero: one even row of stats (same height, same glass style); "waiting" stands out by a dot and outline, not a white blob;
+   the reply button matches the row height */
+#v-over .hero .chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+#v-over .hero .chip{height:30px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);color:#fff;font-size:12.5px;font-weight:600;line-height:1;backdrop-filter:blur(4px)}
+#v-over .hero .chip b{font:800 14px var(--round);color:#fff}
+#v-over .hero .chip.alert{border-color:rgba(255,214,102,.95);background:rgba(255,196,0,.18)}
+#v-over .hero .chip.alert::before,#v-over .hero .chip.conn::before{content:'';width:8px;height:8px;border-radius:50%;background:#ffd666;flex:none;box-shadow:0 0 0 3px rgba(255,214,102,.25)}
+#v-over .hero .chip.conn::before{background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.22)}
+#app.offline #v-over .hero .chip.conn{background:rgba(220,38,38,.25);border-color:rgba(255,160,160,.9)}
+#app.offline #v-over .hero .chip.conn::before{background:#f87171}
+#v-over .hero .hero-reply{height:30px;min-height:30px;padding:0 14px;border-radius:10px;border:0;background:#fff;color:var(--primary);font-weight:800;font-size:12.5px;box-shadow:0 6px 16px -8px rgba(0,0,0,.45);margin-left:4px}
+#v-over .hero .hero-reply:hover{filter:brightness(.97)}
+#v-over .hero h1{font-size:24px}
+@media (max-width:640px){#v-over .hero .chip{height:28px;padding:0 10px;font-size:12px}#v-over .hero .hero-reply{flex-basis:100%;height:34px}}
+.reboot-ask{border-color:var(--wait-line,#e39b00);color:var(--wait,#a15c00);background:var(--wait-soft,#fff7e6)}
+.term-menu{min-width:230px}
+.term-menu .tab-menu-item{display:flex;align-items:center;gap:16px}
+.term-menu .tab-menu-item kbd{margin-left:auto;font:600 11px var(--mono);color:var(--fg-3);background:transparent;border:0}
+.term-menu-sep{height:1px;margin:4px 6px;background:var(--line)}
+/* Font-size hint keeps its old place (the toast rules above must not stretch it) */
+#banner.text-hint{top:auto!important;bottom:105px;left:auto;right:14px;transform:none!important;height:auto}
+/* File viewer text size */
+.viewer-zoom{display:inline-flex;gap:4px;margin-left:auto}
+.viewer-zoom .btn{min-height:30px;padding:3px 9px;font-weight:700}
+.file-content{font-size:calc(15px * var(--viewer-scale,1))}
+.file-content pre,.file-content .document{font-size:calc(1em * 1)}
+.file-content .document{font-size:calc(15px * var(--viewer-scale,1))}
+.file-content pre{font-size:calc(13px * var(--viewer-scale,1))}
+/* The frame fills the viewer; A-/A+ zoom only the page inside it (sent by postMessage), never the frame box. */
+/* Trash and temp files: a clean list, a friendly empty state, one short footnote */
+.viewer-list-head{padding:4px 2px 8px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.viewer-list-head b{font-size:15px}
+.viewer-list{display:grid;gap:6px}
+.viewer-list .viewer-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);transition:border-color .15s,background .15s}
+.viewer-list .viewer-row:hover{border-color:var(--primary);background:var(--surface-2,#f6f8fc)}
+.viewer-list .viewer-trash-info b{font-size:13.5px}.viewer-list .viewer-trash-info small{font-size:12px}
+.viewer-list .viewer-row .btn{min-height:30px;padding:3px 10px;font-size:12.5px}
+.viewer-empty{display:grid;justify-items:center;gap:6px;padding:40px 16px;border:1px dashed var(--line);border-radius:14px;text-align:center;color:var(--fg-3)}
+.viewer-empty-i{font-size:34px;filter:grayscale(.2)}.viewer-empty b{color:var(--fg);font-size:14.5px}.viewer-empty small{font-size:12.5px;max-width:42ch}
+.viewer-foot{margin:12px 2px 0;font-size:12px;color:var(--fg-3)}
+/* No pets: initials on the session tile instead of an empty square */
+.ava .ava-i{display:none;font:800 13px var(--round);color:color-mix(in srgb,var(--c) 70%,var(--fg));letter-spacing:.02em}
+.pets-off .sess .ava .ava-i{display:block}
+.pets-off .sess .ava{background:color-mix(in srgb,var(--c) 18%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 35%,transparent)}
+/* Sidebar toggle and the narrow rail */
+.side-toggle{align-self:flex-end;width:30px;min-height:30px!important;padding:0!important;margin:6px 8px 0;display:grid;place-items:center;color:var(--fg-3);background:transparent;border-color:transparent}
+.side-toggle:hover{color:var(--fg);background:var(--surface-2)}
+#app.side-mini .side{width:68px}
+#app.side-mini .side .txt,#app.side-mini .side .add-srv,#app.side-mini .side .g-srv{display:none}
+#app.side-mini .side .side-toggle{align-self:center;margin:8px 0 4px}
+#app.side-mini .side .sess{justify-content:center;padding:4px 0;margin-bottom:2px;position:relative;border-radius:12px}
+#app.side-mini .side .sess[aria-current="true"]{background:transparent}
+#app.side-mini .side .sess[aria-current="true"] .ava{box-shadow:0 0 0 2px var(--surface),0 0 0 4px color-mix(in srgb,var(--c) 70%,transparent)}
+#app.side-mini .side .srv-row .ava{width:36px;height:36px;border-radius:11px}
+#app.side-mini .side .badge{position:absolute;top:0;right:8px;min-width:17px;height:17px;padding:0 4px;font-size:10.5px;line-height:17px;box-shadow:0 0 0 2px var(--surface)}
+#app.side-mini .side .group{height:1px;padding:0;margin:8px 16px;background:var(--line);font-size:0;overflow:hidden}
+#app.side-mini .side-foot,#app.side-mini .side .sys-mini,#app.side-mini .health{display:none}
+
+/* One machine in view: a single compact row (title · rings) instead of three rings spread over the full width */
+#fleet:has(> .fc:only-child) .fc{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,520px) 1fr;align-items:center;column-gap:18px;row-gap:6px;padding:10px 14px}
+#fleet:has(> .fc:only-child) .fc-h{grid-column:1;margin:0;min-height:0;flex-direction:column;align-items:flex-start;gap:6px}
+#fleet:has(> .fc:only-child) .rings{grid-column:2;margin:0;min-height:0}
+#fleet:has(> .fc:only-child) .tags{grid-column:3;justify-self:end;margin:0}
+@media(max-width:760px){#fleet:has(> .fc:only-child) .fc{grid-template-columns:minmax(0,1fr)}#fleet:has(> .fc:only-child) .fc>*{grid-column:1!important;justify-self:stretch}}
+
+/* Viewer header: one tidy row — back · title · (A− A+) · insert · ⋯ · close, all right-aligned together; wraps only when narrow */
+.file-viewer{container-type:inline-size}
+.file-viewer header{flex-wrap:nowrap;align-items:center;gap:6px;padding:10px 14px}
+.file-viewer header strong{order:0;flex:1 1 auto;flex-basis:auto;min-width:40px}
+.file-viewer header .viewer-back{order:-1}
+.file-viewer header .viewer-zoom{order:1;margin-left:0;gap:0;padding:2px;border-radius:10px;background:var(--surface-2)}
+.file-viewer header .viewer-zoom .btn{min-height:28px;padding:0 9px;border-color:transparent;background:transparent;font-size:12.5px}
+.file-viewer header .viewer-zoom .btn:hover{background:var(--surface)}
+.file-viewer header .viewer-insert{order:2;white-space:nowrap}
+.file-viewer header .viewer-more{order:3;margin-left:0;width:34px;padding:0!important}
+.file-viewer header .viewer-close{order:4}
+.file-viewer header .btn{min-height:32px}
+@container (max-width:620px){.file-viewer header{flex-wrap:wrap}.file-viewer header strong{flex-basis:100%;order:-2}.file-viewer header .viewer-zoom{margin-left:auto}}
+/* File list: plain rows with a hover tint; the ⋯ sits inside the row instead of a second bordered box */
+.viewer-row{margin:0;gap:2px;border-radius:10px}
+.viewer-row:hover{background:var(--surface-2)}
+.viewer-row .viewer-entry{border-color:transparent;background:transparent;box-shadow:none;min-height:36px}
+.viewer-row .viewer-mini{border-color:transparent;background:transparent;width:32px;min-height:32px}
+.viewer-row .viewer-mini:hover{background:var(--surface)}
+/* One pane: the tabs above already choose the session, so the per-pane session picker is hidden (it only caused misclicks). Split views keep it. */
+#split:not(.two):not(.four) .pane>select{display:none}
+/* Alerts dialog: whether alerts also reach the computer's notification centre */
+.al-os{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:8px 10px;border-radius:10px;background:var(--wait-soft);color:var(--fg-2);font-size:12.5px}
+.al-os.on{background:var(--surface-2)}
+.al-os .btn{min-height:30px;padding:0 12px;font-size:12.5px;flex:none}
+/* Server rows: own icon for "all" and for this computer; the collapsed rail shows each server's short code instead of identical icons */
+.srv-row .ava .srv-code{display:none;font:800 13px var(--round);color:var(--c);letter-spacing:.02em}
+#app.side-mini .side .srv-remote .ava svg.srv-i{display:none}
+#app.side-mini .side .srv-remote .ava .srv-code{display:block}
+#app.side-mini .side .srv-row .ava{background:color-mix(in srgb,var(--c) 14%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 28%,transparent)}
+#app.side-mini .side .srv-all{margin-bottom:6px}
+.srv-row .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Add server: a localised file picker instead of the browser's own "Choose File" */
+.file-pick{position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:5px 6px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.file-pick input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.file-pick .btn{pointer-events:none;flex:none;min-height:32px}
+.file-pick .fname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-2);font-size:13px}
+.file-pick:focus-within{outline:2px solid color-mix(in srgb,#2f80ed 55%,transparent);outline-offset:1px}
+/* Command templates popover: never wider than the space left of the window edge; long commands stay on one line, cut with … */
+#cmds .pop{width:max-content;max-width:min(560px,calc(100vw - 340px))}
+#cmds .pop .btn{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono,ui-monospace,monospace);font-size:12.5px}
+@media (max-width:760px){#cmds .pop{width:auto;max-width:none}}
+
+/* Compact density that actually fits more sessions: narrower cards, shorter previews, tighter sidebar rows and wall tiles */
+[data-density="compact"] .grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+[data-density="compact"] #v-over .grid>.card{min-height:160px}
+[data-density="compact"] #v-over .grid>.card .mini{flex-basis:70px;min-height:70px;font-size:10.5px;padding:6px 10px}
+[data-density="compact"] .card-head{padding:5px 8px;gap:6px}
+[data-density="compact"] .card-head svg,[data-density="compact"] .card-head .pet-body,[data-density="compact"] .card-head .pet-body svg{width:28px;height:28px}
+[data-density="compact"] .card-foot{padding:4px 10px;font-size:11px}
+[data-density="compact"] .w-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:6px}
+[data-density="compact"] .side .sess{padding:4px 8px;margin-bottom:1px;gap:8px}
+[data-density="compact"] .side .ava{width:34px;height:34px;border-radius:11px}
+[data-density="compact"] .side .ava svg{width:28px;height:28px}
+[data-density="compact"] #fleet{gap:8px}
+[data-density="compact"] #v-over{gap:8px}
+/* The top bar of a view no longer holds the pets switch (moved to Settings → Look) */
+.main-top{justify-content:flex-end}
+.fc-nodata{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:12.5px}
+.fc-nodata .btn{flex:none;min-height:30px}
+
+/* Viewer maximised to the whole window (wide mockups, reports) */
+.file-viewer.is-max{left:0;top:0;width:auto !important;z-index:120;border-left:0}
+.file-viewer.is-max>.handle,.file-viewer.is-max .viewer-resize{display:none}

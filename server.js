@@ -21,6 +21,8 @@ const { keysScript, BAD: BAD_KEYS } = require('./lib/keys');
 const { injectReportLinks } = require('./lib/report-links');
 const { createFeatures } = require('./lib/features');
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
+const { cleanFlags } = require('./lib/agent-flags');
+const { acquireDataLock, unlockFromFile } = require('./lib/service-runtime');
 
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
@@ -124,6 +126,8 @@ const STATIC = {
   '/termnest-logo-dark.svg': [path.join(PUB, 'termnest-logo-dark.svg'), 'image/svg+xml'],
   '/termnest-logo-oncolor.svg': [path.join(PUB, 'termnest-logo-oncolor.svg'), 'image/svg+xml'],
   '/app.css': [path.join(PUB, 'app.css'), 'text/css; charset=utf-8'],
+  '/look.css': [path.join(PUB, 'look.css'), 'text/css; charset=utf-8'],
+  '/look.js': [path.join(PUB, 'look.js'), 'text/javascript; charset=utf-8'],
   '/vendor/xterm.js': [path.join(NM, '@xterm/xterm/lib/xterm.js'), 'text/javascript; charset=utf-8'],
   '/vendor/xterm.css': [path.join(NM, '@xterm/xterm/css/xterm.css'), 'text/css; charset=utf-8'],
   '/vendor/addon-fit.js': [path.join(NM, '@xterm/addon-fit/lib/addon-fit.js'), 'text/javascript; charset=utf-8'],
@@ -172,13 +176,13 @@ function send(res, code, body) {
 }
 function fail(res, code, error, extra) { send(res, code, { error, ...(extra || {}) }); }
 
-function readJson(req) {
+function readJson(req, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', (d) => {
       size += d.length;
-      if (size > MAX_BODY) { reject(new Error('too large')); req.destroy(); return; }
+      if (size > limit) { reject(new Error('too large')); req.destroy(); return; }
       chunks.push(d);
     });
     req.on('end', () => {
@@ -213,7 +217,7 @@ function onPoll(r, snap, sessionVersion = r.sessionVersion) {
   saveVault();
   updateLost(r);
   if (typeof features !== 'undefined') features.emitSnapshot(r, snap);
-  if (r.cfg.local && vault.data.prefs.autoRestoreLocal && r.lost.length && !r.restoring) {
+  if ((r.cfg.local ? vault.data.prefs.autoRestoreLocal : vault.data.prefs.autoRestoreRemote) && r.lost.length && !r.restoring) {
     // One attempt per boot; failures stay visible for manual retry.
     if (r.restoreBoot !== snap.bootId) {
       r.restoreBoot = snap.bootId; r.restoring = true;
@@ -240,12 +244,61 @@ function addRemote(cfg) {
   return r;
 }
 
+// Data from another machine: "This computer" there is not this computer, so its sessions are not offered for restore here.
+function forThisMachine(data) {
+  const out = { ...data, servers: Array.isArray(data.servers) ? data.servers : [], known: { ...(data.known || {}) } };
+  delete out.known[LOCAL_ID];
+  return out;
+}
+
+// Chats carried by a "Chuyển máy" file wait (encrypted with the store's key) until this computer can place them.
+const INCOMING_FILE = path.join(DATA, 'incoming-chats.json');
+function keepIncoming(chats) {
+  if (!chats || !chats.length) { fs.rmSync(INCOMING_FILE, { force: true }); vault.data.moveWaiting = []; return; }
+  fs.mkdirSync(DATA, { recursive: true, mode: 0o700 });
+  const tmp = INCOMING_FILE + '.tmp'; fs.writeFileSync(tmp, vault.sealExtra(chats), { mode: 0o600 }); fs.renameSync(tmp, INCOMING_FILE);
+  vault.data.moveWaiting = chats.map((c) => ({ name: c.name, tool: c.tool, origin: c.origin || '', dir: c.dir, server: c.serverName || '' }));
+}
+let placing = null;
+async function placeIncoming() {
+  if (placing) return placing;
+  placing = (async () => {
+    let chats; try { chats = vault.openExtra(fs.readFileSync(INCOMING_FILE, 'utf8')); } catch { return; }
+    const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
+    if (!chats) return;
+    // Spare copies of server chats go back to their own server, and only where that server lost them.
+    const serverWaiting = [];
+    for (const c of chats.filter((x) => x.server)) {
+      const r = remotes.get(c.server);
+      if (!r || !r.ready || r.mode === 'powershell') { serverWaiting.push(c); continue; }
+      try { if (await T.restoreOnServer(r, c, shq) === 'waiting') serverWaiting.push(c); } catch { serverWaiting.push(c); }
+    }
+    const mine = chats.filter((x) => !x.server);
+    if (!local || !local.ready || local.mode === 'powershell') { keepIncoming([...mine, ...serverWaiting]); saveVault(); return; }
+    const known = vault.data.known[LOCAL_ID] ||= { bootId: '', sessions: {}, lost: [] };
+    const { placed, waiting: localWaiting } = await T.place(local, mine, known, shq);
+    const waiting = [...localWaiting, ...serverWaiting];
+    const taken = new Set([...(local.snapshot?.sessions || []).map((s) => s.name), ...Object.keys(known.sessions)]);
+    for (const p of placed) {
+      const name = require('./lib/features/move').freeName(p.name, taken); taken.add(name);
+      Object.defineProperty(known.sessions, name, { value: { dir: p.dir, run: p.tool, resume: p.id }, enumerable: true, configurable: true, writable: true });
+      known.lost = [...new Set([...(known.lost || []), name])];
+    }
+    keepIncoming(waiting); saveVault(); updateLost(local);
+  })().finally(() => { placing = null; });
+  return placing;
+}
+// A restored file: a plain backup (the data) or a "Chuyển máy" file (the data plus this old computer's chats).
+function restoredData(obj) {
+  return obj && obj.kind === require('./lib/transfer').KIND ? { data: obj.data, chats: Array.isArray(obj.chats) ? obj.chats : [] } : { data: obj, chats: [] };
+}
+
 function startRemotes() {
   vault.data.prefs = mergePrefs(vault.data.prefs);
   vault.data.known ||= {};
   if (!remotes.has(LOCAL_ID)) {
     const local = addRemote(localConfig());
-    local.connect().then(() => local.poll()).catch((err) => { local.error = err.message; });
+    local.connect().then(() => local.poll()).then(() => placeIncoming()).catch((err) => { local.error = err.message; });
   }
   const ids = new Set([LOCAL_ID, ...vault.data.servers.map((s) => s.id)]);
   savedHistory = Object.fromEntries(Object.entries(savedHistory).filter(([id]) => ids.has(id)));
@@ -282,7 +335,8 @@ async function login(req, res) {
   sessions.set(token, now + SESSION_MS);
   setCookie(res, token);
   startRemotes();
-  send(res, 200, { ok: true });
+  // The store was damaged and the newest good copy was used: the page tells the user from when the data is.
+  send(res, 200, vault.recovered ? { ok: true, recoveredAt: vault.recovered.at } : { ok: true });
 }
 
 function publicState() {
@@ -298,11 +352,14 @@ async function addServer(req, res) {
   const host = String(b.host || '').trim();
   const user = String(b.user || '').trim();
   const port = Number(b.port || 22);
-  const auth = b.auth === 'key' ? 'key' : 'password';
+  // SSH key only unless password login is allowed in Settings. "newkey": TERMNEST makes a key and installs it with the server
+  // password used once (never stored); "keyref": a key TERMNEST made that the user installed by hand; "key": the user's own key file.
+  const auth = ['key', 'newkey', 'keyref'].includes(b.auth) ? b.auth : 'password';
+  if (auth === 'password' && !mergePrefs(vault.data.prefs).allowPassword) { fail(res, 400, tr('srv.ssh.chi_dung_khoa')); return; }
   if (!validHost(host)) { fail(res, 400, tr('srv.server.dia_chi_may_chu_chua')); return; }
   if (!validUser(user)) { fail(res, 400, tr('srv.server.tai_khoan_chua_dung')); return; }
   if (!Number.isInteger(port) || port < 1 || port > 65535) { fail(res, 400, tr('srv.server.cong_chua_dung')); return; }
-  if (auth === 'password' && (typeof b.password !== 'string' || !b.password)) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
+  if ((auth === 'password' || auth === 'newkey') && (typeof b.password !== 'string' || !b.password)) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
   if (auth === 'key' && (typeof b.key !== 'string' || !b.key.includes('PRIVATE KEY'))) {
     fail(res, 400, tr('srv.server.chon_file_khoa_ssh_rieng'));
     return;
@@ -311,17 +368,35 @@ async function addServer(req, res) {
     fail(res, 409, tr('srv.server.tai_khoan_nay_da_co'));
     return;
   }
-  const cfg = { id: crypto.randomUUID(), host, port, user, auth, name: '', fingerprint: '' };
+  const cfg = { id: crypto.randomUUID(), host, port, user, auth: auth === 'password' ? 'password' : 'key', name: '', fingerprint: '' };
   if (auth === 'key') {
     cfg.key = b.key;
     if (b.passphrase) cfg.passphrase = String(b.passphrase);
   }
+  if (auth === 'keyref') {
+    const k = require('./lib/sshkey').take(b.keyRef);
+    if (!k) { fail(res, 400, tr('srv.ssh.khoa_het_han')); return; }
+    cfg.key = k.private;
+  }
+  if (auth === 'newkey') {
+    // Log in once with the password, install a new key, then the password is forgotten.
+    const once = new Remote({ ...cfg, auth: 'password' }, () => {});
+    try {
+      await once.connect(b.password);
+      cfg.fingerprint = once.cfg.fingerprint;
+      const k = require('./lib/sshkey').makeKey(require('os').hostname());
+      const out = await once.exec(`sh -c ${shq(require('./lib/sshkey').INSTALL_SCRIPT)}`, 20000, 4096, Buffer.from(k.public + '\n'));
+      if (out.code !== 0 || !/INSTALLED/.test(out.out || '')) throw new Error(tr('srv.ssh.khong_cai_duoc_khoa'));
+      cfg.key = k.private;
+    } catch (err) { once.close(); fail(res, 400, err.message); return; }
+    once.close();
+  }
   const r = new Remote(cfg, () => {});
   try {
-    await r.connect(auth === 'password' ? b.password : undefined);
+    await r.connect(cfg.auth === 'password' ? b.password : undefined);
   } catch (err) {
     r.close();
-    fail(res, 400, err.message);
+    fail(res, 400, auth === 'keyref' ? tr('srv.ssh.khoa_chua_cai', [err.message]) : err.message);
     return;
   }
   r.onLearn = () => saveVault();
@@ -347,11 +422,30 @@ function removeServer(res, id) {
   send(res, 200, { ok: true });
 }
 
+// A server that logs in with a password moves to an SSH key: a new key is installed over the open connection, a second
+// connection proves the key works, and only then is the server switched (the password is forgotten).
+async function switchToKey(res, r) {
+  if (r.cfg.local || r.cfg.auth !== 'password') { fail(res, 400, tr('srv.ssh.da_dung_khoa')); return; }
+  if (!r.ready) { fail(res, 400, tr('srv.server.may_chu_chua_ket_noi')); return; }
+  const K = require('./lib/sshkey'), k = K.makeKey(os.hostname());
+  try {
+    const out = await r.exec(`sh -c ${shq(K.INSTALL_SCRIPT)}`, 20000, 4096, Buffer.from(k.public + '\n'));
+    if (out.code !== 0 || !/INSTALLED/.test(out.out || '')) throw new Error(tr('srv.ssh.khong_cai_duoc_khoa'));
+    const probe = new Remote({ ...r.cfg, auth: 'key', key: k.private }, () => {});
+    try { await probe.connect(); } finally { probe.close(); }
+  } catch (err) { fail(res, 400, err.message); return; }
+  Object.assign(r.cfg, { auth: 'key', key: k.private }); r.password = null;
+  saveVault();
+  send(res, 200, { ok: true });
+}
+
 async function reconnect(req, res, id) {
   const r = remotes.get(id);
   if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
   const b = await readJson(req);
-  if (r.ready) { send(res, 200, { ok: true }); return; }
+  // Connected but no data: drop the connection and open a fresh one (b.force from the "no data" card).
+  if (r.ready && b.force === true && !r.cfg.local) { try { r.close(); } catch { /* already closed */ } }
+  else if (r.ready) { send(res, 200, { ok: true }); return; }
   if (r.cfg.auth === 'password' && !r.password && !b.password) { fail(res, 400, tr('srv.server.nhap_mat_khau')); return; }
   try {
     await r.connect(r.cfg.auth === 'password' ? (b.password || r.password) : undefined);
@@ -406,11 +500,22 @@ async function startSession(r, options) {
   return withSessionChange(r, () => executeStartSession(r, options));
 }
 
-async function executeStartSession(r, { name, dir, run, restoring = false }) {
+async function executeStartSession(r, { name, dir, run, restoring = false, resume = '', flags = [] }) {
   if (!validName(name)) throw new Error(tr('srv.server.ten_chi_dung_chu_khong'));
   if (!validDir(dir)) throw new Error(tr('srv.server.thu_muc_chua_dung'));
   if (!['shell', 'claude', 'codex'].includes(run)) throw new Error(tr('srv.server.lenh_chua_dung'));
   dir = dir.trim();
+  // On a restore the agent starts with the options it ran with (model, permission mode): listed flags only, checked again.
+  const extra = restoring ? cleanFlags(run, flags).map((f) => shq(f)).join(' ') : '', sp = extra ? ' ' + extra : '';
+  // After a reboot the conversation the agent held is resumed by its own id (recorded while it ran).
+  resume = restoring && typeof resume === 'string' && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(resume) ? resume : '';
+  // Two agents writing one transcript would corrupt it: a conversation already open in another session is not resumed twice.
+  if (resume) {
+    const k = vault.data.known?.[r.cfg.id], lostNames = new Set(k?.lost || []);
+    const held = Object.entries(k?.sessions || {}).some(([n, v]) => n !== name && !lostNames.has(n) && v.resume === resume)
+      || (r.snapshot?.sessions || []).some((s) => s.name !== name && s.aiSessionId === resume);
+    if (held) resume = '';
+  }
   let resolvedDir;
   if (r.mode === 'powershell') {
     resolvedDir = await r.startPlain({ name, dir, run, restoring });
@@ -434,10 +539,15 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
     if (run === 'claude') {
       const id = claudeSessionId(resolvedDir, name);
       const script = [
-        `cmd=${shq(`claude --session-id ${shq(id)} --name ${shq(name)}`)}`,
+        `cmd=${shq(`claude --session-id ${shq(id)} --name ${shq(name)}${sp}`)}`,
         `for f in "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/${shq(id + '.jsonl')}; do`,
-        `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(id)}`)}; break; fi`,
+        `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(id)}${sp}`)}; break; fi`,
         `done`,
+        ...(resume ? [
+          `for f in "\${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/${shq(resume + '.jsonl')}; do`,
+          `  if [ -f "$f" ]; then cmd=${shq(`claude --resume ${shq(resume)}${sp}`)}; break; fi`,
+          `done`,
+        ] : []),
         // Decide remotely, but send one simple command to the user's login shell (including fish).
         `tmux send-keys -t ${shq(`=${name}:`)} "$cmd" Enter`,
       ].join('\n');
@@ -450,7 +560,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
       }
     }
     if (run === 'codex') {
-      const cmd = r.cfg.local ? await r.codexLaunch(restoring) : 'codex';
+      const cmd = resume ? `codex resume ${resume}${sp}` : r.cfg.local ? await r.codexLaunch(restoring) : 'codex' + sp;
       const launched = await r.exec(`tmux send-keys -t ${shq(`=${name}:`)} ${shq(cmd)} Enter`).catch(() => ({ code: 1 }));
       if (launched.code !== 0) {
         await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`).catch(() => {});
@@ -460,7 +570,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
   }
   vault.data.known ||= {};
   const known = vault.data.known[r.cfg.id] ||= { bootId: r.snapshot?.bootId || '', sessions: {}, lost: [] };
-  Object.defineProperty(known.sessions, name, { value: { dir: resolvedDir, run }, enumerable: true, configurable: true, writable: true });
+  Object.defineProperty(known.sessions, name, { value: resume ? { dir: resolvedDir, run, resume } : { dir: resolvedDir, run }, enumerable: true, configurable: true, writable: true });
   known.lost = (known.lost || []).filter((n) => n !== name);
   const prefs = mergePrefs(vault.data.prefs);
   prefs.recentDirs = [resolvedDir, ...prefs.recentDirs.filter((d) => d !== resolvedDir)].slice(0, 8);
@@ -471,7 +581,14 @@ async function executeStartSession(r, { name, dir, run, restoring = false }) {
 
 async function killSession(res, r, name) {
   if (typeof name !== 'string' || !name || name.length > 128) { fail(res, 400, tr('srv.server.ten_phien_chua_dung')); return; }
-  const stopped = await withSessionChange(r, async () => {
+  const stopped = await stopSession(r, name);
+  if (!stopped) { fail(res, 400, tr('srv.server.khong_dung_duoc_phien_nay')); return; }
+  await r.poll();
+  send(res, 200, { ok: true });
+}
+
+function stopSession(r, name) {
+  return withSessionChange(r, async () => {
     const out = r.mode === 'powershell' ? { code: r.killPlain(name) ? 0 : 1 } : await r.exec(`tmux -u kill-session -t ${shq(`=${name}`)}`);
     if (out.code !== 0) return false;
     const known = vault.data.known?.[r.cfg.id];
@@ -483,9 +600,6 @@ async function killSession(res, r, name) {
     }
     return true;
   });
-  if (!stopped) { fail(res, 400, tr('srv.server.khong_dung_duoc_phien_nay')); return; }
-  await r.poll();
-  send(res, 200, { ok: true });
 }
 
 async function restore(req, res, r) {
@@ -544,6 +658,13 @@ async function screens(req, res, r) {
 
 async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
+  // "Xóa lịch sử cuộn" from the terminal menu: drop tmux's scrollback of the pane (the screen itself stays).
+  if (b.clearHistory === true) {
+    if (!name || name.length > 128 || r.mode === 'powershell') { fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return; }
+    const out = await r.exec(`tmux clear-history -t ${shq(`=${name}:`)}`);
+    if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_noi_dung')); return; }
+    send(res, 200, { ok: true }); return;
+  }
   if (!name || name.length > 128 || typeof b.text !== 'string' || b.text.length > 1000 ||
       BAD_KEYS.test(b.text) || (b.enter !== undefined && typeof b.enter !== 'boolean')) {
     fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return;
@@ -572,6 +693,29 @@ async function api(req, res, url) {
       ...(webSetupEnabled() ? { webSetup: true } : {}),
       ...(process.env.TW_PACKAGED === '1' ? { packaged: true } : {}) });
     return;
+  }
+  if (p === '/api/supervisor/status' && m === 'GET') {
+    const runtime = features.service('ops-runtime')?.status() || { monitoring: false, error: true, pending: 0 };
+    const supervision = features.service('supervision');
+    const status = supervision?.enabled() ? supervision.health() : null;
+    send(res, 200, { processAlive: true, unlocked: vault.unlocked, monitoring: vault.unlocked && !draining && runtime.monitoring, error: runtime.error,
+      observationsFresh: status?.observationsFresh === true, validatedAuditCompletion: status?.validatedAuditCompletion === true });
+    return;
+  }
+  // First run on a new machine: start from a backup file instead of an empty store. The backup keeps its own password.
+  if (p === '/api/setup/restore' && m === 'POST') {
+    if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
+    const body = await readJson(req, 400 * 1024 * 1024);
+    if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
+    const digest = (value) => crypto.createHash('sha256').update(value).digest();
+    if (typeof body.setupToken !== 'string' || !crypto.timingSafeEqual(digest(body.setupToken), digest(process.env.TW_SETUP_TOKEN))) { fail(res, 403, tr('srv.server.ma_thiet_lap_khong_hop')); return; }
+    const opened = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    const { data, chats } = restoredData(opened);
+    if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    vault.create(body.password, forThisMachine(data));
+    keepIncoming(chats); vault.save();
+    delete process.env.TW_SETUP_TOKEN;
+    send(res, 200, { ok: true }); return;
   }
   if (p === '/api/setup' && m === 'POST') {
     if (!webSetupEnabled()) { fail(res, 404, 'Not found'); return; }
@@ -609,7 +753,10 @@ async function api(req, res, url) {
   if (p === '/api/state' && m === 'GET') { send(res, 200, publicState()); return; }
   if ((p === '/api/file' || p === '/api/file-preview') && m === 'GET') {
     try {
-      const value = await require('./lib/file-viewer').readSessionFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('session'), url.searchParams.get('path'));
+      // temp=1: a file in the machine's private "Send file" folder, not in the session folder.
+      const fv = require('./lib/file-viewer'), temp = url.searchParams.get('temp') === '1';
+      const value = temp ? await fv.readTempFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('path'))
+        : await fv.readSessionFile(remotes.get(url.searchParams.get('server')), url.searchParams.get('session'), url.searchParams.get('path'));
       if(p === '/api/file-preview' && !value.error){
         if(value.kind !== 'html'){fail(res,400,tr('srv.server.chi_ho_tro_ban_xem'));return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
@@ -617,7 +764,7 @@ async function api(req, res, url) {
         let page = value.text;
         try {
           const backend = remotes.get(url.searchParams.get('server')), session = url.searchParams.get('session'), reader = require('./lib/file-viewer').readSessionFile;
-          page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs));
+          if (!temp) page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs));
         } catch { /* the report still opens, just without its pictures */ }
         res.end(injectReportLinks(page));return;
       }
@@ -647,6 +794,62 @@ async function api(req, res, url) {
     catch { send(res, 500, { error: tr('srv.server.khong_doc_duoc_bao_cao') }); }
     return;
   }
+  // Backups: where the encrypted copies are, an extra folder of the user's choice (a synced Drive folder…), and "copy now".
+  // A new key for the "install it myself" path: the public half and the command to paste on the server.
+  if (p === '/api/ssh-key/new' && m === 'POST') {
+    const K = require('./lib/sshkey'), k = K.makeKey(os.hostname());
+    send(res, 200, { ref: K.hold(k), publicKey: k.public, command: K.manualCommand(k.public) }); return;
+  }
+  if (p === '/api/backup' && m === 'GET') { send(res, 200, { ...vault.info(), suggestions: require('./lib/backup').cloudFolders() }); return; }
+  if (p === '/api/backup/folder' && m === 'POST') {
+    const body = await readJson(req), dir = typeof body.dir === 'string' ? body.dir.trim() : null;
+    if (dir === null) { fail(res, 400, tr('srv.backup.thu_muc_khong_hop_le')); return; }
+    const problem = dir ? require('./lib/backup').checkFolder(dir) : '';
+    if (problem) { fail(res, 400, tr({ notfound: 'srv.backup.khong_thay_thu_muc', notdir: 'srv.backup.khong_phai_thu_muc', denied: 'srv.backup.khong_ghi_duoc' }[problem] || 'srv.backup.thu_muc_khong_hop_le')); return; }
+    vault.data.prefs = { ...mergePrefs(vault.data.prefs), backupDir: dir };
+    if (dir) vault.copy(); else saveVault();
+    send(res, 200, vault.info()); return;
+  }
+  // Signed in: replace this machine's data with a backup (servers, sessions, settings, notes, AI accounts). The current data is
+  // copied first, and this store keeps its own password.
+  if (p === '/api/backup/restore' && m === 'POST') {
+    const body = await readJson(req, 400 * 1024 * 1024);
+    const opened = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
+    const { data, chats } = restoredData(opened);
+    if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    vault.copy();
+    const keep = new Set(data.servers.map((s) => s.id));
+    for (const [id, r] of [...remotes]) if (id !== LOCAL_ID && !keep.has(id)) { r.close(); remotes.delete(id); }
+    vault.data = forThisMachine(data);
+    for (const cfg of vault.data.servers) if (remotes.has(cfg.id)) { remotes.get(cfg.id).close(); remotes.delete(cfg.id); }
+    startRemotes(); keepIncoming(chats); saveVault();
+    await placeIncoming().catch(() => {});
+    send(res, 200, { ok: true, servers: vault.data.servers.length, chats: chats.length, waiting: (vault.data.moveWaiting || []).length }); return;
+  }
+  // "Chuyển máy": what would go into the file, writing it (the password is asked again), and retrying chats still waiting.
+  if (p === '/api/transfer' && m === 'GET') {
+    const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
+    const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], true) : { chats: [], bytes: 0, skipped: [] };
+    // Sessions on the servers keep their chats there: the new computer reconnects and resumes them, nothing to carry.
+    const onServers = [...remotes.values()].filter((r) => !r.cfg.local).reduce((n, r) => n + (r.snapshot?.sessions || []).length, 0);
+    const sc = url.searchParams.get('servers') === '1' ? await T.collectServers([...remotes.values()], vault.data.known, true, c.bytes) : null;
+    const localSessions = (local?.snapshot?.sessions || []).length;
+    send(res, 200, { servers: vault.data.servers.length, onServers, localSessions, serverChats: sc ? { count: sc.chats.length, bytes: sc.bytes, skipped: sc.skipped.length } : null, chats: c.chats.map((x) => ({ name: x.name, tool: x.tool, size: x.size })), bytes: c.bytes, skipped: c.skipped, dir: T.exportDir(), waiting: vault.data.moveWaiting || [] });
+    return;
+  }
+  if (p === '/api/transfer/export' && m === 'POST') {
+    const body = await readJson(req);
+    if (!vault.check(body.password)) { fail(res, 400, tr('srv.server.sai_mat_khau')); return; }
+    const local = remotes.get(LOCAL_ID), T = require('./lib/transfer');
+    const c = local?.ready && local.mode !== 'powershell' ? await T.collect(local, vault.data.known?.[LOCAL_ID], false) : { chats: [], bytes: 0, skipped: [] };
+    const sc = body.withServers === true ? await T.collectServers([...remotes.values()], vault.data.known, false, c.bytes) : { chats: [], bytes: 0, skipped: [] };
+    const file = path.join(T.exportDir(), T.exportName());
+    const text = Vault.pack(body.password, { kind: T.KIND, made: Date.now(), from: os.hostname(), data: vault.data, chats: [...c.chats, ...sc.chats] });
+    fs.writeFileSync(file, text, { mode: 0o600 });
+    send(res, 200, { path: file, bytes: Buffer.byteLength(text), chats: c.chats.length, serverChats: sc.chats.length, skipped: [...c.skipped, ...sc.skipped] }); return;
+  }
+  if (p === '/api/transfer/retry' && m === 'POST') { await placeIncoming().catch(() => {}); send(res, 200, { waiting: vault.data.moveWaiting || [] }); return; }
+  if (p === '/api/backup/now' && m === 'POST') { vault.copy(); send(res, 200, vault.info()); return; }
   if (p === '/api/prefs' && m === 'GET') { send(res, 200, mergePrefs(vault.data.prefs)); return; }
   if (p === '/api/prefs' && m === 'PUT') {
     const input = await readJson(req);
@@ -672,7 +875,7 @@ async function api(req, res, url) {
     const log = await r.readWorkerLog(w);
     send(res, 200, { ...log, elapsed: w.elapsed, finishedAt: w.finishedAt || null }); return;
   }
-  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
+  const sv = p.match(/^\/api\/servers\/([0-9a-f-]{36})(\/connect|\/use-key|\/reboot-check|\/reboot|\/dirs|\/history|\/restore|\/lost|\/screens|\/sessions(?:\/([^/]+)(\/keys|\/scroll)?)?)?$/);
   if (sv) {
     const id = sv[1];
     const tail = sv[2] || '';
@@ -680,6 +883,11 @@ async function api(req, res, url) {
     if (tail === '/connect' && m === 'POST') { await reconnect(req, res, id); return; }
     const r = remotes.get(id);
     if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
+    if (tail === '/use-key' && m === 'POST') { await switchToKey(res, r); return; }
+    if (tail === '/reboot-check' && m === 'GET') {
+      try { send(res, 200, await require('./lib/reboot').rebootCheck(r, shq)); } catch (err) { fail(res, 400, err.message); }
+      return;
+    }
     if (tail === '/reboot' && m === 'POST') {
       const body = await readJson(req);
       try { send(res, 200, await require('./lib/reboot').rebootServer(r, body.name)); }
@@ -707,7 +915,8 @@ let activeRequests = 0;
 // Drop-in features (lib/features/*.js + public/features/*): see lib/features.js.
 const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'), publicDir: path.join(PUB, 'features'),
   deps: { remotes: () => remotes, backendOf: (id) => { const r = remotes.get(id); return r?.ready ? r : null; }, send, fail, readJson, shq,
-    vault: () => vault, save: () => saveVault() } });
+    startSession: async (r, o) => { await startSession(r, o); await r.poll(); }, stopSession: async (r, name) => { const ok = await stopSession(r, name); if (ok) await r.poll(); return ok; },
+    vault: () => vault, save: () => saveVault(), dataDir: DATA } });
 features.load();
 
 const server = http.createServer(async (req, res) => {
@@ -723,6 +932,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && !originOk(req)) { fail(res, 403, tr('srv.server.yeu_cau_khong_hop_le')); return; }
     activeRequests++;
     try {
+      // Only this single-use saved-download capability bypasses session cookies. Host
+      // and Origin guards still apply; all other feature routes go through api auth.
+      if (url.pathname.startsWith('/api/features/server-backup/download-ticket/')) {
+        if (!originOk(req)) { fail(res, 403, tr('srv.server.yeu_cau_khong_hop_le')); return; }
+        const backup = features.service('server-backup');
+        if (!backup) { res.writeHead(404); res.end(); return; }
+        await backup.download(req, res, url); return;
+      }
       await api(req, res, url);
     } catch (err) {
       if (!res.headersSent) fail(res, err.message === 'bad json' ? 400 : 500, err.message === 'bad json' ? tr('srv.server.du_lieu_khong_hop_le') : (err.message || tr('srv.server.co_loi_xay_ra')));
@@ -764,6 +981,8 @@ function attach(ws, r, name, url) {
   const rows = clampSize(url.searchParams.get('rows'), 4, 200, 30);
   r.attach(name, cols, rows, (err, stream) => {
     if (err) { ws.close(4000, 'attach failed'); return; }
+    // Build the session folder's file-name index while the user reads, so a bare file name opens at once.
+    require('./lib/file-viewer').prewarm(r, name);
     openTerms.add(ws);
     ws.alive = true;
     ws.on('pong', () => { ws.alive = true; });
@@ -790,6 +1009,11 @@ setInterval(() => {
   if (vault.unlocked) for (const r of remotes.values()) r.poll();
 }, 60000).unref();
 
+// Enabled supervision samples well inside the 60s freshness budget without browser/lastSeen activity.
+setInterval(() => {
+  require('./lib/supervision-state').pollUnattended(remotes.values(), vault.unlocked, features.service('supervision')?.enabled());
+}, 15000).unref();
+
 setInterval(saveHistory, 5 * 60000).unref();
 
 setInterval(() => {
@@ -801,10 +1025,13 @@ setInterval(() => {
 }, 30000).unref();
 
 let draining = false;
-const activeWork = () => activeRequests > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
+const activeWork = () => activeRequests > 0 || features.service('ops-runtime')?.status().pending > 0 || features.service('supervision')?.pending() > 0 || features.service('server-backup')?.pending() > 0 || [...remotes.values()].some(r => r.restoring || r.sessionMutations);
 function drain() {
   if (draining) return;
   draining = true;
+  features.service('server-backup')?.stop();
+  features.service('ops-runtime')?.stop();
+  features.service('supervision')?.stop();
   const wait = () => activeWork() ? setTimeout(wait, 100) : shutdown();
   setImmediate(wait);
 }
@@ -812,6 +1039,8 @@ let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
+  features.service('server-backup')?.stop();
+  features.service('ops-runtime')?.stop();
   saveHistory();
   tokenCache.close();
   for (const ws of openTerms) ws.terminate();
@@ -822,6 +1051,22 @@ function shutdown() {
 process.on('SIGTERM', drain);
 process.on('SIGINT', drain);
 
-server.listen(PORT, HOST, () => { if (!process.argv.includes('--desktop-pipe')) console.log(`Termnest: http://${HOST}:${PORT}`); });
+let dataLock;
+async function boot() {
+  try {
+    // Private owner/ACL is required only when the vault unlocks itself from a password file (unattended service).
+    dataLock = await acquireDataLock(DATA, { strict: !!process.env.TW_PASSWORD_FILE });
+    if (draining) { dataLock.release(); return; }
+    const headless = unlockFromFile(vault, process.env.TW_PASSWORD_FILE, () => {});
+    server.once('error', () => { console.error('RUNTIME_LISTEN_FAILED'); process.exit(1); });
+    server.listen(PORT, HOST, () => {
+      if (headless) startRemotes();
+      if (!process.argv.includes('--desktop-pipe')) console.log(`Termnest: http://${HOST}:${PORT}`);
+    });
+  } catch (e) {
+    console.error(e.code?.startsWith('RUNTIME_') ? e.code : 'RUNTIME_START_FAILED');
+    process.exit(1);
+  }
+}
 
-if (typeof module !== 'undefined') module.exports = { server, shutdown, activeWork, drain };
+if (typeof module !== 'undefined') { module.exports = { server, shutdown, activeWork, drain }; boot(); }

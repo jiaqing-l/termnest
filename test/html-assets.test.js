@@ -76,3 +76,15 @@ test('with the real session reader: pictures inside the session folder load, fil
   assert.equal((out.match(/data:image\/png;base64,/g) || []).length, 1, 'only the picture inside the session folder is inlined');
   assert.match(out, /secret\.png/);
 });
+
+// A mockup that loads its sample data from a sibling .js file rendered empty: scripts are now inlined like stylesheets.
+test('local scripts next to the page become inline scripts in order; remote and unreadable ones stay as they were', async () => {
+  const files = { '/w/M/data.js': { text: 'window.DATA = [1, "</script>"];' }, '/w/M/lib/app.js': { text: 'render(window.DATA);' } };
+  const html = '<head><script src="data.js"></script><script defer type="module" src=\'lib/app.js\'></script>' +
+    '<script src="https://cdn.example/x.js"></script><script src="missing.js"></script></head>';
+  const out = await inlineAssets(html, '/w/M/page.html', reader(files));
+  assert.ok(out.indexOf('window.DATA') < out.indexOf('render(window.DATA)'), 'order kept');
+  assert.ok(out.includes('<script>window.DATA = [1, "<\\/script>"];</script>'), out);
+  assert.ok(out.includes('<script type="module">render(window.DATA);</script>'), out);
+  assert.ok(out.includes('<script src="https://cdn.example/x.js"></script>') && out.includes('<script src="missing.js"></script>'));
+});

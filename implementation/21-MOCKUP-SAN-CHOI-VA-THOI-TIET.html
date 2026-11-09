@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup – Sân chơi và thời tiết Termnest</title>
+<style>
+:root{--bg:#eef2fb;--card:#fff;--ink:#1b2440;--mute:#5d6a85;--line:#dfe5f2;--brand:#ff5d7a}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1220;--card:#151c2e;--ink:#e8ecf7;--mute:#98a3bd;--line:#26304a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 18px 70px}
+h1{margin:0 0 4px;font-size:24px}h2{margin:26px 0 8px;font-size:18px}p.lead{margin:0 0 14px;color:var(--mute)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:12px 0}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}.ctl b{font-size:13px;color:var(--mute);margin-right:4px}
+.ctl button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 14px;font:600 13px inherit;cursor:pointer}
+.ctl button[aria-pressed=true]{background:var(--brand);color:#fff;border-color:var(--brand)}
+.note{font-size:13px;color:var(--mute);border-left:3px solid var(--brand);padding:2px 10px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}th{color:var(--mute);font-size:12px;text-transform:uppercase}
+/* ---------- page frame ---------- */
+.page{background:var(--bg);border:1px dashed var(--line);border-radius:18px;padding:12px}
+.fakebar{height:38px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;display:flex;gap:8px;align-items:center;padding:0 12px;color:var(--mute);font-size:13px}
+.fakebar i{font-style:normal;border:1px solid var(--line);border-radius:99px;padding:2px 10px}
+.fakecard{height:90px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0;opacity:.6;display:flex;align-items:center;padding:0 16px;color:var(--mute)}
+.tag{display:inline-block;font-size:11px;background:var(--brand);color:#fff;border-radius:99px;padding:1px 9px;margin-left:8px;vertical-align:middle}
+/* ---------- HERO + WEATHER ---------- */
+.hero{position:relative;overflow:hidden;border-radius:22px;padding:18px 20px;color:#fff;min-height:150px;transition:background .6s;background:linear-gradient(135deg,#3a8bea,#5b8cf0 55%,#7a7ef0)}
+.hero[data-w=rain]{background:linear-gradient(135deg,#3b5f95,#4a6fa5 55%,#55608f)}
+.hero[data-w=storm]{background:linear-gradient(135deg,#1f2a45,#2b3556 55%,#3b2f55)}
+.hero h3{margin:0;font-size:20px;position:relative;z-index:3}.hero .sub{opacity:.9;font-size:14px;position:relative;z-index:3}
+.weather-chip{position:absolute;right:20px;top:14px;z-index:3;font-weight:700;font-size:16px;background:rgba(255,255,255,.16);border-radius:99px;padding:3px 12px}
+.sceneh{position:relative;z-index:3;display:flex;align-items:flex-end;gap:14px;margin-top:14px;flex-wrap:wrap}
+.lap{display:grid;justify-items:center;gap:4px;font-weight:700;font-size:13px}.lap .scr{width:64px;height:48px;border-radius:8px;background:#fff;color:#243;display:grid;place-items:center;font:700 18px ui-monospace,monospace}
+.wire{flex:0 0 70px;height:2px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.7) 0 8px,transparent 8px 14px)}
+.shelf{flex:1;min-width:240px;max-width:420px;background:rgba(255,255,255,.18);border-radius:18px;padding:8px 12px;display:flex;gap:10px;justify-content:space-around;align-items:flex-end;position:relative}
+.shelf .pp{width:44px;position:relative}.shelf .pp svg{width:44px;height:44px;display:block}
+.shelf small{position:absolute;left:0;right:0;top:100%;text-align:center;font-weight:700;font-size:12px;margin-top:2px}
+.bang{position:absolute;right:-4px;top:-6px;width:18px;height:18px;border-radius:50%;background:#ffb020;color:#3b2500;font:900 12px/18px system-ui;text-align:center;border:2px solid #fff}
+.sun{position:absolute;right:40px;top:44px;width:54px;height:54px;border-radius:50%;background:radial-gradient(#fff6b0,#ffd54a 62%,rgba(255,213,74,0) 70%);box-shadow:0 0 40px 14px rgba(255,214,90,.55);animation:pulse 4s ease-in-out infinite;display:none;z-index:1}
+.hero[data-w=sun] .sun{display:block}
+@keyframes pulse{50%{transform:scale(1.07)}}
+.cloud{position:absolute;z-index:1;display:none;width:150px;height:46px;border-radius:50px;background:#e9eef8;opacity:.92;filter:blur(.3px);animation:drift 22s linear infinite}
+.cloud::before,.cloud::after{content:"";position:absolute;background:inherit;border-radius:50%}.cloud::before{width:62px;height:62px;left:22px;top:-30px}.cloud::after{width:78px;height:78px;left:62px;top:-40px}
+.c1{top:6px;left:-170px}.c2{top:50px;left:-170px;animation-duration:30s;animation-delay:-12s;transform:scale(.75)}.c3{top:20px;left:-170px;animation-duration:26s;animation-delay:-6s;transform:scale(.9)}
+.hero[data-w=rain] .cloud,.hero[data-w=storm] .cloud{display:block}.hero[data-w=rain] .cloud{background:#aab6cf}.hero[data-w=storm] .cloud{background:#4a5373;opacity:.97}
+@keyframes drift{to{left:calc(100% + 40px)}}
+.rain{position:absolute;inset:0;z-index:2;display:none;overflow:hidden;pointer-events:none}
+.hero[data-w=rain] .rain,.hero[data-w=storm] .rain{display:block}
+.rain i{position:absolute;top:-30px;width:2px;height:16px;border-radius:2px;background:linear-gradient(transparent,rgba(210,230,255,.9));animation:fall .9s linear infinite}
+.hero[data-w=storm] .rain i{animation-duration:.55s;height:22px;opacity:.9}
+@keyframes fall{to{transform:translate(-14px,230px)}}
+.flash{position:absolute;inset:0;z-index:2;background:#fff;opacity:0;pointer-events:none;display:none}
+.hero[data-w=storm] .flash{display:block;animation:flash 6s infinite}
+@keyframes flash{0%,100%{opacity:0}3%{opacity:.75}5%{opacity:.05}7%{opacity:.6}12%{opacity:0}58%{opacity:0}60%{opacity:.5}63%{opacity:0}}
+.bolt{position:absolute;z-index:2;right:26%;top:34px;width:44px;height:120px;display:none;pointer-events:none;filter:drop-shadow(0 0 10px #fff3a0);animation:bolt 6s infinite;opacity:0}
+.hero[data-w=storm] .bolt{display:block}@keyframes bolt{0%,100%{opacity:0}3%{opacity:1}6%{opacity:0}7%{opacity:1}11%{opacity:0}}
+.hero[data-w=storm] .shelf .pp svg{animation:shake .35s ease-in-out infinite}@keyframes shake{25%{transform:translateX(-1.5px)}75%{transform:translateX(1.5px)}}
+.hero[data-w=rain] .shelf .pp:nth-child(2n) svg{animation:sweat 1.6s ease-in-out infinite}@keyframes sweat{50%{transform:translateY(2px)}}
+/* ---------- YARD (Sân chơi) – port of the Server Console yard ---------- */
+.yardwrap{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.yardhead{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;font-weight:700;font-size:14px;gap:10px;flex-wrap:wrap}
+.yardhead span{font-weight:600;color:var(--mute);font-size:13px}
+.yard{position:relative;height:104px;overflow:hidden;margin:0;transition:background .6s;user-select:none;touch-action:pan-y}
+.yard.day{background:linear-gradient(180deg,#5aa6f0,#7fc0f4 62%,#a8dcb2)}
+.yard.dusk{background:linear-gradient(180deg,#5b3a6e,#a1507a 55%,#e09a6a)}
+.yard.night,.yard.midnight{background:linear-gradient(180deg,#0a0f22,#0f1730 70%,#142241)}
+.yard::after{content:"";position:absolute;left:0;right:0;bottom:9px;border-top:1px dashed rgba(255,255,255,.35)}
+.yard.alarm{box-shadow:0 0 0 2px #ff6b6b inset}
+.yard-more{position:absolute;left:10px;top:7px;z-index:5;font-size:13px;font-weight:700;background:rgba(10,15,34,.62);color:#fff;border-radius:10px;padding:2px 9px}
+.sky{position:absolute;right:16px;top:6px;font-size:26px;z-index:1}
+.st{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;opacity:.85;animation:tw 2.2s infinite}@keyframes tw{50%{opacity:.2}}
+.walker{position:absolute;bottom:10px;left:0;width:var(--s,46px);height:var(--s,46px);z-index:3;overflow:visible;touch-action:none;animation:walk var(--t) linear infinite alternate;animation-delay:var(--d)}
+@keyframes walk{from{left:var(--a,6%)}to{left:var(--b,84%)}}
+.pet{display:block;width:100%;height:100%;cursor:pointer;position:relative;animation:face var(--t) steps(1) infinite alternate;animation-delay:var(--d)}
+@keyframes face{0%,50%{transform:scaleX(1)}51%,100%{transform:scaleX(-1)}}
+.pet svg{width:100%;height:100%;display:block;animation:step .45s ease-in-out infinite}
+@keyframes step{50%{transform:translateY(-3px)}}
+.pet:hover{filter:brightness(1.1)}
+.pet.joy svg{animation:joy .55s ease}@keyframes joy{0%,100%{transform:none}35%{transform:translateY(-12px) rotate(-8deg) scale(1.1)}65%{transform:translateY(-3px) rotate(6deg)}}
+.walker.sleep{animation:none!important}.walker.sleep .pet,.walker.sleep .pet svg{animation:none!important}
+.walker.wait .pet svg{animation:none}
+.zz{position:absolute;left:70%;top:-18px;font:900 15px system-ui;color:#7aa2ff;animation:zz 2s ease-in-out infinite;white-space:nowrap;pointer-events:none}@keyframes zz{50%{transform:translateY(-4px);opacity:.6}}
+.mood{position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:15px;font-style:normal;animation:bob 1.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}@keyframes bob{50%{transform:translate(-50%,-3px)}}
+.walker.hot .pet svg{animation:pant .35s ease-in-out infinite}@keyframes pant{50%{transform:scale(1.07,.93)}}
+.walker.carry{animation-duration:calc(var(--t)*.55)}
+.walker.alarmed{animation-duration:3s}.walker.alarmed .pet svg{animation:hop .4s ease-in-out infinite}@keyframes hop{0%,60%,100%{transform:none}30%{transform:translateY(-6px) rotate(-4deg)}}
+.walker.hungry .pet svg{transform:scaleY(.72) translateY(5px);animation:none}
+.walker.held{cursor:grabbing;z-index:6}.walker.held .pet svg{transform:scale(1.2) rotate(-8deg)}
+.walker.unlocked svg{filter:drop-shadow(0 0 2px #fff)}
+.goalL,.goalR{position:absolute;bottom:9px;width:8px;height:34px;border:3px solid rgba(255,255,255,.85);display:none;z-index:2}
+.goalL{left:0;border-left:0}.goalR{right:0;border-right:0}.yard.playing .goalL,.yard.playing .goalR{display:block}
+.yard.playing .sky{opacity:.6}
+.ball{position:absolute;bottom:10px;left:50%;font-size:17px;z-index:4;display:none;pointer-events:none}.yard.playing .ball{display:block}
+.walker.running .pet svg{animation:run .22s ease-in-out infinite}@keyframes run{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px) rotate(4deg)}}
+.walker.kicking .pet svg{animation:none!important;transform:rotate(22deg) translateX(5px) translateY(-3px);transition:transform .07s}
+.walker.kicking::after{content:"💥";position:absolute;right:-12px;bottom:2px;font-size:14px;filter:drop-shadow(0 0 4px #ff9a2e)}
+.walker.ta::before,.walker.tb::before{content:"";position:absolute;left:50%;bottom:-5px;width:14px;height:4px;margin-left:-7px;border-radius:3px;display:none}
+.yard.playing .walker.in-match.ta::before{display:block;background:#4aa3ff}.yard.playing .walker.in-match.tb::before{display:block;background:#ff6b6b}
+.bubble{position:fixed;z-index:50;max-width:220px;padding:7px 11px;border-radius:12px;background:#fff;color:#1b2440;border:1px solid #dfe5f2;font-size:13px;box-shadow:0 10px 26px #0005;overflow-wrap:anywhere}
+@media(prefers-color-scheme:dark){.bubble{background:#222b45;color:#e8ecf7;border-color:#33406a}}
+.bubble.feedable{pointer-events:auto}.bubble .feed{display:inline-flex;margin:6px 0 0;padding:4px 11px;border-radius:9px;border:1px solid #ffb4c0;background:#fff0f3;color:#b0213c;font:700 12px inherit;cursor:pointer}
+.food{position:fixed;z-index:50;font-size:18px;pointer-events:none;animation:food .55s ease-in forwards}@keyframes food{from{transform:translateY(-34px);opacity:.3}to{transform:none;opacity:1}}
+.hrt{position:fixed;z-index:50;font-style:normal;font-size:14px;pointer-events:none;animation:hrt 1.1s ease-out forwards}@keyframes hrt{to{transform:translateY(-44px) scale(1.3);opacity:0}}
+.cf{position:fixed;z-index:50;width:6px;height:9px;border-radius:2px;pointer-events:none;animation:cf 1.3s cubic-bezier(.2,.7,.4,1) forwards}@keyframes cf{0%{transform:none;opacity:1}55%{transform:translate(var(--x),var(--y)) rotate(320deg);opacity:1}100%{transform:translate(calc(var(--x)*1.25),calc(var(--y) + 180px)) rotate(620deg);opacity:0}}
+.walker.it .pet svg{filter:drop-shadow(0 0 7px #ff9a2e)}
+.walker.dancing .pet svg{animation:dance .5s ease-in-out infinite;animation-delay:var(--dd,0s)}@keyframes dance{0%,100%{transform:translateY(0) rotate(-7deg)}50%{transform:translateY(-13px) rotate(7deg)}}
+.walker.eating .pet svg{animation:munch .35s ease-in-out infinite}@keyframes munch{50%{transform:scale(1.1,.9)}}
+.pond{position:absolute;right:0;bottom:9px;width:76px;height:16px;background:linear-gradient(#58b0ff,#2a6fd6);border-radius:10px 0 0 0;display:none;z-index:1;opacity:.92}
+.pond::before{content:"🌊";position:absolute;right:8px;top:-17px;font-size:14px}.yard.act-fish .pond{display:block}
+.walker.fishing::after{content:"🎣";position:absolute;right:-20px;top:-8px;font-size:17px}
+.walker.huddle .pet svg{transform:rotate(var(--tilt,0deg))}
+.yard.paused *{animation-play-state:paused!important}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;background:#1b2440;color:#fff;border-radius:12px;padding:9px 16px;font-size:14px;box-shadow:0 10px 30px #0006}
+@media(prefers-reduced-motion:reduce){.walker,.pet,.pet svg,.st,.mood,.zz,.cloud,.rain i,.flash,.bolt,.sun,.cf,.hrt{animation:none!important}}
+</style></head><body>
+<div class="wrap">
+<h1>Mockup: Sân chơi và thời tiết</h1>
+<p class="lead">Bản xem thử, chưa đưa vào app. Tham khảo sân chơi ban đêm của Server Console, đặt đúng chỗ “Sân chơi” hiện tại của <b>Termnest</b>; khung xanh đầu trang đổi thành mưa và sấm khi tải cao. Bấm các nút để xem từng trạng thái.</p>
+
+<div class="panel">
+ <div class="ctl" id="c-sky"><b>Bầu trời sân chơi</b><button data-v="auto" aria-pressed="true">Theo giờ máy</button><button data-v="day" aria-pressed="false">Ngày</button><button data-v="dusk" aria-pressed="false">Hoàng hôn</button><button data-v="night" aria-pressed="false">Tối</button><button data-v="midnight" aria-pressed="false">Khuya (23h–6h)</button></div>
+ <div class="ctl"><b>Số phiên</b><input type="range" id="count" min="1" max="18" value="8" style="width:220px"><span id="cnum" style="font-weight:700">8</span><span style="color:var(--mute);font-size:13px">mỗi phiên một bạn thú trên sân</span></div>
+ <div class="ctl" id="c-alarm"><b>Tình trạng máy</b><button data-v="0" aria-pressed="true">Bình thường</button><button data-v="1" aria-pressed="false">CPU cao + đĩa đầy + phiên lỗi</button></div>
+ <div class="ctl" id="c-weather"><b>Thời tiết (khung xanh)</b><button data-v="sun" aria-pressed="true">☀️ Nhẹ nhàng</button><button data-v="rain" aria-pressed="false">🌧️ Tải cao</button><button data-v="storm" aria-pressed="false">⛈️ Nhiều cảnh báo</button></div>
+ <div class="ctl"><b>Thử ngay</b><button id="b-match" aria-pressed="false">⚽ Đá bóng</button><button id="b-tag" aria-pressed="false">🏃 Đuổi bắt</button><button id="b-share" aria-pressed="false">🍖 Chia thức ăn</button><button id="b-dance" aria-pressed="false">💃 Nhảy múa</button><button id="b-fish" aria-pressed="false">🎣 Câu cá</button><button id="b-hug" aria-pressed="false">🤗 Ôm nhau</button><button id="b-done" aria-pressed="false">🎉 Giả lập hoàn tất việc (pháo + nhảy múa)</button><button id="b-hat" aria-pressed="false">🎩 Máy chạy ≥ 30 ngày</button><button id="b-auto" aria-pressed="true">Tự chơi: bật</button></div>
+ <div class="note">Hãy thử: <b>bấm vào một bạn thú</b> (lời nhắn + nút 🍖 Cho ăn; bạn nào đói thì dẹt xuống), <b>kéo thả</b> một bạn sang chỗ khác, bấm vào bạn có ❗ để mở phiên đó. Khi đá bóng, bạn đá hiện 💥 cam, vào lưới thì có pháo giấy. Chọn bầu trời <b>Khuya</b> để xem các bạn nằm ngủ sát nhau.</div>
+</div>
+
+<h2>Màn Tổng quan (bố cục thật)</h2>
+<div class="page">
+ <div class="hero" id="hero" data-w="sun">
+  <div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+  <div class="rain" id="rain"></div><div class="flash"></div>
+  <svg class="bolt" viewBox="0 0 44 120"><path d="M26 0 4 62h16L10 120 40 48H24z" fill="#fff6a8"/></svg>
+  <span class="weather-chip" id="wchip">☀️ Nhẹ nhàng</span>
+  <h3 id="htitle">Mọi việc đang chạy tốt</h3><div class="sub" id="hsub">Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt.</div>
+  <div class="sceneh"><div class="lap"><div class="scr">&gt;_</div>Máy bạn</div><div class="wire"></div>
+   <div class="shelf" id="shelf"></div></div>
+ </div>
+ <div class="fakebar">🔎 Tìm phiên theo tên, thư mục, nội dung màn hình <i>Tất cả</i><i>Chờ bạn</i><i>Đang chạy</i><i>Đang nghỉ</i></div>
+ <div class="yardwrap">
+  <div class="yardhead">Sân chơi <span id="score">🐾 các bạn đang đi dạo</span></div>
+  <div class="yard day" id="yard"></div>
+ </div>
+ <div class="fakecard">…các thẻ phiên bên dưới giữ nguyên…</div>
+</div>
+<div class="note">Sân chơi nằm đúng vị trí hiện tại (dưới thanh tìm kiếm, trên các thẻ phiên). Khung xanh trên cùng là chỗ hiện thời tiết “Nhẹ nhàng”.</div>
+
+<h2>Quy tắc dự kiến</h2>
+<div class="panel"><div style="overflow-x:auto"><table>
+<tr><th>Thứ</th><th>Điều kiện</th><th>Hiển thị</th></tr>
+<tr><td>Thời tiết ☀️</td><td>Không có cảnh báo</td><td>Nền xanh sáng, mặt trời sáng nhẹ</td></tr>
+<tr><td>Thời tiết 🌧️</td><td>Từ 1 cảnh báo: CPU, RAM hay ổ đĩa vượt ngưỡng, dịch vụ lỗi, hoặc máy chủ mất kết nối</td><td>Nền xám xanh, mây trôi, mưa rơi nhẹ</td></tr>
+<tr><td>Thời tiết ⛈️</td><td>Từ 3 cảnh báo (đúng ngưỡng của chữ “Nhiều cảnh báo” hiện có)</td><td>Nền tối, mây đen, mưa nặng, chớp loé, tia sét, thú rung nhẹ</td></tr>
+<tr><td>Bầu trời sân chơi</td><td>Giờ máy: 6–17h ngày, 17–19h hoàng hôn, 19–23h tối, 23–6h khuya</td><td>Ngày ☀️, hoàng hôn 🌇, tối 🌙 có sao nhấp nháy; khuya thú ngủ kèm “Zzz” và ngừng đi dạo</td></tr>
+<tr><td>Số thú trên sân</td><td>Mỗi phiên một bạn thú</td><td>Nhiều phiên thì thú nhỏ lại; hơn 14 mới có chip “+N” cho phần còn lại</td></tr>
+<tr><td>Tâm trạng (biểu tượng nổi trên đầu)</td><td>CPU cao 💦 · đĩa đầy 📦 · phiên lỗi ❗ (bấm để mở phiên) · khuya 💤 · phiên chờ bạn 💬</td><td>Thú đổi dáng: thở gấp, đi chậm, nhảy báo động</td></tr>
+<tr><td>Bấm vào thú</td><td>Luôn có</td><td>Bong bóng lời nhắn theo tình trạng; có nút <b>🍖 Cho ăn</b> với bạn bình thường</td></tr>
+<tr><td>Cho ăn</td><td>Bấm “Cho ăn”</td><td>Thức ăn rơi xuống, thú nhảy mừng, tim bay lên, lời cảm ơn. Quá 24 giờ không được ăn thì thú đói (dẹt xuống). Lưu theo từng phiên trên máy bạn</td></tr>
+<tr><td>Đá bóng</td><td>Tự bắt đầu ngẫu nhiên (11–23 giây mỗi lần xét) khi có ít nhất 2 bạn rảnh, hoặc bấm nút thử</td><td><b>Nhiều thú cùng đá</b>, chia đội Xanh và Đỏ (chấm màu dưới chân), khung thành hai đầu, bóng nảy theo vật lý. Bạn đá hiện <b>💥 cam</b>. Vào lưới: “Vàooo!”, pháo giấy</td></tr>
+<tr><td>Tỉ số</td><td>Mỗi trận bắt đầu từ 0 – 0</td><td>Trận kết thúc (đủ bàn, đủ lượt hoặc quá giờ) thì <b>xoá tỉ số</b>, trận sau tính lại, không cộng dồn</td></tr>
+<tr><td>Đuổi bắt 🏃</td><td>Tự bắt đầu ngẫu nhiên khi có ít nhất 3 bạn rảnh</td><td>Một bạn làm “mèo” (viền cam, biểu tượng 🏃) đuổi các bạn khác; chạm là đổi vai, “Bắt được rồi!”. Kéo dài khoảng 20 giây</td></tr>
+<tr><td>Chia thức ăn 🍖</td><td>Sau khi cho một bạn ăn</td><td>Các bạn xung quanh chạy lại, cùng ăn rồi nhảy mừng, tim bay lên</td></tr>
+<tr><td>Nhảy múa 💃</td><td>Khi một việc dài xong, hoặc ngẫu nhiên</td><td>Cả sân xếp hàng giữa sân nhảy theo nhạc, nốt nhạc 🎵 bay lên</td></tr>
+<tr><td>Câu cá 🎣</td><td>Ngẫu nhiên khi có bạn rảnh</td><td>Tối đa 3 bạn ra bờ ao bên phải câu cá, thỉnh thoảng “Câu được cá rồi!” 🐟</td></tr>
+<tr><td>Ôm nhau 🤗</td><td>Ngẫu nhiên khi có 2 bạn rảnh gần nhau</td><td>Hai bạn đi lại gần, ôm, tim bay lên</td></tr>
+<tr><td>Ngủ chung 😴</td><td>Khuya (23h–6h)</td><td>Các bạn nằm sát nhau thành cụm, nghiêng nhẹ, cùng “Zzz”</td></tr>
+<tr><td>Trò chuyện</td><td>Tự động, vài chục giây một lần</td><td>Hai bạn chào nhau, rủ đá bóng, hoặc báo tình trạng máy (CPU, đĩa)</td></tr>
+<tr><td>Việc xong / lỗi</td><td>Một việc dài (ví dụ dọn dẹp, bàn giao) vừa xong hoặc lỗi</td><td>Pháo giấy khi xong; 🙈 che mặt khi lỗi</td></tr>
+<tr><td>Kéo thả</td><td>Kéo một bạn thú</td><td>Thú nhấc lên và đặt chỗ mới, nói “Ở đây mát ghê!”</td></tr>
+<tr><td>Phần thưởng 🎩</td><td>Tất cả máy chủ đang chạy từ 30 ngày trở lên</td><td>Thêm “Bạn đội mũ” trên sân</td></tr>
+<tr><td>Tắt hiệu ứng</td><td>Công tắc “Thú cưng”, tab ẩn, hộp thoại đang mở hoặc giảm chuyển động của hệ điều hành</td><td>Dừng chuyển động, không mưa, không đá bóng</td></tr>
+</table></div></div>
+<div class="note">Ghi chú: hiệu ứng mưa và sấm chỉ vẽ bằng CSS nhẹ, chạy trong khung xanh, và <b>dừng khi tab ẩn</b> để không tốn pin điện thoại.</div>
+</div>
+<script>
+'use strict';
+// Mascots: hand-built SVG, no external images.
+(function(){
+  var PETS={
+    cat:{c:'#ffa63d',body:'#ffb95e',
+      ears:'<path d="M14 26 12 8l15 9zM50 26l2-18-15 9z" fill="#ffb95e"/><path d="M16 20 15 13l7 4zM48 20l1-7-7 4z" fill="#ff8fa3"/>',
+      face:'<path d="M32 14v7M25 15l1 5M39 15l-1 5" stroke="#e8842a" stroke-width="2.4" stroke-linecap="round"/><path d="M9 38h9M10 44l8-2M55 38h-9M54 44l-8-2" stroke="#7a4a1c" stroke-width="1.6" stroke-linecap="round"/>'},
+    fox:{c:'#ff6b4a',body:'#ff7f5c',
+      ears:'<path d="M12 28 10 6l19 12zM52 28l2-22-19 12z" fill="#ff7f5c"/><path d="M14 14l1 8 6-4zM50 14l-1 8-6-4z" fill="#5a2a1e"/>',
+      face:'<path d="M12 40c6-4 14-3 20 10 6-13 14-14 20-10-3 11-11 18-20 18s-17-7-20-18z" fill="#fff"/>'},
+    bunny:{c:'#ff7fb0',body:'#ffc2d8',
+      ears:'<rect x="18" y="1" width="11" height="28" rx="5.5" fill="#ffc2d8"/><rect x="35" y="1" width="11" height="28" rx="5.5" fill="#ffc2d8"/><rect x="21" y="6" width="5" height="19" rx="2.5" fill="#ff8fb7"/><rect x="38" y="6" width="5" height="19" rx="2.5" fill="#ff8fb7"/>',
+      face:''},
+    owl:{c:'#8c6dff',body:'#a48cff',
+      ears:'<path d="M14 18 13 7l11 6zM50 18l1-11-11 6z" fill="#a48cff"/>',
+      face:'<circle cx="23" cy="34" r="10" fill="#fff"/><circle cx="41" cy="34" r="10" fill="#fff"/><path d="M28 50c3 3 5 4 4 4s1-1 4-4" stroke="#7a5be0" stroke-width="2" stroke-linecap="round" fill="none"/>',beak:'<path d="m32 39-4 3 4 5 4-5z" fill="#ffb020"/>'},
+    penguin:{c:'#35a7ff',body:'#2c3a63',
+      ears:'',face:'<path d="M32 22c7-7 19-1 19 16 0 13-9 20-19 20s-19-7-19-20c0-17 12-23 19-16z" fill="#fff"/>',beak:'<path d="m32 41-5 3 5 4 5-4z" fill="#ffa726"/>'},
+    frog:{c:'#2fc68a',body:'#58d9a3',
+      ears:'<circle cx="19" cy="20" r="10" fill="#58d9a3"/><circle cx="45" cy="20" r="10" fill="#58d9a3"/>',face:''}
+
+    ,dog:{c:'#c58b5a',body:'#d9a273',
+      ears:'<path d="M10 22c-6 8-4 22 2 26l8-14zM54 22c6 8 4 22-2 26l-8-14z" fill="#8a5a36"/>',
+      face:'<ellipse cx="32" cy="46" rx="11" ry="8" fill="#f6dcc0"/><ellipse cx="32" cy="41" rx="4" ry="3" fill="#2a1d1a"/>'},
+    pig:{c:'#ff8fb0',body:'#ffb3c8',
+      ears:'<path d="M14 24 11 8l14 8zM50 24l3-16-14 8z" fill="#ff9db8"/>',
+      face:'<ellipse cx="32" cy="44" rx="10" ry="8" fill="#ff8fb0"/><circle cx="28" cy="44" r="1.8" fill="#9a3358"/><circle cx="36" cy="44" r="1.8" fill="#9a3358"/>'},
+    cow:{c:'#6b7280',body:'#fff',
+      ears:'<path d="M8 24c-6-2-6-9-1-10 3 0 6 3 8 8zM56 24c6-2 6-9 1-10-3 0-6 3-8 8z" fill="#f2c9a0"/><path d="M18 18 16 6M46 18l2-12" stroke="#d8c8b0" stroke-width="4" stroke-linecap="round"/>',
+      face:'<path d="M12 28c4-8 12-8 14-2-2 8-10 10-14 2zM40 30c6-8 14-6 12 2-4 8-10 6-12-2z" fill="#3a3a44"/><ellipse cx="32" cy="46" rx="12" ry="8" fill="#ffc9d6"/><circle cx="28" cy="46" r="1.7" fill="#9a3358"/><circle cx="36" cy="46" r="1.7" fill="#9a3358"/>'},
+    duck:{c:'#ffc61a',body:'#ffd84d',
+      ears:'<path d="M32 8c-4 0-6 4-4 7 4 0 6-3 4-7z" fill="#ffd84d"/>',face:'',
+      beak:'<path d="M22 44c4-4 16-4 20 0-2 5-18 5-20 0z" fill="#ff9a1f"/>'},
+    wolf:{c:'#7c8aa5',body:'#9aa7bf',
+      ears:'<path d="M10 28 8 4l18 12zM54 28l2-24-18 12z" fill="#7c8aa5"/><path d="M13 18 13 10l7 5zM51 18l0-8-7 5z" fill="#ffb3c1"/>',
+      face:'<path d="M14 42c6-6 12-5 18 6 6-11 12-12 18-6-3 10-9 14-18 14s-15-4-18-14z" fill="#e8edf6"/><ellipse cx="32" cy="43" rx="4" ry="3" fill="#232a3f"/>'},
+    capy:{c:'#b7864b',body:'#c9985c',
+      ears:'<circle cx="16" cy="20" r="6" fill="#a8763e"/><circle cx="48" cy="20" r="6" fill="#a8763e"/>',
+      face:'<ellipse cx="32" cy="45" rx="13" ry="9" fill="#a8763e"/><ellipse cx="28" cy="44" rx="1.8" ry="2.4" fill="#2a1d1a"/><ellipse cx="36" cy="44" rx="1.8" ry="2.4" fill="#2a1d1a"/>'}
+  };
+  var ORDER=['cat','fox','bunny','owl','penguin','frog'];
+  function pet(kind,state,cls){
+    var p=PETS[kind],closed=state==='idle',ey=kind==='frog'?20:kind==='owl'?34:36,ex=kind==='frog'?19:kind==='owl'?23:22,ex2=64-ex,r=kind==='owl'?4.6:3.6;
+    var eyes=closed
+      ?'<path d="M'+(ex-5)+' '+ey+'q5 4 10 0M'+(ex2-5)+' '+ey+'q5 4 10 0" stroke="#1d2340" stroke-width="2.6" fill="none" stroke-linecap="round"/>'
+      :'<g class="eye"><circle cx="'+ex+'" cy="'+ey+'" r="'+r+'" fill="#1d2340"/><circle cx="'+(ex+1.4)+'" cy="'+(ey-1.5)+'" r="1.3" fill="#fff"/><circle cx="'+ex2+'" cy="'+ey+'" r="'+r+'" fill="#1d2340"/><circle cx="'+(ex2+1.4)+'" cy="'+(ey-1.5)+'" r="1.3" fill="#fff"/></g>';
+    var mouth=kind==='owl'||kind==='penguin'?'':(state==='wait'
+      ?'<ellipse cx="32" cy="48" rx="3" ry="3.6" fill="#7a2a3a"/>'
+      :'<path d="M26 46q3 4 6 0q3 4 6 0" stroke="#7a2a3a" stroke-width="2.2" fill="none" stroke-linecap="round"/>');
+    var nose=(kind==='cat'||kind==='bunny'||kind==='fox')?'<path d="m32 42-2.6-2.6h5.2z" fill="'+(kind==='fox'?'#40201a':'#ff6f91')+'"/>':'';
+    var cheeks=kind==='penguin'||kind==='owl'?'':'<ellipse cx="14" cy="45" rx="4.4" ry="3" fill="#ff7f9c" opacity=".55"/><ellipse cx="50" cy="45" rx="4.4" ry="3" fill="#ff7f9c" opacity=".55"/>';
+    var badge=state==='wait'?'<circle cx="54" cy="12" r="10" fill="#ffb020" stroke="#fff" stroke-width="2"/><path d="M54 6v7" stroke="#3b2500" stroke-width="3" stroke-linecap="round"/><circle cx="54" cy="17.5" r="1.8" fill="#3b2500"/>'
+      :state==='idle'?'<text x="50" y="16" font-family="Nunito,sans-serif" font-weight="900" font-size="15" fill="#7c89a6">z</text>':'';
+    var anim=state==='run'?' m-run':state==='wait'?' m-wait':'';
+    return '<svg viewBox="0 0 64 64" class="pet-art '+(cls||'')+'" aria-hidden="true"><g class="m'+anim+'">'+p.ears+
+      '<ellipse cx="32" cy="38" rx="23" ry="21" fill="'+p.body+'"/>'+p.face+cheeks+eyes+(p.beak||'')+nose+mouth+'</g>'+badge+'</svg>';
+  }
+  // ORDER is the automatic pool (changing it would change every existing session's default pet); GROUPS feed the picker.
+  var LABELS={cat:'Mèo',fox:'Cáo',bunny:'Thỏ',owl:'Cú',penguin:'Cánh cụt',frog:'Ếch',dog:'Chó',pig:'Heo',cow:'Bò',duck:'Vịt',wolf:'Sói',capy:'Capybara'};
+  var GROUPS={animals:['cat','dog','pig','cow','duck','wolf','capy','fox','bunny','owl','penguin','frog'],characters:[]};
+  function register(kind,def,label,group){
+    if(!/^[a-z][a-z0-9-]{1,23}$/.test(kind)||!def||typeof def!=='object')return false;
+    PETS[kind]=def;LABELS[kind]=String(label||kind).slice(0,24);var g=GROUPS[group]||(GROUPS[group]=[]);if(g.indexOf(kind)<0)g.push(kind);return true;
+  }
+  window.PetArt={pet:pet,PETS:PETS,ORDER:ORDER,GROUPS:GROUPS,LABELS:LABELS,register:register};
+})();
+
+</script>
+<script>
+(function(){
+var PA=window.PetArt,ALL=PA.GROUPS.animals;
+var NAMES=['Vifon-SV','Devkit-AI','SV1','Smart-Visibility','Support-DuAn','Token-ai','Xspire-Support','Fleet-Ops','Docs','Build-Bot','Deploy','QA-Run','Report','Mobile','Crew-1','Notes','Backup','Staging'];
+function $(id){return document.getElementById(id);}
+function sky(){var h=new Date().getHours();return h<6||h>=23?'midnight':h<17?'day':h<19?'dusk':'night';}
+var st={sky:'auto',alarm:0,weather:'sun',count:8,hat:0,auto:1,match:0};
+var yard=$('yard'),hero=$('hero'),fed={},now0=Date.now();
+NAMES.forEach(function(n,i){if(i%4!==1)fed[n]=now0;else fed[n]=now0-26*3600e3;}); // some pets have not eaten for over a day
+function curSky(){return st.sky==='auto'?sky():st.sky;}
+function reduced(){return matchMedia('(prefers-reduced-motion:reduce)').matches;}
+function canPlay(){return !document.hidden&&curSky()!=='midnight'&&!reduced()&&!drag;}
+// ---------- hero weather ----------
+var rain=$('rain'),dr='';for(var i=0;i<46;i++)dr+='<i style="left:'+(Math.random()*110-5)+'%;animation-delay:-'+(Math.random()).toFixed(2)+'s;opacity:'+(.4+Math.random()*.6).toFixed(2)+'"></i>';rain.innerHTML=dr;
+function drawHero(){var w=st.weather;hero.dataset.w=w;
+ var m={sun:['☀️ Nhẹ nhàng','Mọi việc đang chạy tốt','Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt.'],rain:['🌧️ Tải cao','Có 1 máy chủ đang tải cao','CPU 91% trên dev-ubuntu-02. Em đang kiểm tra giúp nhé.'],storm:['⛈️ Nhiều cảnh báo','Có 4 cảnh báo cần xử lý','CPU, RAM và ổ đĩa vượt ngưỡng, 1 dịch vụ lỗi. Mở chuông để xem.']}[w];
+ $('wchip').textContent=m[0];$('htitle').textContent=m[1];$('hsub').textContent=m[2];
+ var h='';['bunny','cat','fox','owl','frog'].forEach(function(k,i){h+='<div class="pp">'+PA.pet(k,w==='sun'&&i<3?'run':'wait')+(w!=='sun'&&i%2===0?'<span class="bang">!</span>':'')+'</div>';});$('shelf').innerHTML=h;}
+// ---------- pets model ----------
+function petModel(i){var n=NAMES[i%NAMES.length],kind=ALL[i%ALL.length],s=curSky(),mode='ok',icon='',say='';
+ if(st.alarm&&i===0){mode='hot';icon='💦';say='CPU 91%, em nóng quá!';}
+ else if(st.alarm&&i===1){mode='carry';icon='📦';say='Đĩa còn 8%, dọn bớt nha!';}
+ else if(st.alarm&&i===2){mode='alarmed';icon='❗';say='Em lỗi rồi, bấm em để mở phiên!';}
+ else if(s==='midnight'){mode='sleep';icon='💤';say='khuya rồi, em ngủ nhé!';}
+ else if(i%5===4){mode='wait';icon='💬';say='đang chờ bạn trả lời.';}
+ else say='em khoẻ, phiên đang chạy ổn!';
+ if(s==='midnight'&&mode==='ok'){mode='sleep';icon='💤';}
+ return {name:n,kind:kind,mode:mode,icon:icon,say:say,i:i};}
+function drawYard(){
+ stopMatch(true);stopAct(true);var s=curSky();yard.className='yard '+s+(st.alarm?' alarm':'');
+ var n=st.count+(st.hat?1:0),shown=Math.min(n,14),extra=st.count-Math.min(st.count,14),size=shown<=6?46:shown<=10?38:30,deco=s==='day'?'☀️':s==='dusk'?'🌇':'🌙';
+ var h=(extra>0?'<span class="yard-more" title="Còn '+extra+' phiên">+'+extra+'</span>':'')+'<span class="sky">'+deco+'</span><span class="goalL"></span><span class="goalR"></span><span class="pond"></span><span class="ball" id="ball">⚽</span>';
+ if(s!=='day'&&s!=='dusk')[[18,10],[34,22],[56,8],[72,24],[88,12]].forEach(function(p,j){h+='<i class="st" style="left:'+p[0]+'%;top:'+p[1]+'px;animation-delay:-'+(j*.45)+'s"></i>';});
+ var sleepIdx=0;for(var i=0;i<shown;i++){
+  var isHat=st.hat&&i===shown-1,p=isHat?{name:'Bạn đội mũ',kind:'capy',mode:'ok',icon:'🎩',say:'Máy chủ chạy bền 30 ngày, em đến chung vui!',i:i}:petModel(i);
+  var hungry=!isHat&&p.mode==='ok'&&Date.now()-fed[p.name]>=86400000,sl=p.mode==='sleep',a=4+(i*7%12),b2=76+(i*5%16);
+  h+='<div class="walker '+(i%2?'tb':'ta')+(sl?' sleep huddle':'')+(' '+(p.mode!=='ok'&&p.mode!=='sleep'?p.mode:''))+(hungry?' hungry':'')+(isHat?' unlocked':'')+'" data-name="'+p.name+'" data-mode="'+p.mode+'" style="--s:'+size+'px;--t:'+(13+(i%5)*3)+'s;--d:-'+((i*2.7)%11).toFixed(1)+'s;--a:'+a+'%;--b:'+b2+'%;'+(sl?'left:calc(24% + '+(sleepIdx++*30)+'px);--tilt:'+((sleepIdx%2?-1:1)*(4+sleepIdx%3*2))+'deg':'')+'">'
+   +'<div class="pet" data-say="'+p.say+'" data-feedable="'+(!isHat?'true':'false')+'" data-name="'+p.name+'" data-mode="'+p.mode+'">'+PA.pet(p.kind,sl?'idle':p.mode==='wait'?'wait':'run')+'</div>'
+   +'<em class="mood">'+(isHat?'🎩':p.icon)+'</em>'+(sl&&i%3===0?'<span class="zz">z<small>z</small>z</span>':'')+'</div>';}
+ yard.innerHTML=h;scoreText();}
+function scoreText(){var el=$('score');
+ if(A)el.textContent=A.label+' · '+A.items.length+' thú';
+ else if(M)el.textContent='⚽ Xanh '+M.score[0]+' – '+M.score[1]+' Đỏ · '+M.p.length+' thú đang đá';
+ else el.textContent=curSky()==='midnight'?'🌙 khuya rồi, các bạn đang ngủ':'🐾 các bạn đang đi dạo';}
+// ---------- bubbles, feeding, particles ----------
+function bubble(pet,text,feedable){document.querySelectorAll('.bubble').forEach(function(e){e.remove();});
+ var e=document.createElement('div');e.className='bubble'+(feedable?' feedable':'');e.setAttribute('role','status');e.textContent=text;
+ if(feedable){var btn=document.createElement('button');btn.className='feed';btn.textContent='🍖 Cho ăn';btn.onclick=function(){e.remove();feed(pet);};e.append(document.createElement('br'),btn);}
+ document.body.append(e);var r=pet.getBoundingClientRect();e.style.left=Math.max(10,Math.min(innerWidth-e.offsetWidth-10,r.left-6))+'px';e.style.top=Math.max(10,r.top-e.offsetHeight-8)+'px';
+ setTimeout(function(){e.remove();},feedable?6000:2600);}
+function say(pet,text){if(pet)bubble(pet,text,false);}
+function particle(cls,text,x,y){var e=document.createElement('i');e.className=cls;e.textContent=text;e.style.cssText='left:'+x+'px;top:'+y+'px';document.body.append(e);setTimeout(function(){e.remove();},1500);return e;}
+function joy(pet){pet.classList.remove('joy');void pet.offsetWidth;pet.classList.add('joy');}
+function hearts(pet){var r=pet.getBoundingClientRect();for(var i=0;i<5;i++)particle('hrt','💜',r.left+r.width/2+(i-2)*9,r.top-4);}
+function confetti(){var r=yard.getBoundingClientRect();for(var i=0;i<46;i++){var e=particle('cf','',r.left+Math.random()*r.width,r.top+20);e.style.background=['#7c8cff','#34d399','#fbbf24','#f87171','#60a5fa'][i%5];e.style.setProperty('--x',(Math.random()-.5)*190+'px');e.style.setProperty('--y',-(40+Math.random()*80)+'px');}}
+function feed(pet){var name=pet.dataset.name;fed[name]=Date.now();var w=pet.closest('.walker');if(w)w.classList.remove('hungry');
+ var r=pet.getBoundingClientRect();particle('food','🍖',r.left+8,r.top-6);setTimeout(function(){joy(pet);hearts(pet);say(pet,'Ngon quá, cảm ơn sếp!');setTimeout(function(){startAct('share',pet);},900);},560);}
+function toast(t){var e=document.createElement('div');e.className='toast';e.textContent=t;document.body.append(e);setTimeout(function(){e.remove();},2600);}
+document.addEventListener('click',function(e){var pet=e.target.closest('#yard .pet');if(!pet||Date.now()<suppress)return;
+ if(pet.dataset.mode==='alarmed'){toast('→ Mở phiên “'+pet.dataset.name+'” (như bấm vào thẻ phiên lỗi)');return;}
+ if(pet.dataset.mode==='wait'){bubble(pet,pet.dataset.name+': đang chờ bạn trả lời. Bấm để vào phiên.',false);return;}
+ joy(pet);bubble(pet,pet.dataset.name+': '+pet.dataset.say,pet.dataset.feedable==='true'&&pet.dataset.mode!=='sleep');});
+// ---------- drag a pet ----------
+var drag=null,suppress=0;
+document.addEventListener('pointerdown',function(e){var w=e.target.closest('#yard .walker');if(!w||e.button!==0)return;stopMatch();stopAct();var r=w.getBoundingClientRect(),y=yard.getBoundingClientRect();drag={w:w,y:y,x:e.clientX,moved:false,sx:r.left-y.left};w.style.animation='none';w.style.left=(r.left-y.left)+'px';w.querySelector('.pet').style.animation='none';});
+document.addEventListener('pointermove',function(e){if(!drag)return;if(Math.abs(e.clientX-drag.x)<4&&!drag.moved)return;drag.moved=true;drag.w.classList.add('held');drag.w.style.left=Math.max(0,Math.min(drag.y.width-drag.w.offsetWidth,e.clientX-drag.y.left-drag.w.offsetWidth/2))+'px';});
+function drop(){if(!drag)return;var d=drag;drag=null;d.w.classList.remove('held');if(d.moved){suppress=Date.now()+400;say(d.w.querySelector('.pet'),'Ở đây mát ghê!');}else{d.w.style.animation='';d.w.querySelector('.pet').style.animation='';d.w.style.left='';}}
+document.addEventListener('pointerup',drop);document.addEventListener('pointercancel',drop);
+// ---------- soccer: any number of pets, two teams, physics ported from the Server Console ----------
+var M=null;
+function stopMatch(silent){if(!M)return;cancelAnimationFrame(M.raf);M.p.forEach(function(p){p.w.style.animation='';p.w.style.left='';p.w.classList.remove('running','kicking','in-match');p.pet.style.animation='';p.pet.style.transform='';});
+ var ball=$('ball');if(ball){ball.style.left='';ball.style.bottom='';ball.style.transform='';}yard.classList.remove('playing');M=null;st.match=0;$('b-match').setAttribute('aria-pressed','false');if(!silent)scoreText(); } // the score is dropped with the match: next one starts 0 – 0
+function startMatch(){if(M||!canPlay())return false;
+ var ws=[].slice.call(yard.querySelectorAll('.walker')).filter(function(w){return !w.classList.contains('sleep')&&!w.classList.contains('alarmed')&&!w.classList.contains('wait');}).slice(0,12);if(ws.length<2)return false;
+ var W=yard.clientWidth,yr=yard.getBoundingClientRect();if(W<120)return false;
+ var T=[0,0];
+ M={W:W,K:Math.max(1,Math.min(3,W/360)),ball:$('ball'),b:{x:W/2-8,h:0,vx:0,vh:0,spin:0},turn:0,kicks:0,score:[0,0],t:performance.now(),start:performance.now(),pause:0,raf:0,
+  p:ws.map(function(w,i){var team=i%2,idx=T[team]++;w.style.animation='none';var pet=w.querySelector('.pet');pet.style.animation='none';w.classList.add('in-match');w.classList.toggle('ta',team===0);w.classList.toggle('tb',team===1);return {w:w,pet:pet,x:w.getBoundingClientRect().left-yr.left,team:team,idx:idx,kick:0};})};
+ M.cnt=T;yard.classList.add('playing');M.ball.classList.add('live');st.match=1;$('b-match').setAttribute('aria-pressed','true');M.raf=requestAnimationFrame(step);scoreText();say(M.p[0].pet,'Đá bóng không bạn ơi?');return true;}
+function kick(p){var dir=p.team===0?1:-1,K=M.K,attack=dir>0?M.b.x/M.W:1-M.b.x/M.W,shoot=attack>.58;
+ p.kick=.26;p.w.classList.add('kicking');
+ // near the other goal the kick is a low, hard shot; elsewhere it is a pass that may be won back by the other team
+ M.b.vx=dir*(shoot?(90+Math.random()*60)*K:(46+Math.random()*52)*K);M.b.vh=shoot?15+Math.random()*30:45+Math.random()*75;M.b.spin=dir*640;M.kicks++;
+ if(!(Math.random()<(shoot?.35:.55)))M.turn=1-M.turn; // sometimes the same team keeps the ball (a pass to a mate)
+ else M.turn=p.team;}
+function goal(team){M.score[team]++;var p=M.p.filter(function(q){return q.team===team;})[0]||M.p[0];say(p.pet,'Vàooo! Xanh '+M.score[0]+' – '+M.score[1]+' Đỏ');joy(p.pet);confetti();M.pause=1.2;M.b.x=M.W/2-8;M.b.h=0;M.b.vx=0;M.b.vh=0;M.turn=1-team;scoreText();}
+function over(now){return M.kicks>=26||M.score[0]+M.score[1]>=3||now-M.start>=40000;}
+function step(now){if(!M)return;if(!canPlay()||over(now)){var f='Xanh '+M.score[0]+' – '+M.score[1]+' Đỏ';var pet=M.p[0].pet;stopMatch();say(pet,'Hết trận! '+f+'. Tỉ số xoá, lần sau tính lại.');return;}
+ var dt=Math.min(.04,(now-M.t)/1000);M.t=now;var b=M.b,G=330,W=M.W;
+ if(M.pause>0)M.pause-=dt;else{
+  if(b.h>0||b.vh>0){b.h+=b.vh*dt;b.vh-=G*dt;if(b.h<=0){b.h=0;b.vh=b.vh<-22?-b.vh*.42:0;b.vx*=.8;}}else b.vx*=1-1.9*dt;
+  b.x+=b.vx*dt;b.spin*=1-.9*dt;
+  if(b.x<3){if(b.h<26){goal(1);return after();}b.x=3;b.vx=Math.abs(b.vx)*.5;}
+  if(b.x>W-18){if(b.h<26){goal(0);return after();}b.x=W-18;b.vx=-Math.abs(b.vx)*.5;}
+  // the chaser is the nearest pet of the team whose turn it is; the others hold their half of the pitch
+  var mates=M.p.filter(function(p){return p.team===M.turn;}),chaser=mates.reduce(function(a,p){return Math.abs(p.x-b.x)<Math.abs(a.x-b.x)?p:a;},mates[0]);
+  M.p.forEach(function(p){var chasing=p===chaser,n=M.cnt[p.team],half=p.team===0?[.06,.46]:[.54,.92],home=W*(half[0]+(half[1]-half[0])*(n>1?p.idx/(n-1):.5));
+   var target=chasing?b.x+(p.team===0?-24:12):home,d=target-p.x,sp=(chasing?66:30)*M.K;
+   p.kick=Math.max(0,p.kick-dt);if(!p.kick)p.w.classList.remove('kicking');
+   var moving=Math.abs(d)>2;p.w.classList.toggle('running',moving);
+   if(moving){p.x+=Math.sign(d)*Math.min(Math.abs(d),sp*dt);p.pet.style.transform='scaleX('+(d<0?-1:1)+')';}else p.pet.style.transform='scaleX('+(p.team===0?1:-1)+')';
+   p.x=Math.max(0,Math.min(W-p.w.offsetWidth,p.x));p.w.style.left=p.x+'px';
+   if(chasing&&!moving&&b.h<10&&Math.abs(b.vx)<34*M.K)kick(p);});
+ }
+ M.ball.style.left=b.x+'px';M.ball.style.bottom=(10+b.h)+'px';M.ball.style.transform='rotate('+((now/1000*b.spin)%360)+'deg)';
+ M.raf=requestAnimationFrame(step);}
+function after(){if(!M)return;M.ball.style.left=M.b.x+'px';M.ball.style.bottom='10px';if(M.score[0]+M.score[1]>=3){var f='Xanh '+M.score[0]+' – '+M.score[1]+' Đỏ',pet=M.p[0].pet;stopMatch();say(pet,'Hết trận! '+f+'. Tỉ số xoá, lần sau tính lại.');return;}M.t=performance.now();M.raf=requestAnimationFrame(step);}
+// ---------- other things pets do together: tag, share food, dance, fishing, hug ----------
+var A=null;
+function awake(max){return [].slice.call(yard.querySelectorAll('.walker')).filter(function(w){return !w.classList.contains('sleep')&&!w.classList.contains('alarmed')&&!w.classList.contains('wait')&&!w.classList.contains('held');}).slice(0,max||12);}
+function take(ws){var yl=yard.getBoundingClientRect().left;return ws.map(function(w){var pet=w.querySelector('.pet'),mood=w.querySelector('.mood');w.style.animation='none';pet.style.animation='none';return {w:w,pet:pet,mood:mood,m0:mood?mood.textContent:'',x:w.getBoundingClientRect().left-yl};});}
+function face(p,dir){p.pet.style.transform='scaleX('+(dir<0?-1:1)+')';}
+function go(p,tx,sp,dt,W){var d=tx-p.x,moving=Math.abs(d)>2;p.w.classList.toggle('running',moving);if(moving){p.x+=Math.sign(d)*Math.min(Math.abs(d),sp*dt);face(p,d);}p.x=Math.max(0,Math.min(W-p.w.offsetWidth,p.x));p.w.style.left=p.x+'px';return !moving;}
+function startAct(type,arg){if(M||A||!canPlay()||curSky()==='midnight')return false;var W=yard.clientWidth;if(W<160)return false;
+ var init={tag:initTag,hug:initHug,dance:initDance,fish:initFish,share:initShare}[type];if(!init)return false;
+ A={type:type,W:W,K:Math.max(1,Math.min(3,W/360)),t:performance.now(),t0:performance.now(),raf:0,items:[],label:'',endMsg:null};
+ if(!init(arg)){A=null;return false;}
+ yard.classList.add('act-'+type);A.raf=requestAnimationFrame(actStep);scoreText();return true;}
+function stopAct(silent){if(!A)return;cancelAnimationFrame(A.raf);A.items.forEach(function(p){p.w.style.animation='';p.w.style.left='';p.w.classList.remove('running','dancing','fishing','eating','it');p.pet.style.animation='';p.pet.style.transform='';p.pet.style.removeProperty('--dd');if(p.mood)p.mood.textContent=p.m0;});yard.classList.remove('act-'+A.type);A=null;if(!silent)scoreText();}
+function actStep(now){if(!A)return;if(!canPlay()){stopAct();return;}var dt=Math.min(.04,(now-A.t)/1000);A.t=now;
+ if(A.step(now,dt)){var pet=A.items[0].pet,msg=A.endMsg;stopAct();if(msg)say(pet,msg);return;}A.raf=requestAnimationFrame(actStep);}
+// 1. tag: one chases, the others run away; a touch passes the chase on
+function initTag(){var ws=awake(8);if(ws.length<3)return false;A.items=take(ws);A.label='🏃 đang đuổi bắt';A.endMsg='Mệt quá, nghỉ chút nhé!';var it=0,immune=0;
+ function mark(i){var p=A.items[i];p.w.classList.add('it');if(p.mood)p.mood.textContent='🏃';}
+ function unmark(i){var p=A.items[i];p.w.classList.remove('it');if(p.mood)p.mood.textContent=p.m0;}
+ mark(0);
+ A.step=function(now,dt){var items=A.items,W=A.W,K=A.K,me=items[it],near=-1,nd=1e9;immune=Math.max(0,immune-dt);
+  items.forEach(function(p,i){if(i===it)return;var d=Math.abs(p.x-me.x);if(d<nd){nd=d;near=i;}});
+  items.forEach(function(p,i){if(i===it){go(p,items[near].x,80*K,dt,W);return;}
+   var away=p.x>=me.x?1:-1,tx=p.x+away*140;if(tx<8||tx>W-48)tx=p.x-away*140;go(p,Math.max(0,Math.min(W-48,tx)),(Math.abs(p.x-me.x)<100?62:26)*K,dt,W);});
+  if(nd<26&&immune===0){unmark(it);it=near;mark(it);immune=1.3;say(items[it].pet,'Bắt được rồi! Đến lượt em!');joy(items[it].pet);}
+  return now-A.t0>22000;};
+ return true;}
+// 2. hug: two neighbours walk to each other
+function initHug(){var ws=awake(12);if(ws.length<2)return false;var i=Math.floor(Math.random()*(ws.length-1));A.items=take([ws[i],ws[i+1]]);A.label='🤗 ôm nhau';
+ var a=A.items[0],b=A.items[1],L=a.x<=b.x?a:b,R=L===a?b:a,mid=(a.x+b.x)/2,hugged=false,hold=0;
+ A.step=function(now,dt){if(!hugged){var okL=go(L,mid-20,62*A.K,dt,A.W),okR=go(R,mid+20,62*A.K,dt,A.W);if(okL&&okR){hugged=true;hold=1.8;face(L,1);face(R,-1);hearts(L.pet);hearts(R.pet);joy(L.pet);joy(R.pet);say(L.pet,'Ôm một cái nào!');}return now-A.t0>12000;}
+  hold-=dt;return hold<=0;};
+ return true;}
+// 3. dance: everybody lines up in the middle and hops to the music
+function initDance(){var ws=awake(10);if(ws.length<2)return false;A.items=take(ws);A.label='💃 đang nhảy múa';A.endMsg='Vui quá, mai nhảy tiếp nhé!';
+ var n=A.items.length,gap=Math.min(46,A.W*.5/n),start=A.W/2-gap*(n-1)/2,danced=0,note=0;
+ A.step=function(now,dt){var all=true;A.items.forEach(function(p,i){if(!go(p,start+i*gap,72*A.K,dt,A.W))all=false;});
+  if(all&&!danced){danced=now;A.items.forEach(function(p,i){p.w.classList.add('dancing');p.pet.style.setProperty('--dd',(i*.12)+'s');face(p,1);});}
+  if(danced){note-=dt;if(note<=0){note=.5;var p=A.items[Math.floor(Math.random()*A.items.length)],r=p.pet.getBoundingClientRect();particle('hrt',['🎵','🎶','✨'][Math.floor(Math.random()*3)],r.left+r.width/2,r.top-4);}}
+  return danced?now-danced>7000:now-A.t0>14000;};
+ return true;}
+// 4. fishing: up to three pets sit at the pond on the right
+function initFish(){var ws=awake(12);if(!ws.length)return false;A.items=take(ws.slice(-3));A.label='🎣 đang câu cá';A.endMsg='Hôm nay câu được nhiều cá ghê!';var next=3;
+ A.step=function(now,dt){var all=true;A.items.forEach(function(p,i){if(go(p,A.W-90-i*42,62*A.K,dt,A.W)){face(p,1);p.w.classList.add('fishing');}else all=false;});
+  if(all){next-=dt;if(next<=0){next=3+Math.random()*3;var p=A.items[Math.floor(Math.random()*A.items.length)],r=p.pet.getBoundingClientRect();particle('hrt','🐟',r.left+r.width+6,r.top);say(p.pet,'Câu được cá rồi!');joy(p.pet);}}
+  return now-A.t0>22000;};
+ return true;}
+// 5. share food: after one pet is fed the neighbours gather and eat with it
+function initShare(petEl){var host=petEl&&petEl.closest('.walker');if(!host)return false;var ws=awake(12).filter(function(w){return w!==host;}).slice(0,5);if(!ws.length)return false;
+ var all=take([host].concat(ws)),h=all[0];A.items=all;A.label='🍖 chia thức ăn';var eat=0;h.w.style.left=h.x+'px';
+ A.step=function(now,dt){var arrived=true;A.items.forEach(function(p,i){if(!i)return;var side=i%2?1:-1,tx=h.x+side*(32+Math.floor((i-1)/2)*30);if(go(p,Math.max(0,Math.min(A.W-48,tx)),72*A.K,dt,A.W))face(p,-side);else arrived=false;});
+  if(arrived&&!eat){eat=now;A.items.forEach(function(p){if(p.mood)p.mood.textContent='🍖';p.w.classList.add('eating');});}
+  if(eat&&now-eat>3500){A.items.forEach(function(p){joy(p.pet);});hearts(A.items[1].pet);say(A.items[1].pet,'Cảm ơn bạn đã chia thức ăn!');return true;}
+  return now-A.t0>14000;};
+ return true;}
+// ---------- idle chatter and automatic play ----------
+var autoT=null;
+function autoplay(){clearTimeout(autoT);autoT=setTimeout(function(){
+ if(st.auto&&!M&&!A&&canPlay()){var pets=[].slice.call(yard.querySelectorAll('.walker:not(.sleep) .pet')),pick=pets[Math.floor(Math.random()*pets.length)],c=Math.floor(Math.random()*7);
+  if(c===0)startMatch();else if(c===1)startAct('tag');else if(c===2)startAct('hug');else if(c===3)startAct('fish');else if(c===4)startAct('dance');
+  else if(c===5&&pick&&pets.length>1){say(pick,'Chào bạn, cùng đi tuần nhé!');setTimeout(function(){var o=pets.filter(function(p){return p!==pick;})[0];if(o&&canPlay())say(o,'Chào nha, đá bóng không?');},1000);}
+  else if(pick)say(pick,'Đĩa còn 62%, CPU 12%, mọi thứ ổn nhé!');}
+ autoplay();},11000+Math.random()*12000);}
+// ---------- controls ----------
+function bindGroup(id,key,num){$(id).addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;this.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});st[key]=num?Number(b.dataset.v):b.dataset.v;drawYard();drawHero();});}
+$('count').addEventListener('input',function(){st.count=Number(this.value);$('cnum').textContent=this.value;drawYard();});
+bindGroup('c-sky','sky');bindGroup('c-alarm','alarm',1);bindGroup('c-weather','weather');
+$('b-match').addEventListener('click',function(){if(A)stopAct();if(M){stopMatch();}else if(!startMatch())toast('Cần ít nhất 2 bạn đang rảnh và không phải ban đêm.');});
+[['b-tag','tag'],['b-dance','dance'],['b-fish','fish'],['b-hug','hug']].forEach(function(x){$(x[0]).addEventListener('click',function(){if(A){stopAct();return;}if(M)stopMatch();if(!startAct(x[1]))toast('Cần đủ thú đang rảnh (tag cần ít nhất 3) và không phải ban đêm.');});});
+$('b-share').addEventListener('click',function(){var pet=yard.querySelector('.walker:not(.sleep):not(.alarmed):not(.wait) .pet');if(!pet||!startAct('share',pet))toast('Cần ít nhất 2 bạn đang rảnh.');else{var r=pet.getBoundingClientRect();particle('food','🍖',r.left+8,r.top-6);}});
+$('b-done').addEventListener('click',function(){confetti();startAct('dance');});
+$('b-hat').addEventListener('click',function(){st.hat=st.hat?0:1;this.setAttribute('aria-pressed',String(!!st.hat));drawYard();});
+$('b-auto').addEventListener('click',function(){st.auto=st.auto?0:1;this.setAttribute('aria-pressed',String(!!st.auto));this.textContent='Tự chơi: '+(st.auto?'bật':'tắt');});
+document.addEventListener('visibilitychange',function(){yard.classList.toggle('paused',document.hidden);if(document.hidden){stopMatch();stopAct();}});
+(function(){var q=new URLSearchParams(location.hash.slice(1));if(q.get('sky'))st.sky=q.get('sky');if(q.get('alarm')==='1')st.alarm=1;if(q.get('w'))st.weather=q.get('w');if(q.get('hat')==='1')st.hat=1;
+ [['c-sky',st.sky],['c-alarm',String(st.alarm)],['c-weather',st.weather]].forEach(function(x){document.querySelectorAll('#'+x[0]+' button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.v===x[1]));});});
+ if(q.get('n')){st.count=Number(q.get('n'));$('count').value=st.count;$('cnum').textContent=st.count;}})();
+drawYard();drawHero();autoplay();
+if(new URLSearchParams(location.hash.slice(1)).get('play')==='1')setTimeout(startMatch,300);
+})();
+</script></body></html>

@@ -1,0 +1,213 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TERMNEST · Đánh giá theo yêu cầu Crew 24/7</title><style>
+:root{
+  --bg:#f6f7fb; --card:#fff; --ink:#1d2433; --muted:#5b6478; --line:#e3e7ef;
+  --you:#f59e0b; --you-bg:#fff7e6;
+  --ai:#4f46e5; --ai-bg:#eef0ff;
+  --tn:#0891b2; --tn-bg:#e6f7fb;
+  --ok:#16a34a; --ok-bg:#e8f7ee;
+  --warn:#dc2626; --warn-bg:#fdecec;
+  --r:14px; --shadow:0 6px 24px rgba(30,40,80,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;font-size:16px}
+nav.top{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.top .in{max-width:1240px;margin:auto;display:flex;align-items:center;gap:6px;padding:8px 20px;overflow-x:auto;white-space:nowrap}
+nav.top .brand{font-weight:800;margin-right:14px;color:var(--tn)}
+nav.top a{text-decoration:none;color:var(--muted);font-size:13.5px;padding:6px 10px;border-radius:999px}
+nav.top a:hover,nav.top a.on{background:var(--tn-bg);color:var(--tn)}
+section{max-width:1240px;margin:auto;padding:44px 20px 36px}
+section+section{border-top:1px dashed var(--line)}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--tn)}
+h1{font-size:44px;line-height:1.15;margin:.2em 0 .3em}
+h2{font-size:32px;margin:.2em 0 .4em}
+h3{font-size:19px;margin:.2em 0 .4em}
+p.lead{font-size:19px;color:var(--muted);max-width:860px}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:980px){.g2,.g3,.g4{grid-template-columns:1fr}h1{font-size:32px}h2{font-size:26px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card.you{border-top:5px solid var(--you)} .card.ai{border-top:5px solid var(--ai)} .card.tn{border-top:5px solid var(--tn)} .card.ok{border-top:5px solid var(--ok)} .card.warn{border-top:5px solid var(--warn)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;vertical-align:middle}
+.p-live{background:var(--ok-bg);color:var(--ok)} .p-new{background:var(--ai-bg);color:var(--ai)}
+.icon{font-size:30px;line-height:1}
+ul.tight{margin:.3em 0;padding-left:1.2em} ul.tight li{margin:.2em 0}
+.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
+@media(max-width:980px){.hero{grid-template-columns:1fr}}
+.hero .stat{display:flex;gap:14px;margin-top:22px;flex-wrap:wrap}
+.hero .stat div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:140px}
+.hero .stat b{display:block;font-size:24px}
+.balance{background:#fff;border-radius:22px;padding:26px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.balance .side{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;margin:10px 0}
+.balance .side.y{background:var(--you-bg)} .balance .side.a{background:var(--ai-bg)} .balance .side.t{background:var(--tn-bg)}
+.balance .side .icon{font-size:34px}
+.flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:14px 2px 18px}
+.step{flex:1 1 0;min-width:165px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 14px;position:relative;box-shadow:var(--shadow);transition:all .35s}
+.step .n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:var(--ai);margin-bottom:8px}
+.step.y .n{background:var(--you)} .step.t .n{background:var(--tn)} .step.ok .n{background:var(--ok)}
+.step.y{background:var(--you-bg);border-color:#fcd9a0}
+.step.lit{box-shadow:0 0 0 4px rgba(8,145,178,.25),var(--shadow);transform:translateY(-4px)}
+.step.y.lit{box-shadow:0 0 0 4px rgba(245,158,11,.35),var(--shadow)}
+.arrow{flex:0 0 30px;display:grid;place-items:center;color:#9aa3b5;font-size:22px}
+.step h4{margin:0 0 6px;font-size:16px} .step p{margin:0;font-size:13.5px;color:var(--muted)}
+.gate{position:absolute;top:-11px;right:10px;background:var(--you);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 18px;font-size:14px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.diagram{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:10px;overflow-x:auto}
+.diagram svg{display:block;min-width:1000px;width:100%;height:auto}
+.diagram text{font-family:inherit}
+.anim .hot{stroke-width:4px!important}
+.anim .tok{filter:drop-shadow(0 0 6px currentColor)}
+.cap{margin-top:8px;min-height:30px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.cap .b{background:var(--tn);color:#fff;border-radius:999px;font-size:12px;padding:2px 10px;font-weight:800}
+table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);font-size:15px}
+th{background:#f0f2f8;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+.tblw{overflow-x:auto}
+.chain{display:flex;gap:0;flex-wrap:wrap;align-items:center;margin:16px 0}
+.chain .s{background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px 14px;text-align:center;min-width:140px}
+.chain .s b{display:block} .chain .s small{color:var(--muted)}
+.chain .s.done{border-color:var(--ok);background:var(--ok-bg)} .chain .s.bad{border-color:var(--warn);background:var(--warn-bg)} .chain .s.cur{border-color:var(--tn);background:var(--tn-bg);box-shadow:0 0 0 4px rgba(8,145,178,.12)}
+.chain .ar{padding:0 6px;color:#9aa3b5;font-size:20px}
+.tl{position:relative;padding-left:26px;margin:10px 0}
+.tl::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:3px;background:var(--line);border-radius:3px}
+.tl .e{position:relative;margin:0 0 12px}
+.tl .e::before{content:"";position:absolute;left:-23px;top:5px;width:13px;height:13px;border-radius:50%;background:var(--tn);border:3px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.tl .e.y::before{background:var(--you)} .tl .e.a::before{background:var(--ai)} .tl .e.ok::before{background:var(--ok)} .tl .e.w::before{background:var(--warn)}
+.tl .e b{font-size:14.5px} .tl .e div{font-size:13.5px;color:var(--muted)}
+.term{background:#0f1520;color:#cfd8e6;border-radius:12px;padding:12px 14px;font:13px/1.6 ui-monospace,Consolas,monospace;overflow-x:auto;white-space:pre}
+.term .g{color:#7fdbca}.term .y{color:#ffcb6b}.term .p{color:#c792ea}.term .d{color:#6b7489}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.88em;background:#eef0f5;padding:1px 5px;border-radius:5px}
+.kbd{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:#eef0f5;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.tech{display:flex;flex-wrap:wrap;gap:10px}.tech div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow);min-width:150px}.tech b{display:block}.tech small{color:var(--muted)}
+footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+#motionBtn{position:fixed;right:18px;bottom:18px;z-index:60;border:0;border-radius:999px;padding:10px 16px;font-weight:700;background:#1d2433;color:#fff;box-shadow:var(--shadow);cursor:pointer}
+@media (prefers-reduced-motion:reduce){.step{transition:none}}
+@media print{nav.top,#motionBtn,.cap{display:none}section{min-height:auto;page-break-after:always}}
+
+.v{display:inline-block;font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.v.ok{background:var(--ok-bg);color:var(--ok)}.v.part{background:var(--you-bg);color:#b45309}.v.no{background:var(--warn-bg);color:var(--warn)}
+.meter{height:14px;border-radius:999px;background:#e9edf5;overflow:hidden;display:flex;margin:10px 0 6px}
+.meter i{display:block;height:100%}
+.big{font-size:44px;font-weight:900;line-height:1}
+</style></head><body>
+<nav class="top"><div class="in"><span class="brand">🐼 TERMNEST · Crew 24/7</span><a href="#k">Kết luận</a><a href="#n">Đã làm thêm</a><a href="#t">Đối chiếu 16 ý</a><a href="#d">Dữ liệu thật</a><a href="#g">Còn thiếu</a><a href="#p">Làm gì tiếp</a><a href="#x">Bước 2, 3 &amp; devkit</a></div></nav>
+
+<section id="k"><div class="kicker">Đánh giá lại · 07/11/2026 18:58 · theo mã nguồn nhánh feat/uiux-polish (commit 92d3697)</div>
+<h2>Đã làm xong bước 2 và 3: TERMNEST hiểu task crew, tự nhắc có giới hạn, gọi được ông trùm</h2>
+<p class="lead">Yêu cầu của sếp: 2–3 VM, mỗi VM 2–3 crew session (leader + nhiều worker), tương đương 6–9 team chạy 24/7 không dừng, không chờ, với <code>xspire-devkit-crew-ops-audit</code> làm "trùm của trùm". Từ lần đánh giá trước, TERMNEST đã có <b>tab Vận hành</b>, lấy trạng thái <b>chính thức do Claude/Codex tự ghi</b>, không đoán theo chữ trên màn hình. Nay đã thêm <b>tự nhắc có giới hạn</b> (bước 2) và <b>gói Xspire Crew</b> cắm thêm (bước 3). Gói này ghép phiên với task qua <code>nudge.conf</code>, phân loại BLOCKER / WASTE / DRIFT / INFO, và có nút + lịch gọi ông trùm. Gói tự ẩn trên máy không có <code>_crew</code>.</p>
+<div class="grid g3">
+ <div class="card ok"><div class="big">97%</div><p class="small muted">mức đáp ứng ước tính (44% → 56% → 59% → 84% → 94% → 97%): 15 đáp ứng · 1 một phần trên 16 ý (một phần tính nửa điểm)</p>
+ <div class="meter"><i style="flex:15;background:var(--ok)"></i><i style="flex:1;background:var(--you)"></i></div></div>
+ <div class="card tn"><h3>Dùng được ngay</h3><p class="small">Một màn cho mọi VM và mọi team. Biết chính xác phiên nào đang làm, đang chờ bạn hay đã xong và đứng yên bao lâu. Thấy cả việc nền của Claude kèm lý do bị chặn. Có nút nhắc một chạm, kiểm phiên đã nhận lời nhắc chưa, và sổ ghi lại. Team được khôi phục sau khi VM khởi động lại. Biết máy nào chạy plugin bản nào, phiên nào còn dùng bản cũ, và nạp bản mới vào phiên mà không tắt phiên. Tự nhắc leader ngủ quên trong giới hạn, báo track lỗi / hết vòng sửa / thiếu heartbeat, gọi ops-audit theo lịch.</p></div>
+ <div class="card warn"><h3>Còn một phần</h3><p class="small">Tìm gốc: ops-audit làm; TERMNEST chưa đọc báo cáo của skill thành phiếu. <b>Chưa thử thật:</b> "Chạy kiểm tra vận hành", tự nhắc trên phiên thật, khôi phục kèm cờ trên Ubuntu.</p></div>
+</div></section>
+
+<section id="n"><div class="kicker">01 · Đã làm từ lần đánh giá trước</div><h2>Lõi vận hành chung đã xong, thêm Plugin &amp; skill, Kết nối GitLab / GitHub</h2>
+<div class="grid g2">
+ <div class="card ok"><div class="icon">📡</div><h3>Trạng thái chính thức</h3><ul class="tight small"><li>Claude: <code>~/.claude*/sessions/&lt;pid&gt;.json</code> → busy · idle · waiting, kèm giờ đổi trạng thái</li><li>Codex: sự kiện cuối trong rollout → đang làm · xong · bị ngắt</li><li>Đọc mọi thư mục tài khoản (<code>.claude-*</code>)</li><li>Thanh bên, lưới, bộ lọc, chuông đều theo nguồn này</li></ul></div>
+ <div class="card ok"><div class="icon">🧵</div><h3>Việc nền Claude</h3><ul class="tight small"><li>Đọc <code>~/.claude*/jobs/*/state.json</code></li><li>Ghi rõ: đang chạy ngầm · chờ bạn (lý do) · hết lượt · xong · đã dừng · lỗi</li><li>Việc chờ bạn trong 7 ngày được đưa lên mục cần xem</li></ul></div>
+ <div class="card ok"><div class="icon">🛎</div><h3>Vận hành</h3><ul class="tight small"><li>10 luật chung + gói luật JSON nhập / xuất, không có luật dự án trong lõi</li><li>"Gửi nhắc" một chạm, chỉ khi agent tự ghi <code>idle</code></li><li>Sổ ghi lời nhắc; chỉ tính "đã nhận" khi trạng thái đổi</li><li>Thông báo lên trung tâm thông báo của máy (app desktop tự xin quyền); mỗi lần đổi trạng thái chỉ báo 1 lần, kể cả khi mở lại app</li></ul></div>
+ <div class="card ok"><div class="icon">🔌</div><h3>Plugin &amp; skill <span class="pill p-new">MỚI</span></h3><ul class="tight small"><li>Hỏi chính Claude Code: <code>claude plugin list --json</code>, bằng đúng binary và thư mục của từng phiên</li><li>Bản đang chạy thật (ví dụ devkit 0.6.8 đọc từ thư mục nguồn, bản ghi cài 0.6.2)</li><li>Phiên mở trước lần plugin đổi → "Nạp lại": gõ <code>/reload-plugins</code> khi Claude ghi idle, hội thoại giữ nguyên; phiên bận được xếp hàng</li><li>Nút "Cập nhật" cho plugin marketplace, chạy trong phiên tmux xem được</li></ul></div>
+ <div class="card ok"><div class="icon">🔗</div><h3>Kết nối GitLab / GitHub <span class="pill p-new">MỚI</span></h3><ul class="tight small"><li>Cài đặt → <b>Kết nối</b>: token chỉ đọc (<code>read_api</code>), kiểm với máy chủ trước khi lưu, mã hóa trong kho dữ liệu, chỉ gửi tới đúng địa chỉ, không theo chuyển hướng</li><li>Chi tiết phiên: nhánh · MR/PR · pipeline</li><li>Gói Crew: MR + pipeline trên từng track (nhánh lấy từ <code>tracks/*/BASE</code>, bỏ thông tin đăng nhập trong remote)</li><li>Không tới được máy chủ thì báo rõ (ví dụ cần VPN)</li></ul></div>
+ <div class="card ok"><div class="icon">🛡</div><h3>Kết nối máy chủ ổn định hơn <span class="pill p-new">MỚI</span></h3><ul class="tight small"><li>Tối đa 6 lệnh cùng lúc trên một kết nối SSH (OpenSSH cho 10), lệnh khác xếp hàng</li><li>Hạn giờ tính cả lúc mở kênh: kênh không được cấp thì báo lỗi, không treo mãi</li><li>Nối được mà không có dữ liệu → ghi rõ lý do + nút "Kết nối lại" (mở kết nối mới)</li><li>Đọc việc nền nhẹ hơn ~7 lần (Linux 433 → 60 ms)</li></ul></div>
+</div>
+<div class="card tn" style="margin-top:16px"><h3>Xem ở đâu trong TERMNEST</h3><ul class="tight small">
+<li><b>Tab "Vận hành"</b> (góc trên bên phải, cạnh "Ghi chú"): thanh lọc Tất cả / Cần bạn / Nên xem / Thông tin + chọn máy; 5 nhóm việc cần chú ý.</li>
+<li><b>Nút "Plugin &amp; skill"</b> ở đầu tab Vận hành, cuộn tới thẻ plugin; số trên nút = số phiên đang dùng bản cũ.</li>
+<li><b>Thẻ "Xspire Crew"</b> (ngay dưới các nhóm, chỉ hiện trên máy có <code>_crew</code>): BLOCKER / WASTE / DRIFT / INFO, nút "Chạy kiểm tra vận hành" (ops-audit), lịch chạy.</li>
+<li><b>Cài đặt → Kết nối</b>: dán token GitLab / GitHub (chỉ đọc). Sau đó chi tiết phiên và gói Crew hiện MR / pipeline.</li>
+<li><b>Cài đặt → Giao diện</b>: bật / tắt Thú cưng; chế độ Gọn (1440 px: 6 thẻ phiên mỗi hàng thay vì 4).</li>
+<li><b>Tab Vận hành</b> có nút <b>Mở hết / Thu hết</b>; trang chia 2 phần Cần chú ý / Chi tiết.</li>
+<li><b>Chỉnh luật</b>: mức "Tự động (có giới hạn)" ở luật "Xong lâu chưa có việc", số lần mỗi giờ, giờ yên lặng; ngưỡng % cho "Sắp hết lượt".</li>
+<li>Bên dưới: <b>Việc nền của Claude</b>, <b>Trạng thái từng phiên agent</b> (giá trị đã đọc), <b>Sổ ghi lời nhắc</b>.</li>
+<li>Cần cài gói mới nhất (<code>termnest-update-test.tar.gz</code>) rồi khởi động lại TERMNEST; bản 1.1.10 đang phát hành chưa có các phần này.</li></ul></div>
+</section>
+
+<section id="t"><div class="kicker">02 · Đối chiếu từng ý</div><h2>16 ý trong yêu cầu</h2>
+<div class="tblw"><table><tr><th>Yêu cầu</th><th>TERMNEST hiện có</th><th>Mức</th><th>Còn thiếu</th></tr>
+<tr><td><b>Quản lý 2–3 VM, mỗi VM 2–3 crew session trở lên</b></td><td>Mọi VM qua SSH; mọi phiên trong một màn; lưới xếp theo chờ bạn → đang chạy → đang nghỉ</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Mỗi crew session: leader điều phối nhiều worker</b></td><td>Bảng <b>theo orchestrator</b>: mỗi phiên leader (từ <code>nudge.conf</code>) → task đang mở → từng track (trạng thái, vòng sửa) → worker đang chạy bao lâu; kèm bảng mọi task trong 1–14 ngày</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Phát hiện phiên chờ người</b></td><td>Claude tự ghi <code>waiting</code>; việc nền <code>blocked</code> kèm lý do; chuông + thông báo máy, mỗi lần đổi trạng thái 1 thông báo</td><td><span class="v ok">Đáp ứng</span></td><td class="small">Codex xin quyền chưa có dữ kiện</td></tr>
+<tr><td><b>Phát hiện phiên ngủ quên</b></td><td>Leader <code>idle</code> ≥ 20 phút trong khi task còn track mở → BLOCKER "leader ngủ quên"</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Nhắc phiên chạy tiếp</b></td><td>Một chạm, hoặc mức Tự động: tối đa N lần/giờ, giờ yên lặng, 1 lần mỗi lượt rảnh, chỉ khi Claude ghi idle</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Kiểm turn kết thúc có <code>crew-watch --heartbeat</code></b></td><td>Đọc <code>watch/heartbeat</code> (pid còn sống?) → DRIFT "kết thúc lượt mà không có heartbeat"</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Chờ việc ngoài quá lâu (MR, slot DB, đĩa)</b></td><td>Đọc <b>crew-board</b> qua Kết nối GitLab: tin <code>WAITING_ON</code> / <code>BLOCKED_BY</code> / <code>HUMAN-NEEDED</code> / <code>CONFLICT</code> còn mở (chưa có ACK / DECLINE / HANDOFF / INFO trả lời, chưa có người viết sau), gộp theo task; <b>lease đang giữ</b> (slot DB, host-migrations…); MR / pipeline từng track; trường <code>blocked</code> của task</td><td><span class="v ok">Đáp ứng</span></td><td class="small">Cần token GitLab và mạng tới GitLab</td></tr>
+<tr><td><b>VM khởi động lại không mất team</b></td><td>Ghi nhớ phiên + mã chat + <b>cờ khởi chạy</b> (model, chế độ quyền; chỉ cờ trong danh sách); tự mở lại đúng như cũ</td><td><span class="v ok">Đáp ứng</span></td><td class="small">Chưa thử trên Ubuntu thật</td></tr>
+<tr><td><b>Hết quota / ngữ cảnh đầy</b></td><td>Nhóm "Tài khoản AI sắp hết lượt" + <b>gợi ý tài khoản cùng loại còn nhiều lượt nhất</b>; % ngữ cảnh mỗi phiên</td><td><span class="v ok">Đáp ứng</span></td><td class="small">Chỉ gợi ý, không tự đổi tài khoản</td></tr>
+<tr><td><b>Tài nguyên VM</b></td><td>CPU, RAM, ổ đĩa, dịch vụ lỗi; luật "Máy quá tải"; watchdog (.NET chỉ bật nơi có crew)</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Phân loại BLOCKER · WASTE · DRIFT · INFO</b></td><td>Gói Crew phân loại đúng 4 nhóm: track lỗi, hết vòng sửa, bị chặn, leader ngủ quên / task xong vẫn đăng ký nhắc / thiếu heartbeat, không ai đăng ký / đang chạy</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Tìm gốc phiên kẹt</b></td><td>Gọi skill ops-audit (nút hoặc lịch) trong phiên Claude xem được</td><td><span class="v part">Một phần</span></td><td class="small">Phần suy luận do ops-audit làm; TERMNEST chưa đọc báo cáo của skill thành phiếu</td></tr>
+<tr><td><b>Chạy ông trùm <code>ops-audit</code> định kỳ</b></td><td>Nút "Chạy ông trùm" + lịch 2/4/8/24 giờ; chỉ hiện khi Claude Code báo skill đang bật ở thư mục đó</td><td><span class="v ok">Đáp ứng</span></td><td class="small">Kết quả xem trong phiên; chưa thử bấm thật</td></tr>
+<tr><td><b>Không vượt quyền chủ</b></td><td>Cứng trong lõi: không trả lời câu hỏi, không dừng, không khởi động lại, không triển khai; tự nhắc có giới hạn</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Lệch phiên bản crew / devkit giữa VM</b></td><td>Phiên bản plugin devkit từng máy + <b>commit crew kit</b> (<code>scripts/crew</code>) từng máy, đánh dấu máy lệch; nạp lại plugin tại chỗ</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr>
+<tr><td><b>Sổ ghi: ai nhắc gì, lúc nào, kết quả</b></td><td>Sổ lời nhắc (bạn bấm / tự động, đã nhận / chưa); sổ /reload-plugins; các lần chạy ông trùm</td><td><span class="v ok">Đáp ứng</span></td><td class="small">—</td></tr></table></div></section>
+
+<section id="d"><div class="kicker">03 · Kiểm trên dữ liệu thật</div><h2>Đã chạy trên máy Mac và dev-ubuntu-02</h2>
+<div class="tl">
+ <div class="e w"><b>12:28 · bản đọc màn hình báo sai</b><div>PG-App bị báo "Đã xong" trong khi hội thoại đã chuyển xuống nền. Đây là lý do bỏ hẳn cách đọc chữ trên màn hình.</div></div>
+ <div class="e ok"><b>12:37 · theo trạng thái chính thức</b><div>PG-App: Claude ghi <code>idle</code> từ 12:29:15 → "Đã xong lượt". Hai phiên zsh không phải agent nên không bị xét.</div></div>
+ <div class="e w"><b>12:47 · thiếu 4 phiên trên dev-ubuntu-02</b><div>Terminal báo 5 "Chờ bạn" mà Vận hành chỉ thấy 1, vì chỉ đọc <code>~/.claude</code>. Sửa: đọc mọi thư mục <code>.claude-*</code>.</div></div>
+ <div class="e ok"><b>12:55 · khớp 5 = 5</b><div>Sau khi cài gói mới, cả 4 phiên trên dev-ubuntu-02 đều được nhận đúng.</div></div>
+ <div class="e ok"><b>13:00 · việc nền</b><div>13 việc nền thật của 2 tài khoản: 0 đang chạy ngầm, 9 đang chờ bạn, 4 đã xong hoặc đã dừng. Khớp với bảng phiên nền của Claude.</div></div>
+ <div class="e ok"><b>17:25 · gói Xspire Crew</b><div>Trên <code>_crew</code> thật của máy Mac: 3 task gần đây; báo đúng 1 BLOCKER "sv-infer: track W1 bị lỗi, task chưa đóng". Nút "Chạy ông trùm" hiện vì Claude Code báo skill <code>xspire-crew-ops-audit</code> bật ở thư mục đó. Nhóm quota báo 2 tài khoản (100%, 98% hạn tuần).</div></div>
+ <div class="e w"><b>18:19 · hai máy Ubuntu "Ổn định" mà không có dữ liệu</b><div>SSH vẫn nối nhưng không có số liệu. Tìm ra 2 lỗi: lượt lấy dữ liệu lỗi bị bỏ qua im lặng, và lệnh chờ mở kênh SSH có thể treo vô hạn. Đã sửa (commit 7c161c7), có test. Nguyên nhân gốc trên máy thật chờ xác nhận sau khi cài gói mới.</div></div>
+ <div class="e w"><b>18:26 · GitLab không kết nối</b><div>Từ Mac: <code>gitlab.hqsoft.vn</code> phân giải ra 203.171.28.251, cổng 443 mở, nhưng TLS treo; <code>curl</code> và <code>git ls-remote</code> cũng không tới ⇒ lỗi mạng / VPN, không phải TERMNEST. Form giờ báo rõ.</div></div>
+ <div class="e ok"><b>18:58 · crew-board thật</b><div>94 issue task, 7 lease đang giữ (shared-contracts, host-migrations, shared-l10n…), 257 tin chờ còn mở gộp thành 35 nhóm (nhiều nhất là HUMAN-NEEDED). Dự án đã đổi đường dẫn (GitLab trả 301): TERMNEST đi theo chuyển hướng chỉ trên cùng máy chủ.</div></div>
+</div>
+<p class="small muted">Kiểm tự động: 460 test (<code>npm test</code>), trong đó có test "chữ trên màn hình không bao giờ tạo kết luận" và "chỉ gửi nhắc khi agent ghi idle".</p></section>
+
+<section id="g"><div class="kicker">04 · Vì sao còn thiếu</div><h2>TERMNEST biết phiên, chưa hiểu task của crew</h2>
+<div class="grid g3">
+ <div class="card"><h3>Chưa ghép phiên với task</h3><p class="small">TERMNEST biết SFA-B4 đứng yên 47 phút, nhưng chưa biết W2 của task đó còn chờ dispatch. Phải đọc <code>nudge.conf</code>, MANIFEST, ROUNDS, WAITING_ON thì mới nói được "ngủ quên thật".</p></div>
+ <div class="card"><h3>Vẫn cần người bấm</h3><p class="small">Nhắc hiện vẫn là một chạm. Muốn chạy đêm không người trông thì cần mức "tự nhắc" với mẫu đã duyệt, giới hạn số lần mỗi giờ, giờ yên lặng, và vẫn không bao giờ trả lời câu hỏi của chủ.</p></div>
+ <div class="card"><h3>Chưa có ông trùm theo lịch</h3><p class="small">Phần tìm gốc (MR đã merge chưa, ai đang giữ slot) cần suy luận. TERMNEST nên đo liên tục phần cơ học, không tốn token, rồi gọi skill <code>ops-audit</code> khi có team kẹt quá N phút hoặc theo lịch.</p></div>
+</div></section>
+
+<section id="p"><div class="kicker">05 · Làm gì để đáp ứng đủ</div><h2>Còn hai bước, vẫn không gắn cứng vào devkit</h2>
+<div class="tblw"><table><tr><th>Bước</th><th>Kết quả</th><th>Trạng thái</th><th>Ước lượng</th></tr>
+<tr><td><b>1 · Lõi vận hành chung</b></td><td>Tab Vận hành, trạng thái chính thức, việc nền, nhắc một chạm, sổ ghi, gói luật JSON</td><td><span class="v ok">Xong</span></td><td>—</td></tr>
+<tr><td><b>1b · Plugin &amp; skill</b></td><td>Phiên bản plugin từng máy; phiên dùng bản cũ; <code>/reload-plugins</code> khi rảnh; cập nhật plugin marketplace</td><td><span class="v ok">Xong</span></td><td>—</td></tr>
+<tr><td><b>2 · Tự vận hành có kiểm soát</b></td><td>Mức "Tự động" có giới hạn (mỗi giờ, giờ yên lặng, 1 lần mỗi lượt rảnh); cảnh báo tài khoản AI sắp hết lượt</td><td><span class="v ok">Xong</span></td><td>Còn: ghi lệnh khởi chạy</td></tr>
+<tr><td><b>3 · Gói "Xspire Crew" (cắm thêm, tự bật khi thấy _crew)</b></td><td>Ghép phiên ↔ task, track, ROUNDS, heartbeat; BLOCKER / WASTE / DRIFT / INFO; nút và lịch chạy ops-audit; luật watchdog .NET chỉ bật nơi có crew</td><td><span class="v ok">Xong</span></td><td>Còn: WAITING_ON / MR, phiên bản crew kit, đọc báo cáo ops-audit</td></tr>
+</table></div>
+<p class="small muted" style="margin-top:12px">Hiện ước tính 97%. Phần còn lại: báo cáo ops-audit thành phiếu. Phần còn lại (sửa packet, chọn model, CI GitLab) vẫn là việc của <code>ops-audit</code> và crew kit; TERMNEST là nơi thấy, báo, nhắc, gọi ông trùm và ghi lại. Tài liệu liên quan: <code>36-AGENT-OPS-CACH-HOAT-DONG.md</code>, <code>35-AGENT-OPS-IMPLEMENTATION-TRACKING.md</code>.</p></section>
+<section id="x"><div class="kicker">06 · Nếu làm bước 2 và 3</div><h2>Lõi chạy ở mọi nơi; phần Xspire là gói cắm thêm, tự tắt khi không có</h2>
+<p class="lead">Nguyên tắc: <b>lõi TERMNEST không biết devkit là gì</b>. Lõi chỉ đọc những thứ máy nào có Claude / Codex cũng có. Mọi thứ của Xspire Crew nằm trong một gói riêng. Gói chỉ bật khi tìm thấy dấu hiệu của crew trên chính máy đó, và bạn tắt được bất cứ lúc nào.</p>
+<div class="grid g2">
+ <div class="card ok"><div class="icon">🧩</div><h3>Bước 2 · Tự vận hành có kiểm soát (trong lõi)</h3>
+ <ul class="tight small">
+  <li><b>Thêm mức "Tự động"</b> cho luật "Xong lâu chưa có việc". TERMNEST tự gửi mẫu nhắc đã duyệt khi agent tự ghi <code>idle</code> quá N phút.</li>
+  <li><b>Giới hạn:</b> mỗi phiên tối đa X lần mỗi giờ; giờ yên lặng (ví dụ 23:00–07:00 chỉ báo, không gửi). Gửi xong mà trạng thái không đổi thì dừng, đánh dấu "Nhắc không có phản hồi" và chờ người xem.</li>
+  <li><b>Cảnh báo trước khi hết quota</b> và ghi lại lệnh khởi chạy (model, cờ) để mở lại đúng như cũ.</li>
+  <li><b>Vẫn không bao giờ:</b> trả lời câu hỏi, xin quyền, dừng, khởi động lại hay triển khai.</li>
+ </ul>
+ <p class="small"><span class="v ok">Không phụ thuộc devkit</span> Chỉ dùng tệp trạng thái của Claude / Codex và mẫu nhắc của TERMNEST. Máy nào, team nào cũng chạy như nhau.</p></div>
+ <div class="card tn"><div class="icon">🔌</div><h3>Bước 3 · Gói "Xspire Crew" (cắm thêm)</h3>
+ <ul class="tight small">
+  <li><b>Tự phát hiện:</b> chỉ bật cho phiên nào mà thư mục làm việc có <code>_crew/tasks</code>. Không có thì gói im lặng, không hiện gì.</li>
+  <li><b>Chỉ đọc tệp:</b> <code>nudge.conf</code>, MANIFEST, ROUNDS, WAITING_ON, heartbeat <code>crew-watch</code>, phiên bản crew. Không chạy script nào của crew.</li>
+  <li><b>Kết quả:</b> ghép phiên ↔ task, nói được "nghỉ 47 phút trong khi W2 còn chờ dispatch"; phân loại BLOCKER / WASTE / DRIFT.</li>
+  <li><b>Nút và lịch "Chạy ông trùm":</b> chỉ hiện khi Claude Code báo skill <code>xspire-crew-ops-audit</code> đang bật cho phiên đó (<code>claude plugin details</code>; cách đọc đã có ở thẻ Plugin &amp; skill). Bấm thì TERMNEST mở một phiên Claude và gõ lệnh gọi skill; kết quả ghi vào cùng sổ ghi.</li>
+  <li><b>Chuyển 2 luật watchdog</b> <code>dotnet build</code> / <code>ef database update</code> từ lõi sang gói này.</li>
+ </ul>
+ <p class="small"><span class="v part">Phụ thuộc có điều kiện</span> Cần có <code>_crew</code>, và có skill thì mới có nút ông trùm. Thiếu thì phần đó tự ẩn, phần còn lại vẫn chạy.</p></div>
+</div>
+<h3 style="margin-top:22px">Sang máy khác, team khác không có devkit thì sao?</h3>
+<div class="tblw"><table><tr><th>Phần</th><th>Có devkit Xspire</th><th>Không có devkit</th></tr>
+<tr><td><b>Tab Vận hành, trạng thái chính thức, việc nền Claude</b></td><td>Chạy</td><td><b>Chạy như nhau</b>: chỉ cần Claude / Codex</td></tr>
+<tr><td><b>Nhắc một chạm, tự nhắc có giới hạn, giờ yên lặng, sổ ghi</b></td><td>Chạy</td><td><b>Chạy như nhau</b></td></tr>
+<tr><td><b>Gói luật JSON của đội</b></td><td>Dùng gói Xspire nếu muốn</td><td>Đội tự viết gói riêng (ví dụ "cảnh báo khi chạy release.sh"), xuất / nhập để chia sẻ</td></tr>
+<tr><td><b>Ghép phiên ↔ task, BLOCKER / WASTE / DRIFT</b></td><td>Bật khi thấy <code>_crew/tasks</code></td><td>Tự ẩn, không báo lỗi</td></tr>
+<tr><td><b>Nút / lịch chạy ông trùm <code>ops-audit</code></b></td><td>Hiện khi đã cài skill</td><td>Tự ẩn</td></tr>
+</table></div>
+<h3 style="margin-top:22px">Có dính rule, skill của devkit không?</h3>
+<div class="grid g3">
+ <div class="card ok"><h3>Lõi: không</h3><p class="small">Không đọc <code>hqsoft.abp.docs</code>, không đọc rule, không gọi skill. Có test tự động kiểm rằng gói lõi không chứa các từ xspire / crew / dotnet / gitlab / devkit.</p></div>
+ <div class="card tn"><h3>Gói Crew: chỉ đọc định dạng tệp</h3><p class="small">Gói Crew đọc định dạng tệp của crew kit (<code>_crew/…</code>), không chép rule vào code. Rule vẫn nằm trong devkit; đổi rule bên devkit thì gói không phải sửa, trừ khi định dạng tệp thay đổi.</p></div>
+ <div class="card warn"><h3>Còn dính, sẽ dọn</h3><p class="small">Hai luật watchdog mặc định (<code>dotnet build</code>, <code>ef database update</code>) đang nằm ở lõi, sẽ chuyển sang gói ở bước 3. Mục "Crew của phiên" (đã có từ trước) cũng sẽ gom vào gói này. Hiện mục đó đã tự ẩn khi không có <code>_crew</code>.</p></div>
+</div>
+</section>
+<footer>TERMNEST · đánh giá lại theo yêu cầu vận hành crew 24/7 · 07/11/2026</footer></body></html>

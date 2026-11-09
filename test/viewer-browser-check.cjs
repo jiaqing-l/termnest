@@ -15,7 +15,7 @@ const files=path.join(scratch,'files');fs.mkdirSync(path.join(files,'Implementat
 fs.copyFileSync(path.join(__dirname,'fixtures','reading.md'),path.join(files,'Implementation','Foo','13-BAR.md'));
 const mockup=fs.readFileSync(process.env.TW_HTML_MOCKUP||path.join(__dirname,'fixtures','reading.html'),'utf8');
 fs.writeFileSync(path.join(files,'demo.html'),mockup+`<script>
-window.addEventListener('message',e=>{if(e.data.theme){document.documentElement.dataset.theme=e.data.theme;parent.postMessage({htmlReady:true,theme:e.data.theme,inlineCSS:getComputedStyle(document.body).display},'*');}});
+window.addEventListener('message',e=>{if(e.data&&e.data.tw==='zoom')setTimeout(()=>parent.postMessage({htmlReady:true,zoomed:document.documentElement.style.zoom},'*'));if(e.data.theme){document.documentElement.dataset.theme=e.data.theme;parent.postMessage({htmlReady:true,theme:e.data.theme,inlineCSS:getComputedStyle(document.body).display},'*');}});
 parent.postMessage({htmlReady:true,inlineCSS:getComputedStyle(document.body).display},'*');
 </script>`);
 const password = 'local-browser-fixture';
@@ -139,6 +139,12 @@ async function main() {
   assert.ok(!await evaluate("!!window.PWNED"));
   await until("window.htmlSignals.length>0");
   assert.equal(await evaluate("window.htmlSignals[0].inlineCSS"),'flex');
+  // A-/A+ zoom the page inside the frame; the frame box always fills the viewer (it used to shrink to 70%).
+  for(let i=0;i<4;i++)await evaluate("document.querySelector('.viewer-zoom .btn').click()");
+  await until("window.htmlSignals.some(s=>s.zoomed==='0.7')");
+  const fill=await evaluate("(()=>{const f=document.querySelector('.file-content iframe').getBoundingClientRect(),c=document.querySelector('.file-content').getBoundingClientRect();return [Math.round(f.width),Math.round(c.width)]})()");
+  assert.ok(Math.abs(fill[0]-fill[1])<=2,'frame fills the viewer at 70%: '+fill);
+  for(let i=0;i<4;i++)await evaluate("document.querySelectorAll('.viewer-zoom .btn')[1].click()");
   for(const width of [1440,420])for(const theme of ['light','dark']){
     await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});
     await evaluate(`document.documentElement.dataset.theme=${JSON.stringify(theme)};document.querySelector('.file-content iframe').contentWindow.postMessage({theme:${JSON.stringify(theme)}},'*')`);

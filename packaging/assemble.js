@@ -37,6 +37,31 @@ function copyTree(source, target, platform) {
   }
   permissions(target);
 }
+// Keep runtime support explicit: copying scripts/ or docs/ wholesale can ship developer tools or secrets.
+function copyRuntimeSupport(root, out) {
+  const files = [
+    ['scripts/install-supervisor.sh', 'scripts/install-supervisor.sh'],
+    ['scripts/install-supervisor-macos.sh', 'scripts/install-supervisor-macos.sh'],
+    ['scripts/install-supervisor.ps1', 'scripts/install-supervisor.ps1'],
+    ['scripts/supervisor-check.js', 'scripts/supervisor-check.js'],
+    ['docs/supervisor.md', 'SUPERVISOR.md'],
+  ];
+  for (const [source, destination] of files) {
+    const from = path.join(root, source), to = path.join(out, destination);
+    // Absent platform installers are allowed while their track is being integrated.
+    // Reject links, including a linked parent directory, rather than following them into private files.
+    let stat;
+    try {
+      const parent = fs.lstatSync(path.dirname(from));
+      if (!parent.isDirectory() || parent.isSymbolicLink()) throw new Error('Unsafe runtime support directory');
+      stat = fs.lstatSync(from);
+    } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    if (!stat.isFile() || stat.nlink !== 1) throw new Error(`Unsafe runtime support file: ${source}`);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(from, to);
+    fs.chmodSync(to, stat.mode & 0o777);
+  }
+}
 function assemble(destination, platform = process.platform) {
   if (!['win32', 'darwin', 'linux'].includes(platform)) throw new Error('Target must be win32, darwin or linux');
   const root = path.resolve(__dirname, '..');
@@ -64,8 +89,9 @@ function assemble(destination, platform = process.platform) {
     fs.cpSync(path.join(root, 'docs/licenses'), path.join(out, 'licenses'), { recursive: true });
     for (const name of ['lib', 'public']) copyTree(path.join(root, name), path.join(out, name), platform);
     fs.copyFileSync(path.join(__dirname, 'launcher.js'), path.join(out, 'launcher.js'));
+    copyRuntimeSupport(root, out);
     copyTree(path.join(temp, 'node_modules'), path.join(out, 'node_modules'), platform);
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 }
 if (require.main === module) assemble(process.argv[2] || 'packaging/out/stage', process.argv[3]);
-module.exports = { keep, copyTree, assemble };
+module.exports = { keep, copyTree, copyRuntimeSupport, assemble };

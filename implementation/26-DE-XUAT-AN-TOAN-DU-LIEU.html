@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERMNEST · Đề xuất an toàn dữ liệu</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1d2433;--mute:#5b6478;--line:#e3e7ef;--p1:#d92d4b;--p2:#e08a00;--p3:#3b6fd8;--ok:#1f9d63;--chip:#eef1f7}
+@media (prefers-color-scheme:dark){:root{--bg:#12151d;--card:#1a1f2b;--ink:#e6e9f0;--mute:#9aa3b6;--line:#2a3142;--chip:#232a3a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 22px}
+h2{font-size:19px;margin:34px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h3{margin:0 0 6px;font-size:15px}
+.card p{margin:0;color:var(--mute);font-size:14px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;color:#fff;margin-right:6px}
+.p1{background:var(--p1)}.p2{background:var(--p2)}.p3{background:var(--p3)}.ok{background:var(--ok)}
+.tbl{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px}
+th{background:var(--chip);font-weight:600}
+tr:last-child td{border-bottom:0}
+td small{color:var(--mute)}
+.note{background:var(--chip);border-radius:10px;padding:12px 14px;color:var(--mute);font-size:14px;margin-top:12px}
+ol li{margin:4px 0}
+code{background:var(--chip);padding:1px 5px;border-radius:5px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Giữ thông tin, dữ liệu và bảo mật khi máy hoặc server gặp sự cố</h1>
+<p class="sub">TERMNEST · đề xuất sau sự cố Ubuntu khởi động lại ngày 06/11/2026 · <span class="tag ok">đã có</span> đã kiểm trong mã · <span class="tag p1">P1</span> nên làm ngay · <span class="tag p2">P2</span> nên làm · <span class="tag p3">P3</span> tùy chọn</p>
+
+<h2>1. Hiện trạng (đã kiểm trong mã)</h2>
+<div class="grid">
+  <div class="card"><h3><span class="tag ok">đã có</span>Kho dữ liệu mã hóa</h3><p>Danh sách server, khóa SSH, cài đặt, phiên đã biết nằm trong <code>vault.json</code>, mã hóa AES-256-GCM, khóa sinh từ mật khẩu (scrypt).</p></div>
+  <div class="card"><h3><span class="tag ok">đã có</span>Ghi tệp an toàn</h3><p>Ghi ra tệp tạm rồi đổi tên, nên khi đang ghi mà mất điện thì không bị nửa cũ nửa mới. Quyền tệp 600, thư mục 700.</p></div>
+  <div class="card"><h3><span class="tag ok">đã có</span>Chỉ mở trên máy mình</h3><p>Server web chỉ nghe ở <code>127.0.0.1</code>. Cookie đăng nhập HttpOnly + SameSite=Strict, hết hạn sau 12 giờ.</p></div>
+  <div class="card"><h3><span class="tag ok">đã có</span>Danh sách phiên khôi phục</h3><p>Máy chủ khởi động lại thì TERMNEST nhớ tên phiên, thư mục và việc đang chạy, rồi hiện nút Khôi phục.</p></div>
+  <div class="card"><h3><span class="tag ok">mới, chưa phát hành</span>Khôi phục đúng hội thoại</h3><p>Nhánh <code>feat/resume-agents-after-reboot</code>: nhớ mã hội thoại Claude/Codex của từng phiên, khôi phục bằng <code>--resume</code>. Đã vá 12 rủi ro, xem <code>25-RUI-RO-KHOI-PHUC-HOI-THOAI.md</code>.</p></div>
+  <div class="card"><h3>Chỗ còn yếu</h3><p>Kho dữ liệu chỉ có <b>một bản</b>: hỏng tệp hoặc mất máy là mất hết cấu hình. Quên mật khẩu là không mở lại được. Không có bản sao để chuyển sang máy mới.</p></div>
+</div>
+
+<h2>2. Đề xuất theo tình huống</h2>
+<div class="tbl"><table>
+<thead><tr><th style="width:18%">Tình huống</th><th style="width:30%">Mất gì nếu không xử lý</th><th>Đề xuất</th><th style="width:9%">Ưu tiên</th></tr></thead>
+<tbody>
+<tr><td><b>Server reboot / mất điện</b></td><td>Chat Claude/Codex đang chạy, màn hình đang dở</td>
+<td><b>A1.</b> Khôi phục đúng hội thoại (đã làm, chờ thử).<br><b>A2.</b> Cho phép <b>tự khôi phục</b> server từ xa (hiện chỉ máy này có); bật riêng cho từng server.<br><b>A3.</b> Lưu 200 dòng cuối màn hình mỗi phiên <b>trên chính server</b> (tệp quyền 600, giữ 3 ngày), để biết lúc tắt đang làm gì.</td>
+<td><span class="tag ok">A1</span><br><span class="tag p1">A2</span><br><span class="tag p2">A3</span></td></tr>
+<tr><td><b>Bấm khởi động lại server trong TERMNEST</b></td><td>Việc agent đang làm dở, thay đổi chưa commit</td>
+<td><b>B1.</b> Trước khi reboot, hiện hộp xác nhận liệt kê: phiên nào <b>agent đang chạy</b>, thư mục nào <b>có thay đổi chưa commit/push</b> (<code>git status</code>). Phải xác nhận lại mới reboot.</td>
+<td><span class="tag p1">P1</span></td></tr>
+<tr><td><b>Ổ đĩa server đầy</b></td><td>Agent ghi lỗi, transcript chat và tệp đang sửa có thể hỏng</td>
+<td><b>C1.</b> Cảnh báo khi ổ đĩa từ 90%, báo động ở 95% (thông báo + chấm đỏ trên server). Gợi ý thư mục lớn nhất.</td>
+<td><span class="tag p1">P1</span></td></tr>
+<tr><td><b>Tệp dữ liệu TERMNEST bị hỏng</b> (ổ lỗi, tắt máy khi đang ghi)</td><td>Mọi server, khóa SSH, cài đặt, phiên đã biết</td>
+<td><b>D1.</b> Giữ <b>5 bản sao xoay vòng</b> của kho (vẫn mã hóa), ép ghi xuống đĩa (<code>fsync</code>). Mở không được thì tự thử bản sao gần nhất và báo cho người dùng.</td>
+<td><span class="tag p1">P1</span></td></tr>
+<tr><td><b>Mất / hỏng / đổi máy Mac, Windows</b></td><td>Toàn bộ cấu hình, phải thêm lại từng server</td>
+<td><b>E1.</b> Cài đặt → <b>Sao lưu</b>: xuất một tệp <code>.termnest-backup</code> mã hóa bằng mật khẩu riêng; <b>Khôi phục</b> từ tệp đó trên máy mới.<br><b>E2.</b> Tùy chọn tự sao lưu tệp đó vào một thư mục (iCloud/OneDrive/USB) mỗi ngày.</td>
+<td><span class="tag p1">E1</span><br><span class="tag p2">E2</span></td></tr>
+<tr><td><b>Quên mật khẩu TERMNEST</b></td><td>Không mở lại được kho, mất cấu hình</td>
+<td><b>F1.</b> Lúc tạo mật khẩu, tạo thêm <b>mã khôi phục</b> (24 ký tự) để người dùng cất riêng; mã này mở được kho. Không lưu mã trên máy.</td>
+<td><span class="tag p2">P2</span></td></tr>
+<tr><td><b>Ổ đĩa server hỏng hẳn</b></td><td>Mã nguồn chưa push, lịch sử chat agent</td>
+<td><b>G1.</b> Nhắc theo phiên: thư mục có commit chưa push quá 24 giờ thì hiện chấm cảnh báo.<br><b>G2.</b> Không sao lưu transcript chat ra ngoài server (có thể chứa bí mật). Chỉ giữ mã hội thoại.</td>
+<td><span class="tag p2">G1</span><br><span class="tag ok">G2</span></td></tr>
+<tr><td><b>Người khác dùng máy đang mở TERMNEST</b></td><td>Gõ lệnh vào mọi server, đọc màn hình</td>
+<td><b>H1.</b> Tự khóa sau N phút không dùng, và khi máy ngủ hoặc khóa màn hình (mặc định 30 phút, chỉnh được).<br><b>H2.</b> Ghi nhật ký thao tác nhạy cảm (đăng nhập, reboot, xóa server) trong kho mã hóa.</td>
+<td><span class="tag p2">H1</span><br><span class="tag p3">H2</span></td></tr>
+<tr><td><b>Server bị giả mạo / đổi khóa SSH</b></td><td>Lộ khóa SSH cho máy lạ</td>
+<td><b>I1.</b> Kiểm tra lại: dấu vân tay khóa server đổi thì <b>dừng kết nối</b>, hiện rõ vân tay cũ/mới, chỉ nối lại khi người dùng xác nhận.</td>
+<td><span class="tag p2">P2</span></td></tr>
+<tr><td><b>Lộ dữ liệu qua màn hình / tệp gửi</b></td><td>Token, mật khẩu hiện trên terminal</td>
+<td><b>J1.</b> Giữ nguyên: nội dung màn hình chỉ nằm trong bộ nhớ, không ghi đĩa ở máy TERMNEST. Tệp gửi qua "Gửi file" lưu thư mục tạm quyền 700 trên server, tự xóa sau 7 ngày.</td>
+<td><span class="tag p3">J1</span></td></tr>
+</tbody></table></div>
+
+<h2>3. Thứ tự đề xuất triển khai</h2>
+<div class="grid">
+  <div class="card"><h3><span class="tag p1">Đợt 1 · 1.1.11</span>Không mất việc</h3><p>A1 khôi phục hội thoại (đã có) · A2 tự khôi phục server từ xa · B1 xác nhận trước reboot · C1 cảnh báo ổ đầy · D1 bản sao xoay vòng của kho.</p></div>
+  <div class="card"><h3><span class="tag p2">Đợt 2 · 1.1.12</span>Không mất cấu hình</h3><p>E1 sao lưu/khôi phục bằng tệp · E2 tự sao lưu · F1 mã khôi phục · G1 nhắc chưa push · A3 lưu màn hình cuối.</p></div>
+  <div class="card"><h3><span class="tag p3">Đợt 3</span>Siết bảo mật</h3><p>H1 tự khóa · I1 cảnh báo đổi khóa SSH · H2 nhật ký thao tác · J1 dọn tệp tạm.</p></div>
+</div>
+
+<h2>3b. Đã làm (06/11/2026, chưa phát hành)</h2>
+<div class="grid">
+  <div class="card"><h3><span class="tag ok">xong</span>A1 · A2</h3><p>Khôi phục đúng hội thoại; tự khôi phục server khác (bật trong Cài đặt).</p></div>
+  <div class="card"><h3><span class="tag ok">xong</span>B1</h3><p>Hộp khởi động lại liệt kê agent đang chạy và việc chưa commit/push.</p></div>
+  <div class="card"><h3><span class="tag ok">đã có sẵn</span>C1 · I1</h3><p>Cảnh báo ổ đĩa theo ngưỡng (mặc định 90%); khóa SSH đổi thì dừng kết nối.</p></div>
+  <div class="card"><h3><span class="tag ok">xong</span>D1</h3><p>fsync + bản sao mã hóa (mỗi lần mở và theo chu kỳ 15 phút–24 giờ), giữ 10 bản, tự lấy bản tốt khi tệp hỏng.</p></div>
+  <div class="card"><h3><span class="tag ok">xong</span>J1</h3><p>Xem/xóa file tạm, xóa vĩnh viễn và dọn thùng rác, thời gian tự dọn trong Cài đặt.</p></div>
+  <div class="card"><h3>Còn lại</h3><p>E1 sao lưu ra tệp để chuyển máy · F1 mã khôi phục · G1 nhắc chưa push · H1 tự khóa · A3 lưu nội dung màn hình (cần bạn quyết).</p></div>
+</div>
+<h2>4. Nguyên tắc khi làm</h2>
+<ol>
+  <li>Dữ liệu nhạy cảm (khóa SSH, mã hội thoại, nội dung màn hình) <b>không ra khỏi chỗ cần dùng</b>: kho mã hóa ở máy TERMNEST, nội dung chat ở lại server.</li>
+  <li>Bản sao lưu luôn <b>mã hóa</b>. Không có bản sao nào ở dạng chữ thường.</li>
+  <li>Không xóa vĩnh viễn tự động dữ liệu của người dùng. Chỉ dọn tệp tạm do TERMNEST tạo.</li>
+  <li>Không tự chạy lệnh cần sudo, không tự reboot. Việc gì không lấy lại được thì phải hỏi xác nhận.</li>
+  <li>Mỗi mục có test riêng và được thử trên Ubuntu thật trước khi phát hành.</li>
+</ol>
+<div class="note">Các mục ghi "đã có" đã được kiểm trong mã nguồn hiện tại (vault.js, server.js). Mục I1 cần xem lại luồng kiểm vân tay hiện có trước khi làm. Chưa có mục nào trong đợt 1–3 được thử trên Ubuntu thật.</div>
+</div>
+</body>
+</html>

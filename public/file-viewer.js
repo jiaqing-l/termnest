@@ -1,7 +1,20 @@
 'use strict';
 (function(root,factory){if(typeof module==='object')module.exports=factory();else root.FileViewer=factory();})(typeof window==='object'?window:this,function(){
  let renderer;
+ // READMEs often mix HTML into Markdown (centered titles, logos, badges, <br>). Raw HTML is never rendered, so turn the common
+ // tags into Markdown and drop decorative images/badges (they could not load here anyway). Code fences are left untouched.
+ function readmeHtml(text){
+  return String(text).split(/(^```[\s\S]*?^```)/m).map((part,i)=>i%2?part:part
+   .replace(/<(?:picture|source)\b[^>]*>|<\/picture>|<img\b[^>]*>/gi,'')
+   .replace(/<br\s*\/?>/gi,'  \n')
+   .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi,(m,n,t)=>t.trim()?'\n'+'#'.repeat(+n)+' '+t.replace(/\s+/g,' ').trim()+'\n':'')
+   .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi,(m,h,t)=>t.replace(/<[^>]*>/g,'').trim()?'['+t.replace(/<[^>]*>/g,'').trim()+']('+h+')':'')
+   .replace(/<\/?(?:strong|b)>/gi,'**').replace(/<\/?(?:em|i)>/gi,'*')
+   .replace(/<\/?(?:p|div|center|span|sub|sup|small|details|summary)\b[^>]*>/gi,'\n')
+   .replace(/\n{3,}/g,'\n\n')).join('');
+ }
  function markdown(text){
+  text=readmeHtml(text);
   if(!renderer){
    const MarkdownIt=typeof require==='function'?require('markdown-it'):self.markdownit;
    renderer=new MarkdownIt({html:false,linkify:true});
@@ -67,8 +80,12 @@
   const handle=doc.createElement('div');handle.className='viewer-resize';handle.tabIndex=0;handle.setAttribute('role','separator');handle.setAttribute('aria-orientation','vertical');handle.setAttribute('aria-label',i18n('fileviewer.doi_chieu_rong_ban_xem'));
   let width=840;
   try{const saved=Number(localStorage.getItem('file-viewer-width'));if(saved>=320&&saved<=2400)width=saved;}catch{}
-  const resize=value=>{width=Math.max(320,Math.min(innerWidth,value));panel.style.width=width+'px';handle.setAttribute('aria-valuenow',Math.round(width));};
+  // Never wider than the window minus room for the sidebar and the terminal (480px): a full-width panel left its own
+  // drag handle on top of the app's controls. Small screens show the panel full width (CSS) and are not limited here.
+  const widest=()=>innerWidth<900?innerWidth:Math.max(320,innerWidth-480);
+  const resize=value=>{width=Math.max(320,Math.min(widest(),value));panel.style.width=width+'px';handle.setAttribute('aria-valuenow',Math.round(width));handle.setAttribute('aria-valuemax',Math.round(widest()));};
   resize(width);
+  if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('resize',()=>resize(width));
   const saveWidth=()=>{try{localStorage.setItem('file-viewer-width',String(width));}catch{}};
   handle.onpointerdown=e=>{handle.setPointerCapture(e.pointerId);};
   handle.onpointermove=e=>{if(handle.hasPointerCapture(e.pointerId))resize(innerWidth-e.clientX);};
@@ -84,6 +101,33 @@
   // A file shown here (or listed in the browser) can be dragged into the terminal or a tile of the wall: its path is typed there.
   const dragPath=(element,getPath,getHost)=>{element.draggable=true;element.className=(element.className?element.className+' ':'')+'viewer-drag';element.ondragstart=e=>{const p=getPath();if(!p||!e.dataTransfer){e.preventDefault();return;}const info={host:getHost(),path:p};window.__twDrag=info;e.dataTransfer.setData('application/x-termnest-path',JSON.stringify(info));e.dataTransfer.setData('text/plain',p);e.dataTransfer.effectAllowed='copy';};element.ondragend=()=>{window.__twDrag=null;};};
   const head=doc.createElement('header'),title=doc.createElement('strong'),body=doc.createElement('div');body.className='file-content';
+  // Links inside a document never move the whole app away (that left a blank window): another file opens here, with Back
+  // to this one; a "#section" scrolls; a web address opens in the browser.
+  const slug=t=>String(t).trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu,'').replace(/\s+/g,'-');
+  function jump(id){
+   let want=id;try{want=decodeURIComponent(id);}catch{/* as written */}
+   const hit=body.querySelector('[id="'+want.replace(/"/g,'')+'"]')||[...body.querySelectorAll('h1,h2,h3,h4,h5,h6')].find(h=>slug(h.textContent)===slug(want));
+   if(hit)hit.scrollIntoView({block:'start',behavior:'smooth'});
+  }
+  function resolveFrom(file,ref){
+   const win=/\\/.test(file)&&!file.startsWith('/'),sep=win?'\\':'/';
+   const parts=(ref.startsWith('/')||/^[A-Za-z]:[\\/]/.test(ref)?ref:file.split(/[\\/]/).slice(0,-1).join(sep)+sep+ref).split(/[\\/]/),out=[];
+   parts.forEach((x,i)=>{if(x==='..'){if(out.length>1)out.pop();}else if(x!=='.'&&!(x===''&&i>0))out.push(x);});
+   return out.join(sep)||sep;
+  }
+  body.addEventListener('click',e=>{
+   const a=e.target.closest&&e.target.closest('a[href]');if(!a||!body.contains(a))return;
+   const raw=a.getAttribute('href')||'';e.preventDefault();
+   if(raw.startsWith('#')){jump(raw.slice(1));return;}
+   let u;try{u=new URL(raw,window.location.href);}catch{return;}
+   if(/^(https?:|mailto:)$/.test(u.protocol)&&(u.origin!==window.location.origin||/^[a-z]+:/i.test(raw))){window.open(u.href,'_blank','noopener');return;}
+   if(!current||!location)return;
+   let ref=raw.split('#')[0].split('?')[0];try{ref=decodeURIComponent(ref);}catch{/* as written */}
+   const frag=raw.includes('#')?raw.slice(raw.indexOf('#')+1):'';
+   if(!ref){if(frag)jump(frag);return;}
+   const [host,session]=location,from=current.path;
+   open(host,session,resolveFrom(from,ref),{fromFile:from}).then(()=>{if(frag)setTimeout(()=>jump(frag),400);});
+  });
   const copy=doc.createElement('button'),download=doc.createElement('button'),close=doc.createElement('button'),reload=doc.createElement('button'),back=doc.createElement('button'),insert=doc.createElement('button');
   [copy,download,close,reload,back,insert].forEach(b=>{b.className='btn';b.type='button';});
   copy.textContent=i18n('fileviewer.sao_chep_duong_dan');download.textContent=i18n('fileviewer.tai_xuong');close.textContent=i18n('fileviewer.dong');reload.textContent=i18n('fileviewer.tai_lai');back.textContent=i18n('fileviewer.quay_lai');insert.textContent='↳ '+i18n('fileviewer.chen_duong_dan');back.hidden=true;back.className='btn viewer-back';
@@ -91,7 +135,22 @@
   headMenu.className='viewer-headmenu';headMenu.hidden=true;[copy,download,reload].forEach(b=>{b.className='btn viewer-menu-item';headMenu.append(b);});
   moreHead.onclick=e=>{e.stopPropagation();headMenu.hidden=!headMenu.hidden;};headMenu.addEventListener('click',()=>{headMenu.hidden=true;});
   doc.addEventListener('pointerdown',e=>{if(!headMenu.hidden&&!headMenu.contains(e.target)&&e.target!==moreHead)headMenu.hidden=true;},true);
-  head.append(title,back,insert,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
+  // Text size of the viewer (Markdown, text, HTML preview): A− / A+, remembered on this device.
+  let scale=1;try{const v=Number(localStorage.getItem('tw-viewer-scale'));if(v>=0.7&&v<=1.8)scale=v;}catch{/* optional */}
+  const zoom=doc.createElement('span');zoom.className='viewer-zoom';
+  const zMinus=doc.createElement('button'),zPlus=doc.createElement('button');
+  [[zMinus,'A−',-0.1,'fileviewer.chu_nho'],[zPlus,'A+',0.1,'fileviewer.chu_to']].forEach(([b,t,d,k])=>{b.type='button';b.className='btn viewer-tool';b.textContent=t;b.title=i18n(k);b.setAttribute('aria-label',i18n(k));
+   b.onclick=()=>{scale=Math.round(Math.max(0.7,Math.min(1.8,scale+d))*10)/10;applyScale();try{localStorage.setItem('tw-viewer-scale',String(scale));}catch{/* optional */}};});
+  const zoomFrame=()=>{const f=body.querySelector&&body.querySelector('iframe');if(f&&f.contentWindow)f.contentWindow.postMessage({tw:'zoom',scale},'*');};
+  const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';zoomFrame();};
+  zoom.append(zMinus,zPlus);applyScale();
+  // Full window: wide mockups and reports need the whole width, not the side panel. Remembered on this device.
+  const maxBtn=doc.createElement('button');maxBtn.type='button';maxBtn.className='btn viewer-tool viewer-max';
+  const applyMax=on=>{panel.classList.toggle('is-max',on);maxBtn.textContent=on?'⤡':'⤢';const k=on?'fileviewer.thu_lai':'fileviewer.mo_rong';maxBtn.title=i18n(k);maxBtn.setAttribute('aria-label',i18n(k));maxBtn.setAttribute('aria-pressed',String(on));};
+  let maxed=false;try{maxed=localStorage.getItem('tw-viewer-max')==='1';}catch{/* optional */}
+  maxBtn.onclick=()=>{maxed=!maxed;applyMax(maxed);try{localStorage.setItem('tw-viewer-max',maxed?'1':'0');}catch{/* optional */}};
+  insert.className+=' viewer-insert';close.className+=' viewer-close';
+  head.append(title,back,insert,maxBtn,zoom,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);if(panel.classList)applyMax(maxed);
   let generation=0,current=null,worker=null,location=null;
   const cancel=()=>{if(worker){worker.terminate();worker=null;}};
   close.onclick=()=>{generation++;cancel();panel.hidden=true;body.textContent='';current=null;};
@@ -143,20 +202,22 @@
    picker=null;insert.hidden=true;
    if(!(opts&&opts.keepGallery))gallery=null;
    // Opened from the file browser (or its search): remember where to come back to. Opened any other way: nothing to go back to.
-   if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
-   back.hidden=!backState;
-   const request=++generation;cancel();location=[host,session,path];current=null;panel.hidden=false;setTitle(path);body.textContent=i18n('fileviewer.dang_doc_tep');copy.disabled=download.disabled=reload.disabled=true;
+   if(opts&&opts.fromFile)backState={host,session,file:opts.fromFile};
+   else if(opts&&opts.fromTemp)backState={host,session,dir:opts.fromTemp.dir,temp:true};
+   else if(opts&&opts.fromBrowser&&browserState)backState=Object.assign({},browserState);else if(!(opts&&(opts.keepGallery||opts.auto)))backState=null;
+   back.hidden=!backState;back.textContent=backState&&backState.file?'← '+backState.file.split(/[\\/]/).pop():backState&&backState.temp?'← '+i18n('fileviewer.file_tam'):i18n('fileviewer.quay_lai');
+   const request=++generation;cancel();location=[host,session,path,opts&&opts.fromTemp?{fromTemp:opts.fromTemp}:undefined];current=null;panel.hidden=false;setTitle(path);body.textContent=i18n('fileviewer.dang_doc_tep');copy.disabled=download.disabled=reload.disabled=true;
    try{
-    const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path);
+    const query='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session)+'&path='+encodeURIComponent(path)+(opts&&opts.fromTemp?'&temp=1':'');
     const file=await api('GET','/api/file?'+query);if(request!==generation)return;
     // One file with that name below the session folder: it is the one meant (the path shown was relative to another folder), open it.
-    if(file.candidates&&file.candidates.length===1&&!(opts&&opts.auto)){return open(host,session,file.candidates[0],Object.assign({},opts,{auto:true}));}
+    if(file.candidates&&file.candidates.length===1&&!(opts&&(opts.auto||opts.fromTemp))){return open(host,session,file.candidates[0],Object.assign({},opts,{auto:true}));}
     if(file.candidates&&file.candidates.length){showCandidates(file,host,session,path);return;}
     if(file.error)throw Error(file.error);current=file;insert.hidden=false;setTitle(file.path);body.textContent='';copy.disabled=download.disabled=reload.disabled=false;
     if(file.kind==='image'){showImage(file,host,session);return;}
     if(file.kind==='html'){
      const note=doc.createElement('p');note.className='viewer-note';note.textContent=i18n('fileviewer.ban_html_chay_trong_khung');body.append(note);
-     const frame=htmlFrame(doc,'');frame.removeAttribute('srcdoc');frame.src='/api/file-preview?'+query;body.append(frame);
+     const frame=htmlFrame(doc,'');frame.removeAttribute('srcdoc');frame.src='/api/file-preview?'+query;frame.addEventListener('load',zoomFrame);body.append(frame);
     }else if(file.kind==='markdown'){
      const content=doc.createElement('article');content.className='document';body.append(content);
      worker=new Worker('/markdown-worker.js');
@@ -213,24 +274,78 @@
    row.append(go);body.append(row);
   }
   function size(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
-  // The trash of the session folder: what was moved there, newest first, each with Restore. Nothing here deletes for good.
+  // A button that asks before it acts: the first click shows the question with Yes / No in its place.
+  function confirmBtn(label,ask,yesLabel,act,danger){
+   const box=doc.createElement('span');box.className='viewer-confirm';
+   const btn=doc.createElement('button');btn.type='button';btn.className='btn'+(danger?' danger':'');btn.textContent=label;
+   const msg=doc.createElement('small');msg.className='viewer-err';
+   const reset=()=>{box.textContent='';box.append(btn,msg);};
+   btn.onclick=()=>{
+    box.textContent='';const q=doc.createElement('span');q.className='viewer-ask';q.textContent=ask;
+    const yes=doc.createElement('button');yes.type='button';yes.className='btn primary danger';yes.textContent=yesLabel;
+    const no=doc.createElement('button');no.type='button';no.className='btn';no.textContent=i18n('fileviewer.huy_tao');no.onclick=reset;
+    yes.onclick=async()=>{yes.disabled=no.disabled=true;try{await act();}catch(err){reset();msg.textContent=err.message;}};
+    box.append(q,yes,no);no.focus();
+   };
+   reset();return box;
+  }
+  function emptyState(icon,text,sub){const e=doc.createElement('div');e.className='viewer-empty';const i=doc.createElement('span');i.className='viewer-empty-i';i.textContent=icon;const t=doc.createElement('b');t.textContent=text;const s=doc.createElement('small');s.textContent=sub;e.append(i,t,s);return e;}
+  function listHead(title,count,bytes,extra){
+   const head=doc.createElement('div');head.className='viewer-list-head';const t=doc.createElement('b');t.textContent=title;
+   const n=doc.createElement('small');n.textContent=i18n('fileviewer.so_muc',[count,size(bytes||0)]);head.append(t,n,...extra);return head;
+  }
+  function backTo(host,session,dir){const back=doc.createElement('button');back.type='button';back.className='btn';back.textContent=i18n('fileviewer.ve_thu_muc');back.onclick=()=>showBrowser(host,session,dir);return back;}
+  // The trash of the session folder, newest first: Restore, Delete for good (item by item, asked first) and Empty trash.
   async function showTrash(host,session,dir,out0){
-   body.textContent='';
-   const back=doc.createElement('button');back.type='button';back.className='btn';back.textContent=i18n('fileviewer.ve_thu_muc');back.onclick=()=>showBrowser(host,session,dir);body.append(back);
+   setTitle(i18n('fileviewer.thung_rac'));back.hidden=true;insert.hidden=true;
+   body.textContent='';body.append(backTo(host,session,dir));
    const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
+   const again=()=>showTrash(host,session,dir,out0),q='server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session);
    try{
-    const r=await api('GET','/api/features/browse/trash?server='+encodeURIComponent(host)+'&session='+encodeURIComponent(session));
+    const r=await api('GET','/api/features/browse/trash?'+q);
     wait.remove();
-    const list=doc.createElement('div');list.className='viewer-browser';
+    const empty=r.items.length?[confirmBtn('🧹 '+i18n('fileviewer.don_thung_rac'),i18n('fileviewer.don_thung_rac_hoi',[r.count||r.items.length]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/empty',{server:host,session});await again();},true)]:[];
+    body.append(listHead(i18n('fileviewer.thung_rac'),r.count||r.items.length,r.bytes,empty));
+    const list=doc.createElement('div');list.className='viewer-browser viewer-list';
     r.items.forEach(it=>{
      const row=doc.createElement('div');row.className='viewer-row';const info=doc.createElement('div');info.className='viewer-trash-info';
-     const name=doc.createElement('b');name.textContent=(it.kind==='folder'?'📁 ':'📄 ')+it.name;const where=doc.createElement('small');where.textContent=it.rel+' · '+new Date(it.at).toLocaleString();info.append(name,where);
+     const name=doc.createElement('b');name.textContent=(it.kind==='folder'?'📁 ':'📄 ')+it.name;const where=doc.createElement('small');where.textContent=it.rel+' · '+size(it.bytes||0)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,where);
      const rest=doc.createElement('button');rest.type='button';rest.className='btn primary';rest.textContent=i18n('fileviewer.khoi_phuc');const msg=doc.createElement('small');msg.className='viewer-err';
-     rest.onclick=async()=>{rest.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:it.id});await showTrash(host,session,dir,out0);}catch(err){msg.textContent=err.message;rest.disabled=false;}};
-     row.append(info,rest,msg);list.append(row);
+     rest.onclick=async()=>{rest.disabled=true;try{await api('POST','/api/features/browse/restore',{server:host,session,id:it.id});await again();}catch(err){msg.textContent=err.message;rest.disabled=false;}};
+     const purge=confirmBtn(i18n('fileviewer.xoa_vinh_vien'),i18n('fileviewer.xoa_vinh_vien_hoi',[it.name]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/purge',{server:host,session,id:it.id});await again();},true);
+     row.append(info,rest,purge,msg);list.append(row);
     });
-    if(!r.items.length){const empty=doc.createElement('p');empty.className='viewer-note';empty.textContent=i18n('fileviewer.thung_rac_trong');list.append(empty);}
-    body.append(list);const help=doc.createElement('p');help.className='viewer-note';help.textContent=i18n('fileviewer.thung_rac_ghi_chu');body.append(help);
+    if(!r.items.length)list.append(emptyState('🗑',i18n('fileviewer.thung_rac_trong'),i18n('fileviewer.thung_rac_trong_sub')));
+    body.append(list);const help=doc.createElement('p');help.className='viewer-foot';help.textContent=i18n('fileviewer.thung_rac_ghi_chu2');body.append(help);
+   }catch(e){wait.textContent=e.message;}
+  }
+  // Files "Send file" stored on this machine (its private temp folder), newest first: pick some to delete, or delete them all.
+  async function showTemp(host,session,dir){
+   generation++;cancel();location=[host,session,''];current=null;back.hidden=true;backState=null;insert.hidden=true;setTitle(i18n('fileviewer.file_tam'));copy.disabled=download.disabled=reload.disabled=true;
+   body.textContent='';body.append(backTo(host,session,dir));
+   const wait=doc.createElement('p');wait.className='viewer-note';wait.textContent=i18n('fileviewer.dang_doc_thu_muc');body.append(wait);
+   const again=()=>showTemp(host,session,dir);
+   try{
+    const r=await api('GET','/api/features/browse/temp?server='+encodeURIComponent(host));
+    wait.remove();
+    const chosen=new Set();
+    const delSel=doc.createElement('button');delSel.type='button';delSel.className='btn danger';delSel.disabled=true;
+    const label=()=>{delSel.textContent=i18n('fileviewer.xoa_da_chon',[chosen.size]);delSel.disabled=!chosen.size;};label();
+    const selMsg=doc.createElement('small');selMsg.className='viewer-err';
+    delSel.onclick=async()=>{delSel.disabled=true;try{await api('POST','/api/features/browse/temp',{server:host,names:[...chosen]});await again();}catch(err){selMsg.textContent=err.message;label();}};
+    const all=r.items.length?[delSel,confirmBtn(i18n('fileviewer.xoa_tat_ca'),i18n('fileviewer.xoa_tat_ca_tam_hoi',[r.count]),i18n('fileviewer.xoa_vinh_vien'),async()=>{await api('POST','/api/features/browse/temp',{server:host,all:true});await again();},true),selMsg]:[];
+    body.append(listHead(i18n('fileviewer.file_tam'),r.count,r.bytes,all));
+    const list=doc.createElement('div');list.className='viewer-browser viewer-list';
+    r.items.forEach(it=>{
+     const row=doc.createElement('label');row.className='viewer-row viewer-pick';const box=doc.createElement('input');box.type='checkbox';
+     box.onchange=()=>{if(box.checked)chosen.add(it.name);else chosen.delete(it.name);label();};
+     const info=doc.createElement('div');info.className='viewer-trash-info';const name=doc.createElement('button');name.type='button';name.className='viewer-link';name.textContent='📄 '+it.name;name.title=i18n('fileviewer.mo_xem');
+     name.onclick=e=>{e.preventDefault();e.stopPropagation();open(host,session,it.name,{fromTemp:{dir}});};
+     const meta=doc.createElement('small');meta.textContent=size(it.bytes)+' · '+new Date(it.at).toLocaleString(i18n('lang.locale'));info.append(name,meta);
+     row.append(box,info);list.append(row);
+    });
+    if(!r.items.length)list.append(emptyState('🗂',i18n('fileviewer.file_tam_trong'),i18n('fileviewer.file_tam_trong_sub')));
+    body.append(list);const help=doc.createElement('p');help.className='viewer-foot';help.textContent=i18n('fileviewer.file_tam_ghi_chu2');help.title=r.dir||'';body.append(help);
    }catch(e){wait.textContent=e.message;}
   }
   // In pick mode a click on a file hands it to the caller instead of opening it.
@@ -254,6 +369,7 @@
     const openForm=kind=>{form.dataset.kind=kind;form.hidden=false;nameIn.placeholder=i18n(kind==='folder'?'fileviewer.ten_thu_muc_moi':'fileviewer.ten_tep_moi');nameIn.setAttribute('aria-label',nameIn.placeholder);textIn.hidden=kind!=='file';nameIn.value='';textIn.value='';msg.textContent='';go.disabled=false;nameIn.focus();};
     [['📁 '+i18n('fileviewer.thu_muc_moi_ngan'),'folder'],['📄 '+i18n('fileviewer.tep_moi_ngan'),'file']].forEach(([label,kind])=>{const b=doc.createElement('button');b.type='button';b.className='btn viewer-tool';b.title=kind==='folder'?i18n('fileviewer.thu_muc_moi'):i18n('fileviewer.tep_moi');b.textContent=label;b.onclick=()=>openForm(kind);actions.append(b);});
     const trashBtn=doc.createElement('button');trashBtn.type='button';trashBtn.className='btn viewer-tool';trashBtn.title=i18n('fileviewer.thung_rac');trashBtn.textContent='🗑 '+i18n('fileviewer.thung_rac_ngan');trashBtn.onclick=()=>showTrash(host,session,out.path,out);actions.append(trashBtn);
+    const tempBtn=doc.createElement('button');tempBtn.type='button';tempBtn.className='btn viewer-tool';tempBtn.title=i18n('fileviewer.file_tam_tieu_de');tempBtn.textContent='🗂 '+i18n('fileviewer.file_tam');tempBtn.onclick=()=>showTemp(host,session,out.path);actions.append(tempBtn);
     cancelBtn.onclick=()=>{form.hidden=true;};
     form.onsubmit=async e=>{
      e.preventDefault();const kind=form.dataset.kind,name=nameIn.value.trim();if(!name)return;
@@ -364,7 +480,7 @@
   });
   reload.onclick=()=>{if(location)open(...location);};
   insert.onclick=()=>{if(current&&location)insertPath(location[0],current.path);};
-  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;showBrowser(b.host,b.session,b.dir,b.query);};
+  back.onclick=()=>{if(!backState)return;const b=backState;generation++;cancel();location=[b.host,b.session,''];current=null;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;if(b.file){open(b.host,b.session,b.file);return;}if(b.temp){showTemp(b.host,b.session,b.dir);return;}showBrowser(b.host,b.session,b.dir,b.query);};
   // Open the viewer straight on the session's folder, without needing a path link in the terminal (phones have no easy link tap).
  function browse(host,session){picker=null;insert.hidden=true;generation++;cancel();location=[host,session,''];current=null;panel.hidden=false;setTitle(i18n('fileviewer.thu_muc_cua_phien'));copy.disabled=download.disabled=reload.disabled=true;return showBrowser(host,session,'');}
  function pick(host,session,cb){browse(host,session);picker=cb;return showBrowser(host,session,'');}

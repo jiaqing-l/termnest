@@ -13,21 +13,44 @@ function dataDir(platform = process.platform, env = process.env, home = os.homed
   if (!parent) return path.join(home, '.tmux-web');
   const target = path.join(parent, 'Termnest');
   const legacy = path.join(parent, 'Tmux Dev');
-  if (io.existsSync(target) || !io.existsSync(legacy)) return target;
+  // lstat also sees a dangling link: never migrate over any existing entry.
+  const targetExists = () => {
+    try { io.lstatSync(target); return true; }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  };
+  if (targetExists() || !io.existsSync(legacy)) return target;
+  const lock = path.join(parent, '.termnest-migration.lock');
+  let locked = false, staging;
   try {
-    io.renameSync(legacy, target);
-  } catch (moveError) {
-    // Publish a complete copy atomically. A failed copy must never look like a
-    // new installation on the next launch; keep the original as a backup.
-    let staging;
+    // Serialize cooperating Termnest launchers through publication. Unrelated
+    // software must leave DATA paths unchanged during migration; this lock and
+    // the target rechecks do not provide kernel no-replace against such writers.
+    // Never steal a lock on age alone;
+    // after an interrupted migration it needs inspection before a manual retry.
+    io.mkdirSync(lock, { mode: 0o700 });
+    locked = true;
+    if (targetExists()) return target;
     try {
+      io.renameSync(legacy, target);
+    } catch (moveError) {
+      if (targetExists()) throw moveError;
+      // Copy into a NEW child, not mkdtemp's existing root: cp's no-overwrite
+      // option applies to directories too. Keep the original as a backup.
       staging = io.mkdtempSync(path.join(parent, '.termnest-migration-'));
-      io.cpSync(legacy, staging, { recursive: true, preserveTimestamps: true, errorOnExist: true, force: false });
-      io.renameSync(staging, target);
-    } catch (copyError) {
-      throw new Error('Could not migrate Tmux Dev data to Termnest. Original data is unchanged; retry after checking permissions and free space.', { cause: copyError });
+      const copy = path.join(staging, 'data');
+      io.cpSync(legacy, copy, { recursive: true, preserveTimestamps: true, errorOnExist: true, force: false });
+      // rename can replace an empty directory on POSIX. The lock fences other
+      // launchers; reject an independently created entry observed during copy.
+      if (targetExists()) throw new Error('Termnest data appeared during migration');
+      io.renameSync(copy, target);
+    }
+  } catch (error) {
+    throw new Error('Could not migrate Tmux Dev data to Termnest. Original data is unchanged; check for an active or interrupted migration, permissions and free space before retrying.', { cause: error });
+  } finally {
+    try {
+      if (staging) io.rmSync(staging, { recursive: true, force: true });
     } finally {
-      if (staging && io.existsSync(staging)) io.rmSync(staging, { recursive: true, force: true });
+      if (locked) io.rmdirSync(lock);
     }
   }
   return target;

@@ -46,7 +46,11 @@ window.TokenUI = function (hooks) {
   }
   function render() {
     filters.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.period===period));
-    const rows=accounts.filter(a=>(filter==='all'||a.tool===filter)&&(hooks.scope()==='all'||(a.hostIds || [a.hostId]).includes(hooks.scope())));
+    const scoped=accounts.filter(a=>(filter==='all'||a.tool===filter)&&(hooks.scope()==='all'||(a.hostIds || [a.hostId]).includes(hooks.scope())));
+    // A profile folder that exists but was never signed in or used (e.g. the default ~/.claude on a machine where another
+    // profile is used) has nothing to show: list it on one line instead of a card that reads "could not read email".
+    const emptyProfile=a=>!a.email&&!a.nickname&&!(a.today>0)&&!(a.sessions&&a.sessions.length);
+    const rows=scoped.filter(a=>!emptyProfile(a)), empties=scoped.filter(emptyProfile);
     const visibleHosts=hosts.filter(h=>(hooks.scope()==='all'||h.hostId===hooks.scope())&&(!completeView||!accounts.length));
     const actions=accounts.filter(a=>!a.hasGoodQuota&&(a.limits.error||a.limits.reason));
     const visibleError=(!accounts.length||actions.length)?scanError:null;
@@ -73,6 +77,7 @@ window.TokenUI = function (hooks) {
       hosts.filter(h=>h.state==='reading').forEach(h=>cards.append(node('p','token-help',i18n('tokenui.dang_doc_2', [h.hostName]))));
       chart.textContent='';sessions.textContent='';hooks.updated();return;
     }
+    if(empties.length){const e=node('p','token-help token-empty-profiles',i18n('tokenui.ho_so_trong',[empties.length,empties.map(a=>(a.tool==='codex'?'Codex':'Claude')+' · '+a.hostName).join(', ')]));e.title=i18n('tokenui.ho_so_trong_goi_y');cards.append(e);}
     rows.forEach(a=>{
       const c=node('article','token-account'), h=node('div','token-account-head'), identity=node('div','token-identity');
       c.dataset.tool=a.tool;c.title=(a.sourceWarnings || []).join('\n');identity.append(node('b','', label(a)),node('span','token-email',a.email||i18n('tokenui.khong_doc_duoc_email')));const source=node('small','token-sources',(a.plan?i18n('tokenui.goi', [a.plan]):'')+a.hostName);source.title=a.hostName;identity.append(source);
@@ -87,16 +92,27 @@ window.TokenUI = function (hooks) {
       // Every card says when this refresh ran; the quota's own time is shown only when it is older, with the reason.
       // Claude's quota is asked at most once per 5 minutes, and Codex only records it while a session runs.
       const clock=t=>new Date(t).toLocaleTimeString(i18n('lang.locale'),{hour:'2-digit',minute:'2-digit',hour12:false});
-      if(updatedAt!=null)c.append(node('p','token-help',i18n('tokenui.da_kiem_tra_luc', [clock(updatedAt)])));
-      if(a.limits.observedAt&&(updatedAt==null||updatedAt-a.limits.observedAt>120000))c.append(node('p','token-help',i18n('tokenui.quota_ghi_nhan_luc', [clock(a.limits.observedAt), (a.tool==='codex'?i18n('tokenui.codex_chi_ghi_quota_khi'):i18n('tokenui.quota_claude_chi_hoi_lai'))])));
+      // One quiet line per card: when it was checked, with the technical notes (when quota was recorded and why) behind ⓘ.
+      if(updatedAt!=null){
+        const line=node('p','token-help token-checked',i18n('tokenui.da_kiem_tra_luc', [clock(updatedAt)]));
+        if(a.limits.observedAt&&(updatedAt==null||updatedAt-a.limits.observedAt>120000)){
+          const more=i18n('tokenui.quota_ghi_nhan_luc', [clock(a.limits.observedAt), (a.tool==='codex'?i18n('tokenui.codex_chi_ghi_quota_khi'):i18n('tokenui.quota_claude_chi_hoi_lai'))]);
+          const info=node('button','token-info','ⓘ');info.type='button';info.title=more;info.setAttribute('aria-label',more);
+          const tip=node('span','token-tip',more);tip.hidden=true;info.onclick=()=>{tip.hidden=!tip.hidden;};line.append(' ',info,tip);
+        }
+        c.append(line);
+      }
       if(a.threshold&&a.today>=a.threshold){c.classList.add('token-hot');c.append(node('small','',i18n('tokenui.da_vuot_nguong_hom_nay')));}
       cards.append(c);
     });
     mini.textContent='';
     const readable=accounts.filter(a=>a.hasGoodQuota||a.today!=null||a.limits.session||a.limits.weekly);
     rows.filter(a=>readable.includes(a)).forEach(a=>{
-      const w=a.limits.session || a.limits.weekly,chip=node('span','token-mini-item');
-      chip.textContent=(label(a))+' '+(w?Math.round(w.percent)+'%':'—');mini.append(chip);
+      // A short chip: a dot coloured by how much is used, the account's short name and the percentage (full label on hover).
+      const w=a.limits.session || a.limits.weekly,chip=node('span','token-mini-item'),pct=w?Math.round(w.percent):null;
+      const short=(a.nickname||'').trim()||String(a.email||'').split('@')[0]||label(a);
+      chip.dataset.level=pct==null?'none':pct>=95?'hot':pct>=80?'warm':'ok';chip.title=label(a);
+      chip.append(node('i','token-dot'),node('b','',(a.tool==='codex'?'Codex · ':'')+short),node('span','',pct==null?'—':pct+'%'));mini.append(chip);
     });
     visibleHosts.forEach(h=>cards.append(node('div','token-host-unavailable',h.hostName+(h.state==='reading'?i18n('tokenui.dang_doc_3'):i18n('tokenui.chua_doc_duoc', [h.reason.replace(/^Không đọc được: /,'')])))));
     const reasons=accounts.map(a=>(a.tool==='claude'?'Claude':'Codex')+' · '+(a.email||a.hostName||'')+' · '+[a.reason,a.limits.reason,...(a.sourceWarnings || [])].filter(Boolean).join('; ')).join('\n')||readError;
@@ -132,29 +148,53 @@ window.TokenUI = function (hooks) {
     catch(e){if(current!==generation)return;scanning=false;scanError=e.message;readError=e.message;render();}
     finally{busy=false;}
   }
+  // AI accounts: one summary line per account (AI · machine · folder · name) with Edit and Remove; only the row being edited
+  // shows its fields. "Add account" sits in the header. Same data as before: each row reads back {id,hostId,tool,directory,nickname,threshold}.
   function editAccounts(selected) {
     if(selected&&typeof selected.id!=='string')selected=null;   // an event or anything that is not an account means "add", not "rename"
-    const dlg=node('dialog','token-config'),form=node('form','f');form.append(node('h2','',selected?i18n('tokenui.doi_ten_tai_khoan'):i18n('tokenui.thu_muc_tai_khoan_ai')));
+    const dlg=node('dialog','token-config'),form=node('form','f acc-form');
+    const head=node('div','dlg-h acc-head'),title=node('h2','',selected?i18n('tokenui.doi_ten_tai_khoan'):i18n('tokenui.tai_khoan_ai'));head.append(title);
     const existing=(hooks.prefs().aiAccounts||[]).map(a=>({...a}));
     if(selected&&!existing.some(a=>a.id===selected.id)) existing.push({id:selected.id,hostId:selected.hostId,tool:selected.tool,directory:selected.directory || '~/.'+selected.tool,nickname:selected.nickname||'',threshold:selected.threshold});
-    const list=node('div','token-config-list');let configs=selected?existing.filter(a=>a.id===selected.id):existing;
-    function add(a) {
-      const row=node('fieldset');const values={};
-      const fields=[['hostId',i18n('tokenui.may'),hooks.servers().map(v=>[v.id,v.name])],['tool','AI',[['claude','Claude'],['codex','Codex']]],['directory',i18n('tokenui.thu_muc_cau_hinh')],['nickname',i18n('tokenui.ten_goi_nho')],['threshold',i18n('tokenui.nguong_token_ngay')]];
-      fields.forEach(([key,label,options])=>{const l=node('label','',label),input=node(options?'select':'input');if(options)options.forEach(([value,text])=>{const o=node('option','',text);o.value=value;input.append(o);});input.value=a[key]??'';if(key==='threshold'){input.type='number';input.min='1';input.step='1';}if(key==='nickname')input.maxLength=40;if(key==='directory')input.placeholder='~/.claude-work';l.append(input);row.append(l);values[key]=input;});
+    const list=node('div','acc-list');let configs=selected?existing.filter(a=>a.id===selected.id):existing;
+    const empty=node('p','acc-empty',i18n('tokenui.chua_co_tai_khoan'));
+    const hostName=id=>(hooks.servers().find(v=>v.id===id)||{}).name||id||'';
+    const refreshEmpty=()=>{empty.hidden=!!list.children.length;};
+    function add(a,open) {
+      const row=node('div','acc');const values={};
+      const sum=node('div','acc-sum'),badge=node('span','acc-tool'),text=node('div','acc-text'),main=node('b'),sub=node('small');text.append(main,sub);
+      const edit=node('button','btn sm',i18n('tokenui.sua'));edit.type='button';
+      const remove=node('button','btn sm danger',i18n('app.go'));remove.type='button';remove.onclick=()=>{row.remove();refreshEmpty();};
+      sum.append(badge,text,edit,remove);
+      const fields=node('div','acc-fields');
+      const spec=[['tool','AI',[['claude','Claude'],['codex','Codex']]],['hostId',i18n('tokenui.may'),hooks.servers().map(v=>[v.id,v.name])],['directory',i18n('tokenui.thu_muc_cau_hinh')],['nickname',i18n('tokenui.ten_goi_nho')],['threshold',i18n('tokenui.nguong_token_ngay')]];
+      spec.forEach(([key,label,options])=>{const l=node('label','acc-f accf-'+key),cap=node('span','',label),input=node(options?'select':'input');if(options)options.forEach(([value,txt])=>{const o=node('option','',txt);o.value=value;input.append(o);});input.value=a[key]??'';if(key==='threshold'){input.type='number';input.min='1';input.step='1';input.placeholder=i18n('tokenui.khong_gioi_han');}if(key==='nickname'){input.maxLength=40;input.placeholder=i18n('tokenui.vi_du_cong_viec');}if(key==='directory')input.placeholder='~/.claude-work';l.append(cap,input);fields.append(l);values[key]=input;});
       // Same folder browser as "Phiên mới", opened on the machine picked in this row; a path can still be typed.
       const known=(selected&&selected.dirs)||{},dirInput=values.directory,browse=node('button','btn',i18n('tokenui.chon'));browse.type='button';
       const wrap=node('div','dir-input');dirInput.parentNode.insertBefore(wrap,dirInput);wrap.append(dirInput,browse);
-      browse.onclick=()=>hooks.browse(values.hostId.value,dirInput.value.startsWith('/')?dirInput.value:'',p=>{dirInput.value=p;});
+      browse.onclick=()=>hooks.browse(values.hostId.value,dirInput.value.startsWith('/')?dirInput.value:'',p=>{dirInput.value=p;paint();});
       // The same account can live in a different folder on each machine: switching machine shows that machine's folder.
-      values.hostId.onchange=()=>{dirInput.value=known[values.hostId.value]||'';};
-      values.tool.onchange=()=>{if(!known[values.hostId.value])dirInput.value='';};
-      const remove=node('button','btn',i18n('app.go'));remove.type='button';remove.onclick=()=>row.remove();row.append(remove);row.read=()=>({id:a.id,...Object.fromEntries(Object.entries(values).map(([k,v])=>[k,k==='threshold'?(v.value?Number(v.value):null):v.value]))});list.append(row);
+      values.hostId.onchange=()=>{dirInput.value=known[values.hostId.value]||'';paint();};
+      values.tool.onchange=()=>{if(!known[values.hostId.value])dirInput.value='';paint();};
+      const paint=()=>{const tool=values.tool.value;badge.textContent=tool==='codex'?'Codex':'Claude';badge.className='acc-tool '+tool;
+        main.textContent=values.nickname.value.trim()||(dirInput.value.trim()||'~/.'+tool);
+        sub.textContent=[hostName(values.hostId.value),values.nickname.value.trim()?(dirInput.value.trim()||'~/.'+tool):'',values.threshold.value?i18n('tokenui.nguong_ngan',[values.threshold.value]):''].filter(Boolean).join(' · ');};
+      ['input','change'].forEach(ev=>fields.addEventListener(ev,paint));
+      const setOpen=on=>{row.classList.toggle('open',on);fields.hidden=!on;edit.textContent=on?i18n('tokenui.xong'):i18n('tokenui.sua');};
+      edit.onclick=()=>setOpen(fields.hidden);
+      row.append(sum,fields);paint();setOpen(!!open);
+      row.read=()=>({id:a.id,...Object.fromEntries(Object.entries(values).map(([k,v])=>[k,k==='threshold'?(v.value?Number(v.value):null):v.value]))});
+      list.append(row);refreshEmpty();
+      if(open)setTimeout(()=>values.nickname.focus(),0);
     }
-    configs.forEach(add);form.append(list);
-    if(!selected){const addButton=node('button','btn',i18n('tokenui.them_thu_muc'));addButton.type='button';addButton.onclick=()=>add({id:'ai_'+crypto.randomUUID(),hostId:hooks.servers()[0]?.id,tool:'claude',directory:'~/.claude',nickname:'',threshold:null});form.append(addButton);}
-    const error=node('p','err'),actions=node('div','dlg-actions'),cancel=node('button','btn',i18n('tokenui.huy')),save=node('button','btn primary',i18n('tokenui.luu'));cancel.type='button';cancel.onclick=()=>dlg.close();actions.append(cancel,save);form.append(node('p','token-help',i18n('tokenui.doc_tren_may_da_chon')),error,actions);dlg.append(form);document.body.append(dlg);dlg.onclose=()=>dlg.remove();
-    form.onsubmit=async e=>{e.preventDefault();save.disabled=true;try{const rows=[...list.children].map(r=>r.read());await hooks.save({aiAccounts:selected?existing.filter(a=>a.id!==selected.id).concat(rows):rows});dlg.close();await poll(true);}catch(e){error.textContent=e.message;}finally{save.disabled=false;}};dlg.showModal();
+    if(!selected){const addButton=node('button','btn primary sm','+ '+i18n('tokenui.them_tai_khoan'));addButton.type='button';addButton.onclick=()=>{add({id:'ai_'+crypto.randomUUID(),hostId:hooks.servers()[0]?.id,tool:'claude',directory:'~/.claude',nickname:'',threshold:null},true);list.lastChild.scrollIntoView({block:'nearest'});};head.append(addButton);}
+    const close=node('button','btn',i18n('fileviewer.dong'));close.type='button';close.onclick=()=>dlg.close();head.append(close);
+    const body=node('div','acc-body');
+    configs.forEach(a=>add(a,!!selected));body.append(list,empty,node('p','token-help',i18n('tokenui.doc_tren_may_da_chon')));
+    const error=node('p','err'),actions=node('div','dlg-actions acc-actions'),cancel=node('button','btn',i18n('tokenui.huy')),save=node('button','btn primary',i18n('tokenui.luu'));cancel.type='button';cancel.onclick=()=>dlg.close();actions.append(error,cancel,save);
+    form.append(head,body,actions);refreshEmpty();
+    form.onsubmit=async e=>{e.preventDefault();save.disabled=true;try{const rows=[...list.children].map(r=>r.read());await hooks.save({aiAccounts:selected?existing.filter(a=>a.id!==selected.id).concat(rows):rows});dlg.close();await poll(true);}catch(e){error.textContent=e.message;}finally{save.disabled=false;}};
+    dlg.append(form);document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.showModal();
   }
   function session(host,name) {
     const rows=accounts.filter(a=>(a.hostIds || [a.hostId]).includes(host)).flatMap(a=>a.sessions.filter(s=>(s.hostId || a.hostId)===host&&s.tmuxName===name).map(s=>({a,s})));
