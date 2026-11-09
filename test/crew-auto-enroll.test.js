@@ -125,3 +125,25 @@ test('a parsed poll keeps the tmux session id that a live leader identity needs'
   Object.assign(s, { aiPid: 19763, aiStatus: { startedAt: 1794157576179, cfg: '.claude-tech2' } });
   assert.equal(validIdentity(liveIdentity({ snapshot: { bootId: 'darwin:1' } }, s)), true);
 });
+
+test('boot ids: a platform prefix is ignored for leader identity, and the macOS format change is not a reboot', () => {
+  const { liveIdentity } = require('../lib/supervision-state');
+  const { syncKnown } = require('../lib/parse');
+  const s = { id: '$6', created: 5, paneIds: ['%6'], aiPid: 9, aiStatus: { startedAt: 1, cfg: '.claude' } };
+  assert.equal(liveIdentity({ snapshot: { bootId: 'darwin:AB34EF13-F8D2-4483-B8A3-520D1E5353EF' } }, s).bootId, 'AB34EF13-F8D2-4483-B8A3-520D1E5353EF');
+  assert.equal(liveIdentity({ snapshot: { bootId: 'linux:abc' } }, s).bootId, 'abc');
+  const known = { bootId: 'darwin:1793880616', sessions: { gone: { dir: '/w', run: 'claude' } }, lost: [] };
+  assert.deepEqual(syncKnown(known, 'darwin:AB34EF13-F8D2-4483-B8A3-520D1E5353EF', []).record.lost || [], []);
+  assert.deepEqual(syncKnown(known, 'darwin:1793889999', []).record.lost, ['gone'], 'a real reboot still marks sessions lost');
+});
+
+test('Operations: a dormant blocked team does not become a "needs you" row; a recent one does', () => {
+  const { opsSessionRows } = require('../public/features/ops.js');
+  const now = Date.now();
+  const team = (id, dormant) => ({ id, session: '', root: '/ws', status: 'blocked', reason: { code: 'task_blocked' }, requiresOwner: true, taskIds: [id], dormant });
+  const board = { servers: [{ id: 'm', name: 'M', online: true, sessions: [], findings: [] }] };
+  const supervision = { enabled: true, servers: [{ id: 'm', online: true, observedAt: now, freshness: { snapshotFresh: true, taskEvidenceFresh: true, maxAgeMs: 60000 },
+    teams: [team('old', true), team('new', false)], audits: [] }] };
+  const owners = opsSessionRows(board, supervision).filter(r => r.f.rule === 'owner').map(r => r.f.key);
+  assert.deepEqual(owners, ['super/m/new']);
+});

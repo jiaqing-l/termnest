@@ -45,7 +45,8 @@ function opsSessionRows(board, supervision) {
         add({ key: 'super/' + srv.id + '/' + key, rule: 'owner', session: ownerSession, ownerKind: kind, reason: item.reason || { code: item.code }, severity: 'urgent', settings: !ownerSession });
       }
       if (host) {
-        (host.teams || []).forEach(function (t) { owner(t, t.id); });
+        // Dormant work (nobody leads it, untouched for days) is listed once as dormant, never as needing you.
+        (host.teams || []).forEach(function (t) { if (!t.dormant) owner(t, t.id); });
         (host.audits || []).forEach(function (a) { owner(a, a.runId || a.root || 'audit', true); });
       }
     }
@@ -239,7 +240,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
   // Open tasks without a leader: recent ones can be bound in one click; dormant ones collapse into one line.
   function unboundBlock(server) {
-    var box = el('div', 'ops-crew-unbound'), un = list(server.teams).filter(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; });
+    // A task already held by a discovered leader is that leader's, even before its identity is verified.
+    var held = [].concat.apply([], list(server.discovered).map(function (d) { return ids(d.taskIds); }));
+    var box = el('div', 'ops-crew-unbound'), un = list(server.teams).filter(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed' && !ids(t.taskIds).every(function (id) { return held.indexOf(id) >= 0; }); });
     var active = un.filter(function (t) { return !t.dormant; }), dormant = un.filter(function (t) { return t.dormant; });
     var count = function (g) { return g.reduce(function (n, t) { return n + ids(t.taskIds).length; }, 0); };
     if (active.length) {
