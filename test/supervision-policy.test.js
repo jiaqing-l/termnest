@@ -516,6 +516,8 @@ test('readiness probes have bounded concurrency across many saved scopes and dis
 test('a failed dead audit releases host scheduling for the next uncovered team, with a new run and no replay', linux, async t => {
   const f = fixture(t); f.vault.crewpack.autoRecovery = false;
   const task = path.join(f.root, '_crew/tasks/another'); fs.mkdirSync(task); fs.writeFileSync(path.join(task, 'MANIFEST.md'), '---\nstatus: executing\nblocked: null\ntracks: [{ id: W1, state: pending }]\n---');
+  // Recent on the fixture clock: an untouched-for-days task would be dormant and never audited.
+  fs.utimesSync(path.join(task, 'MANIFEST.md'), 1800000000, 1800000000);
   fs.appendFileSync(path.join(f.root, '_crew/nudge.conf'), '%8 another\n');
   f.r.snapshot.sessions.push({ ...clone(f.s), name: 'second', id: '$2', paneIds: ['%8'], aiPid: 702 });
   await f.tick(); await f.tick(); const first = clone(f.supervisor.host('vm').active), count = f.sent.length;
