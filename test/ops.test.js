@@ -17,6 +17,9 @@ test('working / waiting / done come only from the status the agent writes, timed
   assert.deepEqual(rules(run([claude('busy', 90, { activityAge: 9000 })])), []);
   assert.deepEqual(run([claude('waiting', 4, { st: { waitingFor: 'permission' } })]).map((f) => [f.rule, f.source, f.params[0]]), [['asking', 'status', 'permission']]);
   assert.deepEqual(run([claude('idle', 2)]).map((f) => [f.rule, f.source]), [['finished', 'status']]);
+  // Opened and never given work: not "finished", and never nudged to continue however long it sits there.
+  assert.deepEqual(rules(run([claude('idle', 2, { st: { fresh: true } })])), []);
+  assert.deepEqual(rules(run([claude('idle', 500, { st: { fresh: true } })])), []);
   const d = run([claude('idle', 50)]);
   assert.deepEqual(d.map((f) => [f.rule, f.params[0], f.template]), [['dormant', 50, 'continue']]);
   assert.ok(d[0].since >= 50 * 60);

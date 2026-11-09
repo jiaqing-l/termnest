@@ -49,7 +49,7 @@
   function petFor(v, s) { var choice = (prefs.pets || {})[v.id + '/' + s.name]; return choice && PETS[choice.kind] ? choice.kind : petOf(s.name); }
   function color(s) { return PETS[petOf(s.name)].c; }
   function srv(id) { return servers.filter(function (v) { return v.id === id; })[0]; }
-  function subOf(s) { return s.state === 'wait' ? i18n('app.cho_ban') : s.state === 'idle' ? i18n('app.dang_nghi') : i18n('app.dang_chay_2', [s.cmd]); }
+  function subOf(s) { return s.statusUnknown ? i18n('app.chua_doc_trang_thai') : s.state === 'wait' ? i18n('app.cho_ban') : s.state === 'idle' ? i18n('app.dang_nghi') : i18n('app.dang_chay_2', [s.cmd]); }
   function ago(sec) {
     if (sec < 60) return i18n('app.vua_xong');
     if (sec < 3600) return i18n('app.phut_truoc', [Math.floor(sec / 60)]);
@@ -838,7 +838,7 @@
   function alerts() {
     var out = [];
     servers.forEach(function (v) {
-      v.sessions.forEach(function (s) { if (s.state === 'wait' && wantAlert(waitCat(s))) out.push({ id: 'wait|' + v.id + '|' + s.name + '|' + (s.stateSince || 0), title: s.asking ? i18n('app.dang_cho_ban', [s.name]) : i18n('alerts.quiet_title', [s.name]), text: v.name + ' · ' + question(s), go: function () { openSession(v.id, s.name); } }); });
+      v.sessions.forEach(function (s) { if (s.state === 'wait' && s.stateSource === 'status' && wantAlert(waitCat(s)) && (s.asking || !/^tn-ops(?:-audit)?(?:-|$)/.test(s.name))) out.push({ at: stateAt(s) || s.stateSince || 0, id: 'wait|' + v.id + '|' + s.name + '|' + (s.stateSince || 0), title: s.asking ? i18n('app.dang_cho_ban', [s.name]) : i18n('alerts.quiet_title', [s.name]), text: v.name + ' · ' + question(s), go: function () { openSession(v.id, s.name); } }); });
       problems(v).forEach(function (p) { if (wantAlert(v.on ? 'load' : 'offline')) out.push({ id: 'prob|' + v.id + '|' + p, title: v.name + ': ' + p, text: (v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.user + '@' + v.host), go: function () { openDetail(v.id); } }); });
       if ((v.lost || []).length && wantAlert('restart')) out.push({ id: 'lost|' + v.id + '|' + v.lost.join(','), title: i18n('app.vua_khoi_dong_lai', [v.name]), text: i18n('app.phien_co_the_khoi_phuc', [v.lost.length]), go: function () { setScope(v.id); setView('over'); } });
       ((v.sys && v.sys.failed) || []).forEach(function (f) { if (wantAlert('service')) out.push({ id: 'svc|' + v.id + '|' + f, title: i18n('app.dich_vu_loi_2', [v.name]), text: f, go: function () { openDetail(v.id); } }); });
@@ -859,12 +859,18 @@
     $('al-read').disabled = !fresh.length;
     if (!list.length) box.append(el('p', 'hint', i18n('app.khong_co_canh_bao_nao')));
     else if (!fresh.length) box.append(el('p', 'hint', i18n('app.da_doc_het_canh_bao')));
-    // unread first; read ones stay below, dimmed, until the problem itself is gone
-    fresh.concat(list.filter(function (a) { return readAlerts[a.id]; })).forEach(function (a) {
+    // Unread first; read ones stay below, dimmed, until the problem itself is gone. Read ones older than 3 hours fold
+    // away: a fleet of idle sessions would otherwise fill the list with yesterday's "finished".
+    var read = list.filter(function (a) { return readAlerts[a.id]; }), cut = Date.now() - 3 * 3600000;
+    var old = read.filter(function (a) { return a.at && a.at < cut; }), fold = null;
+    if (old.length) { fold = el('details', 'al-old'); fold.append(el('summary', '', i18n('alerts.older_read', [old.length]))); }
+    fresh.concat(read.filter(function (a) { return old.indexOf(a) < 0; }), old).forEach(function (a) {
       var b = el('button', 'al' + (readAlerts[a.id] ? ' read' : '')), text = el('div'), dot = el('i'); dot.style.setProperty('--c', 'var(--wait)');
       text.append(el('b', '', a.title), el('span', '', a.text + (readAlerts[a.id] ? i18n('app.da_doc') : ''))); b.append(dot, text);
-      b.onclick = function () { readAlerts[a.id] = 1; saveRead(); renderBell(); $('dlg-alerts').close(); a.go(); }; box.append(b);
+      b.onclick = function () { readAlerts[a.id] = 1; saveRead(); renderBell(); $('dlg-alerts').close(); a.go(); };
+      (fold && old.indexOf(a) >= 0 ? fold : box).append(b);
     });
+    if (fold) box.append(fold);
   }
   function renderBell() {
     var count = unread(alerts()).length, wait = 0; servers.forEach(function (v) { wait += v.sessions.filter(function (s) { return s.state === 'wait'; }).length; });
@@ -935,6 +941,11 @@
       var key = v.id + '/' + s.name + '/' + s.created; live.add(key); next[key] = s.state;
       if (!v.on) return;
       if (s.state !== 'wait') { waitCalls.delete(key); deliveries.delete(key); return; }
+      // Only the agent's own status (its session file / rollout event) may announce "done" or "asking". A state guessed
+      // from the screen never notifies.
+      if (s.stateSource !== 'status') return;
+      // Termnest's own Ops sessions finish turns all day: only a question from them is worth a notification.
+      if (!s.asking && /^tn-ops(?:-audit)?(?:-|$)/.test(s.name)) return;
       if (waitStates && waitStates[key] && waitStates[key] !== 'wait' && wantAlert(waitCat(s))) meow();
       var since = s.stateSince;
       // A question is reported after a few seconds; a session that finished after 30 quiet seconds (it may only be pausing).
@@ -1460,13 +1471,17 @@
   }
   function startPolling() { stopPolling(); pollTimer = setInterval(function(){refresh();}, 2500); tokenTimer = setInterval(function(){tokens.poll();}, 5000); }
   function stopPolling() { clearInterval(pollTimer); clearInterval(tokenTimer); pollTimer = null; tokenTimer = null; }
+  // The desktop app passes a one-time setup token in the first URL. Keep it for this tab until the password exists,
+  // so a reload of the window does not leave a fresh install with no way to create one.
   var setupToken = new URLSearchParams(location.hash.slice(1)).get('setup');
-  if (setupToken) history.replaceState(null, '', location.pathname + location.search);
+  try { if (setupToken) sessionStorage.setItem('tw-setup', setupToken); else setupToken = sessionStorage.getItem('tw-setup'); } catch (e) { /* optional */ }
+  if (location.hash.indexOf('setup=') >= 0) history.replaceState(null, '', location.pathname + location.search);
+  function setupDone() { try { sessionStorage.removeItem('tw-setup'); } catch (e) { /* optional */ } }
   $('form-setup').onsubmit = function (e) {
     e.preventDefault();
     if ($('setup-pass').value !== $('setup-confirm').value) { $('setup-err').textContent = i18n('app.hai_lan_nhap_khong_giong'); return; }
     api('POST', '/api/setup', { password: $('setup-pass').value, setupToken: setupToken }).then(function () {
-      setupToken = null; $('setup-pass').value = ''; $('setup-confirm').value = ''; showLogin();
+      setupToken = null; setupDone(); $('setup-pass').value = ''; $('setup-confirm').value = ''; showLogin();
     }).catch(function (err) { $('setup-err').textContent = err.message; });
   };
   // First run: start from a backup made on another computer instead of a new password.
@@ -1476,7 +1491,7 @@
     e.preventDefault(); $('setup-restore-err').textContent = '';
     var f = $('setup-restore-file').files[0]; if (!f) return;
     f.text().then(function (text) { return api('POST', '/api/setup/restore', { backup: text, password: $('setup-restore-pass').value, setupToken: setupToken }); })
-      .then(function () { setupToken = null; $('setup-restore-pass').value = ''; $('form-setup-restore').hidden = true; showLogin(); })
+      .then(function () { setupToken = null; setupDone(); $('setup-restore-pass').value = ''; $('form-setup-restore').hidden = true; showLogin(); })
       .catch(function (err) { $('setup-restore-err').textContent = err.message; });
   };
   $('set-quit').onclick = function () {
@@ -1486,7 +1501,7 @@
     stopPolling(); fileViewer.close(); tokens.clear(); closeCrew(); closeTerm(); cur = null; firstState = true; waitStates = null; document.title = 'TERMNEST';
     document.querySelectorAll('dialog[open]').forEach(function (d) { d.close(); });
     $('login').hidden = false; $('login-pass').value = '';
-    api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-restore').hidden = !(s.webSetup && setupToken); $('form-setup-restore').hidden = true; $('setup-hint').hidden = !!(s.webSetup && setupToken); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
+    api('GET', '/api/status').then(function (s) { $('login-setup').hidden = s.setup; $('form-setup').hidden = !(s.webSetup && setupToken); $('setup-restore').hidden = !(s.webSetup && setupToken); $('form-setup-restore').hidden = true; $('setup-hint').hidden = !!(s.webSetup && setupToken); $('setup-cmd').hidden = !!s.packaged; $('setup-desktop').hidden = !s.packaged; if (s.setup) setupDone(); $('set-quit').hidden = !s.packaged; $('form-login').hidden = !s.setup; if (s.setup) $('login-pass').focus(); });
   }
   (function wireSelectionButtons() {
     var m = $('mouse-mode'), c = $('copy-sel');

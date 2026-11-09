@@ -279,3 +279,30 @@ test('live track feed: commands with their result, what the worker says, edited 
   assert.equal(r.feed[0].text, 'git status --short'); assert.equal(r.feed[2].text, 'V2/Policy.cs');
   assert.ok(!r.feed[1].text.includes('abcdefghijkl')); assert.ok(r.logAt > 0);
 });
+
+test('a track exited 7 reads from the newest evidence: the leader\'s later verification beats an older BLOCKED STATUS', async () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { crewRuntime } = require('../lib/features/crewpack');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-verdict-')), dir = path.join(root, '_crew/tasks/T1');
+  const T = (n) => path.join(dir, 'tracks', n);
+  for (const n of ['W0', 'W1', 'W2', 'W3']) fs.mkdirSync(T(n), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'MANIFEST.md'), '---\nstatus: dispatched\ntracks: [{ id: W0, state: failed }, { id: W1, state: failed }, { id: W2, state: failed }, { id: W3, state: failed }]\n---\n');
+  const round = '1\t2026-11-09T10:00:00+07:00\t2026-11-09T10:30:00+07:00\t1800\t7\tx\tnew\n';
+  for (const n of ['W0', 'W1', 'W2', 'W3']) fs.writeFileSync(path.join(T(n), 'ROUNDS.tsv'), round);
+  const at = (f, iso) => { const d = new Date(iso); fs.utimesSync(f, d, d); };
+  // W0: worker said BLOCKED, the leader verified later and it passed.
+  fs.writeFileSync(path.join(T('W0'), 'STATUS.md'), '# W0\n\nBLOCKED — evidence runner\n'); at(path.join(T('W0'), 'STATUS.md'), '2026-11-09T10:31:00+07:00');
+  fs.writeFileSync(path.join(T('W0'), 'orch-verify.log'), 'Passed!  - Failed:     0, Passed:   337, Skipped: 0\nrc=0\n'); at(path.join(T('W0'), 'orch-verify.log'), '2026-11-09T11:00:00+07:00');
+  // W1: DONE, but the leader's verification found a failing test.
+  fs.writeFileSync(path.join(T('W1'), 'STATUS.md'), '# W1 — DONE\n'); at(path.join(T('W1'), 'STATUS.md'), '2026-11-09T10:31:00+07:00');
+  fs.writeFileSync(path.join(T('W1'), 'orch-verify.log'), 'Failed!  - Failed:     1, Passed:  2167\n'); at(path.join(T('W1'), 'orch-verify.log'), '2026-11-09T11:00:00+07:00');
+  // W2: DONE and nothing verified yet. W3: BLOCKED and nothing newer.
+  fs.writeFileSync(path.join(T('W2'), 'STATUS.md'), '# W2 — DONE\n');
+  fs.writeFileSync(path.join(T('W3'), 'STATUS.md'), '# W3 STATUS — BLOCKED\n');
+  const verdicts = async () => Object.fromEntries((await crewRuntime()({ cwds: [], roots: [root] })).roots[0].tasks[0].tracks.map((k) => [k.id, k.verdict]));
+  assert.deepEqual(await verdicts(), { W0: 'verified', W1: 'verify_failed', W2: 'coded', W3: 'blocked' });
+  // A passing task-level integration run after every round covers all of them.
+  fs.writeFileSync(path.join(dir, 'int-verify-final.log'), 'Passed!  - Failed:     0, Passed:  2335\nrc=0\n');
+  assert.deepEqual(await verdicts(), { W0: 'verified', W1: 'verified', W2: 'verified', W3: 'verified' });
+  fs.rmSync(root, { recursive: true, force: true });
+});

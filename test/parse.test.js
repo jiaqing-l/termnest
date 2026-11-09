@@ -923,6 +923,58 @@ test("the agent's own status file reaches the session: Claude status, parked fla
   assert.deepEqual(snap.sessions.map((s) => [s.state, s.stateSource]), [['idle', 'status'], ['run', 'status']]);
 });
 
+test('a Claude or Codex that was opened but never given work is idle, never "finished" or "waiting for you"', () => {
+  const { officialState, freshStart } = require('../lib/parse');
+  // Claude writes "idle" ~0.2 s after it starts: ready, not done. Later idle = a finished turn.
+  assert.equal(freshStart(1794199157268, 1794199157431), true);
+  assert.equal(freshStart(1794156669192, 1794199786453), false);
+  assert.equal(freshStart(0, 1794199157431), false);
+  const of = (aiStatus) => { const s = { state: 'run', asking: false, aiStatus }; officialState(s); return [s.state, s.asking]; };
+  assert.deepEqual(of({ status: 'idle', fresh: true }), ['idle', false]);
+  const lines = (extra) => parsePoll(['@@PS', '21127  1226 00:10 claude', '@@PSOK', '1', '@@AGENTIDS', ...extra,
+    '@@SESS', '$0|~|NEW|~|0|~|100|~|200|~|claude|~|/Users/me/ws', '@@DETAIL', '$0|~|1226|~|0|~|', '@@END'].join('\n'), 300).sessions[0];
+  const fresh = lines(['claudestat 21127 interactive idle 1794199157431 - 0 1794199157268 .claude new']);
+  assert.equal(fresh.aiStatus.fresh, true); assert.equal(fresh.state, 'idle'); assert.equal(fresh.asking, false);
+  const done = lines(['claudestat 21127 interactive idle 1794199786453 - 0 1794156669192 .claude old']);
+  assert.equal(done.aiStatus.fresh, undefined); assert.equal(done.state, 'wait');
+});
+
+test('Codex that closes its rollout between writes is matched to it by folder and start time', () => {
+  const cwd = '/Users/me/ws', now = 1794225869;
+  const iso = (sec) => new Date(sec * 1000).toISOString();
+  const poll = (rolls, procs = ['codexproc 777 03:00 ' + cwd], ps = '777 1300 03:00 codex') => parsePoll(['@@PS', ps, '@@PSOK', '1', '@@AGENTIDS', ...procs, 'codexnow ' + now, ...rolls,
+    '@@SESS', '$1|~|CX|~|0|~|100|~|200|~|codex|~|' + cwd, '@@DETAIL', '$1|~|1300|~|0|~|', '@@END'].join('\n'), 300).sessions[0];
+  const id = '01a1c02f-5a1e-7d61-9406-6072e8b8689b', other = '01a1bfe8-66d2-71e0-8cee-899df02e34aa';
+  // Its own rollout (created after it started, same folder) finished a turn: done. Another folder's rollout is ignored.
+  const done = poll([`codexroll ${now - 60} ${iso(now - 170)} task_complete rollout-2026-11-09T19-01-31-${id}.jsonl ${cwd}`,
+    `codexroll ${now - 5} ${iso(now - 100)} task_started rollout-x-${other}.jsonl /Users/me/other`]);
+  assert.deepEqual([done.state, done.aiStatus.status, done.aiStatus.fresh, done.aiSessionId], ['wait', 'idle', undefined, id]);
+  const busy = poll([`codexroll ${now - 1} ${iso(now - 170)} task_started rollout-a-${id}.jsonl ${cwd}`]);
+  assert.equal(busy.state, 'run');
+  // No rollout of its own since it started (every newer rollout was seen): opened, no work yet.
+  const fresh = poll([`codexroll ${now - 400} ${iso(now - 4000)} task_complete rollout-b-${other}.jsonl ${cwd}`]);
+  assert.deepEqual([fresh.state, fresh.asking, fresh.aiStatus.fresh], ['idle', false, true]);
+  // An older rollout reused by "codex resume <id>" belongs to that process, even though it was created before it started.
+  const resumed = poll([`codexroll ${now - 30} ${iso(now - 90000)} task_complete rollout-c-${other}.jsonl ${cwd}`], undefined, `777 1300 03:00 codex resume ${other}`);
+  assert.deepEqual([resumed.state, resumed.aiStatus.fresh], ['wait', undefined]);
+  // A list that may be missing older rollouts proves nothing for a long-running process: no status, the screen decides.
+  const many = Array.from({ length: 16 }, (_, i) => `codexroll ${now - i} ${iso(now - i - 10)} task_complete rollout-${i}-${other}.jsonl /elsewhere`);
+  assert.equal(poll(many, ['codexproc 777 05-00:00:00 ' + cwd], '777 1300 05-00:00:00 codex').aiStatus, undefined);
+});
+
+test('an agent without a readable status is never declared done or asking from its screen', () => {
+  const { officialState } = require('../lib/parse');
+  const of = (base) => { const s = { ...base }; officialState(s); return [s.state, s.asking, s.stateSource, !!s.statusUnknown]; };
+  // An old "done 3:46 AM" line and a quiet screen while the owner types: not "waiting for you".
+  assert.deepEqual(of({ cmd: 'claude', state: 'wait', asking: true, lines: ['* Cogitated for 10m · done 3:46 AM', '> đang soạn tin'] }), ['idle', false, 'screen', true]);
+  assert.deepEqual(of({ cmd: 'node', aiTool: 'codex', state: 'wait', asking: false }), ['idle', false, 'screen', true]);
+  assert.deepEqual(of({ cmd: 'claude', state: 'run', asking: false }), ['run', false, 'screen', true]);
+  // A plain shell keeps its screen reading.
+  assert.deepEqual(of({ cmd: 'bash', state: 'wait', asking: false }), ['wait', false, 'screen', false]);
+  // With the agent's own status, the status decides.
+  assert.deepEqual(of({ cmd: 'claude', state: 'run', asking: false, aiStatus: { status: 'idle', at: 9, startedAt: 1 } }), ['wait', false, 'status', false]);
+});
+
 test('officialState maps the status file onto run / wait / idle and marks the source', () => {
   const { officialState } = require('../lib/parse');
   const of = (aiStatus, base = { state: 'run', asking: false }) => { const s = { ...base, aiStatus }; officialState(s); return [s.state, s.asking, s.stateSource]; };

@@ -6,7 +6,7 @@ const {spawn}=require('child_process');
 const net=require('net');
 const WebSocket=require('ws');
 const {Vault}=require('../lib/vault');
-const root=path.resolve(__dirname,'..'), output=path.join(root,'docs/images');
+const root=path.resolve(__dirname,'..'), output=process.env.CAPTURE_OUT?path.resolve(process.env.CAPTURE_OUT):path.join(root,'docs/images');
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'tmux-readme-'));
 const children=[]; let cdp, appLog='';
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -52,7 +52,7 @@ async function main(){
     const png=Buffer.from(r.data,'base64');assert.equal(png.readUInt32BE(16),clip?clip.width:1440);assert.equal(png.readUInt32BE(20),clip?clip.height:900);assert.ok(png.length<400*1024,name+' under 400 KiB');
     fs.writeFileSync(path.join(output,name),png);console.log(name+': '+png.length+' bytes');
   };
-  await send('Page.navigate',{url:origin+'/'});await until("!!document.querySelector('#login form')");
+  await send('Page.navigate',{url:origin+'/?lang='+(process.env.CAPTURE_LANG||'en')});await until("!!document.querySelector('#login form')");
   await screenshot('login.png');
   await evaluate(`fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:${JSON.stringify(password)}})}).then(r=>r.json())`);
   await send('Page.reload');await until("document.querySelectorAll('.card[role=button]').length===3");
@@ -66,7 +66,7 @@ async function main(){
   await evaluate("document.querySelector('#tab-token').click()");await until("document.querySelectorAll('.token-account').length===2");
   await screenshot('token-ai.png');
   await evaluate("document.querySelector('#tab-over').click();document.querySelector('.card[role=button]').click()");
-  await until("document.querySelectorAll('.crew-worker-button').length===2 && !!document.querySelector('.xterm-screen')");
+  await until("!!document.querySelector('.xterm-screen')");
   await delay(500);await screenshot('terminal.png');
   // Use Chrome mouse input on the real xterm link, just as a reader does.
   const r=await evaluate("(()=>{const r=document.querySelector('.xterm-screen').getBoundingClientRect(),c=window.__terms[0]._core._renderService.dimensions.css.cell;return{x:r.x+c.width*14,y:r.y+c.height*6.5};})()");
@@ -74,6 +74,15 @@ async function main(){
   for(const type of ['mousePressed','mouseReleased'])await send('Input.dispatchMouseEvent',{type,button:'left',clickCount:1,...r});
   await until("!document.querySelector('.file-viewer').hidden && !!document.querySelector('.file-content h1')");
   await screenshot('viewer.png');
+  const viewerClose="(document.querySelector('.file-viewer .viewer-close')||{click(){}}).click()";
+  // Operations tab: the Ops hub on top (search, progress, report, waiting questions).
+  if(viewerClose)await evaluate(viewerClose);
+  await evaluate("document.querySelector('#tab-ops').click()");await until("!!document.querySelector('.hub-title') && !/Đang tải/.test(document.querySelector('.hub-title').textContent)");
+  await evaluate("document.querySelector('#v-ops .feature-page').scrollTop=0");await screenshot('ops-hub.png');
+  // Settings › Crew autopilot.
+  await evaluate("TW.app().openSettings('sessions')");await until("!!document.querySelector('.ops-crew')");
+  await screenshot('ops-settings.png');
+  await evaluate("document.querySelectorAll('dialog[open]').forEach(d=>d.close())");
   assert.deepEqual(errors,[],'No browser runtime exceptions');
   console.log('README capture PASS: real UI, fake backend/token sources, isolated HOME, 1440x900.');
 }

@@ -108,6 +108,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
   <a href="#s-feat">Tính năng</a>
   <a href="#s-ops">Vận hành</a>
   <a href="#s-crew">Tự trông crew</a>
+  <a href="#s-hub">Trạm Ops</a>
   <a href="#s-safe">An toàn</a>
   <a href="#s-tech">Công nghệ</a>
 </div></nav>
@@ -115,7 +116,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
 <section id="s-hero">
   <div class="hero">
     <div>
-      <div class="kicker">Công cụ điều khiển AI agent · TERMNEST 1.1.10 · 11/2026</div>
+      <div class="kicker">Công cụ điều khiển AI agent · TERMNEST 1.1.12 (+ bản 1.1.13 sắp phát hành) · 11/2026</div>
       <h1><span style="color:var(--ai)">Agent</span> làm việc.<br><span style="color:var(--you)">Bạn</span> ngủ ngon.<br><span style="color:var(--tn)">TERMNEST</span> canh chừng.</h1>
       <p class="lead">Một màn hình cho mọi phiên Claude Code và Codex trên máy của bạn và hàng chục server. Biết ngay phiên nào cần bạn, trả lời từ máy tính hay điện thoại, và <b>không mất phiên nào</b> khi server khởi động lại.</p>
       <div class="stat">
@@ -277,7 +278,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
 <section id="s-move">
   <div class="kicker">07 · Chuyển phiên · đổi máy <span class="pill p-new">MỚI</span></div>
   <h2>Chat đi theo bạn, dù mỗi máy để code một chỗ</h2>
-  <p class="lead">TERMNEST tìm đúng repo ở máy đích theo git <code>origin</code>, đặt chat vào đó, đổi đường dẫn cũ sang mới rồi mở lại. Chỉ cho phép khi cùng một tài khoản Claude/Codex.</p>
+  <p class="lead">TERMNEST tìm đúng repo ở máy đích theo git <code>origin</code>, đặt chat vào đó, đổi đường dẫn cũ sang mới rồi mở lại. Chỉ cho phép khi cùng một tài khoản Claude/Codex. Hồ sơ Claude ở máy đích được tìm cả trong <code>~/.claude*</code> và <code>~/.config/claude*</code>; hồ sơ mặc định chưa đăng nhập thì tự chọn hồ sơ cùng tài khoản. <b>Tệp liên quan đi cùng</b>: tệp agent đã tạo/sửa, tệp nhắc trong chat, ảnh/CSS/JS của trang HTML — chỉ chép tệp máy đích thiếu hoặc khác, bản khác ở đích được giữ thành <code>.truoc-chuyen-&lt;giờ&gt;</code>.</p>
   <div class="grid g2">
     <div class="card tn">
       <h3>⇄ Chuyển một phiên sang server khác</h3>
@@ -286,7 +287,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
         <div class="s done"><b>✓ Kiểm tra</b><small>cùng tài khoản · tìm repo</small></div><span class="ar">➜</span>
         <div class="s cur"><b>dev-ubuntu-03</b><small>/home/thanhlg/projects/…/hqsoft.xspire.sv</small></div>
       </div>
-      <p class="small muted">Chi tiết phiên → "⇄ Chuyển sang máy khác…" → chọn máy → Chuyển. Chat 3,4 MB đi qua SSH, đổi 37 chỗ đường dẫn, phiên mới chạy <code>claude --resume</code>.</p>
+      <p class="small muted">Chi tiết phiên → "⇄ Chuyển sang máy khác…" → chọn máy → Chuyển. Chat 3,4 MB đi qua SSH, đổi 37 chỗ đường dẫn, kèm các tệp liên quan (so mã băm sha256, tối đa 400 tệp / 200 MB), phiên mới chạy <code>claude --resume</code>.</p>
     </div>
     <div class="card you">
       <h3>📦 Đổi sang máy tính mới</h3>
@@ -305,10 +306,10 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
   <h2>TERMNEST làm được những gì</h2>
   <div class="grid g3">
     <div class="card"><div class="icon">🖥</div><h3>Phiên và terminal</h3><ul class="tight small"><li>Tạo phiên shell / Claude / Codex</li><li>Tab "Tất cả": lưới mọi phiên xếp theo chờ bạn → đang chạy → đang nghỉ, trả lời nhanh</li><li>Chia màn hình, toàn màn hình, lệnh mẫu</li></ul></div>
-    <div class="card"><div class="icon">🔔</div><h3>Theo dõi</h3><ul class="tight small"><li>Đang chạy · chờ bạn · xong theo trạng thái Claude / Codex tự ghi</li><li>Tab Vận hành: thẻ từng máy, Cần bạn, Team crew, nhật ký</li><li>Tự trông crew 24/7 (mục 10)</li><li>CPU, RAM, ổ đĩa, dịch vụ lỗi</li><li>Ngữ cảnh còn lại, gợi ý handoff</li></ul></div>
-    <div class="card"><div class="icon">♻️</div><h3>Khôi phục và di chuyển</h3><ul class="tight small"><li>Mở lại phiên và chat sau khi máy bật lại</li><li>Chuyển phiên sang server khác</li><li>Đổi máy bằng một tệp</li></ul></div>
+    <div class="card"><div class="icon">🔔</div><h3>Theo dõi</h3><ul class="tight small"><li>Đang chạy · chờ bạn · xong theo trạng thái Claude / Codex tự ghi</li><li>Trạm Ops ở đầu tab Vận hành: tìm tiến độ, báo cáo Ops, hỏi sâu (mục 11)</li><li>Tự trông crew 24/7 (mục 10)</li><li>CPU, RAM, ổ đĩa, dịch vụ lỗi</li><li>Ngữ cảnh còn lại, gợi ý handoff</li></ul></div>
+    <div class="card"><div class="icon">♻️</div><h3>Khôi phục và di chuyển</h3><ul class="tight small"><li>Mở lại phiên và chat sau khi máy bật lại</li><li>Chuyển phiên sang server khác, mang theo tệp liên quan</li><li>Đổi máy bằng một tệp</li></ul></div>
     <div class="card"><div class="icon">📁</div><h3>Tệp</h3><ul class="tight small"><li>Duyệt, tìm, xem Markdown / HTML / ảnh</li><li>Bấm tên file trong terminal là mở ngay: chỉ mục tên tài liệu lập sẵn khi mở phiên</li><li>Gửi file vào phiên, lấy từ server khác</li><li>Thùng rác, file tạm, tự dọn</li></ul></div>
-    <div class="card"><div class="icon">📊</div><h3>Token AI</h3><ul class="tight small"><li>Nhiều tài khoản Claude / Codex</li><li>Quota 5 giờ, tuần; token và chi phí</li><li>Biểu đồ theo ngày, model, phiên</li></ul></div>
+    <div class="card"><div class="icon">📊</div><h3>Token AI</h3><ul class="tight small"><li>Nhiều tài khoản Claude / Codex</li><li>Hạn mức tuần (và 5 giờ khi gói có); token và chi phí</li><li>Biểu đồ theo ngày, model, phiên</li></ul></div>
     <div class="card"><div class="icon">🐱</div><h3>Thân thiện</h3><ul class="tight small"><li>Mỗi phiên một bạn thú, sân chơi, cây búa</li><li>Ghi chú, nhắc việc</li><li>Hiệu ứng, chế độ gọn, tiếng Việt / English</li></ul></div>
   </div>
 </section>
@@ -316,9 +317,9 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
 <section id="s-ops">
   <div class="kicker">09 · Vận hành <span class="pill p-new">MỚI</span></div>
   <h2>Biết chắc phiên nào đang làm, phiên nào đang chờ bạn</h2>
-  <p class="lead">Tab <b>Vận hành</b> gom việc cần để ý trên mọi máy. Nó <b>không đoán theo chữ trên màn hình</b>: trạng thái lấy từ tệp do chính Claude / Codex ghi, cộng với tiến trình và số đo của máy. Không đọc được tệp thì ghi rõ "chưa rõ trạng thái".</p>
+  <p class="lead">Tab <b>Vận hành</b> gom việc cần để ý trên mọi máy. Nó <b>không đoán theo chữ trên màn hình</b>: trạng thái lấy từ tệp do chính Claude / Codex ghi, cộng với tiến trình và số đo của máy. Không đọc được tệp thì ghi rõ "Chưa đọc được trạng thái" và <b>không thông báo gì</b> — không bao giờ suy từ dòng chữ cũ như <code>done 3:46 AM</code>.</p>
   <div class="chain">
-    <div class="s done"><b>Claude / Codex tự ghi</b><small>~/.claude*/sessions · jobs · rollout Codex</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Claude / Codex tự ghi</b><small>~/.claude*/ · ~/.config/claude*/ sessions · jobs · rollout Codex</small></div><span class="ar">➜</span>
     <div class="s cur"><b>TERMNEST đọc</b><small>mỗi vài giây, qua SSH sẵn có</small></div><span class="ar">➜</span>
     <div class="s cur"><b>Xếp loại</b><small>đang làm · chờ bạn · xong · việc nền</small></div><span class="ar">➜</span>
     <div class="s done"><b>Bạn quyết</b><small>Mở · Gửi nhắc · Bỏ qua</small></div>
@@ -327,6 +328,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
     <tr><th>Claude / Codex ghi</th><th>TERMNEST hiện</th><th>Ví dụ thật</th></tr>
     <tr><td><code>busy</code> · <code>task_started</code></td><td><b>Đang chạy</b></td><td>Đang sửa code, chạy test</td></tr>
     <tr><td><code>waiting</code></td><td><b>Chờ bạn trả lời</b></td><td>Khung xin quyền <code>Do you want to proceed?</code></td></tr>
+    <tr><td><code>idle</code> ghi trong 5 giây đầu sau khi khởi động · Codex chưa có lượt nào</td><td><b>Vừa mở, chưa có việc</b> — không báo, không nhắc</td><td>Mở Claude mới, chưa gõ gì</td></tr>
     <tr><td><code>idle</code> · <code>task_complete</code></td><td><b>Xong lượt</b> → quá 30 phút: <b>Xong lâu chưa có việc</b></td><td><code>done Friday 2:01 PM</code></td></tr>
     <tr><td>việc nền <code>tempo: active</code></td><td><b>Đang chạy ngầm</b></td><td>Hội thoại đẩy xuống nền vẫn đang làm</td></tr>
     <tr><td>việc nền <code>tempo: blocked</code> + <code>needs</code></td><td><b>Chờ bạn</b> + lý do Claude ghi</td><td>"send a prompt to start" → đã trả lời xong, chờ bạn nhắn tiếp · "hit your weekly limit" → hết lượt</td></tr>
@@ -337,24 +339,24 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
     <div class="card"><div class="icon">✅</div><h3>Kiểm được</h3><ul class="tight small"><li>Mỗi dòng có nhãn nguồn: Trạng thái agent · Tiến trình · Đo máy</li><li>Bảng "Trạng thái từng phiên agent" hiện đúng giá trị đã đọc</li><li>Lời nhắc chỉ tính "đã nhận" khi trạng thái agent đổi</li></ul></div>
     <div class="card"><div class="icon">🧩</div><h3>Dùng chung cho mọi đội</h3><ul class="tight small"><li>Lõi không chứa luật dự án nào</li><li>Đội tự thêm luật riêng trong gói JSON, xuất / nhập để chia sẻ</li><li>Chỉnh ngưỡng phút, bật / tắt từng luật</li></ul></div>
   </div>
-  <p class="small muted" style="margin-top:8px">Chưa có dữ kiện: Codex xin quyền chạy lệnh (Codex không ghi vào rollout); Codex chạy trên macOS hiện "chưa rõ trạng thái".</p>
+  <p class="small muted" style="margin-top:8px">Codex 0.16x đóng tệp rollout giữa các lần ghi: TERMNEST ghép tiến trình Codex với rollout theo thư mục làm việc và giờ khởi động (macOS dùng <code>lsof</code>), <code>codex resume &lt;id&gt;</code> ghép theo id. Chưa có dữ kiện: Codex xin quyền chạy lệnh (Codex không ghi vào rollout).</p>
 </section>
 
 <section id="s-crew">
   <div class="kicker">10 · Tự trông crew 24/7 <span class="pill p-new">MỚI</span></div>
   <h2>Nhiều team crew trên nhiều máy chạy liên tục, không ai phải canh</h2>
   <p class="lead">Mỗi VM chạy 2–3 <b>crew session</b>: một <b>leader</b> (orchestrator) điều phối nhiều <b>worker</b>. Bật một công tắc trong
-    <b>Cài đặt › Tự trông crew</b>, TERMNEST tự nhận leader, nhắc leader rảnh mà còn task mở (cả ban đêm), chạy <b>ops-audit</b> định kỳ,
-    và chỉ báo bạn khi cần người quyết.</p>
+    <b>Cài đặt › Tự trông crew</b>, TERMNEST tự nhận leader, nhắc leader rảnh mà còn task mở (cả ban đêm), và chỉ báo bạn khi cần người quyết. Rà soát sâu (<b>ops-audit</b>) do <b>Trạm Ops</b> làm (mục 11).</p>
   <div class="chain">
     <div class="s done"><b>Crew kit ghi</b><small>_crew/nudge.conf: pane leader ↔ task</small></div><span class="ar">➜</span>
     <div class="s cur"><b>TERMNEST quét</b><small>mỗi 30 giây: task, vòng, heartbeat</small></div><span class="ar">➜</span>
     <div class="s cur"><b>Đối chiếu</b><small>trạng thái Claude tự ghi + tiến trình</small></div><span class="ar">➜</span>
-    <div class="s done"><b>Hành động</b><small>nhắc leader · ops-audit · báo Cần bạn</small></div>
+    <div class="s done"><b>Hành động</b><small>nhắc leader · báo Cần bạn</small></div>
   </div>
   <div class="tblw" style="margin-top:12px"><table>
     <tr><th>Tình huống</th><th>TERMNEST làm gì</th></tr>
-    <tr><td>Leader rảnh, task còn mở, worker không chạy</td><td><b>Tự nhắc</b> leader chạy tiếp (một lần mỗi lượt rảnh, chờ bằng chứng tiến độ rồi mới nhắc lại)</td></tr>
+    <tr><td>Leader rảnh ≥ 5 phút, task còn track mở (không track nào lỗi/chặn, chưa hết vòng sửa)</td><td><b>Tự nhắc</b> một lần mỗi lượt rảnh: "kiểm lại vướng mắc bằng bằng chứng hiện tại, làm tiếp việc được phép, báo bước tiếp"; tối đa 3 lần/giờ. Sau 10 phút: có tiến độ → ghi nhận; không có → báo Cần bạn + yêu cầu rà soát</td></tr>
+    <tr><td>Track bị crew đánh <code>failed</code> mã thoát 7 (helper kiểm chứng của crew không chạy trên macOS)</td><td>Đọc thêm <code>tracks/&lt;id&gt;/STATUS.md</code>, log xác minh của leader, <code>int-verify*.log</code>: bằng chứng <b>mới nhất</b> quyết định → <b>Leader đã xác minh</b> / Xác minh lỗi (n test) / Bị chặn / Đã code chờ xác minh, kèm tên tệp, giờ, số test</td></tr>
     <tr><td>Leader hỏi quyền, chờ chọn phương án, hết quota</td><td><b>Báo Cần bạn</b>, không tự trả lời</td></tr>
     <tr><td>Claude khởi động lại, VM reboot, leader resume ở phiên khác</td><td>Vẫn trông: leader được nhận lại từ <code>nudge.conf</code> mỗi lần quét; crew kit tự ghi lại pane mỗi khi leader chạy <code>crew-task.sh</code> / <code>crew-watch.sh</code></td></tr>
     <tr><td>Task mở chưa có leader</td><td>Tab Vận hành › Team crew: chọn phiên → <b>Gắn leader</b> (gọi <code>crew-task.sh enroll</code> trên máy đó)</td></tr>
@@ -368,8 +370,33 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
   </div>
 </section>
 
+<section id="s-hub">
+  <div class="kicker">11 · Trạm Ops <span class="pill p-new">MỚI</span></div>
+  <h2>Hỏi "phiên A tới đâu" là có ngay, rà soát cả đội hình như sếp làm tay</h2>
+  <p class="lead">Ở đầu tab <b>Vận hành</b>. Termnest gom dữ liệu thật mọi máy (luật, 0 token); một phiên <b>Ops</b> (Claude <code>tn-ops</code>) chạy skill <code>crew-ops-audit</code> theo lịch và trả lời câu hỏi tự do. Hết token vẫn chạy bằng luật.</p>
+  <div class="chain">
+    <div class="s done"><b>Termnest quét</b><small>phiên · task · track · câu hỏi chờ</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Báo cáo theo luật</b><small>BLOCKER/WASTE/DRIFT/INFO · mỗi 30′</small></div><span class="ar">➜</span>
+    <div class="s cur"><b>Phiên Ops</b><small>đọc fleet.json → crew-ops-audit → JSON</small></div><span class="ar">➜</span>
+    <div class="s done"><b>Bạn</b><small>xem báo cáo · Telegram/Teams</small></div>
+  </div>
+  <div class="tblw" style="margin-top:12px"><table>
+    <tr><th>Phần</th><th>Làm gì</th><th>Tốn token?</th></tr>
+    <tr><td>Ô tìm (⌘K) + thẻ tiến độ</td><td>Gõ tên phiên/task/track → leader, máy, thanh tiến độ, đang làm, vướng, ai làm, chip track mở popup</td><td>0</td></tr>
+    <tr><td>Báo cáo Ops</td><td>Theo luật mỗi 15/30/60/120 phút (lưu 24 bản). Bật phiên Ops: Termnest ghi <code>_crew/ops-hub/fleet.json</code>, gửi lệnh audit, đọc <code>reports/&lt;id&gt;.json</code> → tóm tắt, nguyên nhân, việc tiếp, dẫn chứng</td><td>Chỉ khi bật phiên Ops</td></tr>
+    <tr><td>Hỏi sâu</td><td>Câu tự do → phiên Ops → <code>answers/&lt;id&gt;.md</code> → hiện trong app</td><td>Có</td></tr>
+    <tr><td>Canh phiên Ops</td><td>Chết → mở lại · Claude thoát → mở lại · đang hỏi (tin cậy thư mục, xin quyền) → báo bạn, không tự trả lời · hết quota → tài khoản kế tiếp; hết hẳn → tạm dừng, báo cáo luật vẫn chạy</td><td>—</td></tr>
+    <tr><td>Báo ra ngoài</td><td>Telegram, Teams (Workflows), webhook: phiên chờ bạn, hết quota, BLOCKER mới, phiên Ops dừng, tóm tắt cuối ngày; ≤ 20 tin/giờ; token không bao giờ trả về trang</td><td>0</td></tr>
+  </table></div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card"><div class="icon">🔒</div><h3>Chỉ đọc</h3><ul class="tight small"><li>Phiên Ops không trả lời thay bạn, không gõ vào phiên khác</li><li>Quyền <code>--permission-mode auto</code>: Claude tự duyệt lệnh đọc an toàn</li><li>Nhắc leader vẫn do luật Termnest</li></ul></div>
+    <div class="card"><div class="icon">💸</div><h3>Rẻ token</h3><ul class="tight small"><li>fleet.json soạn sẵn: Ops khỏi chụp lại từng máy</li><li>Task đã đóng chỉ ghi số đếm</li><li>Sonnet mặc định</li></ul></div>
+    <div class="card"><div class="icon">🐧</div><h3>Giới hạn</h3><ul class="tight small"><li>Phiên Ops chạy trên Linux/macOS; Windows chỉ có báo cáo luật</li><li>Audit cũ theo workspace tự nhường khi phiên Ops bật</li></ul></div>
+  </div>
+</section>
+
 <section id="s-safe">
-  <div class="kicker">11 · Dữ liệu và an toàn</div>
+  <div class="kicker">12 · Dữ liệu và an toàn</div>
   <h2>Dữ liệu nằm trên máy của bạn và được mã hóa</h2>
   <div class="tblw"><table>
     <tr><th>Dữ liệu</th><th>Ở đâu</th><th>Bảo vệ</th></tr>
@@ -384,7 +411,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
 </section>
 
 <section id="s-tech">
-  <div class="kicker">12 · Công nghệ</div>
+  <div class="kicker">13 · Công nghệ</div>
   <h2>Gọn nhẹ, không cần cơ sở dữ liệu hay dịch vụ bên ngoài</h2>
   <div class="tech">
     <div><b>Node.js</b><small>server, chạy kèm sẵn trong bản cài</small></div>
@@ -400,7 +427,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
   </div>
 </section>
 
-<footer>TERMNEST · by Jiaqing · bản 1.1.10 · các mục đánh dấu MỚI chờ phát hành 1.1.11</footer>
+<footer>TERMNEST · by Jiaqing · bản 1.1.12 · các mục đánh dấu MỚI có trong 1.1.13</footer>
 <button id="motionBtn" type="button">⏸ Dừng chuyển động</button>
 
 <script>

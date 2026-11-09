@@ -429,3 +429,40 @@ button.ops-crew-chip:hover{outline:1px solid currentColor}
 .ops-track-sum dt{color:var(--fg-2);font-weight:600}.ops-track-sum dd{margin:0;overflow-wrap:anywhere}
 .ops-track-stats{color:var(--fg-2);font-size:12.5px;margin:0 0 10px}
 .ops-track-sub{margin:4px 0 4px 8px}.ops-track-sub summary{cursor:pointer;font-size:12.5px}
+
+.ops-page>.ops-body{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ops-page>.ops-hub-slot:empty{display:none}
+.ops-page>.ops-legacy{border-radius:16px;box-shadow:0 0 0 1.5px var(--line);background:var(--surface);padding:0 14px}
+.ops-page>.ops-legacy>summary{cursor:pointer;padding:12px 2px;font:700 13.5px var(--round,inherit);color:var(--fg-2)}
+.ops-page>.ops-legacy[open]>summary{border-bottom:1px solid var(--line);margin-bottom:10px}
+.ops-page>.ops-legacy>.ops-body{padding-bottom:14px}
+.ops-crew-link{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface-2);font-size:13px}
+
+/* Settings › Crew autopilot (mockup 18): hero switch, one-line teams, read-only rules, hub link. */
+.ops-crew-hero{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding:16px 18px;border-radius:18px;background:var(--surface-2);transition:background .3s}
+.ops-crew-hero.on{background:linear-gradient(115deg,var(--hero-a,#0fb5ae),var(--hero-b,#2f80ed));color:#fff}
+.ops-crew-hero.on .ops-note{color:rgba(255,255,255,.9)}
+.ops-crew-hero-t{font:900 18px var(--round,inherit)}
+.ops-crew-stats{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ops-crew-stat{display:inline-flex;align-items:baseline;gap:4px;padding:3px 11px;border-radius:99px;background:rgba(255,255,255,.2);font-size:12.5px;white-space:nowrap}
+.ops-crew-stat b{font:900 15px var(--round,inherit)}
+.ops-crew-list{border-radius:16px;box-shadow:0 0 0 1.5px var(--line);overflow:hidden;background:var(--surface)}
+.ops-crew-list>.ops-crew-team{padding:10px 14px;border-top:1px solid var(--line);margin:0;border-radius:0;background:transparent}
+.ops-crew-list>.ops-crew-team:first-child{border-top:0}
+.ops-crew-list>.ops-crew-bind,.ops-crew-list>details{border-top:1px dashed var(--line);padding:10px 14px;background:var(--surface-2)}
+.ops-crew-machine-name{font-size:12px;color:var(--fg-3);font-weight:500}
+#ops-settings-mount .ops-crew-team input[type=checkbox],.ops-crew-team input[type=checkbox]{appearance:none;-webkit-appearance:none;width:36px;height:21px;min-height:21px;max-width:36px;flex:0 0 36px;padding:0;border-radius:99px;background:var(--line-strong);position:relative;cursor:pointer;flex:none;margin:0;transition:background .15s}
+#ops-settings-mount .ops-crew-team input[type=checkbox]::after,.ops-crew-team input[type=checkbox]::after{content:"";position:absolute;top:2.5px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+#ops-settings-mount .ops-crew-team input[type=checkbox]:checked,.ops-crew-team input[type=checkbox]:checked{background:#19c37d}#ops-settings-mount .ops-crew-team input[type=checkbox]:checked::after,.ops-crew-team input[type=checkbox]:checked::after{left:17px}
+.ops-crew-rules-box h4{margin:4px 0 8px}
+.ops-crew-rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.ops-crew-rulecard{border-radius:14px;background:var(--surface-2);padding:11px 12px;display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--fg-2)}
+.ops-crew-rulecard .k{font-size:17px}.ops-crew-rulecard b{color:var(--fg);font-size:13px}
+.ops-crew-hublink{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:0;box-shadow:0 0 0 1.5px var(--line);background:var(--surface);cursor:pointer;color:inherit}
+.ops-crew-hublink:hover{box-shadow:0 0 0 1.5px var(--line-strong)}
+.ops-crew-hublink .ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:none;background:linear-gradient(115deg,var(--hero-a,#0fb5ae),var(--hero-b,#2f80ed));color:#fff}
+.ops-crew-hublink div{flex:1;min-width:0}.ops-crew-hublink b{display:block;font-size:13.5px}.ops-crew-hublink small{color:var(--fg-3);font-size:12.5px}
+.ops-crew-hublink .go{font-weight:700;font-size:12.5px;color:var(--fg-2)}
+.ops-crew-list>.ops-crew-auditline{margin:0;padding:8px 14px;border-top:1px dashed var(--line)}
+.ops-crew-list>div:not(.ops-crew-team){padding:10px 14px;border-top:1px dashed var(--line);background:var(--surface-2)}
+.ops-crew-list>div:not(.ops-crew-team) select{width:100%}
