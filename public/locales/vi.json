@@ -2436,5 +2436,7 @@
   "hub.auto_off": "tắt",
   "hub.auto_s": "{0} giây",
   "hub.auto_m": "{0} phút",
-  "hub.auto_label": "Tự làm mới: {0}"
+  "hub.auto_label": "Tự làm mới: {0}",
+  "srv.nudge.crew_title": "Termnest kiểm tra định kỳ cho task {0}.",
+  "srv.nudge.crew_body": "Đo lại điểm đang vướng bằng bằng chứng hiện tại. Chỉ làm phần việc được phép trong task đã duyệt. Báo bằng chứng cụ thể, bước an toàn tiếp theo và việc nào cần chủ quyết. Nếu bị chặn thì dừng và báo. Không trả lời hộp thoại xin quyền, không khởi động lại worker, không đổi trạng thái task, không nhả lease của team khác, không merge, không deploy, không đổi thông tin đăng nhập."
 }

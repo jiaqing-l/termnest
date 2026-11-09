@@ -2453,5 +2453,7 @@
   "hub.auto_off": "off",
   "hub.auto_s": "{0} s",
   "hub.auto_m": "{0} min",
-  "hub.auto_label": "Auto refresh: {0}"
+  "hub.auto_label": "Auto refresh: {0}",
+  "srv.nudge.crew_title": "Managed supervision check for tasks {0}.",
+  "srv.nudge.crew_body": "Remeasure the blocker using current evidence. Do only permitted independent work within the approved task. Report concrete evidence, the next safe step, and any owner decision needed. If blocked, stop and report. Do not answer approval dialogs, restart workers, change task status, release another team's lease, merge, deploy, or change credentials."
 }
