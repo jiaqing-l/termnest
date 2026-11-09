@@ -144,8 +144,13 @@
   const zoomFrame=()=>{const f=body.querySelector&&body.querySelector('iframe');if(f&&f.contentWindow)f.contentWindow.postMessage({tw:'zoom',scale},'*');};
   const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';zoomFrame();};
   zoom.append(zMinus,zPlus);applyScale();
+  // Full window: wide mockups and reports need the whole width, not the side panel. Remembered on this device.
+  const maxBtn=doc.createElement('button');maxBtn.type='button';maxBtn.className='btn viewer-tool viewer-max';
+  const applyMax=on=>{panel.classList.toggle('is-max',on);maxBtn.textContent=on?'⤡':'⤢';const k=on?'fileviewer.thu_lai':'fileviewer.mo_rong';maxBtn.title=i18n(k);maxBtn.setAttribute('aria-label',i18n(k));maxBtn.setAttribute('aria-pressed',String(on));};
+  let maxed=false;try{maxed=localStorage.getItem('tw-viewer-max')==='1';}catch{/* optional */}
+  maxBtn.onclick=()=>{maxed=!maxed;applyMax(maxed);try{localStorage.setItem('tw-viewer-max',maxed?'1':'0');}catch{/* optional */}};
   insert.className+=' viewer-insert';close.className+=' viewer-close';
-  head.append(title,back,insert,zoom,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);
+  head.append(title,back,insert,maxBtn,zoom,moreHead,close,headMenu);dragPath(title,()=>current&&current.path,()=>location&&location[0]);panel.append(handle,head,body);doc.body.append(panel);if(panel.classList)applyMax(maxed);
   let generation=0,current=null,worker=null,location=null;
   const cancel=()=>{if(worker){worker.terminate();worker=null;}};
   close.onclick=()=>{generation++;cancel();panel.hidden=true;body.textContent='';current=null;};

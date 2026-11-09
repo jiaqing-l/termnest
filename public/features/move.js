@@ -72,10 +72,12 @@
         else check(i18n('move.other_account', [r.from || '?', r.to]), 'bad');
         check(i18n('move.chat_size', [mb(r.size)]), r.tooLarge ? 'bad' : 'ok');
         var repo = (r.places || []).filter(function (p) { return p.why === 'repo'; })[0], same = (r.places || []).filter(function (p) { return p.why === 'same'; })[0];
+        var named = (r.places || []).filter(function (p) { return p.why === 'name'; })[0];
         if (repo) check(i18n('move.repo_found', [repo.path]), 'ok');
         else if (same) check(i18n('move.same_path', [same.path]), 'ok');
+        else if (named) check(i18n('move.same_name', [named.path]), 'ok');
         else check(r.repo ? i18n('move.repo_missing', [r.repo.origin]) : i18n('move.no_repo'), 'warn');
-        fillPlaces(r.places || [], folders[target.value] || (repo || same || {}).path);
+        fillPlaces(r.places || [], folders[target.value] || (repo || same || named || {}).path);
         folders[target.value] = place.value !== '*' ? place.value : '';
         if (!name.value) name.value = r.name;
         ready();

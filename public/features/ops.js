@@ -316,7 +316,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     }
     crewBody.append(el('h4', '', c('teams')));
     var any = false;
-    list(supervision.servers).forEach(function (server) {
+    if (on) list(supervision.servers).forEach(function (server) {
       if (!list(server.discovered).length && !list(server.teams).some(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; }) && hostConnected(server)) return;
       any = true; crewBody.append(crewMachine(server, true));
     });
@@ -743,7 +743,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     quotaFindings().forEach(function (f) { if (!data.dismissedKeys || data.dismissedKeys.indexOf(f.key) < 0) all.push({ f: f, s: { id: '', name: i18n('ops.tai_khoan_ai'), sessions: [] } }); });
     all.sort(function (a, b) { return (SEV[a.f.severity] - SEV[b.f.severity]) || (b.f.since - a.f.since); });
     var leaders = {}, teamN = 0, crewNeed = needYou();
-    list(supervision && supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
+    // While autopilot is off nothing is scanned, so saved teams would be stale: show none rather than old data.
+    if (crewOn()) list(supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
     var needN = all.filter(function (x) { return dailyGroup(x) === 'attention'; }).length + crewNeed.length;
     h.querySelector('p').textContent = i18n('ops.sumline', [data.servers.length, data.servers.reduce(function (n, v) { return n + list(v.sessions).filter(function (s) { return s.agent; }).length; }, 0), teamN, needN]);
     page.append(machines(all, crewNeed));
@@ -772,7 +773,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var crew = list(supervision && supervision.servers).filter(function (v) { return !filt.srv || v.id === filt.srv; });
     var cb = section('crew', i18n('ops.daily.crew'), teamN, true, 'user');
     if (!supervision) cb.append(el('p', 'ops-empty', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading')));
-    crew.forEach(function (v) { cb.append(crewMachine(v, false)); });
+    if (supervision && !crewOn()) {
+      cb.append(el('p', 'ops-empty', c('off_view')), button(c('turn_on'), 'primary', function () { TW.app().openSettings('sessions'); }));
+    } else crew.forEach(function (v) { cb.append(crewMachine(v, false)); });
     var rest = shown.filter(function (x) { return dailyGroup(x) !== 'attention' && !leaders[x.s.id + '|' + x.f.session]; });
     rest.sort(function (a, b) { return ['waiting', 'running', 'routine'].indexOf(dailyGroup(a)) - ['waiting', 'running', 'routine'].indexOf(dailyGroup(b)); });
     var ob = section('routine', i18n('ops.daily.routine'), rest.length, false, 'list', i18n('ops.others_note'));

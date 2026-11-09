@@ -129,5 +129,5 @@ test('a contextmenu after pointerup cancels pending dismissal',async()=>{
 test('Escape and the close button still close',async()=>{
  const f=fixture();await f.open();
  const e=f.event('keydown',f.doc,{key:'Escape'});assert.equal(e.defaultPrevented,true);assert.equal(f.panel.hidden,true);
- await f.open();f.click(f.head.children[5]);assert.equal(f.panel.hidden,true);   // title, back, insert, text size, more, close
+ await f.open();f.click(f.head.children[6]);assert.equal(f.panel.hidden,true);   // title, back, insert, full window, text size, more, close
 });

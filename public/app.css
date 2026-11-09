@@ -1436,3 +1436,7 @@ dialog.drop-remote{display:none}
 .main-top{justify-content:flex-end}
 .fc-nodata{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-size:12.5px}
 .fc-nodata .btn{flex:none;min-height:30px}
+
+/* Viewer maximised to the whole window (wide mockups, reports) */
+.file-viewer.is-max{left:0;top:0;width:auto !important;z-index:120;border-left:0}
+.file-viewer.is-max>.handle,.file-viewer.is-max .viewer-resize{display:none}
