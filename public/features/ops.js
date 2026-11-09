@@ -280,6 +280,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   // Session side panel: what crew work this session leads (only when it is a discovered leader), from the same data.
   var crewDetails = {};
   var TRACK_DONE = ['merged', 'done', 'landed', 'applied', 'closed'];
+  // The first real sentence of a markdown report: no headings, bullets, links or code fences.
+  function firstSentence(t) {
+    var lines = text(t).split('\n').map(function (l) { return l.replace(/^[#>*\-\s]+/, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/`/g, '').trim(); }).filter(function (l) { return l && !/^(status|track|result|state)\s*:?$/i.test(l) && !/^```/.test(l); });
+    var one = (lines[0] || '').split(/(?<=[.!?])\s/)[0];
+    return one.length > 220 ? one.slice(0, 217) + '…' : one;
+  }
   function exitMeaning(code) { var k = 'ops.crew.exit_' + text(code), v = i18n(k); return v === k ? c('exit_other', [text(code)]) : v; }
   function trackLabel(state) { var k = 'ops.crew.track_' + state, v = i18n(k); return v === k ? text(state) : v; }
   function crewDetail(box, serverId, name) {
@@ -356,35 +362,49 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     pollLive();
     TW.api('GET', '/api/features/crewpack/track?' + q).then(function (r) {
       body.lastChild.remove();
-      var rounds = list(r.rounds);
+      var rounds = list(r.rounds), last = rounds[rounds.length - 1] || null, ch = r.changes || {}, commits = list(ch.commits);
+      var files = r.files && typeof r.files === 'object' ? Object.keys(r.files).map(function (n) { return { n: n, f: r.files[n] }; }) : [];
+      // Files written before the latest round started belong to earlier rounds: kept, but out of the way.
+      var since = last ? Date.parse(last.startedAt) - 60000 : 0;
+      var current = files.filter(function (x) { return !since || (x.f.at || 0) >= since; }), older = files.filter(function (x) { return current.indexOf(x) < 0; });
+      var get = function (n) { var x = current.filter(function (y) { return y.n === n; })[0]; return x ? text(x.f.text) : ''; };
+      // One plain status: what state the track is in right now.
+      var done = TRACK_DONE.indexOf(k.state) >= 0, exit = last ? text(last.exit) : '';
+      var status = running ? ['run', c('ts_running')] : done ? ['done', c('ts_done')] : exit === '7' ? ['wait', c('ts_unverified')] :
+        /fail|blocked/.test(k.state) ? ['bad', c('ts_failed')] : ['idle', trackLabel(k.state)];
+      if (r.goal) head.firstChild.textContent = text(k.id) + ' · ' + text(r.goal);
+      var badge = el('div', 'ops-track-badge s-' + status[0]); badge.append(el('b', '', status[1]), el('span', '', last ? c('ts_when', [ago(Date.parse(last.endedAt)) || stamp(Date.parse(last.endedAt))]) : ''));
+      body.firstChild.replaceWith(badge);
+      // Summary: result (the worker's own words), what blocks it now, and what happens next.
+      var sum = el('dl', 'ops-track-sum');
+      var result = firstSentence(get('last-message.md') || get('STATUS.md'));
+      var block = firstSentence(get('EVIDENCE-FAILED.md') || get('BLOCKED.md') || get('CORRECTION-REFUSED.md') || get('DISPATCH-REFUSED.md'));
+      var next = running ? c('next_running') : done ? c('next_done') : exit === '7' ? c('next_verify') : exit === '8' ? c('next_queued') : exit === '9' ? c('next_budget') : exit === '11' ? c('next_quota') : /fail|blocked/.test(k.state) ? c('next_failed') : c('next_wait');
+      [[c('sum_result'), result || '—'], [c('sum_block'), done ? '—' : block || '—'], [c('sum_next'), next]].forEach(function (p) { sum.append(el('dt', '', p[0]), el('dd', '', p[1])); });
+      body.append(sum);
+      // One line of numbers.
+      var mins = rounds.reduce(function (n, x) { return n + (x.seconds || 0); }, 0) / 60, files_ = /(\d+) files? changed/.exec(text(ch.stat)), add = /(\d+) insertions?/.exec(text(ch.stat)), del = /(\d+) deletions?/.exec(text(ch.stat));
+      body.append(el('p', 'ops-track-stats', [c('st_rounds', [rounds.length]), Math.round(mins) + "'", last ? text(last.model) + ' ' + text(last.effort) : '',
+        c('st_commits', [commits.length]), files_ ? c('st_files', [files_[1], add ? add[1] : 0, del ? del[1] : 0]) : ''].filter(Boolean).join(' · ')));
+      function more(title, open, nodes) { var d = el('details', 'ops-track-file'); d.open = !!open; d.append(el('summary', '', title)); nodes.forEach(function (n) { d.append(n); }); body.append(d); }
+      var commitNodes = [];
+      if (commits.length) { var ul = el('ul', 'ops-track-commits'); commits.forEach(function (x) { ul.append(el('li', '', text(x.sha) + ' · ' + text(x.at) + ' · ' + text(x.subject))); }); commitNodes.push(ul); }
+      if (ch.stat) commitNodes.push(el('pre', '', text(ch.stat)));
+      if (!commitNodes.length) commitNodes.push(el('p', 'ops-note', c('track_no_commits')));
+      more(c('track_changes', [text(ch.repo) || '—', text(ch.branch) || '—', commits.length]), false, commitNodes);
       if (rounds.length) {
-        var last = rounds[rounds.length - 1];
-        body.append(el('p', 'ops-track-last', c('track_last', [text(last.round), text(last.kind), text(last.exit), Math.round((last.seconds || 0) / 60), text(last.executor) + ' ' + text(last.model) + ' ' + text(last.effort), stamp(Date.parse(last.endedAt))])));
-        body.append(el('p', 'ops-note', exitMeaning(last.exit)));
         var table = el('table', 'ops-track-rounds'), hr = el('tr');
         ['#', c('col_kind'), c('col_exit'), c('col_time'), c('col_model'), c('col_end')].forEach(function (h) { hr.append(el('th', '', h)); }); table.append(hr);
         rounds.slice().reverse().forEach(function (x) { var tr = el('tr'); [x.round, x.kind, x.exit, Math.round((x.seconds || 0) / 60) + "'", text(x.model) + ' ' + text(x.effort), stamp(Date.parse(x.endedAt))].forEach(function (v) { tr.append(el('td', '', text(v))); }); table.append(tr); });
-        body.append(table);
-      } else body.append(el('p', 'ops-note', c('track_no_rounds')));
-      var ch = r.changes || {}, commits = list(ch.commits);
-      var cs = el('details', 'ops-track-file'); cs.open = true;
-      cs.append(el('summary', '', c('track_changes', [text(ch.repo) || '—', text(ch.branch) || '—', commits.length])));
-      if (commits.length) { var ul = el('ul', 'ops-track-commits'); commits.forEach(function (x) { ul.append(el('li', '', text(x.sha) + ' · ' + text(x.at) + ' · ' + text(x.subject))); }); cs.append(ul); }
-      else cs.append(el('p', 'ops-note', c('track_no_commits')));
-      if (ch.stat) cs.append(el('pre', '', text(ch.stat)));
-      body.append(cs);
-      var files = r.files && typeof r.files === 'object' ? Object.keys(r.files).map(function (n) { return { n: n, f: r.files[n] }; }) : [];
-      files.sort(function (a, b) { return (b.f.at || 0) - (a.f.at || 0); });
-      files.forEach(function (x) {
-        var sec = el('details', 'ops-track-file'); if (x === files[0]) sec.open = true;
-        var shown = text(x.f.text);
-        // FAILED holds only the dispatcher's exit code: say what it means.
-        if (x.n === 'FAILED' && /^\s*\d+\s*$/.test(shown)) shown = c('failed_code', [shown.trim(), exitMeaning(shown.trim())]);
-        sec.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', shown));
-        body.append(sec);
-      });
-      if (r.log) { var lg = el('details', 'ops-track-file'); lg.append(el('summary', '', c('track_log', [text(r.logName)])), el('pre', '', text(r.log))); body.append(lg); }
-      if (r.dispatch) { var dp = el('details', 'ops-track-file'); dp.append(el('summary', '', 'dispatch.out'), el('pre', '', text(r.dispatch))); body.append(dp); }
+        more(c('sec_rounds', [rounds.length]), false, [table, el('p', 'ops-note', exitMeaning(exit))]);
+      }
+      // The worker's own reports for the current round, newest first; FAILED holds only an exit code, explained above.
+      current.sort(function (a2, b2) { return (b2.f.at || 0) - (a2.f.at || 0); });
+      var reportNodes = current.filter(function (x) { return x.n !== 'FAILED'; }).map(function (x) { var d = el('details', 'ops-track-sub'); d.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', text(x.f.text))); return d; });
+      if (reportNodes.length) more(c('sec_reports', [reportNodes.length]), false, reportNodes);
+      if (older.length) more(c('sec_older', [older.length]), false, older.map(function (x) { var d = el('details', 'ops-track-sub'); d.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', text(x.f.text))); return d; }));
+      var logNodes = []; if (r.log) logNodes.push(el('pre', '', text(r.log))); if (r.dispatch) { logNodes.push(el('b', '', 'dispatch.out')); logNodes.push(el('pre', '', text(r.dispatch))); }
+      if (logNodes.length) more(c('track_log', [text(r.logName)]), false, logNodes);
     }).catch(function () { body.lastChild.textContent = c('track_unavailable'); });
   }
   function refreshCrewDetails() {

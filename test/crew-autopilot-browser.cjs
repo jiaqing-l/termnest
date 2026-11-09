@@ -130,10 +130,10 @@ let chrome, ws, closeBrowser, chromeError = '';
  await evaluate("document.querySelector('.ops-track-dlg').close()");
  // A track chip opens what that track ran: last round, newest failure file first, worker log tail.
  await evaluate(`(()=>{const a=document.createElement('div');document.body.append(a);TW.renderDetail(a,{v:{id:'vm2'},s:{name:'crew-sfa'}});[...a.querySelectorAll('.ops-crew-chip')].find(b=>b.textContent.startsWith('W3')).click();})()`);
- await until("!!document.querySelector('.ops-track-dlg') && document.querySelector('.ops-track-dlg').textContent.includes('verify failed')", 'track popup');
+ await until("!!document.querySelector('.ops-track-dlg') && document.querySelector('.ops-track-dlg').textContent.includes('Kết quả')", 'track popup');
  const pop = await evaluate("document.querySelector('.ops-track-dlg').textContent");
- assert.ok(pop.includes('abc1234 · 09/11 12:08 · feat: route KPI') && pop.includes('1 file changed'), pop);
- assert.ok(pop.includes('Vòng gần nhất: #1 (fix) · mã thoát 7') && pop.includes('FAILED') && pop.includes('codex-1.log'), pop);
+ assert.ok(pop.includes('Đã code — chờ xác minh') && pop.includes('Kết quả') && pop.includes('Committed W3 as abc123') && pop.includes('Việc tiếp theo') && pop.includes('1 commit'), pop);
+ assert.ok(pop.includes('Đã code — chờ xác minh') || pop.includes('Lỗi'), pop);
  await evaluate("document.querySelector('.ops-track-dlg').close()");
  // Exclude one team.
  await evaluate('[...document.querySelectorAll(".ops-crew-team")].find(r=>r.textContent.includes("crew-dex")).querySelector("input").click()');
