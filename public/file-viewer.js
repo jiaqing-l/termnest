@@ -141,7 +141,7 @@
   const zMinus=doc.createElement('button'),zPlus=doc.createElement('button');
   [[zMinus,'A−',-0.1,'fileviewer.chu_nho'],[zPlus,'A+',0.1,'fileviewer.chu_to']].forEach(([b,t,d,k])=>{b.type='button';b.className='btn viewer-tool';b.textContent=t;b.title=i18n(k);b.setAttribute('aria-label',i18n(k));
    b.onclick=()=>{scale=Math.round(Math.max(0.7,Math.min(1.8,scale+d))*10)/10;applyScale();try{localStorage.setItem('tw-viewer-scale',String(scale));}catch{/* optional */}};});
-  const zoomFrame=()=>{const f=body.querySelector('iframe');if(f&&f.contentWindow)f.contentWindow.postMessage({tw:'zoom',scale},'*');};
+  const zoomFrame=()=>{const f=body.querySelector&&body.querySelector('iframe');if(f&&f.contentWindow)f.contentWindow.postMessage({tw:'zoom',scale},'*');};
   const applyScale=()=>{if(body.style.setProperty)body.style.setProperty('--viewer-scale',String(scale));zoom.title=Math.round(scale*100)+'%';zoomFrame();};
   zoom.append(zMinus,zPlus);applyScale();
   insert.className+=' viewer-insert';close.className+=' viewer-close';
