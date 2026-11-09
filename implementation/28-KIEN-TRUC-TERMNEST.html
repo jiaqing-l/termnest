@@ -355,7 +355,7 @@ footer{max-width:1240px;margin:auto;padding:30px 20px 60px;color:var(--muted);fo
   </div>
   <div class="tblw" style="margin-top:12px"><table>
     <tr><th>Tình huống</th><th>TERMNEST làm gì</th></tr>
-    <tr><td>Leader rảnh ≥ 5 phút, task còn track mở (không track nào lỗi/chặn, chưa hết vòng sửa)</td><td><b>Tự nhắc</b> một lần mỗi lượt rảnh: "kiểm lại vướng mắc bằng bằng chứng hiện tại, làm tiếp việc được phép, báo bước tiếp"; tối đa 3 lần/giờ. Sau 10 phút: có tiến độ → ghi nhận; không có → báo Cần bạn + yêu cầu rà soát</td></tr>
+    <tr><td>Leader rảnh ≥ 5 phút, task còn track mở (không track nào lỗi/chặn, chưa hết vòng sửa)</td><td><b>Tự nhắc</b> một lần mỗi lượt rảnh (bằng ngôn ngữ giao diện): "tiếp tục kế hoạch đã duyệt — đo lại điểm vướng, làm bước tiếp theo kể cả giao/giao lại track đang chờ của chính task; không trả lời xin quyền, không dừng worker đang chạy, không merge/deploy"; tối đa 3 lần/giờ. Sau 10 phút: có tiến độ → ghi nhận; không có → báo Cần bạn + yêu cầu rà soát</td></tr>
     <tr><td>Track bị crew đánh <code>failed</code> mã thoát 7 (helper kiểm chứng của crew không chạy trên macOS)</td><td>Đọc thêm <code>tracks/&lt;id&gt;/STATUS.md</code>, log xác minh của leader, <code>int-verify*.log</code>: bằng chứng <b>mới nhất</b> quyết định → <b>Leader đã xác minh</b> / Xác minh lỗi (n test) / Bị chặn / Đã code chờ xác minh, kèm tên tệp, giờ, số test</td></tr>
     <tr><td>Leader hỏi quyền, chờ chọn phương án, hết quota</td><td><b>Báo Cần bạn</b>, không tự trả lời</td></tr>
     <tr><td>Claude khởi động lại, VM reboot, leader resume ở phiên khác</td><td>Vẫn trông: leader được nhận lại từ <code>nudge.conf</code> mỗi lần quét; crew kit tự ghi lại pane mỗi khi leader chạy <code>crew-task.sh</code> / <code>crew-watch.sh</code></td></tr>

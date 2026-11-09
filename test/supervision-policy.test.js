@@ -127,7 +127,7 @@ test('first snapshot is baseline; exact enrolled idle leader recovers once and g
   f.genericTick(); await settle(); assert.equal(f.sent.filter(x => x.pane === '%7').length, 0, 'generic auto cannot race managed registration');
   f.advance(15000); await f.tick();
   const recoveries = f.sent.filter(x => x.pane === '%7'); assert.equal(recoveries.length, 2, 'one bounded two-line prompt');
-  assert.ok(recoveries[0].text.includes('Termnest kiểm tra định kỳ')); assert.ok(recoveries[1].text.includes('Không trả lời hộp thoại xin quyền'));
+  assert.ok(recoveries[0].text.includes('Termnest kiểm tra định kỳ')); assert.ok(recoveries[1].text.includes('Không trả lời hộp thoại xin quyền') && recoveries[1].text.includes('giao lại (dispatch) các track đang chờ của chính task này'));
   // The nudge follows the language used in the page.
   assert.ok(require('../lib/supervision-state').recoveryPrompt({ taskIds: ['T'] }, 'en').startsWith('Managed supervision check for tasks T.'));
   assert.equal(f.vault.ops.log.filter(x => x.why === 'supervision').length, 1); assert.equal(f.vault.ops.log[0].delivery, 'delivered');
