@@ -24,7 +24,7 @@ const supervision = { enabled: false, autoRecovery: false, autoEnroll: false, in
       audits: [{ runId: 'tn-1', createdAt: iso(720000), active: false, reason: { code: 'report_valid' }, requiresOwner: false }],
       discovered: [{ session: 'crew-sfa', root: '/home/dev/ws', taskIds: ['20261108-sfa-route-kpi'], excluded: false },
         { session: 'crew-dex', root: '/home/dev/ws', taskIds: ['20261108-dex-pod-sign'], excluded: false }],
-      teams: [team('crew-sfa', '/home/dev/ws', 'progressing', 'task_evidence_changed', ['20261108-sfa-route-kpi'], { recovery: { at: iso(600000), code: 'recovery_progress', requiresOwner: false } }),
+      teams: [team('crew-sfa', '/home/dev/ws', 'progressing', 'task_evidence_changed', ['20261108-sfa-route-kpi'], { recovery: { at: iso(600000), code: 'recovery_progress', requiresOwner: false }, tasks: [{ id: '20261108-sfa-route-kpi', title: 'Route KPI cho SFA', status: 'dispatched', tracks: [{ id: 'W1', state: 'merged' }, { id: 'W2', state: 'dispatched' }, { id: 'W3', state: 'failed', fixRounds: 1 }, { id: 'W4', state: 'pending' }] }] }),
         team('crew-dex', '/home/dev/ws', 'waiting_owner', 'owner_decision', ['20261108-dex-pod-sign'])] }] };
 const board = { servers: [
   { id: 'mac', name: 'Mac-THANHLG', online: true, findings: [], sessions: [{ name: 'Vifon-SV', ai: { tool: 'claude', status: 'idle', at: now - 900000 }, bgAgents: [] },
@@ -116,6 +116,7 @@ let chrome, ws, closeBrowser, chromeError = '';
   TW.renderDetail(a,{v:{id:'vm2'},s:{name:'crew-sfa'}});TW.renderDetail(b,{v:{id:'mac'},s:{name:'PG-App'}});
   const ca=a.querySelector('.ops-crew-detail'),cb=b.querySelector('.ops-crew-detail');return [ca&&!ca.hidden?ca.textContent:'',cb&&!cb.hidden?'shown':'']})()`);
  assert.ok(side[0].includes('20261108-sfa-route-kpi') && side[0].includes('1 worker'), 'leader side panel: ' + side[0]);
+ assert.ok(side[0].includes('Route KPI cho SFA') && side[0].includes('1/4 track xong') && side[0].includes('W2 đang chạy') && side[0].includes('W3 lỗi · fix 1'), 'track chips: ' + side[0]);
  assert.equal(side[1], '', 'no crew block for a non-leader session');
  // Exclude one team.
  await evaluate('[...document.querySelectorAll(".ops-crew-team")].find(r=>r.textContent.includes("crew-dex")).querySelector("input").click()');

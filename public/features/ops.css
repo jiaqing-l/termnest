@@ -383,3 +383,14 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 .ops-crew-detail h3{margin:0;font-size:13px}
 .ops-crew-detail .ops-crew-tasks{margin:4px 0}
 .ops-crew-detail .btn{margin-top:6px}
+
+.ops-crew-task{margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px}
+.ops-crew-task-title{display:block;font-size:13px;overflow-wrap:anywhere}
+.ops-crew-bar{height:5px;border-radius:5px;background:var(--surface-2);margin:4px 0 6px;overflow:hidden}
+.ops-crew-bar i{display:block;height:100%;background:var(--ok)}
+.ops-crew-chips{display:flex;flex-wrap:wrap;gap:5px}
+.ops-crew-chip{font-size:11.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.ops-crew-chip.c-done{color:var(--ok);background:var(--ok-soft)}
+.ops-crew-chip.c-run{color:var(--hero-b,#2f6fed);border-color:currentColor;font-weight:700}
+.ops-crew-chip.c-bad{color:var(--bad);background:var(--bad-soft)}
+.ops-crew-chip.c-wait{color:var(--fg-2)}

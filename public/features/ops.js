@@ -28,6 +28,9 @@ function opsSessionRows(board, supervision) {
       var fresh = host && host.online === true && freshness.snapshotFresh !== false && at > 0 && at <= Date.now() + 5000 && Date.now() - at <= (Number.isFinite(maxAge) && maxAge > 0 ? maxAge : 120000);
       function owner(item, key, audit) {
         if (!fresh || !item.requiresOwner || audit && item.active !== true) return;
+        // The leader is busy handling it (e.g. re-running a failed track): do not page the owner yet.
+        var lead = !audit && item.session && (srv.sessions || []).find(function (v) { return v.name === item.session; });
+        if (lead && lead.ai && lead.ai.status === 'busy') return;
         var code = typeof item.reason === 'string' ? item.reason : item.reason && item.reason.code || item.code;
         var recovery = item.recovery, unresolved = recovery && recovery.requiresOwner ? recovery.code : code;
         var uncertain = audit ? item.deliveryUncertain === true || ['uncertain', 'opening'].indexOf(item.phase) >= 0 : recovery && recovery.requiresOwner && recovery.delivery === 'uncertain';
@@ -117,7 +120,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     if (t.status === 'progressing' && (!Number.isFinite(progress) || progress <= 0 || progress > Date.now())) return 'unknown';
     // The agent reports itself busy but crew has recorded no round yet: say exactly that, not "unknown".
     var code = t.reason && t.reason.code;
-    if (t.status === 'unknown' && code === 'awaiting_task_progress' && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy'; }
+    // A failed track while the leader is busy is the leader fixing it (re-dispatch, fix round): not yet the owner's problem.
+    if ((t.status === 'unknown' && code === 'awaiting_task_progress' || t.status === 'blocked' && code === 'task_blocked') && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy'; }
     return t.status;
   }
 
@@ -273,6 +277,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
   // Session side panel: what crew work this session leads (only when it is a discovered leader), from the same data.
   var crewDetails = {};
+  var TRACK_DONE = ['merged', 'done', 'landed', 'applied', 'closed'];
+  function trackLabel(state) { var k = 'ops.crew.track_' + state, v = i18n(k); return v === k ? text(state) : v; }
   function crewDetail(box, serverId, name) {
     box.textContent = '';
     var server = crewOn() && list(supervision.servers).find(function (v) { return v.id === serverId; });
@@ -280,7 +286,29 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     box.hidden = !d; if (!d) return;
     var team = list(server.teams).find(function (t) { return t.session === name && t.root === d.root; });
     var head = el('div', 'ops-crew-head'); head.append(el('h3', '', c('detail_title')), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(team ? teamState(server, team) : 'unknown'));
-    box.append(head, el('div', 'ops-crew-tasks', ids(d.taskIds).join(' · ') || '—'), el('div', 'ops-note', agentLine(serverId, name)));
+    box.append(head);
+    // Per task: title, tracks done / total, and one chip per track (state from the crew MANIFEST; "running" when a worker for
+    // that track is alive in this session's process tree).
+    var live = list((boardSession(serverId, name) || {}).bgAgents).map(function (w) { return text(w.track); });
+    var tasks = list(team && team.tasks);
+    if (!tasks.length) box.append(el('div', 'ops-crew-tasks', ids(d.taskIds).join(' · ') || '—'));
+    tasks.forEach(function (t) {
+      var tr = list(t.tracks), done = tr.filter(function (k) { return TRACK_DONE.indexOf(k.state) >= 0; }).length;
+      var card = el('div', 'ops-crew-task');
+      card.append(el('b', 'ops-crew-task-title', text(t.title) || text(t.id)), el('small', 'ops-note', text(t.id) + ' · ' + text(t.status)));
+      if (tr.length) {
+        var bar = el('div', 'ops-crew-bar'), fill = el('i'); fill.style.width = Math.round(done / tr.length * 100) + '%'; bar.append(fill);
+        card.append(el('small', 'ops-note', c('tracks_done', [done, tr.length])), bar);
+        var chips = el('div', 'ops-crew-chips');
+        tr.forEach(function (k) {
+          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
+          chips.append(el('span', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : '')));
+        });
+        card.append(chips);
+      }
+      box.append(card);
+    });
+    box.append(el('div', 'ops-note', agentLine(serverId, name)));
     if (team) box.append(el('div', 'ops-note', team.lastProgressAt ? c('progress', [ago(team.lastProgressAt) || stamp(team.lastProgressAt)]) : c('no_progress')));
     box.append(button(c('detail_open'), 'ghost', function () { TW.app().setView('ops'); }));
   }
