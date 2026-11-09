@@ -133,7 +133,12 @@ public static class TermnestNativeCpu {
     if (-not $missing) { throw 'RUNTIME_TASK_MANAGER_UNAVAILABLE' }
   }
   if ($existing) {
-    if ($existing.Definition.RegistrationInfo.Description -ne $Marker -or $existing.Definition.Principal.UserId -ne $Sid) { throw 'RUNTIME_EXISTING_TASK_UNMANAGED' }
+    # Task Scheduler stores the SID we registered but reads it back as an account name ("HOST\user"): compare as SIDs.
+    $owner = [string]$existing.Definition.Principal.UserId
+    if ($owner -and $owner -notmatch '^S-1-') {
+      try { $owner = ([Security.Principal.NTAccount]$owner).Translate([Security.Principal.SecurityIdentifier]).Value } catch { $owner = '' }
+    }
+    if ($existing.Definition.RegistrationInfo.Description -ne $Marker -or $owner -ne $Sid) { throw 'RUNTIME_EXISTING_TASK_UNMANAGED' }
   }
   if ($Status) {
     if (-not $existing) { Write-Output 'RUNTIME_TASK_NOT_CONFIGURED'; exit 0 }
