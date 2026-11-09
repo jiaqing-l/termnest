@@ -83,7 +83,8 @@ test('real extracted source archive boots on loopback with pinned dependencies a
     const protectedResponse = await request('/api/state'); assert.equal(protectedResponse.status, 401); await protectedResponse.text();
     const page = await request('/'); assert.equal(page.status, 200); assert.match(await page.text(), /<html/i);
     assert.ok(fs.existsSync(path.join(data, 'service.lock')), 'real DATA lock acquired');
-    assert.deepEqual(await stop(), [0, null], outputText);
+    const stopped = await stop();
+    if (process.platform !== 'win32') assert.deepEqual(stopped, [0, null], outputText); // Windows has no SIGTERM: kill() ends it at once
     assert.equal(forced, false, 'owned server stopped gracefully');
     assert.equal(fs.existsSync(path.join(data, 'service.lock')), false, 'DATA lock released');
     assert.equal(fs.existsSync(path.join(data, 'vault.json')), false, 'no real or synthetic accounts loaded');

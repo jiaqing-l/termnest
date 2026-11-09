@@ -544,36 +544,37 @@ $vault=Join-Path $data 'vault.json';$secret=Join-Path $data 'password'
 [IO.File]::WriteAllText($vault,'encrypted-fixture')
 [IO.File]::WriteAllText($secret,[string]$c.password)
 # Native parser only: no task is registered through this actual COM object.
-$script:native=New-Object -ComObject 'Schedule.Service';$script:native.Connect()
-$script:state=@{task=$null;register=0;run=0;delete=0}
-$script:folder=[pscustomobject]@{}
-$script:folder | Add-Member ScriptMethod GetTask {
+# $global:, not $script:: the mock runs from inside the installer script, where $script: is the installer's own scope.
+$global:native=New-Object -ComObject 'Schedule.Service';$global:native.Connect()
+$global:state=@{task=$null;register=0;run=0;delete=0}
+$global:folder=[pscustomobject]@{}
+$global:folder | Add-Member ScriptMethod GetTask {
  param($name)
- if(-not $script:state.task){throw [IO.FileNotFoundException]::new()}
- return $script:state.task
+ if(-not $global:state.task){throw [IO.FileNotFoundException]::new()}
+ return $global:state.task
 }
-$script:folder | Add-Member ScriptMethod RegisterTaskDefinition {
+$global:folder | Add-Member ScriptMethod RegisterTaskDefinition {
  param($name,$definition,$flags,$user,$password,$logon,$sddl)
  if($password -or $logon -ne 3 -or $user -ne [Security.Principal.WindowsIdentity]::GetCurrent().User.Value){throw 'unexpected credentials'}
- $script:state.register++
+ $global:state.register++
  # Mimic metadata the real manager may add; rerun must still be semantically idempotent.
  $definition.RegistrationInfo.Date='2000-01-01T00:00:00'
  $definition.RegistrationInfo.URI='\\Native-added-uri'
- $script:state.task=[pscustomobject]@{Definition=$definition;State=3;LastTaskResult=0}
- $script:state.task | Add-Member ScriptMethod Run {param($args) $script:state.run++;$this.State=4}
- return $script:state.task
+ $global:state.task=[pscustomobject]@{Definition=$definition;State=3;LastTaskResult=0}
+ $global:state.task | Add-Member ScriptMethod Run {param($args) $global:state.run++;$this.State=4}
+ return $global:state.task
 }
-$script:folder | Add-Member ScriptMethod DeleteTask {param($name,$flags) $script:state.delete++;$script:state.task=$null}
-$script:scheduler=[pscustomobject]@{}
-$script:scheduler | Add-Member ScriptMethod Connect {}
-$script:scheduler | Add-Member ScriptMethod GetFolder {param($name) return $script:folder}
-$script:scheduler | Add-Member ScriptMethod NewTask {param($flags) return $script:native.NewTask(0)}
+$global:folder | Add-Member ScriptMethod DeleteTask {param($name,$flags) $global:state.delete++;$global:state.task=$null}
+$global:scheduler=[pscustomobject]@{}
+$global:scheduler | Add-Member ScriptMethod Connect {}
+$global:scheduler | Add-Member ScriptMethod GetFolder {param($name) return $global:folder}
+$global:scheduler | Add-Member ScriptMethod NewTask {param($flags) return $global:native.NewTask(0)}
 function New-Object {
  [CmdletBinding(DefaultParameterSetName='Net')]
  param([Parameter(Position=0,ParameterSetName='Net')][string]$TypeName,
        [Parameter(Position=1,ParameterSetName='Net')][object[]]$ArgumentList,
        [Parameter(ParameterSetName='Com')][string]$ComObject)
- if($ComObject){if($ComObject -ne 'Schedule.Service'){throw 'unexpected COM'};return $script:scheduler}
+ if($ComObject){if($ComObject -ne 'Schedule.Service'){throw 'unexpected COM'};return $global:scheduler}
  return Microsoft.PowerShell.Utility\\New-Object @PSBoundParameters
 }
 $env:TERMNEST_INSTALL_DIAG='1'
@@ -582,7 +583,7 @@ $first=& $installer -DataDir $data -PasswordFile $secret -NodePath $c.node
 $second=& $installer -DataDir $data -PasswordFile $secret -NodePath $c.node
 $status=& $installer -Status -NodePath $c.node
 $uninstall=& $installer -Uninstall -NodePath $c.node
-@{register=$script:state.register;run=$script:state.run;delete=$script:state.delete;configured=($null -ne $script:state.task);
+@{register=$global:state.register;run=$global:state.run;delete=$global:state.delete;configured=($null -ne $global:state.task);
 first=$first;second=$second;status=$status;uninstall=$uninstall;
 vaultIntact=([IO.File]::ReadAllText($vault) -eq 'encrypted-fixture');secretIntact=([IO.File]::ReadAllText($secret) -eq $c.password)} | ConvertTo-Json -Compress
 `, JSON.stringify({ dir, root: ROOT, node: process.execPath, password: 'synthetic-fixture-password' }));
