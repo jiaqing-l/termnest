@@ -13,7 +13,10 @@
   }
   function row(id, f, redraw) {
     var r = el('div', 'wd-row ' + f.severity), t = el('div', 'wd-t'), bar = el('div', 'wd-bar');
-    t.append(el('b', '', f.title), el('small', '', 'pid ' + f.pid + ' · ' + f.cpu + '% CPU · ' + f.rssMb + ' MB'), el('code', '', f.args));
+    t.append(el('b', '', f.title));
+    var who = where(f); if (who) t.append(el('div', 'wd-who', who));
+    t.append(el('small', '', 'pid ' + f.pid + ' · ' + f.cpu + '% CPU · ' + f.rssMb + ' MB'), el('code', '', f.args));
+    if (f.session) { var open = el('button', 'btn primary', i18n('watchdog.mo_phien')); open.type = 'button'; open.onclick = function () { TW.app().openSession(id, f.session); }; bar.append(open); }
     [['freeze', i18n('watchdog.dong_bang')], ['resume', i18n('watchdog.chay_tiep')]].forEach(function (a) {
       var b = el('button', 'btn', a[1]); b.type = 'button'; b.onclick = function () { act(id, f, a[0], redraw); }; bar.append(b);
     });
@@ -24,6 +27,14 @@
     };
     bar.append(stop); r.append(t, bar); return r;
   }
+  // Which session, crew task and database: enough to open the right terminal at once.
+  function where(f) {
+    var parts = [];
+    if (f.session) parts.push(i18n('watchdog.phien', [f.session]));
+    if (f.task) parts.push(i18n('watchdog.task', [f.task]));
+    if (f.db) parts.push(i18n('watchdog.db', [f.db])); else if (f.dbUnknown) parts.push(i18n('watchdog.db_chua_ro'));
+    return parts.join(' · ');
+  }
   function fill(box, id) {
     var list = found(id); box.textContent = ''; box.hidden = !list.length; if (!list.length) return;
     var w = worst(list), btn = el('button', 'wd-chip ' + (w >= 3 ? 'urgent' : 'warn'), i18n('watchdog.vi_pham_luat', [list.length])), panel = el('div', 'wd-panel'); btn.type = 'button'; panel.hidden = true;
@@ -31,14 +42,19 @@
     btn.onclick = function () { panel.hidden = !panel.hidden; btn.setAttribute('aria-expanded', String(!panel.hidden)); };
     list.slice(0, 12).forEach(function (f) { panel.append(row(id, f, refresh)); }); box.append(btn, panel);
   }
+  var names = {};
   TW.addServerDecorator(function (node, v) {
+    names[v.id] = v.name || v.host || '';
     var box = el('div', 'wd-box'); box.hidden = true; chips[v.id] = box; fill(box, v.id); node.append(box);
   });
   function banner() {
     var urgent = [];
-    Object.keys(data).forEach(function (id) { found(id).forEach(function (f) { if (f.severity === 'urgent') urgent.push(f); }); });
+    Object.keys(data).forEach(function (id) { found(id).forEach(function (f) { if (f.severity === 'urgent') urgent.push({ f: f, id: id }); }); });
     if (!urgent.length) { TW.banner.hide('watchdog'); return; }
-    TW.banner.show({ id: 'watchdog', level: 'urgent', title: i18n('watchdog.tram_gac_luat', [urgent[0].title]), detail: urgent.length > 1 ? i18n('watchdog.va_vi_pham_nua_mo', [(urgent.length - 1)]) : i18n('watchdog.mo_chip_o_ten_may') });
+    var first = urgent[0].f, server = names[urgent[0].id] || '', who = where(first);
+    var detail = [who, server ? i18n('watchdog.may', [server]) : ''].filter(Boolean).join(' · ') + (urgent.length > 1 ? ' — ' + i18n('watchdog.va_vi_pham_nua_mo', [(urgent.length - 1)]) : '');
+    TW.banner.show({ id: 'watchdog', level: 'urgent', title: i18n('watchdog.tram_gac_luat', [first.title]), detail: detail || i18n('watchdog.mo_chip_o_ten_may'),
+      actions: first.session ? [{ label: i18n('watchdog.mo_phien'), primary: true, onClick: function () { TW.app().openSession(urgent[0].id, first.session); } }] : [] });
   }
   function refresh() {
     TW.api('GET', '/api/features/watchdog/data').then(function (r) {
