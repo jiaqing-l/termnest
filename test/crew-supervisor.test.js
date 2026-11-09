@@ -127,7 +127,9 @@ test('freshness and off are checked again after awaited open/scan/persistence', 
 
 test('disabled persists across restart and snapshots do not turn it on', async () => {
   const f = fixture({ initial: { enabled: false, auditHours: 1 } }); await f.tick();
-  assert.equal(f.calls.scan.length, 0);
+  // Off still observes (read-only scan, owner 09/11) but never leases, sends or opens anything.
+  assert.equal(f.calls.send.length, 0); assert.equal(f.calls.open.length, 0);
+  assert.equal((f.calls.coordinate || []).length, 0);
   await f.core.control({ enabled: true }, f.remotes); await f.tick();
   await f.core.control({ enabled: false }, f.remotes); f.restart(); await f.tick();
   assert.equal(f.core.status(f.remotes).enabled, false); assert.equal(f.calls.send.length, 0);

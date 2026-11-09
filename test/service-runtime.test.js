@@ -657,3 +657,16 @@ test('interactive DATA lock accepts and tightens an open folder; the strict serv
   lock.release(); await new Promise(r => setTimeout(r, 20));
   assert.equal(fs.existsSync(path.join(data, 'service.lock')), false);
 });
+
+// Windows reserves port ranges (Hyper-V/WSL/Docker) that change at boot: a reserved arbiter port must not stop the app.
+test('DATA lock skips a port the system reserves (EACCES) and still allows only one owner', async t => {
+  const net = require('node:net'), real = net.Server.prototype.listen, reserved = new Set();
+  // The system keeps the same ports reserved: the first two ports any contender tries stay refused.
+  net.Server.prototype.listen = function (address, cb) { if (address && address.port && address.host === '127.0.0.1' && (reserved.has(address.port) || reserved.size < 2)) { reserved.add(address.port); process.nextTick(() => this.emit('error', Object.assign(new Error('reserved'), { code: 'EACCES' }))); return this; } return real.call(this, address, cb); };
+  t.after(() => { net.Server.prototype.listen = real; });
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-port-'))); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const data = path.join(dir, 'data');
+  const owner = await acquireDataLock(data, { strict: false });
+  await assert.rejects(acquireDataLock(data, { strict: false }), { code: 'RUNTIME_ALREADY_RUNNING' });
+  owner.release();
+});

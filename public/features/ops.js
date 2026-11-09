@@ -137,6 +137,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
   function ids(v) { return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string' && x; }) : []; }
   function crewOn() { return !!supervision && supervision.enabled === true && supervision.autoEnroll === true; }
+  // Teams are visible whenever the supervisor has a fresh read-only scan, including while autopilot is off.
+  function crewVisible() { return crewOn() || !!supervision && list(supervision.servers).some(function (v) { var at = v.freshness && v.freshness.scannedAt; return at && Date.now() - at < 300000; }); }
   function supervisionCard() {
     if (supervisionBox) return supervisionBox;
     supervisionBox = el('section', 'ops-card ops-super ops-crew');
@@ -278,10 +280,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   // Session side panel: what crew work this session leads (only when it is a discovered leader), from the same data.
   var crewDetails = {};
   var TRACK_DONE = ['merged', 'done', 'landed', 'applied', 'closed'];
+  // The first real sentence of a markdown report: no headings, bullets, links or code fences.
+  function firstSentence(t) {
+    var lines = text(t).split('\n').map(function (l) { return l.replace(/^[#>*\-\s]+/, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/`/g, '').trim(); }).filter(function (l) { return l && !/^(status|track|result|state)\s*:?$/i.test(l) && !/^```/.test(l); });
+    var one = (lines[0] || '').split(/(?<=[.!?])\s/)[0];
+    return one.length > 220 ? one.slice(0, 217) + '…' : one;
+  }
+  function exitMeaning(code) { var k = 'ops.crew.exit_' + text(code), v = i18n(k); return v === k ? c('exit_other', [text(code)]) : v; }
   function trackLabel(state) { var k = 'ops.crew.track_' + state, v = i18n(k); return v === k ? text(state) : v; }
   function crewDetail(box, serverId, name) {
     box.textContent = '';
-    var server = crewOn() && list(supervision.servers).find(function (v) { return v.id === serverId; });
+    var server = crewVisible() && list(supervision.servers).find(function (v) { return v.id === serverId; });
     var d = server && list(server.discovered).find(function (x) { return x.session === name; });
     box.hidden = !d; if (!d) return;
     var team = list(server.teams).find(function (t) { return t.session === name && t.root === d.root; });
@@ -301,8 +310,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         card.append(el('small', 'ops-note', c('tracks_done', [done, tr.length])), bar);
         var chips = el('div', 'ops-crew-chips');
         tr.forEach(function (k) {
-          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
-          chips.append(el('span', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : '')));
+          // Exit 7 = the dispatcher rejected the worker's verification evidence: code exists, verification is still open.
+          var unverified = k.state === 'failed' && k.lastExit === '7';
+          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : unverified ? 'wait' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
+          var chip = el('button', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : unverified ? c('track_unverified') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : ''));
+          chip.type = 'button'; chip.title = c('track_open');
+          chip.onclick = function () { trackPopup(serverId, d.root, t, k, running); };
+          chips.append(chip);
         });
         card.append(chips);
       }
@@ -311,6 +325,87 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     box.append(el('div', 'ops-note', agentLine(serverId, name)));
     if (team) box.append(el('div', 'ops-note', team.lastProgressAt ? c('progress', [ago(team.lastProgressAt) || stamp(team.lastProgressAt)]) : c('no_progress')));
     box.append(button(c('detail_open'), 'ghost', function () { TW.app().setView('ops'); }));
+  }
+  // What one track really did: its rounds, why it failed or is blocked (newest file first, with its time), the worker's last
+  // message and report, and the tail of its newest log. Read from the track folder on its machine.
+  function trackPopup(serverId, root, t, k, running) {
+    var dlg = el('dialog', 'ops-track-dlg'), head = el('div', 'ops-track-head'), body = el('div', 'ops-track-body');
+    head.append(el('b', '', text(k.id) + ' · ' + (text(t.title) || text(t.id))), button(i18n('ops.dong'), 'ghost', function () { dlg.close(); }));
+    body.append(el('p', 'ops-note', c('track_state', [trackLabel(k.state), running ? c('track_running') : '—', text(t.id)])), el('p', 'ops-note', i18n('ops.loading')));
+    dlg.append(head, body); document.body.append(dlg); dlg.addEventListener('close', function () { dlg.remove(); });
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    var q = 'server=' + encodeURIComponent(serverId) + '&root=' + encodeURIComponent(root) + '&task=' + encodeURIComponent(t.id) + '&track=' + encodeURIComponent(k.id);
+    // Live: while the popup is open, re-read the worker's newest log every 3 s and show what it is doing now.
+    var liveBox = el('section', 'ops-track-live'), liveHead = el('div', 'ops-track-live-head'), liveList = el('ol', 'ops-track-feed');
+    liveBox.append(liveHead, liveList); liveBox.hidden = true; body.insertBefore(liveBox, body.firstChild.nextSibling);
+    var ICON = { exec: '▶', say: '💬', think: '…', patch: '✎', tokens: '∑' }, timer = null;
+    function drawLive(r) {
+      var fresh = r && r.logAt && Date.now() - r.logAt < 120000;
+      liveBox.hidden = !(running || fresh) || !r || !list(r.feed).length; if (liveBox.hidden) return;
+      liveHead.textContent = c('track_live', [text(r.logName), ago(r.logAt) || stamp(r.logAt)]);
+      var stick = liveList.scrollTop + liveList.clientHeight >= liveList.scrollHeight - 8;
+      liveList.textContent = '';
+      list(r.feed).forEach(function (e, i, all) {
+        var li = el('li', 'f-' + text(e.kind) + (e.ok === false ? ' f-bad' : ''));
+        var mark = e.kind === 'exec' ? (e.ok === null ? '⏳' : e.ok ? '✓' : '✗ ' + (e.code != null ? e.code : '')) : '';
+        li.append(el('span', 'f-at', new Date(e.at).toLocaleTimeString(i18n('lang.locale'), { hour: '2-digit', minute: '2-digit', second: '2-digit' })), el('span', 'f-ic', ICON[e.kind] || '•'), el('span', 'f-tx', text(e.text)), el('span', 'f-ok', mark));
+        if (i === all.length - 1 && e.kind === 'exec' && e.ok === null) li.classList.add('f-now');
+        liveList.append(li);
+      });
+      if (stick) liveList.scrollTop = liveList.scrollHeight;
+    }
+    function pollLive() {
+      if (!dlg.isConnected) return;
+      TW.api('GET', '/api/features/crewpack/track?' + q + '&live=1').then(drawLive).catch(function () {}).finally(function () { if (dlg.isConnected) timer = setTimeout(pollLive, 3000); });
+    }
+    dlg.addEventListener('close', function () { clearTimeout(timer); });
+    pollLive();
+    TW.api('GET', '/api/features/crewpack/track?' + q).then(function (r) {
+      body.lastChild.remove();
+      var rounds = list(r.rounds), last = rounds[rounds.length - 1] || null, ch = r.changes || {}, commits = list(ch.commits);
+      var files = r.files && typeof r.files === 'object' ? Object.keys(r.files).map(function (n) { return { n: n, f: r.files[n] }; }) : [];
+      // Files written before the latest round started belong to earlier rounds: kept, but out of the way.
+      var since = last ? Date.parse(last.startedAt) - 60000 : 0;
+      var current = files.filter(function (x) { return !since || (x.f.at || 0) >= since; }), older = files.filter(function (x) { return current.indexOf(x) < 0; });
+      var get = function (n) { var x = current.filter(function (y) { return y.n === n; })[0]; return x ? text(x.f.text) : ''; };
+      // One plain status: what state the track is in right now.
+      var done = TRACK_DONE.indexOf(k.state) >= 0, exit = last ? text(last.exit) : '';
+      var status = running ? ['run', c('ts_running')] : done ? ['done', c('ts_done')] : exit === '7' ? ['wait', c('ts_unverified')] :
+        /fail|blocked/.test(k.state) ? ['bad', c('ts_failed')] : ['idle', trackLabel(k.state)];
+      if (r.goal) head.firstChild.textContent = text(k.id) + ' · ' + text(r.goal);
+      var badge = el('div', 'ops-track-badge s-' + status[0]); badge.append(el('b', '', status[1]), el('span', '', last ? c('ts_when', [ago(Date.parse(last.endedAt)) || stamp(Date.parse(last.endedAt))]) : ''));
+      body.firstChild.replaceWith(badge);
+      // Summary: result (the worker's own words), what blocks it now, and what happens next.
+      var sum = el('dl', 'ops-track-sum');
+      var result = firstSentence(get('last-message.md') || get('STATUS.md'));
+      var block = firstSentence(get('EVIDENCE-FAILED.md') || get('BLOCKED.md') || get('CORRECTION-REFUSED.md') || get('DISPATCH-REFUSED.md'));
+      var next = running ? c('next_running') : done ? c('next_done') : exit === '7' ? c('next_verify') : exit === '8' ? c('next_queued') : exit === '9' ? c('next_budget') : exit === '11' ? c('next_quota') : /fail|blocked/.test(k.state) ? c('next_failed') : c('next_wait');
+      [[c('sum_result'), result || '—'], [c('sum_block'), done ? '—' : block || '—'], [c('sum_next'), next]].forEach(function (p) { sum.append(el('dt', '', p[0]), el('dd', '', p[1])); });
+      body.append(sum);
+      // One line of numbers.
+      var mins = rounds.reduce(function (n, x) { return n + (x.seconds || 0); }, 0) / 60, files_ = /(\d+) files? changed/.exec(text(ch.stat)), add = /(\d+) insertions?/.exec(text(ch.stat)), del = /(\d+) deletions?/.exec(text(ch.stat));
+      body.append(el('p', 'ops-track-stats', [c('st_rounds', [rounds.length]), Math.round(mins) + "'", last ? text(last.model) + ' ' + text(last.effort) : '',
+        c('st_commits', [commits.length]), files_ ? c('st_files', [files_[1], add ? add[1] : 0, del ? del[1] : 0]) : ''].filter(Boolean).join(' · ')));
+      function more(title, open, nodes) { var d = el('details', 'ops-track-file'); d.open = !!open; d.append(el('summary', '', title)); nodes.forEach(function (n) { d.append(n); }); body.append(d); }
+      var commitNodes = [];
+      if (commits.length) { var ul = el('ul', 'ops-track-commits'); commits.forEach(function (x) { ul.append(el('li', '', text(x.sha) + ' · ' + text(x.at) + ' · ' + text(x.subject))); }); commitNodes.push(ul); }
+      if (ch.stat) commitNodes.push(el('pre', '', text(ch.stat)));
+      if (!commitNodes.length) commitNodes.push(el('p', 'ops-note', c('track_no_commits')));
+      more(c('track_changes', [text(ch.repo) || '—', text(ch.branch) || '—', commits.length]), false, commitNodes);
+      if (rounds.length) {
+        var table = el('table', 'ops-track-rounds'), hr = el('tr');
+        ['#', c('col_kind'), c('col_exit'), c('col_time'), c('col_model'), c('col_end')].forEach(function (h) { hr.append(el('th', '', h)); }); table.append(hr);
+        rounds.slice().reverse().forEach(function (x) { var tr = el('tr'); [x.round, x.kind, x.exit, Math.round((x.seconds || 0) / 60) + "'", text(x.model) + ' ' + text(x.effort), stamp(Date.parse(x.endedAt))].forEach(function (v) { tr.append(el('td', '', text(v))); }); table.append(tr); });
+        more(c('sec_rounds', [rounds.length]), false, [table, el('p', 'ops-note', exitMeaning(exit))]);
+      }
+      // The worker's own reports for the current round, newest first; FAILED holds only an exit code, explained above.
+      current.sort(function (a2, b2) { return (b2.f.at || 0) - (a2.f.at || 0); });
+      var reportNodes = current.filter(function (x) { return x.n !== 'FAILED'; }).map(function (x) { var d = el('details', 'ops-track-sub'); d.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', text(x.f.text))); return d; });
+      if (reportNodes.length) more(c('sec_reports', [reportNodes.length]), false, reportNodes);
+      if (older.length) more(c('sec_older', [older.length]), false, older.map(function (x) { var d = el('details', 'ops-track-sub'); d.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', text(x.f.text))); return d; }));
+      var logNodes = []; if (r.log) logNodes.push(el('pre', '', text(r.log))); if (r.dispatch) { logNodes.push(el('b', '', 'dispatch.out')); logNodes.push(el('pre', '', text(r.dispatch))); }
+      if (logNodes.length) more(c('track_log', [text(r.logName)]), false, logNodes);
+    }).catch(function () { body.lastChild.textContent = c('track_unavailable'); });
   }
   function refreshCrewDetails() {
     Object.keys(crewDetails).forEach(function (k) { var e = crewDetails[k]; if (!e.box.isConnected) { delete crewDetails[k]; return; } crewDetail(e.box, e.serverId, e.name); });
@@ -373,7 +468,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     }
     crewBody.append(el('h4', '', c('teams')));
     var any = false;
-    if (on) list(supervision.servers).forEach(function (server) {
+    if (crewVisible()) list(supervision.servers).forEach(function (server) {
       if (!list(server.discovered).length && !list(server.teams).some(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; }) && hostConnected(server)) return;
       any = true; crewBody.append(crewMachine(server, true));
     });
@@ -801,7 +896,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     all.sort(function (a, b) { return (SEV[a.f.severity] - SEV[b.f.severity]) || (b.f.since - a.f.since); });
     var leaders = {}, teamN = 0, crewNeed = needYou();
     // While autopilot is off nothing is scanned, so saved teams would be stale: show none rather than old data.
-    if (crewOn()) list(supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
+    if (crewVisible()) list(supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
     var needN = all.filter(function (x) { return dailyGroup(x) === 'attention'; }).length + crewNeed.length;
     h.querySelector('p').textContent = i18n('ops.sumline', [data.servers.length, data.servers.reduce(function (n, v) { return n + list(v.sessions).filter(function (s) { return s.agent; }).length; }, 0), teamN, needN]);
     page.append(machines(all, crewNeed));
@@ -830,7 +925,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var crew = list(supervision && supervision.servers).filter(function (v) { return !filt.srv || v.id === filt.srv; });
     var cb = section('crew', i18n('ops.daily.crew'), teamN, true, 'user');
     if (!supervision) cb.append(el('p', 'ops-empty', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading')));
-    if (supervision && !crewOn()) {
+    if (supervision && !crewVisible()) {
       cb.append(el('p', 'ops-empty', c('off_view')), button(c('turn_on'), 'primary', function () { TW.app().openSettings('sessions'); }));
     } else crew.forEach(function (v) { cb.append(crewMachine(v, false)); });
     var rest = shown.filter(function (x) { return dailyGroup(x) !== 'attention' && !leaders[x.s.id + '|' + x.f.session]; });
