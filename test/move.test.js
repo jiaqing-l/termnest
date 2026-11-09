@@ -127,3 +127,34 @@ test('a survey failure names the machine and the reason instead of an empty mess
     assert.equal(fails.length, 1); assert.match(fails[0], /b — Máy chủ phản hồi quá lâu\./, fails[0]);
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
+
+// "Máy này" runs host runtimes in-process. They used to be built with `new Function`, which has no `require`:
+// every move FROM this machine failed with "require is not defined".
+test('a chat moves from the local machine (in-process runtimes) to another machine', { skip: process.platform === 'win32' }, async (t) => {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-move-local-'))), A = path.join(base, 'a'), B = path.join(base, 'b');
+  const home = process.env.HOME; process.env.HOME = A; t.after(() => { process.env.HOME = home; fs.rmSync(base, { recursive: true, force: true }); });
+  const cwd = path.join(A, 'work', 'xspire'), dst = path.join(B, 'work', 'xspire');
+  fs.mkdirSync(cwd, { recursive: true }); fs.mkdirSync(dst, { recursive: true });
+  repo(cwd, 'git@gitlab.example.com:team/xspire.git'); repo(dst, 'https://gitlab.example.com/team/xspire.git');
+  signIn(A, 'me@example.com'); signIn(B, 'me@example.com');
+  const id = '2cbf2a9d-d71e-4998-868f-d2953df55c35', proj = path.join(A, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-'));
+  fs.mkdirSync(proj, { recursive: true }); fs.writeFileSync(path.join(proj, id + '.jsonl'), JSON.stringify({ cwd, message: 'hi' }) + '\n');
+  const a = machine(A, [{ name: 'SV1', path: cwd, cmd: 'claude', aiTool: 'claude', aiSessionId: id }]); a.cfg.local = true;
+  const b = machine(B, [{ name: 'X', path: dst, cmd: 'bash' }]);
+  const routes = {}, sent = [], fails = [];
+  move.register({ route: (m, p, h) => { routes[m + p] = h; }, backendOf: (x) => ({ a, b }[x] || null), shq, readJson: async (req) => req.body,
+    send: (res, c, body) => sent.push(body), fail: (res, c, msg) => fails.push(msg), sessions: { start: async () => {}, stop: async () => true } });
+  await routes['GET/check']({ res: {}, url: new URL('http://x/check?server=a&session=SV1&to=b') });
+  assert.deepEqual(fails, []);
+  const c = sent.pop(); assert.equal(c.places[0].path, dst);
+  await routes['POST/run']({ req: { body: { server: 'a', session: 'SV1', to: 'b', dir: dst, name: c.name } }, res: {} });
+  assert.deepEqual(fails, []); assert.equal(sent.pop().ok, true);
+  assert.ok(fs.existsSync(path.join(B, '.claude', 'projects', dst.replace(/[^A-Za-z0-9]/g, '-'), id + '.jsonl')));
+});
+
+test('scripts for the local machine use the node that runs Termnest, not one from PATH', () => {
+  assert.equal(move.nodeFor({ cfg: { local: true }, mode: 'native' }, shq), shq(process.execPath));
+  assert.equal(move.nodeFor({ cfg: { local: true }, mode: 'wsl' }, shq), 'node');
+  assert.equal(move.nodeFor({ cfg: {} }, shq), 'node');
+  assert.ok(move.writeScript('claude', 'x', 'r', '/d', shq, undefined, 'e', Buffer.from('a'), 'default', shq(process.execPath)).startsWith(shq(process.execPath) + ' -e '));
+});
