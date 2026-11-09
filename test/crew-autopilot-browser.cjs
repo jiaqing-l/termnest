@@ -55,7 +55,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.url === '/api/features/ops/supervision/bind') { let b = ''; for await (const c of req) b += c; binds.push(JSON.parse(b)); return res.end(JSON.stringify({ code: 'bind_done' })); }
     if (req.url.startsWith('/api/features/crewpack/track?')) return res.end(JSON.stringify({ rounds: [{ round: '1', startedAt: '2026-11-09T11:43:06+07:00', endedAt: '2026-11-09T11:44:11+07:00', seconds: 65, exit: '7', tokens: 47240, kind: 'fix', executor: 'codex', model: 'gpt-6.1-sol', effort: 'high' }],
-      files: { 'FAILED': { text: 'verify failed: dart analyze', at: Date.now() - 60000 }, 'last-message.md': { text: 'Committed W3 as abc123', at: Date.now() - 120000 } }, log: 'tail of codex log', logName: 'codex-1.log', dispatch: '' }));
+      files: { 'FAILED': { text: 'verify failed: dart analyze', at: Date.now() - 60000 }, 'last-message.md': { text: 'Committed W3 as abc123', at: Date.now() - 120000 } }, log: 'tail of codex log', logName: 'codex-1.log', dispatch: '', changes: { repo: 'hqsoft.esales.sfa', branch: 'crew/x-w3', commits: [{ sha: 'abc1234', at: '09/11 12:08', subject: 'feat: route KPI' }], stat: ' lib/a.dart | 10 +++\n 1 file changed' } }));
     if (req.url === '/api/features/ops/board') return res.end(JSON.stringify(board));
     return res.end(JSON.stringify(req.url.includes('plugins') ? { servers: [], autoReload: false } : {}));
   }
@@ -124,6 +124,7 @@ let chrome, ws, closeBrowser, chromeError = '';
  await evaluate(`(()=>{const a=document.createElement('div');document.body.append(a);TW.renderDetail(a,{v:{id:'vm2'},s:{name:'crew-sfa'}});[...a.querySelectorAll('.ops-crew-chip')].find(b=>b.textContent.startsWith('W3')).click();})()`);
  await until("!!document.querySelector('.ops-track-dlg') && document.querySelector('.ops-track-dlg').textContent.includes('verify failed')", 'track popup');
  const pop = await evaluate("document.querySelector('.ops-track-dlg').textContent");
+ assert.ok(pop.includes('abc1234 · 09/11 12:08 · feat: route KPI') && pop.includes('1 file changed'), pop);
  assert.ok(pop.includes('Vòng gần nhất: #1 (fix) · mã thoát 7') && pop.includes('FAILED') && pop.includes('codex-1.log'), pop);
  await evaluate("document.querySelector('.ops-track-dlg').close()");
  // Exclude one team.

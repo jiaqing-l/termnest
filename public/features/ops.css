@@ -407,3 +407,4 @@ button.ops-crew-chip:hover{outline:1px solid currentColor}
 .ops-track-file{margin:6px 0;border:1px solid var(--line);border-radius:8px;padding:4px 8px}
 .ops-track-file summary{cursor:pointer;font-weight:600;font-size:13px}
 .ops-track-file pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px ui-monospace,Menlo,monospace;max-height:340px;overflow:auto;margin:6px 0}
+.ops-track-commits{margin:6px 0;padding-left:18px;font:12px ui-monospace,Menlo,monospace}

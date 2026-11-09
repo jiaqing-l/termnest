@@ -1764,6 +1764,8 @@
   "ops.crew.track_no_rounds": "Track chưa chạy vòng nào.",
   "ops.crew.track_log": "Cuối log worker ({0})",
   "ops.crew.track_unavailable": "Không đọc được thư mục track trên máy này.",
+  "ops.crew.track_changes": "Đã sửa gì: {0} · nhánh {1} · {2} commit",
+  "ops.crew.track_no_commits": "Chưa có commit nào trên nhánh track.",
   "ops.crew.mode_auto": "Tự trông",
   "ops.crew.mode_watch": "Chỉ theo dõi (máy không hỗ trợ tự nhắc)",
   "ops.crew.mode_off": "Tự trông đang tắt",

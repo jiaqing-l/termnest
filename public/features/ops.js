@@ -335,6 +335,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         rounds.slice().reverse().forEach(function (x) { var tr = el('tr'); [x.round, x.kind, x.exit, Math.round((x.seconds || 0) / 60) + "'", text(x.model) + ' ' + text(x.effort), stamp(Date.parse(x.endedAt))].forEach(function (v) { tr.append(el('td', '', text(v))); }); table.append(tr); });
         body.append(table);
       } else body.append(el('p', 'ops-note', c('track_no_rounds')));
+      var ch = r.changes || {}, commits = list(ch.commits);
+      var cs = el('details', 'ops-track-file'); cs.open = true;
+      cs.append(el('summary', '', c('track_changes', [text(ch.repo) || '—', text(ch.branch) || '—', commits.length])));
+      if (commits.length) { var ul = el('ul', 'ops-track-commits'); commits.forEach(function (x) { ul.append(el('li', '', text(x.sha) + ' · ' + text(x.at) + ' · ' + text(x.subject))); }); cs.append(ul); }
+      else cs.append(el('p', 'ops-note', c('track_no_commits')));
+      if (ch.stat) cs.append(el('pre', '', text(ch.stat)));
+      body.append(cs);
       var files = r.files && typeof r.files === 'object' ? Object.keys(r.files).map(function (n) { return { n: n, f: r.files[n] }; }) : [];
       files.sort(function (a, b) { return (b.f.at || 0) - (a.f.at || 0); });
       files.forEach(function (x) {
