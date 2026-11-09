@@ -18,7 +18,8 @@ function safeEntry(name) {
 }
 // GNU tar on Windows reads "D:\\…" (in -f and -C) as a remote host: run tar inside the folder and pass a relative
 // archive path with forward slashes.
-const rel = (from, to) => path.relative(from, to).split(path.sep).join('/');
+// Real paths on both sides: macOS temp folders sit behind a /var -> /private/var link.
+const rel = (from, to) => path.relative(fs.realpathSync(from), path.join(fs.realpathSync(path.dirname(to)), path.basename(to))).split(path.sep).join('/');
 function build({ source = path.resolve(__dirname, '..'), output = path.join(source, 'implementation', 'termnest-update-test.tar.gz'), tar = 'tar' } = {}) {
   source = path.resolve(source); output = path.resolve(output);
   // Stage exact file bytes and modes. Never follow symlinks or archive a directory recursively.
