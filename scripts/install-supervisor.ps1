@@ -58,7 +58,8 @@ public static class TermnestNativeCpu {
     $bundledNode = Join-Path $AppDir 'node.exe'
     if (Test-Path -LiteralPath $bundledNode) { $NodePath = $bundledNode }
     else {
-      try { $NodePath = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source }
+      # Several node.exe on PATH return several commands; use the first, as PATH resolution does.
+      try { $NodePath = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source }
       catch { throw 'RUNTIME_NODE_REQUIRED' }
     }
   }

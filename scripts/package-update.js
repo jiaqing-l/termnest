@@ -49,11 +49,11 @@ function build({ source = path.resolve(__dirname, '..'), output = path.join(sour
     const names = entries.map(e => e.path).concat(manifest);
     // The archive is named relative to its own folder: GNU tar on Windows reads "D:\\…" as a remote host "D".
     execFileSync(tar, ['-czf', path.basename(temp), '-C', stage, '--', ...names], { cwd: path.dirname(temp), stdio: 'pipe', env: { ...process.env, COPYFILE_DISABLE: '1', TAR_OPTIONS: '' } });
-    const actual = execFileSync(tar, ['-tzf', temp], { encoding: 'utf8', env: { ...process.env, TAR_OPTIONS: '' } }).trim().split('\n');
+    const actual = execFileSync(tar, ['-tzf', path.basename(temp)], { cwd: path.dirname(temp), encoding: 'utf8', env: { ...process.env, TAR_OPTIONS: '' } }).trim().split('\n');
     if (JSON.stringify(actual) !== JSON.stringify(names)) throw Error('Bundle entry verification failed');
     // Verify decompression and content before the atomic rename, including the generated manifest.
     const check = path.join(stage, 'verify'); fs.mkdirSync(check);
-    execFileSync(tar, ['-xzpf', temp, '-C', check], { stdio: 'pipe', env: { ...process.env, TAR_OPTIONS: '' } });
+    execFileSync(tar, ['-xzpf', path.basename(temp), '-C', check], { cwd: path.dirname(temp), stdio: 'pipe', env: { ...process.env, TAR_OPTIONS: '' } });
     for (const e of entries) {
       const file = path.join(check, e.path), st = fs.lstatSync(file);
       if (!st.isFile() || hash(fs.readFileSync(file)) !== e.sha256 || (process.platform !== 'win32' && (st.mode & 0o777) !== e.mode)) throw Error('Bundle content verification failed: ' + e.path);

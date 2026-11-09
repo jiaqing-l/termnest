@@ -19,6 +19,13 @@ function ps(program, input = '') {
   return execFileSync(psPath(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(program, 'utf16le').toString('base64')],
     { input, encoding: 'utf8', timeout: 120000, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }).replace(/^\ufeff/, '').trim();
 }
+// Same as ps(), but also returns stderr: the installer reports its fixed RUNTIME_* codes there.
+function psWithErrors(program, input = '') {
+  program = `[Console]::InputEncoding=New-Object Text.UTF8Encoding($false);[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false);` + program;
+  const r = spawnSync(psPath(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(program, 'utf16le').toString('base64')],
+    { input, encoding: 'utf8', timeout: 120000, windowsHide: true });
+  return { out: String(r.stdout || '').replace(/^\ufeff/, '').trim(), err: String(r.stderr || '').trim() };
+}
 function windowsDry(args, app = ROOT, env = process.env) {
   return execFileSync(psPath(), ['-NoProfile', '-NonInteractive', '-File', path.join(app, 'scripts/install-supervisor.ps1'), '-DryRun', ...args],
     { env, encoding: 'utf8', timeout: 15000, windowsHide: true }).replace(/^\ufeff/, '').trim();
@@ -520,7 +527,7 @@ esac
 test('native Windows with mock Task Scheduler installs/reruns/status/unregisters without overwriting vault or stopping workers',
   { skip: process.platform !== 'win32' ? 'Windows-only fixture uses actual ACL APIs and unregistered native task definitions' : false }, t => {
     const dir = fixture(t);
-    const result = JSON.parse(ps(`
+    const run = psWithErrors(`
 $ErrorActionPreference='Stop'
 $c=[Console]::In.ReadToEnd() | ConvertFrom-Json
 $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User
@@ -577,8 +584,9 @@ $uninstall=& $installer -Uninstall -NodePath $c.node
 @{register=$script:state.register;run=$script:state.run;delete=$script:state.delete;configured=($null -ne $script:state.task);
 first=$first;second=$second;status=$status;uninstall=$uninstall;
 vaultIntact=([IO.File]::ReadAllText($vault) -eq 'encrypted-fixture');secretIntact=([IO.File]::ReadAllText($secret) -eq $c.password)} | ConvertTo-Json -Compress
-`, JSON.stringify({ dir, root: ROOT, node: process.execPath, password: 'synthetic-fixture-password' })));
-    assert.equal(result.register, 1); assert.equal(result.run, 1); assert.equal(result.delete, 1);
+`, JSON.stringify({ dir, root: ROOT, node: process.execPath, password: 'synthetic-fixture-password' }));
+    let result; try { result = JSON.parse(run.out); } catch { assert.fail('installer output: ' + run.out + ' | stderr: ' + run.err); }
+    assert.equal(result.register, 1, 'stderr: ' + run.err); assert.equal(result.run, 1); assert.equal(result.delete, 1);
     assert.equal(result.configured, false); assert.equal(result.vaultIntact, true); assert.equal(result.secretIntact, true);
     assert.match(result.first, /LOGIN_SESSION_ONLY/); assert.match(result.second, /LOGIN_SESSION_ONLY/);
     assert.equal(JSON.parse(result.status).mode, 'login_session'); assert.match(result.uninstall, /workers were not stopped/);
