@@ -166,3 +166,14 @@ test('a machine with only dormant leftovers gets no ops-audit (no Claude session
   await f.core.schedule(f.r);
   assert.equal(f.core.host('vm0').active || null, null);
 });
+
+test('Operations: a failed track while the leader is busy is not paged; an explicit blocker still is', () => {
+  const { opsSessionRows } = require('../public/features/ops.js');
+  const now = Date.now();
+  const team = (id, code) => ({ id, session: 'lead-' + id, root: '/ws', status: 'blocked', reason: { code }, requiresOwner: true, taskIds: [id] });
+  const board = { servers: [{ id: 'm', name: 'M', online: true, sessions: ['lead-a', 'lead-b'].map(name => ({ name, ai: { status: 'busy' } })), findings: [] }] };
+  const supervision = { enabled: true, servers: [{ id: 'm', online: true, observedAt: now, freshness: { snapshotFresh: true, taskEvidenceFresh: true, maxAgeMs: 60000 },
+    teams: [team('a', 'task_track_failed'), team('b', 'task_blocked')], audits: [] }] };
+  const owners = opsSessionRows(board, supervision).filter(r => r.f.rule === 'owner').map(r => r.f.key);
+  assert.deepEqual(owners, ['super/m/b']);
+});

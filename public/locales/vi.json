@@ -1773,6 +1773,7 @@
   "ops.crew.bind_task_closed": "Task đã đóng hoặc không còn.",
   "ops.crew.bind_kit_outdated": "Crew kit trên máy này chưa có lệnh enroll; cập nhật xspire-crew rồi thử lại.",
   "ops.crew.bind_failed": "Chưa gắn được leader; xem lại phiên và crew kit trên máy.",
+  "ops.super.reason_task_track_failed": "Có track lỗi; leader cần sửa hoặc giao lại.",
   "ops.super.reason_unknown": "Chưa hiểu nguyên nhân từ backend. Cần chủ team kiểm tra phiên và độ sẵn sàng.",
   "ops.super.reason_awaiting_task_progress": "Phiên đang bận nhưng chưa có bằng chứng tiến độ công việc.",
   "ops.super.reason_owner_decision": "Đang chờ quyết định của chủ team.",

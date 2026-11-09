@@ -1790,6 +1790,7 @@
   "ops.crew.bind_task_closed": "The task is closed or gone.",
   "ops.crew.bind_kit_outdated": "The crew kit on this machine has no enroll command; update xspire-crew and retry.",
   "ops.crew.bind_failed": "Could not bind the leader; check the session and the crew kit on the machine.",
+  "ops.super.reason_task_track_failed": "A track failed; the leader needs to fix or re-dispatch it.",
   "ops.super.reason_unknown": "Unrecognized backend reason. Review the session and readiness.",
   "ops.super.reason_awaiting_task_progress": "Session activity has no verified task progress yet.",
   "ops.super.reason_owner_decision": "Waiting for an owner decision.",

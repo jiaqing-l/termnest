@@ -29,7 +29,7 @@ function opsSessionRows(board, supervision) {
       function owner(item, key, audit) {
         if (!fresh || !item.requiresOwner || audit && item.active !== true) return;
         // The leader is busy handling it (e.g. re-running a failed track): do not page the owner yet.
-        var lead = !audit && item.session && (srv.sessions || []).find(function (v) { return v.name === item.session; });
+        var lead = !audit && item.session && item.reason && item.reason.code === 'task_track_failed' && (srv.sessions || []).find(function (v) { return v.name === item.session; });
         if (lead && lead.ai && lead.ai.status === 'busy') return;
         var code = typeof item.reason === 'string' ? item.reason : item.reason && item.reason.code || item.code;
         var recovery = item.recovery, unresolved = recovery && recovery.requiresOwner ? recovery.code : code;
@@ -38,7 +38,7 @@ function opsSessionRows(board, supervision) {
         // Setup and missing/stale task evidence do not override a measured session state.
         if (!kind && freshness.taskEvidenceFresh === true && !audit) {
           if (item.status === 'waiting_owner' && code === 'owner_decision') kind = 'wait';
-          if (item.status === 'blocked' && /^(task_blocked|session_parked)$/.test(code)) kind = 'blocked';
+          if (item.status === 'blocked' && /^(task_blocked|task_track_failed|session_parked)$/.test(code)) kind = 'blocked';
           if (item.status === 'stalled' && code === 'no_task_progress') kind = 'stalled';
         }
         if (!kind && audit && code === 'audit_waiting_owner') kind = 'wait';
@@ -121,7 +121,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     // The agent reports itself busy but crew has recorded no round yet: say exactly that, not "unknown".
     var code = t.reason && t.reason.code;
     // A failed track while the leader is busy is the leader fixing it (re-dispatch, fix round): not yet the owner's problem.
-    if ((t.status === 'unknown' && code === 'awaiting_task_progress' || t.status === 'blocked' && code === 'task_blocked') && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy'; }
+    if ((t.status === 'unknown' && code === 'awaiting_task_progress' || t.status === 'blocked' && code === 'task_track_failed') && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy'; }
     return t.status;
   }
 
