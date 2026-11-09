@@ -643,3 +643,17 @@ test('Linux installer selects adjacent native Node without PATH Node, supports e
   for (const dry of [[], ['--dry-run']]) await assert.rejects(execFile('/bin/bash', [...args, ...dry], { cwd: ROOT, env }), e => e.stderr.trim() === 'RUNTIME_NODE_INCOMPATIBLE');
   assert.equal(fs.existsSync(home), false); assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(f.file, 'utf8'), SECRET + '\n');
 });
+
+// Interactive start (typed password) must not refuse an ordinary, older profile folder; only the unattended service is strict.
+test('interactive DATA lock accepts and tightens an open folder; the strict service lock still refuses it', { skip: process.platform === 'win32' && 'POSIX modes' }, async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-lock-mode-')));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const data = path.join(dir, 'data'); fs.mkdirSync(data, { mode: 0o755 }); fs.chmodSync(data, 0o755);
+  await assert.rejects(acquireDataLock(data), { code: 'RUNTIME_UNSAFE_PERMISSIONS' });
+  const lock = await acquireDataLock(data, { strict: false });
+  assert.equal(fs.statSync(data).mode & 0o777, 0o700);
+  assert.ok(fs.existsSync(path.join(data, 'service.lock')));
+  await assert.rejects(acquireDataLock(data, { strict: false }), { code: 'RUNTIME_ALREADY_RUNNING' });
+  lock.release(); await new Promise(r => setTimeout(r, 20));
+  assert.equal(fs.existsSync(path.join(data, 'service.lock')), false);
+});

@@ -1054,7 +1054,8 @@ process.on('SIGINT', drain);
 let dataLock;
 async function boot() {
   try {
-    dataLock = await acquireDataLock(DATA);
+    // Private owner/ACL is required only when the vault unlocks itself from a password file (unattended service).
+    dataLock = await acquireDataLock(DATA, { strict: !!process.env.TW_PASSWORD_FILE });
     if (draining) { dataLock.release(); return; }
     const headless = unlockFromFile(vault, process.env.TW_PASSWORD_FILE, () => {});
     server.once('error', () => { console.error('RUNTIME_LISTEN_FAILED'); process.exit(1); });
