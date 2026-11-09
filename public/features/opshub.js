@@ -59,7 +59,25 @@
   var cols = el('div', 'hub-cols'), panel = el('section', 'hub-panel'), ph = el('div', 'hub-panel-h'), seg = el('div', 'seg hub-tabs'), body = el('div', 'hub-panel-b');
   var TABS = ['progress', 'report', 'deep', 'settings'], tabBtns = {};
   TABS.forEach(function (t) { var b = el('button', '', h('tab.' + t)); b.type = 'button'; b.onclick = function () { setTab(t); }; tabBtns[t] = b; seg.append(b); });
-  ph.append(seg); panel.append(ph, body);
+  // Refresh: now (button) and automatically every N seconds while this tab is open (per viewer, remembered locally).
+  var refreshing = false;
+  function refreshNow(quiet) {
+    if (refreshing) return Promise.resolve(); refreshing = true; refreshBtn.disabled = true; refreshBtn.textContent = '↻ ' + h('refreshing');
+    return api('POST', '/refresh', {}).then(function () { reports = null; return load(); }).catch(function () { if (!quiet) say(h('action_failed'), false); })
+      .finally(function () { refreshing = false; refreshBtn.disabled = false; refreshBtn.textContent = '↻ ' + h('refresh'); });
+  }
+  var refresh = el('div', 'hub-refresh'), refreshAt = el('small', 'hub-foot'), refreshBtn = btn('↻ ' + h('refresh'), 'hub-sm', function () { refreshNow(false); });
+  var autoSel = el('select', 'hub-auto'); autoSel.setAttribute('aria-label', h('auto_refresh'));
+  [['0', h('auto_off')], ['30', h('auto_s', [30])], ['60', h('auto_m', [1])], ['120', h('auto_m', [2])], ['300', h('auto_m', [5])]].forEach(function (o) { var x = el('option', '', h('auto_label', [o[1]])); x.value = o[0]; autoSel.append(x); });
+  var autoSec = 60; try { var saved = localStorage.getItem('tw-hub-auto'); if (saved !== null && /^(0|30|60|120|300)$/.test(saved)) autoSec = Number(saved); } catch (e) { /* optional */ }
+  autoSel.value = String(autoSec);
+  var autoTimer = null;
+  function armAuto() { clearInterval(autoTimer); autoTimer = autoSec ? setInterval(function () { if (visible()) refreshNow(true); }, autoSec * 1000) : null; }
+  autoSel.onchange = function () { autoSec = Number(autoSel.value); try { localStorage.setItem('tw-hub-auto', String(autoSec)); } catch (e) { /* optional */ } armAuto(); };
+  armAuto();
+  refresh.append(refreshAt, autoSel, refreshBtn);
+  ph.append(seg, refresh); panel.append(ph, body);
+  setInterval(function () { if (data) refreshAt.textContent = h('updated', [ago(data.fleet.at)]); }, 5000);
   var rail = el('aside', 'hub-rail'), waitBox = el('section', 'hub-card'), quotaBox = el('section', 'hub-card');
   rail.append(waitBox, quotaBox); cols.append(panel, rail);
   root.append(hero, askWrap, cols); slot.append(root);
@@ -107,7 +125,7 @@
   function loadReports() { return api('GET', '/reports').then(function (r) { reports = list(r.reports); if (tab === 'report') drawBody(true); }).catch(function () { reports = []; }); }
 
   // ---------- drawing ----------
-  function draw() { drawHero(); drawQuick(); drawWaiting(); drawQuota(); drawBody(); }
+  function draw() { refreshAt.textContent = data ? h('updated', [ago(data.fleet.at)]) : ''; drawHero(); drawQuick(); drawWaiting(); drawQuota(); drawBody(); }
   function drawHero() {
     if (!data) { title.textContent = loadErr ? h('load_error') : h('loading'); return; }
     var f = data.fleet, teams = activeTasks().length, wait = list(f.waiting).length, on = list(f.machines).filter(function (m) { return m.online; }).length, o = data.ops;

@@ -188,6 +188,15 @@ test('pressing "Report now" repeatedly refreshes one report instead of piling up
   assert.equal(h.store.reports.length, 2);
 });
 
+test('Refresh polls every machine and rescans crew folders before answering', async () => {
+  const h = harness({ sessions: [claude('A', 'idle')] });
+  let polled = 0, rescanned = 0;
+  h.remote.poll = async () => { polled++; };
+  h.host.service = (k) => k === 'supervision' ? { crew: () => [], rescan: async () => { rescanned++; } } : null;
+  const res = await h.call('POST', '/refresh', {});
+  assert.equal(res.code, 200); assert.equal(polled, 1); assert.equal(rescanned, 1);
+});
+
 test('settings are validated; the AI report keeps only known fields', () => {
   assert.throws(() => hub.cleanCfg({ enabled: true }, {}), /invalid_scope/);
   assert.throws(() => hub.cleanCfg({ root: '/ws/../etc' }, {}), /invalid_root/);
