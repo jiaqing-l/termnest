@@ -728,13 +728,41 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     }
   }
   function when(ms) { return ms ? new Date(ms).toLocaleString(window.TW_I18N ? window.TW_I18N.lang() : undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+  // Plugin & skill: one status line with one action, one switch that makes it automatic, one line per plugin across
+  // machines. Per-profile rows, stale sessions and the log stay available, folded.
   function pluginCard() {
     var box = el('details', 'ops-card ops-ev ops-plug'), sum = el('summary', 'ops-card-h'); keepOpen(box, 'plugins', true);
-    var stale = 0; ((plug && plug.servers) || []).forEach(function (v) { stale += v.stale.length; });
+    var servers = (plug && plug.servers) || [], stale = 0; servers.forEach(function (v) { stale += v.stale.length; });
     var h3 = el('h3', ''); h3.append(icon('plug'), document.createTextNode(i18n('pl.tieu_de')));
     if (stale) h3.append(el('span', 'ops-count warn', String(stale)));
-    sum.append(h3, el('small', 'ops-pack', i18n('pl.nguon'))); box.append(sum);
+    sum.append(h3); box.append(sum);
     if (!plug) { box.append(el('p', 'ops-empty', i18n('pl.dang_doc'))); return box; }
+    // Every plugin, newest version seen, and what each machine runs.
+    var rows = {}, newest = function (a, b) { return String(a || '').localeCompare(String(b || ''), undefined, { numeric: true }) >= 0 ? a : b; };
+    servers.forEach(function (v) { list(v.accounts).forEach(function (a) { list(a.plugins).forEach(function (pg) {
+      var name = pg.id.split('@')[0], ver = pg.running || pg.version || '', r = rows[name] = rows[name] || { name: name, latest: '', on: {} };
+      r.latest = newest(ver, r.latest); var m = r.on[v.id] = r.on[v.id] || { name: v.local ? i18n('app.local_name') : v.name, vers: [] };
+      if (ver && m.vers.indexOf(ver) < 0) m.vers.push(ver);
+    }); }); });
+    var plugins = Object.keys(rows).map(function (k) { return rows[k]; });
+    var behind = 0; plugins.forEach(function (r) { Object.keys(r.on).forEach(function (k) { if (r.on[k].vers.some(function (x) { return x !== r.latest; })) behind++; }); });
+    var scanned = Math.max.apply(null, [0].concat(servers.map(function (v) { return v.scanned || 0; })));
+    // Hero: the state in words and the one thing to do about it.
+    var hero = el('div', 'pl-hero' + (stale ? ' warn pl-stale-h' : ' ok')), ht = el('div', 'pl-hero-t');
+    ht.append(el('b', '', stale ? i18n('pl.h_stale', [stale]) : i18n('pl.h_ok')),
+      el('small', '', i18n('pl.h_sub', [plugins.length, servers.length, when(scanned)]) + (behind ? ' · ' + i18n('pl.h_behind', [behind]) : '')));
+    hero.append(el('span', 'pl-hero-ic', stale ? '!' : '✓'), ht);
+    if (stale) {
+      var all = button(i18n('pl.nap_lai_tat_ca', [stale]), 'primary', function () {
+        all.disabled = true;
+        Promise.all(servers.filter(function (v) { return v.stale.length; }).map(function (v) { return TW.api('POST', '/api/features/plugins/reload', { server: v.id, all: true }); }))
+          .then(function (res) { var now = 0, queued = 0; res.forEach(function (x) { now += x.now || 0; queued += x.queued || 0; }); pluginNotice(i18n('pl.da_nap', [now, queued])); TW.app().say(pluginFeedback, true, 4000); loadPlugins(); })
+          .catch(pluginError).finally(function () { all.disabled = false; });
+      });
+      hero.append(all);
+    }
+    box.append(hero);
+    // The switch that makes the button unnecessary.
     var bar = el('div', 'pl-bar'), auto = el('label', 'pl-auto'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!plug.autoReload;
     cb.onchange = function () {
       if (pluginPending) return;
@@ -743,58 +771,76 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         pluginPending = false; cb.disabled = false; cb.checked = !!plug.autoReload; drawPlugins();
       });
     };
-    auto.append(cb, el('span', '', i18n('pl.tu_nap_lai'))); bar.append(auto);
+    var at = el('span', 'pl-auto-t'); at.append(el('b', '', i18n('pl.tu_nap_lai_t')), el('small', '', i18n('pl.tu_nap_lai_s')));
+    auto.append(cb, at); bar.append(auto);
     bar.append(button(i18n('pl.kiem_lai'), 'ghost', function () { Promise.all(plug.servers.map(function (v) { return TW.api('POST', '/api/features/plugins/refresh', { server: v.id }); })).then(function () { if (!pluginPending) return loadPlugins(true); }).catch(pluginError); }));
     var feedback = el('p', 'ops-note pl-feedback', pluginFeedback); feedback.setAttribute('role', 'status'); box.append(bar, feedback);
-    plug.servers.forEach(function (v) {
+    // One line per plugin.
+    if (plugins.length) {
+      var table = el('div', 'pl-table');
+      plugins.forEach(function (r) {
+        var line = el('div', 'pl-line'), machines = el('div', 'pl-machines');
+        Object.keys(r.on).forEach(function (k) {
+          var m = r.on[k], old = m.vers.some(function (x) { return x !== r.latest; });
+          var chip = el('span', 'pl-m ' + (old ? 'old' : 'ok'), m.name + ' ' + (m.vers.length ? m.vers.join(' · ') : '—'));
+          chip.title = old ? i18n('pl.m_old', [r.latest]) : i18n('pl.m_ok'); machines.append(chip);
+        });
+        line.append(el('b', 'pl-name', r.name), el('span', 'pl-ver', r.latest || '—'), machines); table.append(line);
+      });
+      box.append(table);
+    }
+    servers.forEach(function (v) {
+      if (v.windows) box.append(el('p', 'ops-note', (v.local ? i18n('app.local_name') : v.name) + ': ' + i18n('pl.windows')));
+      else if (v.noClaude) box.append(el('p', 'ops-note', (v.local ? i18n('app.local_name') : v.name) + ': ' + i18n('pl.khong_co_claude')));
+      else if (v.error) box.append(el('p', 'ops-note', (v.local ? i18n('app.local_name') : v.name) + ': ' + v.error));
+    });
+    // Details: per machine and profile (with the rare update button), sessions on an old copy, recent reloads.
+    var more = el('details', 'pl-more'); keepOpen(more, 'plugins-more', false); more.append(el('summary', '', i18n('pl.chi_tiet')));
+    servers.forEach(function (v) {
+      if (v.windows || v.noClaude) return;
       var sec = el('div', 'pl-srv'), head = el('div', 'pl-srv-h');
       head.append(el('b', '', v.local ? i18n('app.local_name') : v.name), el('small', '', v.scanned ? i18n('pl.doc_luc', [when(v.scanned)]) : i18n('pl.chua_doc')));
       sec.append(head);
-      if (v.windows) { sec.append(el('p', 'ops-note', i18n('pl.windows'))); box.append(sec); return; }
-      if (v.noClaude) { sec.append(el('p', 'ops-note', i18n('pl.khong_co_claude'))); box.append(sec); return; }
-      if (v.error) sec.append(el('p', 'ops-note', v.error));
-      v.accounts.forEach(function (a) {
-        a.plugins.forEach(function (pg) {
+      list(v.accounts).forEach(function (a) {
+        list(a.plugins).forEach(function (pg) {
           var r = el('div', 'pl-row'), t = el('div', 'ops-t'), line = el('div', 'ops-line');
           line.append(el('b', 'ops-name', pg.id.split('@')[0]), el('span', 'pl-ver', pg.running || pg.version || '—'));
-          if (pg.folder) line.append(el('span', 'ops-src status', i18n('pl.tu_thu_muc')));
           if (!pg.usedBySessions && !pg.enabled) line.append(el('span', 'ops-src', i18n('pl.khong_bat_o_day')));
-          var meta = el('small', 'ops-meta'); meta.append(document.createTextNode([a.cfg, pg.scope, i18n('pl.doi_luc', [when(pg.changedAt)]), pg.folder && pg.version !== pg.running ? i18n('pl.ban_ghi', [pg.version]) : ''].filter(Boolean).join(' · ')));
-          t.append(line, meta); r.append(el('span', 'ops-dot'), t);
+          t.append(line, el('small', 'ops-meta', [a.cfg, pg.scope, i18n('pl.doi_luc', [when(pg.changedAt)])].filter(Boolean).join(' · ')));
+          r.append(t);
           var acts = el('div', 'ops-acts');
           if (!pg.folder) {
             var update = button(i18n('pl.cap_nhat'), '', function () {
               TW.api('POST', '/api/features/plugins/update', { server: v.id, cfg: a.cfg, id: pg.id }).then(function (x) { return openPluginUpdate(v.id, x.session, 0); }).catch(pluginError);
             });
             update.dataset.pluginFocus = JSON.stringify(['update', v.id, a.cfg, pg.id]); acts.append(update);
-          }
-          else acts.title = i18n('pl.thu_muc_goi_y');
+          } else acts.title = i18n('pl.thu_muc_goi_y');
           r.append(acts); sec.append(r);
         });
       });
       if (v.stale.length) {
         var st = el('div', 'pl-stale'), sh = el('div', 'pl-stale-h');
         sh.append(el('span', '', i18n('pl.phien_ban_cu', [v.stale.length])));
-        var reload = button(i18n('pl.nap_lai_tat_ca', [v.stale.length]), 'primary', function () {
+        var reload = button(i18n('pl.nap_lai_tat_ca', [v.stale.length]), 'ghost', function () {
           TW.api('POST', '/api/features/plugins/reload', { server: v.id, all: true }).then(function (x) { pluginNotice(i18n('pl.da_nap', [x.now, x.queued]) + (x.parked && x.parked.length ? ' ' + i18n('pl.parked_note', [x.parked.join(', ')]) : '')); TW.app().say(pluginFeedback, true, 4000); loadPlugins(); }).catch(pluginError);
         });
-        reload.dataset.pluginFocus = JSON.stringify(['reload', v.id]); sh.append(reload);
-        st.append(sh);
+        reload.dataset.pluginFocus = JSON.stringify(['reload', v.id]); sh.append(reload); st.append(sh);
         var chips = el('div', 'pl-chips');
         v.stale.forEach(function (x) {
           var state = x.queued ? 'queued' : x.parked ? 'parked' : x.status;
           var c = el('span', 'pl-chip ' + state); c.append(el('b', '', x.session), el('span', '', i18n('pl.st_' + state)));
-          c.title = i18n('pl.mo_truoc', [when(x.changedAt)]); chips.append(c);
+          c.title = i18n('pl.mo_truoc', [when(x.changedAt)]) + ' · ' + i18n('pl.giai_thich'); chips.append(c);
         });
-        st.append(chips, el('p', 'ops-note', i18n('pl.giai_thich'))); sec.append(st);
+        st.append(chips); sec.append(st);
       }
-      box.append(sec);
+      more.append(sec);
     });
     if (plug.log && plug.log.length) {
       var lg = el('div', 'pl-log'); lg.append(el('small', 'ops-pack', i18n('pl.da_gui_gan_day')));
       plug.log.slice(0, 5).forEach(function (n) { lg.append(el('div', 'pl-log-r', when(n.at) + ' · /reload-plugins → ' + n.session + ' · ' + (n.serverName || '') + ' · ' + i18n('pl.vi_' + n.why))); });
-      box.append(lg);
+      more.append(lg);
     }
+    box.append(more);
     return box;
   }
   function loadPlugins(readback) {

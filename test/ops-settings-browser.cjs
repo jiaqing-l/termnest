@@ -445,7 +445,7 @@ let chrome, ws, closeBrowser, chromeError='';
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight',windowsVirtualKeyCode:39});assert.equal(await evaluate('document.activeElement.dataset.tab'),'plugins');
   assert.ok(await evaluate('var t=document.activeElement.getBoundingClientRect();t.left>=0&&t.right<=innerWidth+1'),'plugin selected tab visible '+width);
   assert.ok(await evaluate('var d=document.querySelector("#dlg-set .set-panes");d.scrollWidth<=d.clientWidth+1'),'plugin pane fits '+width);
-  assert.ok(await evaluate('document.querySelector(".pl-auto input").getBoundingClientRect().width<=24'),'plugin checkbox fits');
+  assert.ok(await evaluate('document.querySelector(".pl-auto input").getBoundingClientRect().width<=40'),'plugin switch fits');
   assert.ok(await evaluate('Array.from(document.querySelectorAll("#plugins-settings-mount .pl-row")).every(n=>n.getBoundingClientRect().height<180 && n.querySelector(".ops-name").getBoundingClientRect().width>30 && n.querySelector(".ops-meta").getBoundingClientRect().width>100)'),'plugin names and profiles readable '+width);
   await screenshot('plugins-'+width);
   await closeSettings();await until('!document.querySelector("#dlg-set").open && !document.activeElement.closest("#dlg-set")','close returns focus outside Settings');

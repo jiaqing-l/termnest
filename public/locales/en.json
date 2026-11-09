@@ -2436,5 +2436,22 @@
   "ops.crew.r4_t": "Never",
   "ops.crew.r4": "answers prompts, nudges while running or with failed tracks",
   "ops.crew.hub_t": "Deep audits (ops-audit) and Telegram/Teams messages",
-  "ops.crew.hub_s": "Done by the Ops hub · Operations tab › Settings"
+  "ops.crew.hub_s": "Done by the Ops hub · Operations tab › Settings",
+  "pl.h_ok": "Every session runs the latest plugins",
+  "pl.h_stale": "{0} sessions run an older plugin copy",
+  "pl.h_sub": "{0} plugins · {1} machines · read at {2}",
+  "pl.h_behind": "{0} machines on an older version",
+  "pl.tu_nap_lai_t": "Reload automatically when a session is idle (recommended)",
+  "pl.tu_nap_lai_s": "Types /reload-plugins when Claude reports idle; the chat stays, nothing to click",
+  "pl.m_ok": "On the latest version",
+  "pl.m_old": "Older than the latest ({0}) — update the plugin on this machine",
+  "pl.chi_tiet": "Per machine, profile and reload log",
+  "hub.refresh": "Refresh",
+  "hub.refreshing": "Scanning…",
+  "hub.updated": "updated {0}",
+  "hub.auto_refresh": "Auto refresh",
+  "hub.auto_off": "off",
+  "hub.auto_s": "{0} s",
+  "hub.auto_m": "{0} min",
+  "hub.auto_label": "Auto refresh: {0}"
 }
