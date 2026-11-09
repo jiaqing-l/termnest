@@ -46,7 +46,11 @@ window.TokenUI = function (hooks) {
   }
   function render() {
     filters.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.period===period));
-    const rows=accounts.filter(a=>(filter==='all'||a.tool===filter)&&(hooks.scope()==='all'||(a.hostIds || [a.hostId]).includes(hooks.scope())));
+    const scoped=accounts.filter(a=>(filter==='all'||a.tool===filter)&&(hooks.scope()==='all'||(a.hostIds || [a.hostId]).includes(hooks.scope())));
+    // A profile folder that exists but was never signed in or used (e.g. the default ~/.claude on a machine where another
+    // profile is used) has nothing to show: list it on one line instead of a card that reads "could not read email".
+    const emptyProfile=a=>!a.email&&!a.nickname&&!(a.today>0)&&!(a.sessions&&a.sessions.length);
+    const rows=scoped.filter(a=>!emptyProfile(a)), empties=scoped.filter(emptyProfile);
     const visibleHosts=hosts.filter(h=>(hooks.scope()==='all'||h.hostId===hooks.scope())&&(!completeView||!accounts.length));
     const actions=accounts.filter(a=>!a.hasGoodQuota&&(a.limits.error||a.limits.reason));
     const visibleError=(!accounts.length||actions.length)?scanError:null;
@@ -73,6 +77,7 @@ window.TokenUI = function (hooks) {
       hosts.filter(h=>h.state==='reading').forEach(h=>cards.append(node('p','token-help',i18n('tokenui.dang_doc_2', [h.hostName]))));
       chart.textContent='';sessions.textContent='';hooks.updated();return;
     }
+    if(empties.length){const e=node('p','token-help token-empty-profiles',i18n('tokenui.ho_so_trong',[empties.length,empties.map(a=>(a.tool==='codex'?'Codex':'Claude')+' · '+a.hostName).join(', ')]));e.title=i18n('tokenui.ho_so_trong_goi_y');cards.append(e);}
     rows.forEach(a=>{
       const c=node('article','token-account'), h=node('div','token-account-head'), identity=node('div','token-identity');
       c.dataset.tool=a.tool;c.title=(a.sourceWarnings || []).join('\n');identity.append(node('b','', label(a)),node('span','token-email',a.email||i18n('tokenui.khong_doc_duoc_email')));const source=node('small','token-sources',(a.plan?i18n('tokenui.goi', [a.plan]):'')+a.hostName);source.title=a.hostName;identity.append(source);

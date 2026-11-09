@@ -212,6 +212,8 @@
   "tokenui.cap_nhat_luc_2": "{0}Cập nhật lúc {1}",
   "tokenui.dang_doc_2": "{0}: đang đọc…",
   "tokenui.khong_doc_duoc_email": "Không đọc được email",
+  "tokenui.ho_so_trong": "{0} hồ sơ chưa đăng nhập và chưa dùng, đã ẩn: {1}",
+  "tokenui.ho_so_trong_goi_y": "Thư mục cấu hình (ví dụ ~/.claude) có trên máy nhưng chưa đăng nhập và không có log. Đăng nhập ở đó hoặc xoá thư mục nếu không dùng.",
   "tokenui.goi": "Gói {0} · ",
   "tokenui.doi_ten": "Đổi tên",
   "tokenui.phien_5_gio": "Phiên 5 giờ",

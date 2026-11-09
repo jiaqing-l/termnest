@@ -212,6 +212,8 @@
   "tokenui.cap_nhat_luc_2": "{0}Updated at {1}",
   "tokenui.dang_doc_2": "{0}: reading…",
   "tokenui.khong_doc_duoc_email": "Could not read email",
+  "tokenui.ho_so_trong": "{0} profile(s) never signed in or used, hidden: {1}",
+  "tokenui.ho_so_trong_goi_y": "A config folder (e.g. ~/.claude) exists on the machine but is not signed in and has no logs. Sign in there, or remove the folder if unused.",
   "tokenui.goi": "Plan {0} · ",
   "tokenui.doi_ten": "Rename",
   "tokenui.phien_5_gio": "5-hour session",
