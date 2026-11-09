@@ -27,7 +27,7 @@ test('native runtime support copies only installers, health CLI and root runbook
       fs.chmodSync(full, file.endsWith('.sh') ? 0o755 : 0o644);
     }
     copyRuntimeSupport(source, out);
-    const entries = fs.readdirSync(out, { recursive: true }).map(String).sort();
+    const entries = fs.readdirSync(out, { recursive: true }).map(e => String(e).split(path.sep).join('/')).sort();
     assert.deepEqual(entries, ['SUPERVISOR.md', 'scripts', ...allowed.filter(f => f.startsWith('scripts/'))].sort());
     for (const file of allowed) {
       const target = path.join(out, file === 'docs/supervisor.md' ? 'SUPERVISOR.md' : file);

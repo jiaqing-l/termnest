@@ -63,7 +63,7 @@ public static class TermnestNativeCpu {
     }
   }
   try { $NodePath = (Get-Item -LiteralPath (AbsolutePath $NodePath)).FullName }
-  catch { throw 'RUNTIME_NODE_REQUIRED' }
+  catch { throw 'RUNTIME_NODE_REQUIRED_PATH' }
   $reader = $null
   try {
     $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($NodePath))
@@ -75,7 +75,7 @@ public static class TermnestNativeCpu {
     if ($reader.ReadUInt32() -ne 0x00004550 -or $reader.ReadUInt16() -ne $machine) { throw 'RUNTIME_NODE_INCOMPATIBLE' }
   } finally { if ($reader) { $reader.Dispose() } }
   $resolvedNode = & $NodePath -e 'process.stdout.write(JSON.stringify({path:require(''node:fs'').realpathSync.native(process.execPath),platform:process.platform,arch:process.arch}));'
-  if ($LASTEXITCODE -ne 0) { throw 'RUNTIME_NODE_REQUIRED' }
+  if ($LASTEXITCODE -ne 0) { throw 'RUNTIME_NODE_REQUIRED_PROBE' }
   try { $runtimeInfo = $resolvedNode | ConvertFrom-Json }
   catch { throw 'RUNTIME_NODE_INCOMPATIBLE' }
   if ($runtimeInfo.platform -ne 'win32' -or $runtimeInfo.arch -ne $nodeArch) { throw 'RUNTIME_NODE_INCOMPATIBLE' }

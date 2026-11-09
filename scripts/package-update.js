@@ -47,7 +47,8 @@ function build({ source = path.resolve(__dirname, '..'), output = path.join(sour
     fs.mkdirSync(path.dirname(output), { recursive: true });
     temp = path.join(path.dirname(output), '.' + path.basename(output) + '.' + crypto.randomBytes(8).toString('hex') + '.tmp');
     const names = entries.map(e => e.path).concat(manifest);
-    execFileSync(tar, ['-czf', temp, '-C', stage, '--', ...names], { stdio: 'pipe', env: { ...process.env, COPYFILE_DISABLE: '1', TAR_OPTIONS: '' } });
+    // The archive is named relative to its own folder: GNU tar on Windows reads "D:\\…" as a remote host "D".
+    execFileSync(tar, ['-czf', path.basename(temp), '-C', stage, '--', ...names], { cwd: path.dirname(temp), stdio: 'pipe', env: { ...process.env, COPYFILE_DISABLE: '1', TAR_OPTIONS: '' } });
     const actual = execFileSync(tar, ['-tzf', temp], { encoding: 'utf8', env: { ...process.env, TAR_OPTIONS: '' } }).trim().split('\n');
     if (JSON.stringify(actual) !== JSON.stringify(names)) throw Error('Bundle entry verification failed');
     // Verify decompression and content before the atomic rename, including the generated manifest.

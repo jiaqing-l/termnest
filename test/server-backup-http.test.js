@@ -146,5 +146,6 @@ test('real server boots locked, authenticates every saved route, enforces Host/O
   assert.equal((await request(port, 'GET', '/api/features/server-backup/status', { cookie })).status, 401);
   assert.ok(!output.includes(capability)); assert.ok(!output.includes(archiveURL));
   assert.ok(!/server-backup.*not loaded/i.test(output), output); assert.ok(!output.includes(data.toString()));
-  child.kill('SIGTERM'); const [code] = await within(exited, 'server shutdown'); assert.equal(code, 0, output);
+  child.kill('SIGTERM'); const [code] = await within(exited, 'server shutdown');
+  if (process.platform !== 'win32') assert.equal(code, 0, output); // Windows has no SIGTERM: kill() ends the process at once
 });

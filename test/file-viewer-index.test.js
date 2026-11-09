@@ -46,7 +46,7 @@ test('a missing name answers at once from a complete index; a file created later
   assert.equal(v.text, 'later');
 });
 
-test('the index and lookups also work through the serialised host runtime (SSH path)', async () => {
+test('the index and lookups also work through the serialised host runtime (SSH path)', { skip: process.platform === 'win32' && 'uses /bin/sh like an SSH host' }, async () => {
   const fv = fresh(), { root } = tree(), b = remote(root, 'c');
   const v = await fv.readSessionFile(b, 's', '05-PLAN.md');
   assert.equal(v.text, '# plan');

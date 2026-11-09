@@ -285,7 +285,7 @@ test('reports cannot change identity, coverage, timestamps, schema or inject exe
   assert.ok(auditPrompt(run).includes('do not answer owner prompts'));
 });
 
-test('host report reader rejects path tricks, symlinks, oversized and nonregular files', async (t) => {
+test('host report reader rejects path tricks, symlinks, oversized and nonregular files', { skip: process.platform === 'win32' && 'crew roots are POSIX paths' }, async (t) => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-report-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const dir = path.join(root, '_crew', 'termnest-ops', 'reports'); fs.mkdirSync(dir, { recursive: true });

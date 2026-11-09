@@ -282,7 +282,7 @@ test('enabled unattended server polls on its 15s schedule past browser inactivit
   assert.ok(c.events.filter(e => e.event === 'timer' && e.ms === 15000).length >= 2);
   assert.ok(unattended().length >= 4, 'repeated polls run after lastSeen is long stale');
   assert.deepEqual(new Set(unattended().map(e => e.id)), new Set([require('../lib/backends').LOCAL_ID, 'fixture-remote']));
-  c.kill('SIGTERM'); assert.equal((await c.done)[0], 0); assert.doesNotMatch(c.output, new RegExp(SECRET));
+  c.kill('SIGTERM'); const [code] = await c.done; if (process.platform !== 'win32') assert.equal(code, 0); assert.doesNotMatch(c.output, new RegExp(SECRET));
 });
 
 test('boot wrong credential, corrupt primary or missing credential fails closed, without a listener or connection', async t => {
@@ -531,7 +531,8 @@ ${add ? '$a.AddAccessRule($r)' : '$a.RemoveAccessRuleSpecific($r)'};Set-Acl -Lit
     const junction = path.join(f.dir, 'junction'); fs.symlinkSync(f.dir, junction, 'junction');
     const physicalOwner = await acquireDataLock(f.dir);
     try {
-      await assert.rejects(acquireDataLock(junction), { code: 'RUNTIME_UNSAFE_FILE' });
+      // Fails closed either way: the junction check or the Windows security check (which runs first on a junction) refuses it.
+      await assert.rejects(acquireDataLock(junction), e => ['RUNTIME_UNSAFE_FILE', 'RUNTIME_WINDOWS_SECURITY_UNAVAILABLE'].includes(e.code));
       noLeak(() => readPassword(path.join(junction, 'password')), /RUNTIME_WINDOWS_SECURITY_UNAVAILABLE/);
       await assert.rejects(acquireDataLock(f.dir), { code: 'RUNTIME_ALREADY_RUNNING' });
     } finally { physicalOwner.release(); await tick(); }

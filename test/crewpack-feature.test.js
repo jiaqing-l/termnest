@@ -8,6 +8,8 @@ const cp = require('../lib/features/crewpack');
 const wd = require('../lib/features/watchdog');
 const detect = require('../lib/crew-detect');
 const { liveIdentity } = require('../lib/supervision-state');
+// Crew workspace roots are POSIX paths on Linux, macOS or WSL hosts; a native Windows temp folder is never one.
+const posixRoot = { skip: process.platform === 'win32' && 'crew roots are POSIX paths' };
 
 const fixtureRoots = [];
 test.after(() => { for (const root of fixtureRoots) fs.rmSync(root, { recursive: true, force: true }); });
@@ -119,7 +121,7 @@ function featureHost(t, options = {}) {
   };
 }
 
-test('feature status/control routes have stable contracts and settings remain within crewpack', async (t) => {
+test('feature status/control routes have stable contracts and settings remain within crewpack', posixRoot, async (t) => {
   const f = featureHost(t);
   let response = await f.route('GET', '/status');
   assert.deepEqual(Object.keys(response.data).sort(), ['autoEnroll', 'enabled', 'errors', 'excluded', 'intervalMinutes', 'servers']);
@@ -137,7 +139,7 @@ test('feature status/control routes have stable contracts and settings remain wi
 });
 
 // macOS/Windows hosts cannot hold a lease, so turning supervision on or off must not fail on them.
-test('control succeeds when a host reports that coordination is unavailable on its platform', async (t) => {
+test('control succeeds when a host reports that coordination is unavailable on its platform', posixRoot, async (t) => {
   const f = featureHost(t, { revokeCode: 'coordination_platform_unavailable' });
   const response = await f.route('POST', '/control', { enabled: true, autoEnroll: true, workspaces: [{ serverId: 'vm', root: f.root }] });
   assert.equal(response.code, 200); assert.equal(response.data.enabled, true);
@@ -145,7 +147,7 @@ test('control succeeds when a host reports that coordination is unavailable on i
 });
 
 // "Gắn leader": the crew kit writes nudge.conf; Termnest only calls `crew-task.sh enroll` for a live single-pane session.
-test('bind asks the crew kit to enroll the session pane and maps kit failures to clear codes', async (t) => {
+test('bind asks the crew kit to enroll the session pane and maps kit failures to clear codes', posixRoot, async (t) => {
   let reply = (cmd) => /crew-task\.sh enroll/.test(cmd) ? { code: 0, out: 'enrolled %7 t-blocked\n' } : { code: 0, out: '' };
   const f = featureHost(t, { settings: { enabled: true, autoEnroll: true }, exec: (cmd) => reply(cmd) });
   await f.tick();
@@ -163,7 +165,7 @@ test('bind asks the crew kit to enroll the session pane and maps kit failures to
   assert.equal((await bind(body)).error, 'bind_pane_ambiguous');
 });
 
-test('the backend feature timer opens then sends to an idle audit without an HTTP request or snapshot event', async (t) => {
+test('the backend feature timer opens then sends to an idle audit without an HTTP request or snapshot event', posixRoot, async (t) => {
   const f = featureHost(t, { settings: { enabled: true } });
   await f.tick(); assert.equal(f.opened.length, 1); assert.equal(f.sent.length, 0);
   await f.tick(); assert.equal(f.sent.length, 1);
@@ -173,7 +175,7 @@ test('the backend feature timer opens then sends to an idle audit without an HTT
   assert.equal(status.servers[0].audits[0].verification, 'unverified');
 });
 
-test('feature report adapter requires the actual validated report file to complete', async (t) => {
+test('feature report adapter requires the actual validated report file to complete', posixRoot, async (t) => {
   const f = featureHost(t, { settings: { enabled: true } }); await f.tick(); await f.tick();
   const run = f.running.supervisor.host('vm').active;
   const dir = path.join(f.root, '_crew', 'termnest-ops', 'reports'); fs.mkdirSync(dir, { recursive: true });
@@ -188,7 +190,7 @@ test('feature report adapter requires the actual validated report file to comple
   assert.equal(f.opened.length, 1); assert.equal(f.sent.length, 2);
 });
 
-test('legacy routes stay registered and off suppresses pending prompts and manual audit requests', async (t) => {
+test('legacy routes stay registered and off suppresses pending prompts and manual audit requests', posixRoot, async (t) => {
   const f = featureHost(t);
   assert.equal((await f.route('POST', '/days', { days: 7 })).data.days, 7);
   assert.equal((await f.route('POST', '/schedule', { hours: 0.5 })).data.auditHours, 0.5);
@@ -215,7 +217,7 @@ test('feature route validation rejects bad roots/servers/intervals and fails clo
   assert.equal(locked.opened.length + locked.sent.length, 0);
 });
 
-test('configured workspace discovery works with no sessions and open tasks ignore old mtimes', async (t) => {
+test('configured workspace discovery works with no sessions and open tasks ignore old mtimes', posixRoot, async (t) => {
   const f = featureHost(t); f.remote.snapshot.sessions = [];
   const mf = path.join(f.root, '_crew', 'tasks', 't-blocked', 'MANIFEST.md');
   const old = new Date(Date.now() - 200 * 86400000); fs.utimesSync(mf, old, old);
