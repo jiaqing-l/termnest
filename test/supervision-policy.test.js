@@ -344,7 +344,8 @@ test('feature startup and OFF keep prior fleet authority persisted when one host
   const f = await fleetStartup(t);
   f.beforeGuard(async (r, a) => { if (r.cfg.id === 'vm2' && a.op === 'revoke') throw Error('synthetic offline host'); });
   await f.snapshot();
-  assert.ok(f.vault.crewpack.coordinatorIds.includes(f.prior)); assert.equal(f.supervisor.enabled(), false);
+  // The owner's setting stays on (it used to switch itself off); no host acts until revocation is confirmed.
+  assert.ok(f.vault.crewpack.coordinatorIds.includes(f.prior)); assert.equal(f.supervisor.coordinatorRecorded, false);
   assert.ok(!f.calls.some(a => a.op === 'lease'), 'unconfirmed startup retirement must prevent new host work');
   assert.equal((await f.off()).status, 503); assert.equal(f.vault.crewpack.off, true);
   assert.ok(f.vault.crewpack.coordinatorIds.includes(f.prior)); assert.equal(f.vault.crewpack.configurationPending, true);

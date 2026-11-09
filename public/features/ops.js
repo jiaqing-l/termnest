@@ -137,6 +137,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
   function ids(v) { return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string' && x; }) : []; }
   function crewOn() { return !!supervision && supervision.enabled === true && supervision.autoEnroll === true; }
+  // Teams are visible whenever the supervisor has a fresh read-only scan, including while autopilot is off.
+  function crewVisible() { return crewOn() || !!supervision && list(supervision.servers).some(function (v) { var at = v.freshness && v.freshness.scannedAt; return at && Date.now() - at < 300000; }); }
   function supervisionCard() {
     if (supervisionBox) return supervisionBox;
     supervisionBox = el('section', 'ops-card ops-super ops-crew');
@@ -278,10 +280,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   // Session side panel: what crew work this session leads (only when it is a discovered leader), from the same data.
   var crewDetails = {};
   var TRACK_DONE = ['merged', 'done', 'landed', 'applied', 'closed'];
+  function exitMeaning(code) { var k = 'ops.crew.exit_' + text(code), v = i18n(k); return v === k ? c('exit_other', [text(code)]) : v; }
   function trackLabel(state) { var k = 'ops.crew.track_' + state, v = i18n(k); return v === k ? text(state) : v; }
   function crewDetail(box, serverId, name) {
     box.textContent = '';
-    var server = crewOn() && list(supervision.servers).find(function (v) { return v.id === serverId; });
+    var server = crewVisible() && list(supervision.servers).find(function (v) { return v.id === serverId; });
     var d = server && list(server.discovered).find(function (x) { return x.session === name; });
     box.hidden = !d; if (!d) return;
     var team = list(server.teams).find(function (t) { return t.session === name && t.root === d.root; });
@@ -301,8 +304,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         card.append(el('small', 'ops-note', c('tracks_done', [done, tr.length])), bar);
         var chips = el('div', 'ops-crew-chips');
         tr.forEach(function (k) {
-          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
-          var chip = el('button', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : ''));
+          // Exit 7 = the dispatcher rejected the worker's verification evidence: code exists, verification is still open.
+          var unverified = k.state === 'failed' && k.lastExit === '7';
+          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : unverified ? 'wait' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
+          var chip = el('button', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : unverified ? c('track_unverified') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : ''));
           chip.type = 'button'; chip.title = c('track_open');
           chip.onclick = function () { trackPopup(serverId, d.root, t, k, running); };
           chips.append(chip);
@@ -355,6 +360,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       if (rounds.length) {
         var last = rounds[rounds.length - 1];
         body.append(el('p', 'ops-track-last', c('track_last', [text(last.round), text(last.kind), text(last.exit), Math.round((last.seconds || 0) / 60), text(last.executor) + ' ' + text(last.model) + ' ' + text(last.effort), stamp(Date.parse(last.endedAt))])));
+        body.append(el('p', 'ops-note', exitMeaning(last.exit)));
         var table = el('table', 'ops-track-rounds'), hr = el('tr');
         ['#', c('col_kind'), c('col_exit'), c('col_time'), c('col_model'), c('col_end')].forEach(function (h) { hr.append(el('th', '', h)); }); table.append(hr);
         rounds.slice().reverse().forEach(function (x) { var tr = el('tr'); [x.round, x.kind, x.exit, Math.round((x.seconds || 0) / 60) + "'", text(x.model) + ' ' + text(x.effort), stamp(Date.parse(x.endedAt))].forEach(function (v) { tr.append(el('td', '', text(v))); }); table.append(tr); });
@@ -371,7 +377,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       files.sort(function (a, b) { return (b.f.at || 0) - (a.f.at || 0); });
       files.forEach(function (x) {
         var sec = el('details', 'ops-track-file'); if (x === files[0]) sec.open = true;
-        sec.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', text(x.f.text)));
+        var shown = text(x.f.text);
+        // FAILED holds only the dispatcher's exit code: say what it means.
+        if (x.n === 'FAILED' && /^\s*\d+\s*$/.test(shown)) shown = c('failed_code', [shown.trim(), exitMeaning(shown.trim())]);
+        sec.append(el('summary', '', x.n + ' · ' + (ago(x.f.at) || stamp(x.f.at))), el('pre', '', shown));
         body.append(sec);
       });
       if (r.log) { var lg = el('details', 'ops-track-file'); lg.append(el('summary', '', c('track_log', [text(r.logName)])), el('pre', '', text(r.log))); body.append(lg); }
@@ -439,7 +448,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     }
     crewBody.append(el('h4', '', c('teams')));
     var any = false;
-    if (on) list(supervision.servers).forEach(function (server) {
+    if (crewVisible()) list(supervision.servers).forEach(function (server) {
       if (!list(server.discovered).length && !list(server.teams).some(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; }) && hostConnected(server)) return;
       any = true; crewBody.append(crewMachine(server, true));
     });
@@ -867,7 +876,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     all.sort(function (a, b) { return (SEV[a.f.severity] - SEV[b.f.severity]) || (b.f.since - a.f.since); });
     var leaders = {}, teamN = 0, crewNeed = needYou();
     // While autopilot is off nothing is scanned, so saved teams would be stale: show none rather than old data.
-    if (crewOn()) list(supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
+    if (crewVisible()) list(supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
     var needN = all.filter(function (x) { return dailyGroup(x) === 'attention'; }).length + crewNeed.length;
     h.querySelector('p').textContent = i18n('ops.sumline', [data.servers.length, data.servers.reduce(function (n, v) { return n + list(v.sessions).filter(function (s) { return s.agent; }).length; }, 0), teamN, needN]);
     page.append(machines(all, crewNeed));
@@ -896,7 +905,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var crew = list(supervision && supervision.servers).filter(function (v) { return !filt.srv || v.id === filt.srv; });
     var cb = section('crew', i18n('ops.daily.crew'), teamN, true, 'user');
     if (!supervision) cb.append(el('p', 'ops-empty', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading')));
-    if (supervision && !crewOn()) {
+    if (supervision && !crewVisible()) {
       cb.append(el('p', 'ops-empty', c('off_view')), button(c('turn_on'), 'primary', function () { TW.app().openSettings('sessions'); }));
     } else crew.forEach(function (v) { cb.append(crewMachine(v, false)); });
     var rest = shown.filter(function (x) { return dailyGroup(x) !== 'attention' && !leaders[x.s.id + '|' + x.f.session]; });
