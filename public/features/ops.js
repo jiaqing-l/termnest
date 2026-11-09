@@ -324,6 +324,31 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     dlg.append(head, body); document.body.append(dlg); dlg.addEventListener('close', function () { dlg.remove(); });
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
     var q = 'server=' + encodeURIComponent(serverId) + '&root=' + encodeURIComponent(root) + '&task=' + encodeURIComponent(t.id) + '&track=' + encodeURIComponent(k.id);
+    // Live: while the popup is open, re-read the worker's newest log every 3 s and show what it is doing now.
+    var liveBox = el('section', 'ops-track-live'), liveHead = el('div', 'ops-track-live-head'), liveList = el('ol', 'ops-track-feed');
+    liveBox.append(liveHead, liveList); liveBox.hidden = true; body.insertBefore(liveBox, body.firstChild.nextSibling);
+    var ICON = { exec: '▶', say: '💬', think: '…', patch: '✎', tokens: '∑' }, timer = null;
+    function drawLive(r) {
+      var fresh = r && r.logAt && Date.now() - r.logAt < 120000;
+      liveBox.hidden = !(running || fresh) || !r || !list(r.feed).length; if (liveBox.hidden) return;
+      liveHead.textContent = c('track_live', [text(r.logName), ago(r.logAt) || stamp(r.logAt)]);
+      var stick = liveList.scrollTop + liveList.clientHeight >= liveList.scrollHeight - 8;
+      liveList.textContent = '';
+      list(r.feed).forEach(function (e, i, all) {
+        var li = el('li', 'f-' + text(e.kind) + (e.ok === false ? ' f-bad' : ''));
+        var mark = e.kind === 'exec' ? (e.ok === null ? '⏳' : e.ok ? '✓' : '✗ ' + (e.code != null ? e.code : '')) : '';
+        li.append(el('span', 'f-at', new Date(e.at).toLocaleTimeString(i18n('lang.locale'), { hour: '2-digit', minute: '2-digit', second: '2-digit' })), el('span', 'f-ic', ICON[e.kind] || '•'), el('span', 'f-tx', text(e.text)), el('span', 'f-ok', mark));
+        if (i === all.length - 1 && e.kind === 'exec' && e.ok === null) li.classList.add('f-now');
+        liveList.append(li);
+      });
+      if (stick) liveList.scrollTop = liveList.scrollHeight;
+    }
+    function pollLive() {
+      if (!dlg.isConnected) return;
+      TW.api('GET', '/api/features/crewpack/track?' + q + '&live=1').then(drawLive).catch(function () {}).finally(function () { if (dlg.isConnected) timer = setTimeout(pollLive, 3000); });
+    }
+    dlg.addEventListener('close', function () { clearTimeout(timer); });
+    pollLive();
     TW.api('GET', '/api/features/crewpack/track?' + q).then(function (r) {
       body.lastChild.remove();
       var rounds = list(r.rounds);

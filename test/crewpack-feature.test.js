@@ -266,3 +266,16 @@ test('track popup data: rounds, failure files with time, log tail; tokens masked
   assert.ok(r.files.FAILED.at > 0); assert.ok(!r.files.FAILED.text.includes('abcdefghijklmnop')); assert.ok(!r.log.includes('hunter22'));
   assert.equal((await cp.trackRuntime()({ root, task: 'T1', id: 'W9' })).error, 'missing');
 });
+
+test('live track feed: commands with their result, what the worker says, edited files; a running command has no result yet', async (t) => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-feed-'))); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const dir = path.join(root, '_crew', 'tasks', 'T1', 'tracks', 'W1', 'logs'); fs.mkdirSync(dir, { recursive: true });
+  const T = '2026-11-09T13:30:56+0700 ';
+  fs.writeFileSync(path.join(dir, 'codex-1.log'), [T + 'exec', T + '/bin/zsh -lc "git status --short" in /w', T + ' succeeded in 12ms:', T + ' M a.cs',
+    T + 'codex', T + 'Fixed the build; token=glpat-abcdefghijkl', T + 'apply patch', T + 'patch: completed', T + '/w/src/V2/Policy.cs', T + 'diff --git a/x b/x',
+    T + 'exec', T + '/bin/zsh -lc "dotnet test" in /w'].join('\n') + '\n');
+  const r = await cp.trackRuntime()({ root, task: 'T1', id: 'W1', live: true });
+  assert.deepEqual(r.feed.map((e) => [e.kind, e.ok ?? null]), [['exec', true], ['say', null], ['patch', true], ['exec', null]]);
+  assert.equal(r.feed[0].text, 'git status --short'); assert.equal(r.feed[2].text, 'V2/Policy.cs');
+  assert.ok(!r.feed[1].text.includes('abcdefghijkl')); assert.ok(r.logAt > 0);
+});

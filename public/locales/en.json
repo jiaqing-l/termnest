@@ -1783,6 +1783,7 @@
   "ops.crew.track_unavailable": "Could not read the track folder on this machine.",
   "ops.crew.track_changes": "What changed: {0} · branch {1} · {2} commits",
   "ops.crew.track_no_commits": "No commit on the track branch yet.",
+  "ops.crew.track_live": "Doing now (live) · {0} · updated {1}",
   "ops.crew.mode_auto": "Autopilot",
   "ops.crew.mode_watch": "Watch only (host cannot send reminders)",
   "ops.crew.mode_off": "Autopilot off",

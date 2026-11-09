@@ -1766,6 +1766,7 @@
   "ops.crew.track_unavailable": "Không đọc được thư mục track trên máy này.",
   "ops.crew.track_changes": "Đã sửa gì: {0} · nhánh {1} · {2} commit",
   "ops.crew.track_no_commits": "Chưa có commit nào trên nhánh track.",
+  "ops.crew.track_live": "Đang làm gì (trực tiếp) · {0} · cập nhật {1}",
   "ops.crew.mode_auto": "Tự trông",
   "ops.crew.mode_watch": "Chỉ theo dõi (máy không hỗ trợ tự nhắc)",
   "ops.crew.mode_off": "Tự trông đang tắt",
