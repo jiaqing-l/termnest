@@ -61,3 +61,11 @@ test('relative paths and non-document names keep the previous behaviour', async 
   const js = await fv.readSessionFile(b, 's', 'tool.js');
   assert.equal(js.text, 'js'); // live search, then opened in the same request
 });
+
+test('a bare image name opens from the index too (screenshots printed by an AI)', async () => {
+  const fv = fresh(), { root, put } = tree(), b = local(root, 'img');
+  put('docs/mockups/shots/ban-cham-1.png', Buffer.from('89504e470d0a1a0a', 'hex'));
+  assert.ok((await fv.indexRuntime()({ base: root })).files.includes('docs/mockups/shots/ban-cham-1.png'));
+  const v = await fv.readSessionFile(b, 's', 'ban-cham-1.png');
+  assert.equal(v.path, path.join(root, 'docs/mockups/shots/ban-cham-1.png'));
+});
