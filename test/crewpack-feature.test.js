@@ -91,10 +91,10 @@ function featureHost(t, options = {}) {
   const remote = { cfg: { id: 'vm', name: 'VM', local: true }, ready: true, lastPoll: clock,
     snapshot: { bootId: 'boot', workers: [], sessions: [{ id: '$1', name: 'team', created: 3, path: root, paneIds: ['%7'], aiPid: 701,
       aiStatus: { tool: 'claude', status: 'busy', at: clock, cfg: '.claude', startedAt: 10 } }] },
-    exec: async (command) => { sent.push(command); return { code: 0, out: '' }; } };
+    exec: async (command) => { sent.push(command); return options.exec ? options.exec(command) : { code: 0, out: '' }; } };
   const host = {
     settings: { get: () => { if (options.locked) throw Error('locked'); return JSON.parse(JSON.stringify(vault.features.crewpack)); }, set: (s) => { vault.features.crewpack = s; } },
-    remotes: () => [remote], backendOf: (id) => id === 'vm' ? remote : null, log() {},
+    remotes: () => [remote], backendOf: (id) => id === 'vm' ? remote : null, log() {}, provided: {}, provide(name, value) { this.provided[name] = value; },
     onSnapshot(fn) { this.snapshot = fn; }, route(method, route, fn) { routes.set(method + ' ' + route, fn); },
     readJson: async (req) => req.body, send: (res, code, data) => Object.assign(res, { code, data }), fail: (res, code, error) => Object.assign(res, { code, error }),
     sessions: { start: async (r, { name, dir, run }) => { opened.push({ name, dir, run }); r.snapshot.sessions.push({ id: '$9', name, created: 7, path: dir, paneIds: ['%90'], aiStatus: { tool: 'claude', status: 'idle', at: clock } }); } },
@@ -103,7 +103,7 @@ function featureHost(t, options = {}) {
   const guard = async (r, a) => {
     if (a.op === 'lease') return { code: 'coordination_owner', token: { coordinatorId: a.coordinatorId, epoch: 1 } };
     if (a.op === 'inspect') return { code: 'identity_valid', processStart: '1' };
-    if (a.op === 'revoke') return { code: 'coordination_revoked' };
+    if (a.op === 'revoke') return { code: options.revokeCode || 'coordination_revoked' };
     if (a.op === 'readiness') return { code: 'audit_ready', accountRef: 'a'.repeat(64), label: 'operator@example.test' };
     if (a.op === 'ack_audit') return { code: 'audit_acknowledged' };
     if (a.kind === 'audit_open') await host.sessions.start(r, { name: a.session, dir: a.root, run: 'claude' });
@@ -122,7 +122,7 @@ function featureHost(t, options = {}) {
 test('feature status/control routes have stable contracts and settings remain within crewpack', async (t) => {
   const f = featureHost(t);
   let response = await f.route('GET', '/status');
-  assert.deepEqual(Object.keys(response.data).sort(), ['enabled', 'errors', 'intervalMinutes', 'servers']);
+  assert.deepEqual(Object.keys(response.data).sort(), ['autoEnroll', 'enabled', 'errors', 'excluded', 'intervalMinutes', 'servers']);
   assert.equal(response.data.enabled, false); assert.equal(response.data.intervalMinutes, 30);
   response = await f.route('POST', '/control', { enabled: true, workspaces: [{ serverId: 'vm', root: f.root }] });
   assert.equal(response.code, 200); assert.equal(response.data.intervalMinutes, 30);
@@ -134,6 +134,33 @@ test('feature status/control routes have stable contracts and settings remain wi
   assert.ok(server.teams.every((s) => typeof s.reason.code === 'string' && s.reason.params.every((v) => ['string', 'number', 'boolean'].includes(typeof v))));
   assert.deepEqual(f.vault.features.ops, { keep: 'untouched' }); assert.equal(f.vault.other, 'preserved');
   assert.equal(f.timers[0].ms, 5000);
+});
+
+// macOS/Windows hosts cannot hold a lease, so turning supervision on or off must not fail on them.
+test('control succeeds when a host reports that coordination is unavailable on its platform', async (t) => {
+  const f = featureHost(t, { revokeCode: 'coordination_platform_unavailable' });
+  const response = await f.route('POST', '/control', { enabled: true, autoEnroll: true, workspaces: [{ serverId: 'vm', root: f.root }] });
+  assert.equal(response.code, 200); assert.equal(response.data.enabled, true);
+  assert.equal((await f.route('POST', '/control', { enabled: false })).code, 200);
+});
+
+// "Gắn leader": the crew kit writes nudge.conf; Termnest only calls `crew-task.sh enroll` for a live single-pane session.
+test('bind asks the crew kit to enroll the session pane and maps kit failures to clear codes', async (t) => {
+  let reply = (cmd) => /crew-task\.sh enroll/.test(cmd) ? { code: 0, out: 'enrolled %7 t-blocked\n' } : { code: 0, out: '' };
+  const f = featureHost(t, { settings: { enabled: true, autoEnroll: true }, exec: (cmd) => reply(cmd) });
+  await f.tick();
+  const body = { serverId: 'vm', root: f.root, session: 'team', taskId: 't-blocked' };
+  const bind = (b) => f.host.provided.supervision.bind(b).then((v) => v, (e) => ({ error: e.message }));
+  const ok = await bind(body);
+  assert.equal(ok.code, 'bind_done', JSON.stringify(ok)); assert.equal(ok.pane, '%7');
+  assert.ok(f.sent.some((c) => c === "cd '" + f.root + "' && bash scripts/crew/crew-task.sh enroll --task 't-blocked' --pane '%7' 2>&1"));
+  reply = () => ({ code: 2, out: 'crew-task: unknown command: enroll\n' });
+  assert.equal((await bind(body)).error, 'bind_kit_outdated');
+  assert.equal((await bind({ ...body, taskId: 't-done' })).error, 'bind_task_closed');
+  assert.equal((await bind({ ...body, session: 'ghost' })).error, 'bind_session_missing');
+  assert.equal((await bind({ ...body, taskId: 'bad id;' })).error, 'invalid_bind');
+  f.remote.snapshot.sessions[0].paneIds = ['%7', '%8'];
+  assert.equal((await bind(body)).error, 'bind_pane_ambiguous');
 });
 
 test('the backend feature timer opens then sends to an idle audit without an HTTP request or snapshot event', async (t) => {

@@ -9,6 +9,7 @@ const { guardRuntime } = require('../lib/ops-action-guard');
 const { digest } = require('../lib/supervision-state');
 const A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const linux = { skip: process.platform !== 'linux' };
+const posix = { skip: !['linux', 'darwin'].includes(process.platform) }; // flock: flock(1) on Linux, perl flock() on macOS
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-fence-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -16,7 +17,7 @@ function fixture(t) {
   const runtime = guardRuntime({ now: () => now, inspect: () => { inspections++; onInspect?.(inspections); return { processStart: '23', cwd: root, idleAt }; },
     readiness: () => ({ code: 'audit_ready', quota: 'unknown' }),
     cp: { execFileSync(file, args, opts) {
-      if (file === 'flock') return cp.execFileSync(file, args, opts);
+      if (file === 'flock' || file === '/usr/bin/perl') return cp.execFileSync(file, args, opts);
       assert.equal(file, 'tmux'); calls.push(args);
       if (failure && args[0] === 'send-keys') throw Object.assign(Error('partial tmux'), { status: 1 });
       if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 });
@@ -30,7 +31,7 @@ function fixture(t) {
     advance(ms) { now += ms; }, setIdle(at) { idleAt = at; }, setInspectHook(fn) { onInspect = fn; }, fail() { failure = true; }, get now() { return now; } };
 }
 
-test('two coordinators share one remote lease, transfer increments epoch, stale token cannot send or replay an idle receipt', linux, async t => {
+test('two coordinators share one remote lease, transfer increments epoch, stale token cannot send or replay an idle receipt', posix, async t => {
   const f = fixture(t), one = await f.request('lease'); assert.equal(one.code, 'coordination_owner');
   assert.equal((await f.request('lease', { coordinatorId: B })).code, 'coordination_owned');
   const sent = await f.request('action', f.action(one.token)); assert.equal(sent.code, 'action_delivered');
@@ -43,12 +44,12 @@ test('two coordinators share one remote lease, transfer increments epoch, stale 
   assert.equal(f.calls.length, count);
 });
 
-test('an inherited kernel lock remains held across tmux, and a contender cannot take over during a long side effect', linux, async t => {
+test('an inherited kernel lock remains held across tmux, and a contender cannot take over during a long side effect', posix, async t => {
   const f = fixture(t), lease = await f.request('lease'), marker = path.join(f.root, 'in-action');
   // A separate foreground-awaited process executes the REAL runtime and flock; only tmux/agent IO is simulated.
   const script = `const fs=require('node:fs'),cp=require('node:child_process'); const guard=(${guardRuntime.toString()})({now:()=>${f.now},
     inspect:()=>({cwd:${JSON.stringify(f.root)},idleAt:10}),readiness:()=>({code:'audit_ready'}),cp:{execFileSync(file,args,opts){
-      if(file==='flock')return cp.execFileSync(file,args,opts);fs.writeFileSync(${JSON.stringify(marker)},'held');
+      if(file==='flock'||file==='/usr/bin/perl')return cp.execFileSync(file,args,opts);fs.writeFileSync(${JSON.stringify(marker)},'held');
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,150);return '';}}});
     guard(${JSON.stringify({ op: 'action', root: f.root, coordinatorId: A, ...f.action(lease.token), prompt: 'one' })}).then(v=>process.stdout.write(JSON.stringify(v)));`;
   const child = cp.spawn(process.execPath, ['-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -64,7 +65,7 @@ test('an inherited kernel lock remains held across tmux, and a contender cannot 
   assert.equal((await f.request('lease', { coordinatorId: B })).code, 'coordination_owner');
 });
 
-test('partial tmux failure leaves a durable uncertain receipt; a fresh runtime and coordinator never replay it', linux, async t => {
+test('partial tmux failure leaves a durable uncertain receipt; a fresh runtime and coordinator never replay it', posix, async t => {
   const f = fixture(t), lease = await f.request('lease'); f.fail();
   assert.equal((await f.request('action', f.action(lease.token))).code, 'action_uncertain');
   const count = f.calls.length;
@@ -79,12 +80,12 @@ test('partial tmux failure leaves a durable uncertain receipt; a fresh runtime a
   assert.equal(churn.code, 'action_duplicate'); assert.equal(churn.receipt.delivery, 'uncertain'); assert.equal(f.calls.length, count);
 });
 
-test('remote helper death releases only its kernel lock and preserves a pending cross-event uncertainty barrier', linux, async t => {
+test('remote helper death releases only its kernel lock and preserves a pending cross-event uncertainty barrier', posix, async t => {
   const f = fixture(t), lease = await f.request('lease'), marker = path.join(f.root, 'entered-send');
   const lockFile = path.join(f.root, '_crew/termnest-ops/coordination/guard.lock'), inode = fs.statSync(lockFile).ino;
   const script = `const fs=require('node:fs'),cp=require('node:child_process');const guard=(${guardRuntime.toString()})({now:()=>${f.now},
     inspect:()=>({cwd:${JSON.stringify(f.root)},idleAt:10}),readiness:()=>({code:'audit_ready'}),cp:{execFileSync(file,args,opts){
-      if(file==='flock')return cp.execFileSync(file,args,opts);fs.writeFileSync(${JSON.stringify(marker)},'pending');
+      if(file==='flock'||file==='/usr/bin/perl')return cp.execFileSync(file,args,opts);fs.writeFileSync(${JSON.stringify(marker)},'pending');
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,5000);return '';}}});
     guard(${JSON.stringify({ op: 'action', root: f.root, coordinatorId: A, ...f.action(lease.token), prompt: 'one' })}).then(v=>process.stdout.write(JSON.stringify(v)));`;
   const proc = cp.spawn(process.execPath, ['-e', script], { stdio: ['ignore', 'pipe', 'pipe'] }); let err = '';
@@ -98,7 +99,7 @@ test('remote helper death releases only its kernel lock and preserves a pending 
   assert.equal(fs.statSync(lockFile).ino, inode, 'a live or dead helper never unlinks the kernel lock file based on age');
 });
 
-test('acknowledged idle events compact behind an exact-identity watermark without permitting old event replay', linux, async t => {
+test('acknowledged idle events compact behind an exact-identity watermark without permitting old event replay', posix, async t => {
   const f = fixture(t), lease = await f.request('lease');
   for (let at = 10; at < 40; at++) {
     f.setIdle(at); assert.equal((await f.request('action', { ...f.action(lease.token), eventId: digest(at) })).code, 'action_delivered');
@@ -112,7 +113,7 @@ test('acknowledged idle events compact behind an exact-identity watermark withou
   assert.equal((await f.request('lease')).code, 'coordination_corrupt', 'inconsistent watermark cannot silently reopen a receipt');
 });
 
-test('remote revocation fences actions already prepared or delayed in a channel, and even delayed lease acquisition', linux, async t => {
+test('remote revocation fences actions already prepared or delayed in a channel, and even delayed lease acquisition', posix, async t => {
   const f = fixture(t), lease = await f.request('lease');
   assert.equal((await f.request('revoke')).code, 'coordination_revoked');
   assert.equal((await f.request('action', f.action(lease.token))).code, 'coordination_revoked');
@@ -120,14 +121,14 @@ test('remote revocation fences actions already prepared or delayed in a channel,
   assert.equal((await f.request('lease', { coordinatorId: B })).token.epoch, lease.token.epoch + 1);
 });
 
-test('lease expiry during final live validation cancels before the first tmux input', linux, async t => {
+test('lease expiry during final live validation cancels before the first tmux input', posix, async t => {
   const f = fixture(t), lease = await f.request('lease');
   f.setInspectHook(call => { if (call === 2) f.advance(45001); });
   const result = await f.request('action', f.action(lease.token));
   assert.equal(result.code, 'coordination_fenced'); assert.equal(result.receipt.delivery, 'cancelled'); assert.equal(f.calls.length, 0);
 });
 
-test('recovery progress fingerprint, original deadline and bounded attempts survive coordinator transfer', linux, async t => {
+test('recovery progress fingerprint, original deadline and bounded attempts survive coordinator transfer', posix, async t => {
   const f = fixture(t), taskDir = path.join(f.root, '_crew/tasks/managed'); fs.mkdirSync(taskDir, { recursive: true });
   fs.writeFileSync(path.join(taskDir, 'MANIFEST.md'), '---\nstatus: executing\nblocked: null\ntracks: [{ id: W1, state: pending }]\n---');
   let lease = await f.request('lease');
@@ -150,7 +151,7 @@ test('recovery progress fingerprint, original deadline and bounded attempts surv
   assert.equal((await f.request('action', { ...action(3, lease.token), coordinatorId: B })).receipt.attempts, 1);
 });
 
-test('symlinks, unreadable/corrupt state, malformed epochs and capacity limits fail closed without deleting locks or receipts', linux, async t => {
+test('symlinks, unreadable/corrupt state, malformed epochs and capacity limits fail closed without deleting locks or receipts', posix, async t => {
   for (const mode of ['symlink-lock', 'symlink-state', 'symlink-dir', 'unreadable', 'corrupt', 'bad-lease', 'full', 'lock-content', 'orphans']) {
     const f = fixture(t), lease = await f.request('lease'), dir = path.join(f.root, '_crew/termnest-ops/coordination'), stateFile = path.join(dir, 'state.json');
     if (mode === 'symlink-lock') { fs.unlinkSync(path.join(dir, 'guard.lock')); fs.symlinkSync(stateFile, path.join(dir, 'guard.lock')); }
@@ -171,7 +172,7 @@ test('symlinks, unreadable/corrupt state, malformed epochs and capacity limits f
   }
 });
 
-test('audit open and an already existing idle audit both require a pinned account and installed skill', linux, async t => {
+test('audit open and an already existing idle audit both require a pinned account and installed skill', posix, async t => {
   const f = fixture(t), home = path.join(f.root, 'home'), config = path.join(home, '.claude-work');
   fs.mkdirSync(config, { recursive: true, mode: 0o700 });
   const plugin = path.join(f.root, 'plugin'), skillDir = path.join(plugin, 'skills/xspire-crew-ops-audit');
@@ -182,7 +183,7 @@ test('audit open and an already existing idle audit both require a pinned accoun
   t.after(() => { for (const [k, v] of Object.entries(env)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } });
   const runtime = guardRuntime({ os: { homedir: () => home }, now: () => f.now, inspect: () => ({ cwd: f.root, idleAt: 10 }),
     cp: { execFileSync(file, args, opts) {
-      if (file === 'flock') return cp.execFileSync(file, args, opts);
+      if (file === 'flock' || file === '/usr/bin/perl') return cp.execFileSync(file, args, opts);
       if (file === 'claude') { assert.equal(opts.env.CLAUDE_CONFIG_DIR, config); return JSON.stringify(args[0] === 'auth' ? auth : pluginList); }
       calls.push(args); if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 }); return '';
     } },
@@ -211,7 +212,7 @@ test('audit open and an already existing idle audit both require a pinned accoun
 });
 
 test('unsupported hosts explicitly report unavailable', async () => {
-  assert.equal((await guardRuntime({ platform: 'darwin' })({ op: 'lease', root: '/workspace' })).code, 'coordination_platform_unavailable');
+  assert.equal((await guardRuntime({ platform: 'win32' })({ op: 'lease', root: '/workspace' })).code, 'coordination_platform_unavailable');
 });
 
 test('production identity inspector checks boot, tmux creation/pane, process start and ancestry, and agent start/config/cwd', linux, async t => {
@@ -235,7 +236,7 @@ test('production identity inspector checks boot, tmux creation/pane, process sta
   };
   const runtime = guardRuntime({ fs: fakeFS, os: { homedir: () => home }, now: () => f.now,
     readiness: () => ({ code: 'audit_ready' }), cp: { execFileSync(file, args, opts) {
-      if (file === 'flock') return cp.execFileSync(file, args, opts);
+      if (file === 'flock' || file === '/usr/bin/perl') return cp.execFileSync(file, args, opts);
       if (file === 'ps') return state.processTable;
       if (args[0] === 'display-message') return '$1|' + state.created + '|' + state.pane + '|100|leader';
       if (args[0] === 'send-keys') { state.sends++; return ''; }
@@ -282,7 +283,7 @@ test('production audit retirement requires exact tmux and process death, retains
   }, statSync(file, ...args) { return file === '/proc/501' ? { uid: process.getuid() } : fs.statSync(file, ...args); } };
   const runtime = guardRuntime({ fs: fakeFS, boot: () => 'boot-one', now: () => f.now, inspect: () => ({ cwd: f.root, idleAt: 10, processStart: '23' }), readiness: () => ({ code: 'audit_ready' }),
     cp: { execFileSync(file, args, opts) {
-      if (file === 'flock') return cp.execFileSync(file, args, opts);
+      if (file === 'flock' || file === '/usr/bin/perl') return cp.execFileSync(file, args, opts);
       if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 });
       if (args[0] === 'new-session') return '$9|70|%90|501\n';
       if (args[0] === 'list-sessions') { if (unavailable) throw Object.assign(Error('tmux failed'), { status: 1, stderr: 'permission denied' }); return table; }
@@ -308,14 +309,14 @@ test('production audit retirement requires exact tmux and process death, retains
   assert.equal(opening.code, 'audit_retirement_uncertain', 'a fresh run cannot bypass the prior partial receipt');
 });
 
-test('SIMULATION: 4200 successful audit-session replacements and coordinator resets stay bounded without replay or revocation loss', linux, async t => {
+test('SIMULATION: 4200 successful audit-session replacements and coordinator resets stay bounded without replay or revocation loss', posix, async t => {
   const f = fixture(t), file = path.join(f.root, '_crew/termnest-ops/coordination/state.json');
   let sequence = 0, sends = 0;
   // This serialized long-run fixture simulates process/tmux/flock IO; real kernel lock contention is tested above.
   const runtime = guardRuntime({ now: () => f.now, boot: () => 'sim-boot', fs: { ...fs, fsyncSync() {} },
     inspect: () => ({ cwd: f.root, idleAt: sequence + 10, processStart: '23' }), readiness: () => ({ code: 'audit_ready' }),
     proveAuditDead: () => ({ code: 'audit_identity_dead', proof: 'simulated_exact_death' }),
-    cp: { execFileSync(file, args) { if (file === 'flock') return ''; if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 }); if (args[0] === 'send-keys' && args.includes('-l')) sends++; return ''; } } });
+    cp: { execFileSync(file, args) { if (file === 'flock' || file === '/usr/bin/perl') return ''; if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 }); if (args[0] === 'send-keys' && args.includes('-l')) sends++; return ''; } } });
   const firstId = digest('coordinator-0').slice(0, 32), firstEvent = digest('open-0');
   for (sequence = 0; sequence < 4200; sequence++) {
     const coordinatorId = digest('coordinator-' + sequence).slice(0, 32), runId = 'tn-' + sequence.toString(16).padStart(32, '0');
@@ -340,7 +341,7 @@ test('SIMULATION: 4200 successful audit-session replacements and coordinator res
   assert.equal(sends, 4200, 'compacted events never replay after transfer');
 });
 
-test('exhausted tombstones freeze remote authority across restart while OFF still revokes queued tokens; malformed ledger fails closed', linux, async t => {
+test('exhausted tombstones freeze remote authority across restart while OFF still revokes queued tokens; malformed ledger fails closed', posix, async t => {
   const f = fixture(t), lease = await f.request('lease'), file = path.join(f.root, '_crew/termnest-ops/coordination/state.json');
   const state = JSON.parse(fs.readFileSync(file)); state.safetyFilter = '0'.repeat(262144); state.safetyCount = 65536; fs.writeFileSync(file, JSON.stringify(state));
   assert.equal((await f.request('action', f.action(lease.token))).code, 'coordination_capacity_tombstones');
@@ -348,4 +349,29 @@ test('exhausted tombstones freeze remote authority across restart while OFF stil
   assert.equal((await f.request('lease', { coordinatorId: B })).code, 'coordination_capacity_tombstones'); assert.equal(f.calls.length, 0);
   const frozen = JSON.parse(fs.readFileSync(file)); assert.equal(frozen.lease.expiresAt, 0); delete frozen.safetyFilter; fs.writeFileSync(file, JSON.stringify(frozen));
   assert.equal((await f.request('lease')).code, 'coordination_corrupt');
+});
+
+// macOS: real boot id (sysctl), process table (ps), cwd (lsof) and tmux on an isolated tmux server.
+test('macOS identity inspector verifies a real tmux pane and agent process', { skip: process.platform !== 'darwin' || !(() => { try { cp.execFileSync('tmux', ['-V']); return true; } catch { return false; } })() }, async t => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-mac-'))), home = path.join(root, 'home'), sock = path.join(root, 'tmux');
+  fs.mkdirSync(path.join(home, '.claude-test/sessions'), { recursive: true, mode: 0o700 }); fs.mkdirSync(sock, { mode: 0o700 });
+  const bin = path.join(root, 'bin'); fs.mkdirSync(bin); fs.symlinkSync(process.execPath, path.join(bin, 'claude')); // macOS kills copied system binaries; ps shows the link name
+  const saved = { TMUX_TMPDIR: process.env.TMUX_TMPDIR, TMUX: process.env.TMUX };
+  process.env.TMUX_TMPDIR = sock; delete process.env.TMUX;
+  t.after(() => { try { cp.execFileSync('tmux', ['kill-server']); } catch {} Object.assign(process.env, saved); if (saved.TMUX === undefined) delete process.env.TMUX; if (saved.TMUX_TMPDIR === undefined) delete process.env.TMUX_TMPDIR; fs.rmSync(root, { recursive: true, force: true }); });
+  cp.execFileSync('tmux', ['new-session', '-d', '-s', 'leader', '-c', root, path.join(bin, 'claude'), '-e', 'setTimeout(()=>{},60000)']);
+  const [sessionId, created, pane, panePid] = cp.execFileSync('tmux', ['display-message', '-p', '-t', 'leader', '#{session_id}|#{session_created}|#{pane_id}|#{pane_pid}'], { encoding: 'utf8' }).trim().split('|');
+  const agentPid = Number(panePid), startedAt = Date.now();
+  fs.writeFileSync(path.join(home, '.claude-test/sessions', agentPid + '.json'), JSON.stringify({ kind: 'inter', startedAt, status: 'idle', statusUpdatedAt: startedAt, cwd: root }), { mode: 0o600 });
+  const bootId = cp.execFileSync('/usr/sbin/sysctl', ['-n', 'kern.bootsessionuuid'], { encoding: 'utf8' }).trim();
+  const identity = { bootId, sessionId, created: Number(created), pane, agentPid, agentStartedAt: startedAt, config: '.claude-test' };
+  const runtime = guardRuntime({ os: { homedir: () => home } });
+  const ok = await runtime({ op: 'inspect', root, session: 'leader', identity });
+  assert.equal(ok.code, 'identity_valid', JSON.stringify(ok)); assert.match(ok.processStart, /^\d+$/); assert.equal(ok.panePid, agentPid);
+  assert.equal((await runtime({ op: 'inspect', root, session: 'leader', identity: { ...identity, processStart: ok.processStart } })).code, 'identity_valid');
+  for (const bad of [{ bootId: 'other-boot' }, { pane: '%999' }, { processStart: '1' }])
+    assert.match((await runtime({ op: 'inspect', root, session: 'leader', identity: { ...identity, ...bad } })).code, /identity_mismatch|live_identity|process_identity/, JSON.stringify(bad));
+  // A real lease on macOS: the perl flock holds the root for one coordinator.
+  const lease = await runtime({ op: 'lease', root, coordinatorId: A });
+  assert.equal(lease.code, 'coordination_owner'); assert.equal((await runtime({ op: 'lease', root, coordinatorId: B })).code, 'coordination_owned');
 });

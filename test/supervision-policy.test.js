@@ -48,7 +48,7 @@ function fixture(t, options = {}) {
       return { processStart: '23', idleAt: current.aiStatus.at, cwd: current.path };
     },
     cp: { execFileSync(file, args, opts) {
-      if (file === 'flock') return child.execFileSync(file, args, opts);
+      if (file === 'flock' || file === '/usr/bin/perl') return child.execFileSync(file, args, opts);
       assert.equal(file, 'tmux'); commands.push(args);
       if (args[0] === 'has-session') throw Object.assign(Error('absent'), { status: 1 });
       if (args[0] === 'new-session') {
@@ -247,7 +247,7 @@ async function fleetStartup(t) {
       runtimes.set(root, guardRuntime({ now: () => now, boot: () => r.snapshot.bootId,
         inspect: () => ({ processStart: '23', cwd: root, idleAt: 10 }), readiness: () => ({ code: 'audit_ready' }),
         cp: { execFileSync(file, args, options) {
-          if (file === 'flock') return child.execFileSync(file, args, options);
+          if (file === 'flock' || file === '/usr/bin/perl') return child.execFileSync(file, args, options);
           assert.equal(file, 'tmux'); typed.push({ root, args }); return '';
         } },
       }));
@@ -535,4 +535,11 @@ test('SIMULATION: 140 engine restarts revoke prior remote authority before compa
   assert.equal(f.commands.length, 0); assert.equal(f.sent.length, 0);
   const state = JSON.parse(fs.readFileSync(path.join(f.root, '_crew/termnest-ops/coordination/state.json')));
   assert.ok(state.revoked.length <= 64); assert.ok(state.safetyCount >= 139);
+});
+
+test('a Windows+WSL snapshot boot ID maps to the WSL boot ID that the guard reads inside WSL', () => {
+  const { liveIdentity } = require('../lib/supervision-state');
+  const s = { id: '$1', created: 5, paneIds: ['%3'], aiPid: 9, aiStatus: { startedAt: 1, cfg: '.claude' } };
+  assert.equal(liveIdentity({ snapshot: { bootId: 'win-boot/wsl-boot' } }, s).bootId, 'wsl-boot');
+  assert.equal(liveIdentity({ snapshot: { bootId: 'linux-boot' } }, s).bootId, 'linux-boot');
 });

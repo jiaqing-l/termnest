@@ -981,6 +981,8 @@ function attach(ws, r, name, url) {
   const rows = clampSize(url.searchParams.get('rows'), 4, 200, 30);
   r.attach(name, cols, rows, (err, stream) => {
     if (err) { ws.close(4000, 'attach failed'); return; }
+    // Build the session folder's file-name index while the user reads, so a bare file name opens at once.
+    require('./lib/file-viewer').prewarm(r, name);
     openTerms.add(ws);
     ws.alive = true;
     ws.on('pong', () => { ws.alive = true; });

@@ -326,3 +326,54 @@ details.cp-all>summary::before{content:'▸ ';color:var(--fg-3)}details.cp-all[o
 #plugins-settings-mount .pl-srv-h{flex-wrap:wrap}
 #plugins-settings-mount .ops-meta,#plugins-settings-mount .pl-log-r{overflow-wrap:anywhere}
 #plugins-settings-mount .pl-row .ops-acts{width:auto;flex:none}
+/* Crew autopilot (Settings) */
+.ops-crew .ops-crew-how{background:var(--surface-2);border-radius:12px;padding:8px 12px;margin:4px 0 12px}
+.ops-crew-rule{display:flex;gap:10px;align-items:baseline;padding:4px 0}
+.ops-crew-dot{flex:none;width:9px;height:9px;border-radius:50%;transform:translateY(1px)}
+.d-ok,.t-ok{--c:var(--ok);--s:var(--ok-soft)}.d-idle,.t-idle{--c:var(--idle);--s:var(--surface-3)}
+.d-wait,.t-wait{--c:var(--wait);--s:var(--wait-soft)}.d-bad,.t-bad{--c:var(--bad);--s:var(--bad-soft)}
+.ops-crew-dot{background:var(--c)}
+.ops-crew-switch{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.ops-crew-switch p{margin:2px 0 0}
+.ops-crew-toggle{position:relative;flex:none;width:52px;height:30px}
+.ops-crew-toggle input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer;z-index:1}
+.ops-crew-slider{position:absolute;inset:0;border-radius:30px;background:var(--line-strong);transition:background .2s}
+.ops-crew-slider::after{content:"";position:absolute;width:24px;height:24px;left:3px;top:3px;border-radius:50%;background:#fff;transition:left .2s}
+.ops-crew-toggle input:checked+.ops-crew-slider{background:var(--ok)}
+.ops-crew-toggle input:checked+.ops-crew-slider::after{left:25px}
+.ops-crew-toggle input:disabled+.ops-crew-slider{opacity:.5}
+.ops-crew-toggle input:focus-visible+.ops-crew-slider{outline:2px solid var(--hero-b);outline-offset:2px}
+.ops-crew-body h4{margin:14px 0 6px}
+.ops-crew-item{border-left:3px solid var(--wait);background:var(--wait-soft);border-radius:0 8px 8px 0;padding:6px 10px;margin:5px 0}
+.ops-crew-item.is-bad{border-color:var(--bad);background:var(--bad-soft)}
+.ops-crew-machine{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:8px 0}
+.ops-crew-mhead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:4px}
+.ops-crew-warnline{color:var(--wait)}
+.ops-crew-team{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;border-top:1px solid var(--line)}
+.ops-crew-team input{margin-top:3px;width:17px;height:17px;flex:none}
+.ops-crew-team.is-off .ops-crew-main{opacity:.55}
+.ops-crew-main{min-width:0;flex:1}
+.ops-crew-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ops-crew-tasks{font:12px ui-monospace,Menlo,monospace;color:var(--fg-2);overflow-wrap:anywhere}
+.ops-crew-tag{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;color:var(--c);background:var(--s);white-space:nowrap}
+.ops-crew-tag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ops-crew-adv{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.ops-crew-field{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap}
+.ops-crew-adv .ops-reminder-settings{margin-top:6px}
+/* Vận hành v2: machine cards, bind-leader rows, dormant tasks */
+.ops-machines{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:12px 0}
+.ops-mc{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;font:inherit;color:inherit;background:var(--surface,#fff);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+.ops-mc[aria-pressed=true]{outline:2px solid var(--hero-b);outline-offset:1px}
+.ops-mc-name{font-size:14px}
+.ops-mc-nums{display:flex;gap:12px;font-size:12.5px;color:var(--fg-2)}
+.ops-mc-nums .is-need{color:var(--bad);font-weight:700}
+.ops-group .ops-card-h h3 small{font-weight:400;margin-left:6px}
+.ops-group.g-crew .ops-crew-machine{margin:8px 12px}
+.ops-crew-mhead{justify-content:flex-start}
+.ops-crew-mhead .ops-note{margin-left:auto}
+.ops-crew-unbound{border-top:1px dashed var(--line);margin-top:6px;padding-top:6px}
+.ops-crew-bind{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0}
+.ops-crew-id{font:12px ui-monospace,Menlo,monospace;color:var(--fg-2);overflow-wrap:anywhere;min-width:0;flex:1 1 220px}
+.ops-crew-pick{font:inherit;font-size:13px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:inherit;max-width:100%}
+.ops-crew-dormant summary{cursor:pointer}
+.ops-crew-ids{font:11.5px ui-monospace,Menlo,monospace;overflow-wrap:anywhere}

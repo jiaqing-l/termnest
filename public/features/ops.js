@@ -93,8 +93,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
 
   // Supervision uses its own persistent DOM: polling never replaces controls or an unfinished edit.
   var supervision = null, supervisionError = false, supervisionPending = false, supervisionFetching = false;
-  var supervisionRevision = 0, supervisionBox = null, supervisionStatus = null, supervisionForm = null, supervisionDraft = null;
-  var accountUI = null, accountProof = null, accountMessage = '', accountGeneration = 0, accountTimer = null, accountChecking = false;
+  var supervisionRevision = 0, supervisionBox = null;
   function list(v) { return Array.isArray(v) ? v.filter(function (x) { return x && typeof x === 'object'; }) : []; }
   function text(v) { return typeof v === 'string' || typeof v === 'number' ? String(v) : ''; }
   function explanation(reason) {
@@ -117,250 +116,211 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     if (t.status === 'progressing' && (!Number.isFinite(progress) || progress <= 0 || progress > Date.now())) return 'unknown';
     return t.status;
   }
-  function sameLeader(a, b) {
-    return !!a && !!b && a.serverId === b.serverId && a.session === b.session && a.root === b.root &&
-      ['bootId', 'sessionId', 'created', 'pane', 'agentPid', 'agentStartedAt', 'config'].every(function (k) { return a.identity && b.identity && a.identity[k] != null && String(a.identity[k]) === String(b.identity[k]); });
+
+  // Crew autopilot settings. Every value shown comes from the backend: the agent's own status file (Claude/Codex),
+  // crew files (_crew/tasks, _crew/nudge.conf) and the process table. Missing data is shown as unknown, never inferred.
+  var CREW_STATE = { progressing: ['ok', 's_progressing'], idle: ['idle', 's_idle'], waiting_owner: ['wait', 's_waiting'], blocked: ['bad', 's_blocked'],
+    stalled: ['wait', 's_stalled'], completed: ['ok', 's_completed'], unknown: ['idle', 's_unknown'] };
+  var crewBody = null, crewSwitch = null, crewSwitchNote = null, crewInterval = null, crewMessage = '';
+  function c(key, params) { return i18n('ops.crew.' + key, params); }
+  function ago(at) {
+    var t = new Date(at || 0).getTime(); if (!Number.isFinite(t) || t <= 0 || t > Date.now() + 5000) return '';
+    var sec = Math.max(0, (Date.now() - t) / 1000); return sec < 60 ? i18n('ops.vua_moi') : c('ago', [span(sec / 60)]);
   }
-  function recoveryReady() {
-    var r = supervision && supervision.runtime;
-    if (r && (typeof r.registrationReady === 'boolean' || typeof r.recoveryReady === 'boolean')) return r.registrationReady === true || r.recoveryReady === true;
-    return !!supervision && list(supervision.leaders).some(function (l) { return list(supervision.registrationCandidates).some(function (c) { return sameLeader(l, c); }) && list(supervision.servers).some(function (s) { return s.id === l.serverId && hostFresh(s); }); });
-  }
-  function registrationSelected() {
-    return supervisionForm && supervisionForm.querySelector('[name=leader]') && supervisionForm.querySelector('[name=leader]').value !== '' && supervisionForm.querySelector('[name=confirmLeader]').checked;
-  }
+  function ids(v) { return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string' && x; }) : []; }
+  function crewOn() { return !!supervision && supervision.enabled === true && supervision.autoEnroll === true; }
   function supervisionCard() {
     if (supervisionBox) return supervisionBox;
-    supervisionBox = el('section', 'ops-card ops-super');
-    supervisionBox.append(el('h3', '', i18n('settings.tab_sessions')), el('p', 'ops-note', i18n('ops.manual_help')));
-    supervisionStatus = el('div', 'ops-super-status'); supervisionStatus.setAttribute('aria-live', 'polite');
-    supervisionForm = el('details', 'ops-super-settings'); keepOpen(supervisionForm, 'super-settings', true);
-    supervisionForm.append(el('summary', '', i18n('ops.super.settings')));
+    supervisionBox = el('section', 'ops-card ops-super ops-crew');
+    supervisionBox.append(el('h3', '', c('title')));
+    var how = el('details', 'ops-crew-how'); keepOpen(how, 'crew-how', true);
+    how.append(el('summary', '', c('how')));
+    [['ok', 'rule_running'], ['idle', 'rule_idle'], ['wait', 'rule_owner'], ['bad', 'rule_blocked']].forEach(function (r) {
+      var row = el('div', 'ops-crew-rule'); row.append(el('span', 'ops-crew-dot d-' + r[0]), el('span', '', c(r[1]))); how.append(row);
+    });
+    var audit = el('p', 'ops-note ops-crew-audit-rule'); how.append(audit, el('p', 'ops-note', c('rule_source')));
+    var sw = el('div', 'ops-crew-switch'), label = el('label', 'ops-crew-toggle'), texts = el('div', '');
+    crewSwitch = el('input'); crewSwitch.type = 'checkbox'; crewSwitch.name = 'crewAutopilot';
+    crewSwitch.onchange = function () {
+      var on = crewSwitch.checked;
+      crewControl({ enabled: on, autoRecovery: on, autoEnroll: true, intervalMinutes: supervision && supervision.intervalMinutes || 30 }, function (s) { return s.enabled === on && s.autoEnroll === true; });
+    };
+    label.append(crewSwitch, el('span', 'ops-crew-slider'));
+    crewSwitchNote = el('p', 'ops-note');
+    texts.append(el('b', '', c('switch')), el('p', 'ops-note', c('switch_help')), crewSwitchNote);
+    sw.append(texts, label);
+    crewBody = el('div', 'ops-crew-body'); crewBody.setAttribute('aria-live', 'polite');
+    var adv = el('details', 'ops-crew-adv'); keepOpen(adv, 'crew-advanced', false);
+    adv.append(el('summary', '', c('advanced')));
+    crewInterval = el('select'); crewInterval.name = 'crewInterval';
+    crewInterval.onchange = function () {
+      var v = Number(crewInterval.value);
+      crewControl({ enabled: supervision.enabled, intervalMinutes: v }, function (s) { return s.intervalMinutes === v; });
+    };
+    var il = el('label', 'ops-crew-field'); il.append(el('span', '', c('interval')), crewInterval);
     reminderSettings = el('details', 'ops-reminder-settings'); keepOpen(reminderSettings, 'reminder-settings', false);
-    reminderSettings.append(el('summary', '', i18n('ops.reminder_rules')), el('p', 'ops-note', i18n('ops.reminder_rules_help')),
+    reminderSettings.append(el('summary', '', i18n('ops.reminder_rules')), el('p', 'ops-note', c('reminder_outside')),
       button(i18n('ops.chinh_luat'), 'ops-edit-rules', function () { if (!data || rulesNode && rulesNode.dataset.pending) return; editing = !editing; if (editing && !rulesNode) rulesNode = rulesForm(); if (rulesNode) { if (editing) reminderSettings.append(rulesNode); else rulesNode.remove(); } }));
-    supervisionBox.append(reminderSettings, supervisionStatus, supervisionForm);
-    supervisionForm.append(el('p', 'ops-note', i18n('ops.super.advanced_help')));
+    adv.append(il, reminderSettings);
+    supervisionBox.append(how, sw, crewBody, adv);
     renderSupervision(); return supervisionBox;
   }
-  // Account discovery never derives identity from leader config or saves policy implicitly.
-  function accountScope() {
-    if (!accountUI || !supervision) return null;
-    return list(supervision.workspaces).find(function (w) { return JSON.stringify([w.serverId, w.root]) === accountUI.scope.value; });
+  // POST is not authoritative: the change counts only when a fresh GET reads it back.
+  function crewControl(body, check) {
+    if (supervisionPending || !supervision) return;
+    supervisionPending = true; crewMessage = ''; supervisionRevision++; renderSupervision();
+    post('/supervision', body).then(function () { return loadSupervision(true); }).then(function () {
+      if (!supervision || !check(supervision)) throw Error('readback');
+    }).catch(function () { crewMessage = c('save_failed'); }).finally(function () { supervisionPending = false; loadSupervision(true); });
   }
-  function accountFresh(proof) {
-    var w = accountScope(), at = proof && new Date(proof.observedAt).getTime();
-    return !!proof && !!w && proof.serverId === w.serverId && proof.root === w.root && proof.auditConfig === accountUI.profile.value &&
-      Number.isFinite(at) && at > 0 && at <= Date.now() + 5000 && Date.now() - at < 60000 &&
-      list(supervision.servers).some(function (s) { return s.id === w.serverId && hostConnected(s); });
+  function boardSession(serverId, name) {
+    var srv = data && list(data.servers).find(function (s) { return s.id === serverId; });
+    return srv && list(srv.sessions).find(function (s) { return s.name === name; });
   }
-  function accountConfirmable(proof) {
-    return accountFresh(proof) && ['audit_account_registration_required', 'audit_ready'].indexOf(proof.code) >= 0;
+  function agentLine(serverId, name) {
+    var s = boardSession(serverId, name), ai = s && s.ai;
+    if (!ai || !ai.tool) return c('agent_none');
+    var st = ai.waitingFor || ai.status === 'waiting' ? 'observed_waiting' : ai.parked ? 'observed_parked' : ai.status === 'busy' ? 'observed_busy' : ai.status === 'idle' ? 'observed_idle' : 'observed_unknown';
+    var line = c('agent', [ai.tool === 'codex' ? 'Codex' : ai.tool === 'claude' ? 'Claude' : text(ai.tool), i18n('ops.s.' + st), ago(ai.at) || '—']);
+    var workers = list(s.bgAgents);
+    if (workers.length) line += ' · ' + c('workers', [workers.length, workers.map(function (w) { return text(w.track) || text(w.kind); }).filter(Boolean).join(', ') || '—']);
+    return line;
   }
-  function invalidateAccount(message) {
-    accountGeneration++; accountProof = null; accountMessage = message || '';
-    clearTimeout(accountTimer);
-  }
-  function makeAccountForm() {
-    if (accountUI) return;
-    var box = el('div', 'ops-super-form ops-super-account'), scope = el('select'), profile = el('input'), result = el('p', 'ops-note');
-    scope.name = 'accountWorkspace'; profile.name = 'accountProfile'; profile.type = 'text'; profile.value = '.claude'; profile.maxLength = 128;
-    result.setAttribute('aria-live', 'polite');
-    function field(key, input) { var label = el('label'); label.append(el('span', '', i18n(key)), input); return label; }
-    var check = button(i18n('ops.super.account_check'), '', function () {
-      if (supervisionPending) return;
-      invalidateAccount();
-      var w = accountScope(), config = profile.value;
-      if (!w || !/^\.claude(?:-[A-Za-z0-9_.-]{1,60})?$/.test(config) || !list(supervision.servers).some(function (s) { return s.id === w.serverId && hostConnected(s); })) {
-        accountMessage = i18n('ops.super.account_invalid'); renderSupervision(); return;
-      }
-      var request = { serverId: w.serverId, root: w.root, auditConfig: config }, generation = accountGeneration;
-      supervisionPending = true; accountChecking = true; supervisionRevision++; renderSupervision();
-      post('/supervision/account', request).then(function (r) {
-        if (generation !== accountGeneration) return;
-        if (!r || !accountFresh(r)) throw Error('account scope or freshness');
-        accountMessage = explanation(r.code);
-        if (!/^[a-f0-9]{64}$/.test(r.accountRef) || typeof r.label !== 'string' || !r.label.trim() || r.label.length > 200) return;
-        accountProof = { serverId: r.serverId, root: r.root, auditConfig: r.auditConfig, accountRef: r.accountRef, label: r.label, code: r.code, observedAt: r.observedAt };
-        accountTimer = setTimeout(function () { invalidateAccount(i18n('ops.super.account_expired')); renderSupervision(); }, Math.max(1, 60000 - (Date.now() - new Date(r.observedAt).getTime())));
-      }).catch(function () { if (generation === accountGeneration) invalidateAccount(i18n('ops.super.account_failed')); })
-        .finally(function () { supervisionPending = false; accountChecking = false; renderSupervision(); });
-    });
-    check.name = 'checkAccount';
-    var confirm = button(i18n('ops.super.account_confirm'), '', function () {
-      if (supervisionPending) return;
-      if (!accountConfirmable(accountProof)) { invalidateAccount(i18n('ops.super.account_expired')); renderSupervision(); return; }
-      var proof = accountProof, generation = accountGeneration;
-      // Use saved settings, never unsaved edits. Omit leaders and autoRecovery: OFF exposes only its effective value.
-      var body = { enabled: supervision.enabled, intervalMinutes: supervision.intervalMinutes,
-        workspaces: list(supervision.workspaces).map(function (w) { return Object.assign({}, w, w.serverId === proof.serverId && w.root === proof.root ? { auditConfig: proof.auditConfig, auditAccount: proof.accountRef } : {}); }) };
-      supervisionPending = true; supervisionRevision++; renderSupervision();
-      post('/supervision', body).then(function () { return loadSupervision(true); }).then(function () {
-        if (generation !== accountGeneration || !accountFresh(proof)) throw Error('account changed');
-        var w = accountScope();
-        if (!w || w.auditConfig !== proof.auditConfig || w.auditAccount !== proof.accountRef) throw Error('account readback mismatch');
-        invalidateAccount(i18n('ops.super.account_saved', [proof.label]));
-      }).catch(function () { invalidateAccount(i18n('ops.super.account_failed')); })
-        .finally(function () { supervisionPending = false; renderSupervision(); });
-    });
-    confirm.name = 'confirmAccount';
-    scope.onchange = function () { invalidateAccount(); var w = accountScope(); profile.value = w && typeof w.auditConfig === 'string' ? w.auditConfig : '.claude'; renderSupervision(); };
-    profile.oninput = function () { invalidateAccount(); renderSupervision(); };
-    var choice = el('select'); choice.name = 'accountChoice';
-    choice.onchange = function () { profile.value = choice.value; invalidateAccount(); renderSupervision(); };
-    var advanced = el('details'); advanced.append(el('summary', '', i18n('ops.super.custom_profile')), field('ops.super.account_profile', profile));
-    box.append(el('h4', '', i18n('ops.super.account_title')), field('ops.super.account_workspace', scope), field('ops.super.account_choice', choice),
-      el('p', 'ops-note', i18n('ops.super.account_choices_help')), advanced,
-      el('p', 'ops-note', i18n('ops.super.account_help')), check, result, confirm);
-    accountUI = { box: box, scope: scope, profile: profile, choice: choice, result: result, check: check, confirm: confirm, options: null };
-    supervisionForm.append(box);
-  }
-  function renderAccount() {
-    if (!accountUI) return;
-    if (!supervision) { invalidateAccount(i18n('ops.super.account_failed')); accountUI.result.textContent = accountMessage; return; }
-    var scopes = list(supervision.workspaces), options = JSON.stringify(scopes.map(function (w) { return [w.serverId, w.root]; }));
-    if (options !== accountUI.options) {
-      var selected = accountUI.scope.value;
-      accountUI.scope.textContent = '';
-      scopes.forEach(function (w) {
-        var server = list(supervision.servers).find(function (s) { return s.id === w.serverId; });
-        var option = el('option', '', text(server && server.name || w.serverId) + ' · ' + text(w.root)); option.value = JSON.stringify([w.serverId, w.root]); accountUI.scope.append(option);
-      });
-      if (scopes.some(function (w) { return JSON.stringify([w.serverId, w.root]) === selected; })) accountUI.scope.value = selected;
-      else { invalidateAccount(); var w = accountScope(); accountUI.profile.value = w && w.auditConfig || '.claude'; }
-      accountUI.options = options;
-    }
-    var currentScope = accountScope(), profiles = ['.claude'];
-    if (currentScope && currentScope.auditConfig) profiles.push(currentScope.auditConfig);
-    list(supervision.registrationCandidates).filter(function (c) { return currentScope && c.serverId === currentScope.serverId && c.root === currentScope.root; }).forEach(function (c) { if (c.identity && /^\.claude(?:-[A-Za-z0-9_.-]{1,60})?$/.test(c.identity.config)) profiles.push(c.identity.config); });
-    profiles.push(accountUI.profile.value);
-    var choices = JSON.stringify(Array.from(new Set(profiles)));
-    if (accountUI.choices !== choices) { accountUI.choice.textContent = ''; JSON.parse(choices).forEach(function (p) { var o = el('option', '', p === '.claude' ? i18n('ops.super.default_profile') : p); o.value = p; accountUI.choice.append(o); }); accountUI.choices = choices; }
-    accountUI.choice.value = accountUI.profile.value;
-    if (accountProof && !accountFresh(accountProof)) invalidateAccount(i18n('ops.super.account_expired'));
-    var w = accountScope(), fresh = !!w && list(supervision.servers).some(function (s) { return s.id === w.serverId && hostConnected(s); });
-    accountUI.check.disabled = supervisionPending || !fresh;
-    accountUI.confirm.disabled = supervisionPending || !accountConfirmable(accountProof);
-    accountUI.result.textContent = (accountProof ? i18n('ops.super.account_identity', [accountProof.label, stamp(accountProof.observedAt)]) + ' ' : '') + accountMessage + ' ' + i18n('ops.super.account_quota_unknown');
-  }
-  function makeSupervisionForm() {
-    if (!supervision || supervisionDraft) return;
-    supervisionDraft = { enabled: supervision.enabled === true, autoRecovery: supervision.autoRecovery === true,
-      intervalMinutes: supervision.intervalMinutes || 30, workspaces: list(supervision.workspaces).map(function (w) { return { serverId: text(w.serverId), root: text(w.root) }; }) };
-    var form = el('form', 'ops-super-form');
-    function field(label, input) { var l = el('label'); l.append(el('span', '', label), input); return l; }
-    function check(key, label) {
-      var input = el('input'); input.type = 'checkbox'; input.name = key; input.checked = supervisionDraft[key];
-      input.onchange = function () { supervisionDraft[key] = input.checked; if (key === 'autoRecovery') supervisionDraft.recoveryEdited = true; renderSupervision(); };
-      return field(i18n(label), input);
-    }
-    form.append(check('enabled', 'ops.super.enable'), check('autoRecovery', 'ops.super.recovery'));
-    var interval = el('input'); interval.type = 'number'; interval.name = 'intervalMinutes'; interval.min = '1'; interval.max = '1440'; interval.required = true; interval.value = supervisionDraft.intervalMinutes;
-    interval.oninput = function () { supervisionDraft.intervalMinutes = Number(interval.value); renderSupervision(); };
-    form.append(field(i18n('ops.super.interval'), interval));
-    var scopes = el('div', 'ops-scopes'), machine = el('select'); machine.name = 'workspaceMachine'; machine.setAttribute('aria-label', i18n('ops.super.machine'));
-    list(supervision.servers).forEach(function (server) { var option = el('option', '', text(server.name)); option.value = server.id; machine.append(option); });
-    var initialScopes = supervisionDraft.workspaces.map(function (w) { return JSON.stringify([w.serverId, w.root]); });
-    function renderScopes() {
-      scopes.textContent = '';
-      supervisionDraft.workspaces.forEach(function (w) {
-        var server = list(supervision.servers).find(function (v) { return v.id === w.serverId; }), row = el('div', 'ops-scope-row');
-        row.append(el('span', '', text(server && server.name || i18n('ops.super.removed_machine')) + ' · ' + w.root), button(i18n('backup.remove'), '', function () {
-          if (supervisionPending) return; supervisionDraft.workspaces = supervisionDraft.workspaces.filter(function (v) { return v !== w; }); renderScopes(); renderSupervision();
-        })); scopes.append(row);
-      });
-    }
-    var browse = button(i18n('ops.super.browse'), '', function () {
-      var id = machine.value, server = list(supervision.servers).find(function (v) { return v.id === id; });
-      if (supervisionPending || !server || server.online !== true) return;
-      TW.app().browseDir(id, '', function (root) {
-        if (supervisionPending || typeof root !== 'string' || root[0] !== '/') return;
-        if (!supervisionDraft.workspaces.some(function (w) { return w.serverId === id && w.root === root; })) supervisionDraft.workspaces.push({ serverId: id, root: root });
-        renderScopes(); renderSupervision();
-      });
-    }); browse.name = 'browseWorkspace';
-    machine.onchange = function () { renderSupervision(); };
-    form.append(el('h4', '', i18n('ops.super.workspaces')), field(i18n('ops.super.machine'), machine), browse, scopes); renderScopes();
-    var candidates = list(supervision.registrationCandidates), leader = el('select'); leader.name = 'leader';
-    function leaderOptions() {
-      leader.textContent = ''; var none = el('option', '', i18n('ops.super.keep_leaders')); none.value = ''; leader.append(none);
-      candidates.forEach(function (c, index) {
-        var server = list(supervision.servers).find(function (v) { return v.id === c.serverId; });
-        var option = el('option', '', text(server && server.name || i18n('ops.super.removed_machine')) + ' · ' + text(c.session) + ' · ' + text(c.root)); option.value = String(index); leader.append(option);
-      });
-    }
-    leaderOptions();
-    var tasks = el('div', 'ops-task-choices'), confirm = el('input'); confirm.type = 'checkbox'; confirm.name = 'confirmLeader'; confirm.onchange = renderSupervision;
-    function availableTasks(c) {
-      var host = c && list(supervision.servers).find(function (v) { return v.id === c.serverId; });
-      return host && hostFresh(host) ? Array.from(new Set(list(host.teams).filter(function (t) { return t.root === c.root; }).flatMap(function (t) { return Array.isArray(t.taskIds) ? t.taskIds.filter(function (id) { return typeof id === 'string' && /^[A-Za-z0-9][\w-]{0,127}$/.test(id); }) : []; }))) : [];
-    }
-    function taskOptions() {
-      tasks.textContent = ''; confirm.checked = false;
-      var ids = availableTasks(candidates[Number(leader.value)]);
-      if (leader.value === '' || !ids.length) { tasks.append(el('p', 'ops-note', i18n('ops.super.tasks_unavailable'))); return; }
-      ids.forEach(function (id) { var input = el('input'); input.type = 'checkbox'; input.name = 'taskScope'; input.value = id; tasks.append(field(id, input)); });
-    }
-    leader.onchange = function () { taskOptions(); renderSupervision(); }; taskOptions();
-    form.append(field(i18n('ops.super.register_leader'), leader), button(i18n('ops.super.refresh_candidates'), '', function () { candidates = list(supervision.registrationCandidates); leaderOptions(); taskOptions(); renderSupervision(); }),
-      el('p', 'ops-note', i18n('ops.super.identity_help')), tasks, field(i18n('ops.super.confirm_leader'), confirm));
-    var save = button(i18n('ops.super.save'), 'primary', function () {}); save.type = 'submit'; save.name = 'save';
-    form.append(save);
-    form.onsubmit = function (e) {
-      e.preventDefault(); if (supervisionPending || !supervision || !form.reportValidity()) return;
-      // Preserve current metadata and scopes added elsewhere; remove only scopes explicitly removed from this draft.
-      var workspaces = supervisionDraft.workspaces.map(function (w) {
-        var previous = list(supervision.workspaces).find(function (v) { return v.serverId === w.serverId && v.root === w.root; });
-        return Object.assign({}, previous || {}, w);
-      });
-      list(supervision.workspaces).forEach(function (w) {
-        if (initialScopes.indexOf(JSON.stringify([w.serverId, w.root])) < 0 && !workspaces.some(function (v) { return v.serverId === w.serverId && v.root === w.root; })) workspaces.push(Object.assign({}, w));
-      });
-      var body = { enabled: supervisionDraft.enabled, intervalMinutes: supervisionDraft.intervalMinutes, workspaces: workspaces };
-      if (supervisionDraft.recoveryEdited) body.autoRecovery = supervisionDraft.autoRecovery;
-      if (leader.value !== '') {
-        var candidate = candidates[Number(leader.value)], ids = Array.from(tasks.querySelectorAll('input:checked')).map(function (input) { return input.value; });
-        var current = list(supervision.registrationCandidates).find(function (c) { return sameLeader(candidate, c); });
-        if (!confirm.checked || !current || !ids.length || ids.some(function (id) { return availableTasks(current).indexOf(id) < 0; }) || !list(supervision.servers).some(function (s) { return s.id === current.serverId && hostFresh(s); }) || !workspaces.some(function (w) { return w.serverId === current.serverId && w.root === current.root; })) {
-          TW.app().say(i18n('ops.super.registration_invalid'), false, 4000); return;
-        }
-        function record(c) { return { serverId: c.serverId, root: c.root, session: c.session, taskIds: c.taskIds, identity: c.identity }; }
-        body.leaders = list(supervision.leaders).filter(function (l) { return l.serverId !== current.serverId || l.session !== current.session; }).map(record);
-        body.leaders.push(record({ serverId: current.serverId, root: current.root, session: current.session, taskIds: ids, identity: current.identity }));
-      }
-      if (body.enabled && supervisionDraft.autoRecovery && !recoveryReady() && !body.leaders) return;
-      supervisionPending = true; supervisionRevision++; renderSupervision();
-      post('/supervision', body).then(function () {
-        // A POST acknowledgement is not authoritative state. Require a new successful GET.
-        return loadSupervision(true).then(function () {
-          if (!supervision || supervision.enabled !== body.enabled || ('autoRecovery' in body && supervision.autoRecovery !== (body.enabled && body.autoRecovery)) || supervision.intervalMinutes !== body.intervalMinutes || JSON.stringify(supervision.workspaces) !== JSON.stringify(body.workspaces) || body.leaders && !body.leaders.every(function (l) { return list(supervision.leaders).some(function (v) { return sameLeader(l, v) && JSON.stringify(l.taskIds) === JSON.stringify(v.taskIds); }); })) throw Error('policy readback mismatch');
-          supervisionDraft.workspaces = workspaces.map(function (w) { return { serverId: w.serverId, root: w.root }; }); renderScopes();
-          initialScopes = workspaces.map(function (w) { return JSON.stringify([w.serverId, w.root]); });
-          if (body.leaders) { leader.value = ''; taskOptions(); }
-        });
-      }).catch(function () { supervision = null; supervisionError = true; }).finally(function () {
-        supervisionPending = false; renderSupervision();
-      });
+  function tag(state) { var k = CREW_STATE[state] || CREW_STATE.unknown; return el('span', 'ops-crew-tag t-' + k[0], c(k[1])); }
+  function excludedList() { return list(supervision && supervision.excluded).map(function (x) { return { serverId: text(x.serverId), session: text(x.session) }; }); }
+  function teamRow(server, d) {
+    var team = list(server.teams).find(function (t) { return t.session === d.session && t.root === d.root; });
+    var state = d.excluded ? 'unknown' : team ? teamState(server, team) : 'unknown';
+    var row = el('div', 'ops-crew-team' + (d.excluded ? ' is-off' : '')), box = el('input'), main = el('div', 'ops-crew-main');
+    box.type = 'checkbox'; box.checked = !d.excluded; box.disabled = supervisionPending || !crewOn(); box.title = c('watch'); box.setAttribute('aria-label', c('watch') + ' ' + d.session);
+    box.onchange = function () {
+      var next = excludedList().filter(function (x) { return !(x.serverId === server.id && x.session === d.session); });
+      if (!box.checked) next.push({ serverId: server.id, session: d.session });
+      crewControl({ enabled: supervision.enabled, autoEnroll: true, excluded: next }, function (s) { return JSON.stringify(list(s.excluded)) === JSON.stringify(next); });
     };
-    supervisionForm.append(form); makeAccountForm();
+    var head = el('div', 'ops-crew-head'); head.append(el('b', '', d.session), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(state));
+    main.append(head, el('div', 'ops-crew-tasks', ids(d.taskIds).length ? ids(d.taskIds).join(' · ') : '—'), el('div', 'ops-note', agentLine(server.id, d.session)));
+    if (!d.excluded && team) {
+      var detail = [explanation(team.reason)];
+      detail.push(team.lastProgressAt ? c('progress', [ago(team.lastProgressAt) || stamp(team.lastProgressAt)]) : c('no_progress'));
+      if (team.recovery) detail.push(c('last_nudge', [ago(team.recovery.at) || '—', explanation(team.recovery.code)]));
+      var s = boardSession(server.id, d.session);
+      if (s && s.ai && s.ai.tool === 'codex') detail.push(c('codex_leader'));
+      main.append(el('div', 'ops-note', detail.join(' · ')));
+    }
+    row.append(box, main); return row;
+  }
+  // Linux and macOS hosts act; a host whose guard reports no platform support only observes.
+  function machineMode(server) {
+    // Only the host's own answer counts (Windows without WSL has no tmux); never inferred from the OS name.
+    var platformOnly = list(server.coordination).length > 0 && list(server.coordination).every(function (x) { return x.code === 'coordination_platform_unavailable'; });
+    if (!hostConnected(server)) return ['bad', 'mode_offline'];
+    if (platformOnly) return ['idle', 'mode_watch'];
+    return crewOn() ? ['ok', 'mode_auto'] : ['idle', 'mode_off'];
+  }
+  function bindRow(server, root, taskId) {
+    var row = el('div', 'ops-crew-bind'), sel = el('select', 'ops-crew-pick'), leaders = list(server.discovered).map(function (d) { return d.session; });
+    var o0 = el('option', '', c('pick')); o0.value = ''; sel.append(o0);
+    var b = data && list(data.servers).find(function (s) { return s.id === server.id; });
+    list(b && b.sessions).filter(function (s) { return s.agent && leaders.indexOf(s.name) < 0 && !/^tn-/.test(s.name); }).forEach(function (s) { var o = el('option', '', s.name); o.value = s.name; sel.append(o); });
+    sel.setAttribute('aria-label', c('pick') + ' ' + taskId);
+    var go = button(c('bind'), 'primary', function () {
+      if (!sel.value) { TW.app().say(c('pick_first'), false, 2500); return; }
+      go.disabled = sel.disabled = true;
+      post('/supervision/bind', { serverId: server.id, root: root, session: sel.value, taskId: taskId }).then(function () {
+        TW.app().say(c('bound', [sel.value, taskId]), true, 3000);
+        setTimeout(function () { loadSupervision(true); }, 1500);
+      }).catch(function (e) {
+        var key = 'ops.crew.' + (e && /^(invalid_bind|bind_[a-z_]+)$/.test(e.code || '') ? e.code : 'bind_failed'), msg = i18n(key);
+        TW.app().say(msg === key ? i18n('ops.crew.bind_failed') : msg, false, 5000);
+      }).finally(function () { go.disabled = sel.disabled = false; });
+    });
+    row.append(el('code', 'ops-crew-id', taskId), sel, go); return row;
+  }
+  // Open tasks without a leader: recent ones can be bound in one click; dormant ones collapse into one line.
+  function unboundBlock(server) {
+    var box = el('div', 'ops-crew-unbound'), un = list(server.teams).filter(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; });
+    var active = un.filter(function (t) { return !t.dormant; }), dormant = un.filter(function (t) { return t.dormant; });
+    var count = function (g) { return g.reduce(function (n, t) { return n + ids(t.taskIds).length; }, 0); };
+    if (active.length) {
+      box.append(el('p', 'ops-note', c('unbound_active', [count(active)])));
+      active.forEach(function (t) { ids(t.taskIds).forEach(function (id) { box.append(bindRow(server, t.root, id)); }); });
+    }
+    if (dormant.length) {
+      var d = el('details', 'ops-crew-dormant'), all = [].concat.apply([], dormant.map(function (t) { return ids(t.taskIds); }));
+      d.append(el('summary', 'ops-note', c('dormant', [count(dormant)])), el('p', 'ops-note', c('dormant_hint')), el('p', 'ops-note ops-crew-ids', all.join(' · ')));
+      box.append(d);
+    }
+    return active.length || dormant.length ? box : null;
+  }
+  function crewMachine(server, inSettings) {
+    var found = list(server.discovered), m = el('div', 'ops-crew-machine'), h = el('div', 'ops-crew-mhead'), mode = machineMode(server);
+    h.append(el('b', '', text(server.name)), el('span', 'ops-crew-tag t-' + mode[0], c(mode[1])),
+      el('span', 'ops-note', hostConnected(server) ? c('observed', [ago(server.observedAt) || stamp(server.observedAt)]) : c('offline', [stamp(server.observedAt)])));
+    m.append(h);
+    found.forEach(function (d) { m.append(teamRow(server, d)); });
+    var ub = unboundBlock(server); if (ub) m.append(ub);
+    if (!found.length && !ub) m.append(el('p', 'ops-note', c('no_crew')));
+    var last = list(server.audits).filter(function (a) { return !a.active; }).pop();
+    if (inSettings && crewOn() && last) m.append(el('p', 'ops-note', c('audit_last', [ago(last.createdAt) || stamp(last.createdAt), explanation(last.reason)])));
+    return m;
+  }
+  function needYou() {
+    var out = [];
+    if (!crewOn()) return out;
+    list(supervision.servers).forEach(function (server) {
+      var off = excludedList().filter(function (x) { return x.serverId === server.id; }).map(function (x) { return x.session; });
+      list(server.teams).forEach(function (t) {
+        if (t.session && off.indexOf(t.session) >= 0) return;
+        var st = teamState(server, t);
+        if (['waiting_owner', 'blocked', 'stalled'].indexOf(st) >= 0 || t.recovery && t.recovery.requiresOwner) {
+          out.push({ server: server, session: t.session, who: t.session || ids(t.taskIds).join(', '), why: explanation(t.recovery && t.recovery.requiresOwner ? t.recovery.code : t.reason), tasks: ids(t.taskIds), bad: st === 'blocked' });
+        }
+      });
+      var a = list(server.audits).filter(function (x) { return x.requiresOwner; }).pop();
+      if (a) out.push({ server: server, who: 'ops-audit', why: explanation(a.reason), tasks: [], bad: false });
+    });
+    list(supervision.auditReadiness).forEach(function (a) {
+      if (!a.requiresOwner || a.code === 'host_unavailable') return;
+      var server = list(supervision.servers).find(function (s) { return s.id === a.serverId; });
+      if (server) out.push({ server: server, who: c('audit_account_who'), why: explanation(a.code) + ' · ' + text(a.root), tasks: [], bad: false });
+    });
+    return out;
   }
   function renderSupervision() {
-    if (!supervisionStatus) return;
-    makeSupervisionForm(); supervisionStatus.textContent = '';
-    var controls = supervisionForm.querySelectorAll('input,textarea,select,button');
-    controls.forEach(function (c) { c.disabled = supervisionPending || !supervision; });
-    var picker = supervisionForm.querySelector('[name=browseWorkspace]'), machine = supervisionForm.querySelector('[name=workspaceMachine]');
-    if (picker) picker.disabled = supervisionPending || !supervision || !list(supervision.servers).some(function (s) { return s.id === machine.value && s.online === true; });
-    renderAccount();
-    var save = supervisionForm.querySelector('[name=save]');
-    if (save && supervisionDraft && supervisionDraft.enabled && supervisionDraft.autoRecovery && !recoveryReady() && !registrationSelected()) save.disabled = true;
-    if (supervisionPending) supervisionStatus.append(el('p', 'ops-super-alert', i18n(accountChecking ? 'ops.super.account_checking' : 'ops.super.pending')));
-    if (!supervision) {
-      supervisionStatus.append(el('p', 'ops-super-alert', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading'))); return;
+    if (!crewBody) return;
+    crewBody.textContent = '';
+    var on = crewOn(), legacy = !!supervision && supervision.enabled && !supervision.autoEnroll;
+    crewSwitch.checked = on; crewSwitch.disabled = supervisionPending || !supervision;
+    var minutes = supervision && supervision.intervalMinutes || 30;
+    supervisionBox.querySelector('.ops-crew-audit-rule').textContent = c('rule_audit', [minutes]);
+    crewSwitchNote.textContent = !supervision ? '' : legacy ? c('legacy', [list(supervision.leaders).length]) : on ? c('on', [minutes]) : c('off');
+    var opts = [15, 30, 60]; if (opts.indexOf(minutes) < 0) opts.push(minutes);
+    if (crewInterval.dataset.opts !== opts.join()) { crewInterval.textContent = ''; opts.sort(function (a, b) { return a - b; }).forEach(function (m) { var o = el('option', '', c('minutes', [m])); o.value = String(m); crewInterval.append(o); }); crewInterval.dataset.opts = opts.join(); }
+    crewInterval.value = String(minutes); crewInterval.disabled = supervisionPending || !supervision || !supervision.enabled;
+    if (supervisionPending) crewBody.append(el('p', 'ops-super-alert', c('saving')));
+    if (crewMessage) crewBody.append(el('p', 'ops-super-alert', crewMessage));
+    if (!supervision) { crewBody.append(el('p', 'ops-super-alert', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading'))); return; }
+    list(supervision.errors).forEach(function (e) { crewBody.append(el('p', 'ops-super-alert', explanation(e))); });
+    if (on) {
+      var need = needYou(), nb = el('div', 'ops-crew-need');
+      nb.append(el('h4', '', c('need_you', [need.length])));
+      if (!need.length) nb.append(el('p', 'ops-note', c('none_need')));
+      need.forEach(function (n) {
+        var item = el('div', 'ops-crew-item' + (n.bad ? ' is-bad' : ''));
+        item.append(el('b', '', text(n.server.name) + ' · ' + n.who), el('span', '', ' — ' + n.why));
+        if (n.tasks.length) item.append(el('div', 'ops-note', n.tasks.join(' · ')));
+        nb.append(item);
+      });
+      crewBody.append(nb);
     }
-    supervisionStatus.append(el('p', '', i18n(supervision.enabled ? 'ops.super.enabled' : 'ops.super.disabled')));
-    if (supervisionDraft && (supervisionDraft.enabled !== supervision.enabled || supervisionDraft.autoRecovery !== supervision.autoRecovery || supervisionDraft.intervalMinutes !== supervision.intervalMinutes ||
-        JSON.stringify(supervisionDraft.workspaces) !== JSON.stringify(list(supervision.workspaces).map(function (w) { return { serverId: text(w.serverId), root: text(w.root) }; })))) supervisionStatus.append(el('p', 'ops-note', i18n('ops.super.draft')));
+    crewBody.append(el('h4', '', c('teams')));
+    var any = false;
+    list(supervision.servers).forEach(function (server) {
+      if (!list(server.discovered).length && !list(server.teams).some(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; }) && hostConnected(server)) return;
+      any = true; crewBody.append(crewMachine(server, true));
+    });
+    if (!any) crewBody.append(el('p', 'ops-note', on ? c('no_teams') : c('no_teams_off')));
   }
 
   function loadSupervision(force) {
@@ -481,22 +441,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     r.append(acts); return r;
   }
 
-  // Filters: by level (click a count) and by machine; remembered while the page is open.
-  var filt = { sev: '', srv: '' };
-  function summary(all) {
-    var box = el('div', 'ops-toolbar'), seg = el('div', 'ops-seg'), n = { urgent: 0, warn: 0, info: 0 }; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', i18n('ops.loc_muc')); box.append(seg);
-    all.forEach(function (x) { n[x.f.severity]++; });
-    [['', 'ops.tat_ca', all.length], ['urgent', 'ops.can_ban'], ['warn', 'ops.can_xem'], ['info', 'ops.thong_tin']].forEach(function (k) {
-      var c = el('button', 'ops-seg-b ' + (k[0] || 'all')); c.type = 'button'; c.setAttribute('aria-pressed', String(filt.sev === k[0]));
-      c.append(el('span', 'ops-seg-dot'), el('span', '', i18n(k[1])), el('b', 'ops-seg-n', String(k[0] ? n[k[0]] : k[2])));
-      c.onclick = function () { filt.sev = k[0]; draw(); }; seg.append(c);
+  // One card per machine: mode and session counts; clicking a card filters the page to it.
+  var filt = { srv: '' };
+  function machines(all, crewNeed) {
+    var box = el('div', 'ops-machines');
+    data.servers.forEach(function (v) {
+      var ss = list(v.sessions).filter(function (s) { return s.agent; }), need = all.filter(function (x) { return x.s.id === v.id && dailyGroup(x) === 'attention'; }).length + crewNeed.filter(function (n) { return n.server.id === v.id; }).length;
+      var busy = ss.filter(function (s) { return s.ai && s.ai.status === 'busy'; }).length, idle = ss.filter(function (s) { return s.ai && s.ai.status === 'idle'; }).length;
+      var sup = supervision && list(supervision.servers).find(function (x) { return x.id === v.id; }), mode = sup ? machineMode(sup) : v.online === true ? null : ['bad', 'mode_offline'];
+      var card = el('button', 'ops-mc'); card.type = 'button'; card.setAttribute('aria-pressed', String(filt.srv === v.id));
+      card.append(el('b', 'ops-mc-name', v.name));
+      if (mode) card.append(el('span', 'ops-crew-tag t-' + mode[0], c(mode[1])));
+      var nums = el('div', 'ops-mc-nums');
+      nums.append(el('span', '', i18n('ops.m.busy', [busy])), el('span', '', i18n('ops.m.idle', [idle])), el('span', need ? 'is-need' : '', i18n('ops.m.need', [need])));
+      card.append(nums);
+      card.onclick = function () { filt.srv = filt.srv === v.id ? '' : v.id; draw(); };
+      box.append(card);
     });
-    if (data.servers.length > 1) {
-      var sel = el('select', 'ops-srv'); sel.setAttribute('aria-label', i18n('ops.loc_may'));
-      var o0 = el('option', '', i18n('ops.moi_may')); o0.value = ''; sel.append(o0);
-      data.servers.forEach(function (v) { var o = el('option', '', v.name); o.value = v.id; if (filt.srv === v.id) o.selected = true; sel.append(o); });
-      sel.onchange = function () { filt.srv = sel.value; draw(); }; box.append(sel);
-    }
     return box;
   }
 
@@ -781,21 +742,46 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var all = opsSessionRows(data, supervision);
     quotaFindings().forEach(function (f) { if (!data.dismissedKeys || data.dismissedKeys.indexOf(f.key) < 0) all.push({ f: f, s: { id: '', name: i18n('ops.tai_khoan_ai'), sessions: [] } }); });
     all.sort(function (a, b) { return (SEV[a.f.severity] - SEV[b.f.severity]) || (b.f.since - a.f.since); });
-    var bar = el('div', 'ops-bar-top'); bar.append(summary(all)); page.append(bar);
-    var shown = all.filter(function (x) { return (!filt.sev || x.f.severity === filt.sev) && (!filt.srv || x.s.id === filt.srv); }), groups = el('div', 'ops-groups');
-    if (!shown.length) groups.append(el('p', 'ops-empty', i18n(all.length ? 'ops.khong_co_muc_loc' : 'ops.empty_sessions')));
-    ['attention', 'waiting', 'running', 'routine'].forEach(function (g) {
-      var items = shown.filter(function (x) { return dailyGroup(x) === g; }); if (!items.length) return;
-      var box = el('details', 'ops-card ops-group g-' + g), sum = el('summary', 'ops-card-h'); keepOpen(box, 'daily-' + g, g !== 'routine');
-      var h3 = el('h3', ''); h3.append(icon(g === 'attention' ? 'ask' : g === 'waiting' ? 'idle' : 'list'), document.createTextNode(i18n('ops.daily.' + g)), el('span', 'ops-count', String(items.length)));
-      sum.append(h3); box.append(sum); items.forEach(function (x) { box.append(row(x.f, x.s)); }); groups.append(box);
+    var leaders = {}, teamN = 0, crewNeed = needYou();
+    list(supervision && supervision.servers).forEach(function (v) { list(v.discovered).forEach(function (d) { leaders[v.id + '|' + d.session] = true; if (!d.excluded) teamN++; }); });
+    var needN = all.filter(function (x) { return dailyGroup(x) === 'attention'; }).length + crewNeed.length;
+    h.querySelector('p').textContent = i18n('ops.sumline', [data.servers.length, data.servers.reduce(function (n, v) { return n + list(v.sessions).filter(function (s) { return s.agent; }).length; }, 0), teamN, needN]);
+    page.append(machines(all, crewNeed));
+    var shown = all.filter(function (x) { return !filt.srv || x.s.id === filt.srv; }), groups = el('div', 'ops-groups');
+    function section(id, title, count, open, iconName, note) {
+      var box = el('details', 'ops-card ops-group g-' + id), sum = el('summary', 'ops-card-h'); keepOpen(box, 'daily-' + id, open);
+      var h3 = el('h3', ''); h3.append(icon(iconName), document.createTextNode(title), el('span', 'ops-count', String(count)));
+      if (note) h3.append(el('small', 'ops-note', note));
+      sum.append(h3); box.append(sum); groups.append(box); return box;
+    }
+    var need = shown.filter(function (x) { return dailyGroup(x) === 'attention'; });
+    var crewShown = crewNeed.filter(function (n) { return !filt.srv || n.server.id === filt.srv; });
+    var nb = section('attention', i18n('ops.daily.attention'), need.length + crewShown.length, true, 'ask');
+    if (!need.length && !crewShown.length) nb.append(el('p', 'ops-empty', i18n('ops.none_need')));
+    // Crew teams that need a person come first: blocked, waiting for a decision, stalled, audit problems.
+    crewShown.forEach(function (n) {
+      var r = el('div', 'ops-row ' + (n.bad ? 'urgent' : 'warn')), t = el('div', 'ops-t'), line = el('div', 'ops-line');
+      line.append(el('b', 'ops-name', n.who), el('span', 'ops-status', n.why));
+      t.append(line, el('small', 'ops-meta', [text(n.server.name)].concat(n.tasks).join(' · ')));
+      r.append(el('span', 'ops-dot'), t);
+      var acts = el('div', 'ops-acts');
+      if (n.session) acts.append(button(i18n('ops.mo'), '', function () { TW.app().openSession(n.server.id, n.session); }));
+      r.append(acts); nb.append(r);
     });
+    need.forEach(function (x) { nb.append(row(x.f, x.s)); });
+    var crew = list(supervision && supervision.servers).filter(function (v) { return !filt.srv || v.id === filt.srv; });
+    var cb = section('crew', i18n('ops.daily.crew'), teamN, true, 'user');
+    if (!supervision) cb.append(el('p', 'ops-empty', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading')));
+    crew.forEach(function (v) { cb.append(crewMachine(v, false)); });
+    var rest = shown.filter(function (x) { return dailyGroup(x) !== 'attention' && !leaders[x.s.id + '|' + x.f.session]; });
+    rest.sort(function (a, b) { return ['waiting', 'running', 'routine'].indexOf(dailyGroup(a)) - ['waiting', 'running', 'routine'].indexOf(dailyGroup(b)); });
+    var ob = section('routine', i18n('ops.daily.routine'), rest.length, false, 'list', i18n('ops.others_note'));
+    rest.forEach(function (x) { ob.append(row(x.f, x.s)); });
     page.append(groups);
     if (supervisionError || supervision && supervision.enabled && list(supervision.errors).length) page.append(button(i18n('ops.super.review_settings'), 'ghost', function () { TW.app().openSettings('sessions'); }));
     if (TW.serverBackupIssue) { var issue = TW.serverBackupIssue(data.servers); if (issue) page.append(issue); }
     page.append(logList());
-    var n = all.filter(function (x) { return dailyGroup(x) === 'attention' || dailyGroup(x) === 'waiting'; }).length;
-    if (tab) { tab.textContent = i18n('ops.tab'); if (n) tab.append(el('span', 'ops-badge', String(n))); }
+    if (tab) { tab.textContent = i18n('ops.tab'); if (needN) tab.append(el('span', 'ops-badge', String(needN))); }
   }
   function load() {
     loadSupervision();
