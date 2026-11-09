@@ -8,7 +8,7 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const { platformRuntimeInfo } = require('../lib/platform-supervisor');
 const ROOT = path.resolve(__dirname, '..');
 function fixture(t) {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-platform-')));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-platform-')));
   fs.chmodSync(dir, 0o700);
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;

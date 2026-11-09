@@ -7,7 +7,7 @@ const path = require('node:path');
 const { execFile } = require('node:child_process');
 
 function tree() {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-index-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'tn-index-')));
   const put = (rel, text = 'x') => { const f = path.join(root, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); };
   put('docs/Implementation/A/05-PLAN.md', '# plan');
   put('docs/Implementation/B/00-INDEX.md'); put('docs/Implementation/C/00-INDEX.md');
