@@ -98,10 +98,9 @@ let chrome, ws, closeBrowser, chromeError = '';
  await until('document.querySelector("[name=crewAutopilot]").checked && document.querySelector(".ops-crew").textContent.includes("Đang bật")', 'switch read back ON');
  assert.deepEqual(posts.at(-1), { enabled: true, autoRecovery: true, autoEnroll: true, intervalMinutes: 30 });
  const on = await txt();
- assert.ok(on.includes('Cần bạn (2)'), 'blocked + waiting teams need the owner: ' + on);
- assert.ok(on.includes('Claude: Đang xử lý') && on.includes('1 worker đang chạy (W2)'), 'agent line from board data');
- assert.ok(on.includes('Codex: Đang chờ bạn') && on.includes('Leader chạy Codex'), 'codex leader shown as watch-only');
- assert.ok(on.includes('Agent: chưa có trạng thái'), 'missing agent status is not guessed');
+ // Settings say how many things need the owner and link to the Ops hub; the rows stay one line (who · task).
+ assert.ok(on.includes('2 việc cần anh') && on.includes('Mở Trạm Ops'), 'need-you count with a link to the hub: ' + on);
+ assert.ok(!on.includes('Claude: Đang xử lý') && !on.includes('Phiên rảnh;'), 'no agent/progress sentences in settings rows');
  assert.ok(on.includes('Chỉ theo dõi (máy không hỗ trợ tự nhắc)'), 'macOS host is marked watch-only');
  assert.ok(on.includes('1 task đang mở chưa có leader') && on.includes('20261101-tools-packaging'), 'unowned task shown');
  // Bind a leader: pick a session, click, one POST with the exact scope.
@@ -128,6 +127,7 @@ let chrome, ws, closeBrowser, chromeError = '';
  const feed = await evaluate("document.querySelector('.ops-track-live').textContent");
  assert.ok(feed.includes('dotnet test --filter Sv2') && feed.includes('⏳') && feed.includes('Build dừng ở lỗi CS7036') && feed.includes('V2/Policy.cs'), feed);
  await evaluate("document.querySelector('.ops-track-dlg').close()");
+ await until("!document.querySelector('.ops-track-dlg')", 'previous popup removed');
  // A track chip opens what that track ran: last round, newest failure file first, worker log tail.
  await evaluate(`(()=>{const a=document.createElement('div');document.body.append(a);TW.renderDetail(a,{v:{id:'vm2'},s:{name:'crew-sfa'}});[...a.querySelectorAll('.ops-crew-chip')].find(b=>b.textContent.startsWith('W3')).click();})()`);
  await until("!!document.querySelector('.ops-track-dlg') && document.querySelector('.ops-track-dlg').textContent.includes('Kết quả')", 'track popup');
@@ -139,7 +139,7 @@ let chrome, ws, closeBrowser, chromeError = '';
  await evaluate('[...document.querySelectorAll(".ops-crew-team")].find(r=>r.textContent.includes("crew-dex")).querySelector("input").click()');
  await until('[...document.querySelectorAll(".ops-crew-team")].find(r=>r.textContent.includes("crew-dex")).textContent.includes("Không trông")', 'excluded read back');
  assert.deepEqual(posts.at(-1), { enabled: true, autoEnroll: true, excluded: [{ serverId: 'vm2', session: 'crew-dex' }] });
- assert.ok((await txt()).includes('Cần bạn (1)'), 'excluded team no longer needs the owner');
+ assert.ok((await txt()).includes('1 việc cần anh'), 'excluded team no longer needs the owner');
  // A failed save is reported, not shown as applied.
  postFailure = true;
  await evaluate('document.querySelector("[name=crewAutopilot]").click()');

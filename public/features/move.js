@@ -31,16 +31,17 @@
     row(i18n('move.to'), target); var profileRow = row(tool === 'codex' ? 'Codex' : 'Claude', profile); profileRow.hidden = true; row(i18n('move.folder'), folder); row(i18n('move.name'), name);
     rows.prepend(chatRow);
     chat.onchange = function () { var c = chat.options[chat.selectedIndex]; chosen = c ? c.dataset.id || '' : ''; chosenProfile = c ? c.dataset.profile || '' : ''; survey(); };
-    var stop = el('input'), rewrite = el('input'); stop.type = rewrite.type = 'checkbox'; rewrite.checked = true;
-    var opts = el('div', 'mv-opts'), o1 = el('label', 'mv-opt'), o2 = el('label', 'mv-opt');
-    o1.append(rewrite, el('span', '', i18n('move.rewrite'))); o2.append(stop, el('span', '', i18n('move.stop_old'))); opts.append(o1, o2);
+    var stop = el('input'), rewrite = el('input'), carry = el('input'); stop.type = rewrite.type = carry.type = 'checkbox'; rewrite.checked = true; carry.checked = true;
+    var opts = el('div', 'mv-opts'), o1 = el('label', 'mv-opt'), o2 = el('label', 'mv-opt'), o3 = el('label', 'mv-opt'), carryText = el('span', '', i18n('move.carry'));
+    o1.append(rewrite, el('span', '', i18n('move.rewrite'))); o3.append(carry, carryText); o2.append(stop, el('span', '', i18n('move.stop_old'))); opts.append(o1, o3, o2);
+    var carryTouched = false; carry.onchange = function () { carryTouched = true; };
     var checks = el('ul', 'mv-checks'), err = el('p', 'mv-err'), actions = el('div', 'mv-actions');
     var cancel = el('button', 'btn', i18n('tokenui.huy')), go = el('button', 'btn primary', i18n('move.go')); cancel.type = 'button'; cancel.onclick = function () { dlg.close(); }; go.type = 'submit'; go.disabled = true;
     actions.append(err, cancel, go);
     var body = el('div', 'mv-body'); body.append(src, rows, opts, checks);
     form.append(head, body, actions); dlg.append(form); document.body.append(dlg); dlg.onclose = function () { dlg.remove(); };
     var info = null, seq = 0, moving = false;
-    function lock(value) { [target, profile, place, browse, name, chat, stop, rewrite].forEach(function (control) { control.disabled = value; }); }
+    function lock(value) { [target, profile, place, browse, name, chat, stop, rewrite, carry].forEach(function (control) { control.disabled = value; }); }
     function check(text, state) { var li = el('li', 'mv-' + state); li.append(el('i', '', state === 'ok' ? '✓' : state === 'bad' ? '✕' : state === 'warn' ? '!' : '…'), el('span', '', text)); checks.append(li); }
     function fillPlaces(list, chosen) {
       place.textContent = '';
@@ -54,7 +55,7 @@
     function ready() { go.disabled = !(info && !picking && !moving && info.same && !info.tooLarge && place.value && place.value !== '*' && /^[A-Za-z0-9_-]{1,32}$/.test(name.value)); }
     function survey(message) {
       var mine = ++seq; info = null; ready(); checks.textContent = ''; err.textContent = typeof message === 'string' ? message : ''; check(i18n('move.checking'), 'wait');
-      TW.api('GET', '/api/features/move/check?server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&to=' + encodeURIComponent(target.value) + (chosen ? '&id=' + encodeURIComponent(chosen) : '') + (chosenProfile ? '&profile=' + encodeURIComponent(chosenProfile) : '') + (profile.value ? '&targetProfile=' + encodeURIComponent(profile.value) : '')).then(function (r) {
+      TW.api('GET', '/api/features/move/check?server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&to=' + encodeURIComponent(target.value) + (folders[target.value] ? '&dir=' + encodeURIComponent(folders[target.value]) : '') + (chosen ? '&id=' + encodeURIComponent(chosen) : '') + (chosenProfile ? '&profile=' + encodeURIComponent(chosenProfile) : '') + (profile.value ? '&targetProfile=' + encodeURIComponent(profile.value) : '')).then(function (r) {
         if (mine !== seq) return; checks.textContent = '';
         // The running agent's id is not known: choose the chat from the folder's recent conversations.
         if (r.pick) {
@@ -77,6 +78,15 @@
         else if (same) check(i18n('move.same_path', [same.path]), 'ok');
         else if (named) check(i18n('move.same_name', [named.path]), 'ok');
         else check(r.repo ? i18n('move.repo_missing', [r.repo.origin]) : i18n('move.no_repo'), 'warn');
+        // Files of this chat: how many, how many the target lacks or has different (those are kept as a backup).
+        var f = r.files;
+        if (f && !f.code) {
+          if (!f.count) check(i18n('move.files_none'), 'ok');
+          else if (!f.copy) check(i18n('move.files_same', [f.count]), 'ok');
+          else check(i18n('move.files_copy', [f.count, f.copy, mb(f.bytes)]) + (f.differs ? ' ' + i18n('move.files_differs', [f.differs]) : '') + (f.truncated ? ' ' + i18n('move.files_more') : ''), f.differs ? 'warn' : 'ok');
+          if (!carryTouched) carry.checked = !f.differs;
+          o3.hidden = !f.copy;
+        } else { o3.hidden = true; if (f && f.code) check(i18n('move.files_unknown'), 'warn'); }
         fillPlaces(r.places || [], folders[target.value] || (repo || same || named || {}).path);
         folders[target.value] = place.value !== '*' ? place.value : '';
         if (!name.value) name.value = r.name;
@@ -98,7 +108,7 @@
     browse.onclick = pickFolder;
     place.onchange = function () {
       if (place.value === '*') { pickFolder(); return; }
-      folders[target.value] = place.value; ready();
+      folders[target.value] = place.value; ready(); survey();
     };
     target.onchange = function () { picking = false; profile.textContent = ''; survey(); };
     profile.onchange = survey;
@@ -106,10 +116,10 @@
     name.oninput = ready;
     form.onsubmit = function (e) {
       e.preventDefault(); if (go.disabled) return; moving = true; lock(true); go.disabled = true; err.textContent = ''; go.textContent = i18n('move.moving');
-      TW.api('POST', '/api/features/move/run', { server: x.v.id, session: x.s.name, to: target.value, dir: place.value, name: name.value, stop: stop.checked, rewrite: rewrite.checked, id: chosen || undefined, profile: info.profile, targetProfile: info.targetProfile, receipt: info.receipt }).then(function (r) {
+      TW.api('POST', '/api/features/move/run', { server: x.v.id, session: x.s.name, to: target.value, dir: place.value, name: name.value, stop: stop.checked, rewrite: rewrite.checked, files: carry.checked && !o3.hidden, id: chosen || undefined, profile: info.profile, targetProfile: info.targetProfile, receipt: info.receipt }).then(function (r) {
         body.textContent = ''; actions.textContent = '';
         var done = el('div', 'mv-done'); done.append(el('b', '', '✓ ' + i18n('move.done', [r.name, target.options[target.selectedIndex].textContent])));
-        done.append(el('small', '', r.dir + ' · ' + mb(r.bytes) + (r.rewritten ? ' · ' + i18n('move.rewritten', [r.rewritten]) : '') + (r.kept ? ' · ' + i18n('move.kept') : '') + (r.stopped ? ' · ' + i18n('move.stopped') : '')));
+        done.append(el('small', '', r.dir + ' · ' + mb(r.bytes) + (r.rewritten ? ' · ' + i18n('move.rewritten', [r.rewritten]) : '') + (r.kept ? ' · ' + i18n('move.kept') : '') + (r.stopped ? ' · ' + i18n('move.stopped') : '') + (r.files ? ' · ' + (r.files.code ? i18n('move.files_failed') : i18n('move.files_done', [r.files.done]) + (r.files.kept && r.files.kept.length ? ' ' + i18n('move.files_kept', [r.files.kept.length]) : '')) : '')));
         body.append(done);
         var openBtn = el('button', 'btn primary', i18n('move.open')); openBtn.type = 'button'; openBtn.onclick = function () { dlg.close(); app().openSession(target.value, r.name); };
         var ok = el('button', 'btn', i18n('fileviewer.dong')); ok.type = 'button'; ok.onclick = function () { dlg.close(); };

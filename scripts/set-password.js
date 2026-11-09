@@ -4,7 +4,11 @@ const path = require('path');
 const readline = require('readline');
 const { Vault } = require('../lib/vault');
 
-const DATA = process.env.TW_DATA || path.join(__dirname, '..', 'data');
+// In an installed desktop app (launcher.js beside this folder) the data lives where the app keeps it (%APPDATA%\Termnest,
+// ~/Library/Application Support/Termnest, …), not in the install folder.
+const fs = require('fs');
+const LAUNCHER = path.join(__dirname, '..', 'launcher.js');
+const DATA = process.env.TW_DATA || (fs.existsSync(LAUNCHER) ? require(LAUNCHER).dataDir() : path.join(__dirname, '..', 'data'));
 
 function askHidden(label) {
   return new Promise((resolve) => {

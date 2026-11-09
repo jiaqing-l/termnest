@@ -12,7 +12,7 @@ function opsSessionRows(board, supervision) {
       if (!previous || priority(f) < priority(previous.f)) target.set(key, { f: f, s: srv, session: session || previous && previous.session });
     }
     (srv.sessions || []).forEach(function (session) {
-      var ai = session.ai, rule = !online || !ai ? 'observed_unknown' : ai.parked ? 'observed_parked' : ai.status === 'busy' ? 'observed_busy' : ai.status === 'idle' ? 'observed_idle' : ai.status === 'waiting' ? 'observed_waiting' : 'observed_unknown';
+      var ai = session.ai, rule = !online || !ai ? 'observed_unknown' : ai.parked ? 'observed_parked' : ai.status === 'busy' ? 'observed_busy' : ai.status === 'idle' ? (ai.fresh ? 'observed_fresh' : 'observed_idle') : ai.status === 'waiting' ? 'observed_waiting' : 'observed_unknown';
       rows.set(session.name, { s: srv, session: session, f: { rule: rule, session: session.name, severity: 'info', params: [], source: 'status', since: 0, routine: true } });
     });
     (srv.findings || []).forEach(function (f) {
@@ -99,6 +99,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   var supervision = null, supervisionError = false, supervisionPending = false, supervisionFetching = false;
   var supervisionRevision = 0, supervisionBox = null;
   function list(v) { return Array.isArray(v) ? v.filter(function (x) { return x && typeof x === 'object'; }) : []; }
+  // Times arrive as epoch milliseconds or ISO strings.
+  function msOf(v) { return typeof v === 'number' ? v : Date.parse(v) || 0; }
   function text(v) { return typeof v === 'string' || typeof v === 'number' ? String(v) : ''; }
   function explanation(reason) {
     var code = typeof reason === 'string' ? reason : reason && reason.code;
@@ -142,14 +144,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   function supervisionCard() {
     if (supervisionBox) return supervisionBox;
     supervisionBox = el('section', 'ops-card ops-super ops-crew');
-    supervisionBox.append(el('h3', '', c('title')));
-    var how = el('details', 'ops-crew-how'); keepOpen(how, 'crew-how', true);
-    how.append(el('summary', '', c('how')));
-    [['ok', 'rule_running'], ['idle', 'rule_idle'], ['wait', 'rule_owner'], ['bad', 'rule_blocked']].forEach(function (r) {
-      var row = el('div', 'ops-crew-rule'); row.append(el('span', 'ops-crew-dot d-' + r[0]), el('span', '', c(r[1]))); how.append(row);
-    });
-    var audit = el('p', 'ops-note ops-crew-audit-rule'); how.append(audit, el('p', 'ops-note', c('rule_source')));
-    var sw = el('div', 'ops-crew-switch'), label = el('label', 'ops-crew-toggle'), texts = el('div', '');
+    // One switch with four numbers on top, the watched teams one line each, the fixed nudge rules to read, the Ops hub
+    // for deep audits and messages out, and everything else under "Advanced".
+    var sw = el('div', 'ops-crew-switch ops-crew-hero'), label = el('label', 'ops-crew-toggle'), texts = el('div', '');
     crewSwitch = el('input'); crewSwitch.type = 'checkbox'; crewSwitch.name = 'crewAutopilot';
     crewSwitch.onchange = function () {
       var on = crewSwitch.checked;
@@ -157,8 +154,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     };
     label.append(crewSwitch, el('span', 'ops-crew-slider'));
     crewSwitchNote = el('p', 'ops-note');
-    texts.append(el('b', '', c('switch')), el('p', 'ops-note', c('switch_help')), crewSwitchNote);
-    sw.append(texts, label);
+    crewHeroTitle = el('b', 'ops-crew-hero-t', c('switch')); crewStats = el('div', 'ops-crew-stats');
+    texts.append(crewHeroTitle, el('p', 'ops-note', c('switch_help')), crewSwitchNote);
+    sw.append(texts, label, crewStats);
+    var rules = el('div', 'ops-crew-rules-box'), grid = el('div', 'ops-crew-rules');
+    rules.append(el('h4', '', c('rules_title')));
+    [['⏱', 'r1_t', 'r1'], ['1×', 'r2_t', 'r2'], ['🔍', 'r3_t', 'r3'], ['✋', 'r4_t', 'r4']].forEach(function (r) {
+      var d = el('div', 'ops-crew-rulecard'); d.append(el('span', 'k', r[0]), el('b', '', c(r[1])), el('span', '', c(r[2]))); grid.append(d);
+    });
+    rules.append(grid);
+    var hub = el('button', 'ops-crew-hublink'); hub.type = 'button';
+    hub.append(el('span', 'ic', '🛰'), (function () { var d = el('div'); d.append(el('b', '', c('hub_t')), el('small', '', c('hub_s'))); return d; })(), el('span', 'go', c('open_hub')));
+    hub.onclick = function () { document.querySelectorAll('dialog[open]').forEach(function (d) { d.close(); }); TW.app().setView('ops'); };
     crewBody = el('div', 'ops-crew-body'); crewBody.setAttribute('aria-live', 'polite');
     var adv = el('details', 'ops-crew-adv'); keepOpen(adv, 'crew-advanced', false);
     adv.append(el('summary', '', c('advanced')));
@@ -172,8 +179,23 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     reminderSettings.append(el('summary', '', i18n('ops.reminder_rules')), el('p', 'ops-note', c('reminder_outside')),
       button(i18n('ops.chinh_luat'), 'ops-edit-rules', function () { if (!data || rulesNode && rulesNode.dataset.pending) return; editing = !editing; if (editing && !rulesNode) rulesNode = rulesForm(); if (rulesNode) { if (editing) reminderSettings.append(rulesNode); else rulesNode.remove(); } }));
     adv.append(il, reminderSettings);
-    supervisionBox.append(how, sw, crewBody, adv);
+    supervisionBox.append(el('h3', '', c('title')), sw, crewBody, rules, hub, adv);
     renderSupervision(); return supervisionBox;
+  }
+  var crewHeroTitle = null, crewStats = null;
+  // Four numbers from what the supervisor already reports: machines, teams watched, nudges today, nudges followed by progress.
+  function drawCrewStats(on) {
+    if (!crewStats) return; crewStats.textContent = '';
+    var servers = list(supervision && supervision.servers), day = new Date(); day.setHours(0, 0, 0, 0);
+    var teams = 0, nudges = 0, worked = 0;
+    servers.forEach(function (v) {
+      list(v.discovered).forEach(function (d) { if (!d.excluded) teams++; });
+      list(v.teams).forEach(function (t) { var r = t.recovery; if (r && msOf(r.at) >= day.getTime()) { nudges++; if (r.code === 'recovery_progress') worked++; } });
+    });
+    [[servers.length, 'st_machines'], [teams, 'st_teams'], [nudges, 'st_nudges'], [worked, 'st_worked']].forEach(function (x) {
+      var s = el('span', 'ops-crew-stat'); s.append(el('b', '', String(x[0])), document.createTextNode(' ' + c(x[1]))); crewStats.append(s);
+    });
+    crewStats.hidden = !on;
   }
   // POST is not authoritative: the change counts only when a fresh GET reads it back.
   function crewControl(body, check) {
@@ -190,7 +212,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   function agentLine(serverId, name) {
     var s = boardSession(serverId, name), ai = s && s.ai;
     if (!ai || !ai.tool) return c('agent_none');
-    var st = ai.waitingFor || ai.status === 'waiting' ? 'observed_waiting' : ai.parked ? 'observed_parked' : ai.status === 'busy' ? 'observed_busy' : ai.status === 'idle' ? 'observed_idle' : 'observed_unknown';
+    var st = ai.waitingFor || ai.status === 'waiting' ? 'observed_waiting' : ai.parked ? 'observed_parked' : ai.status === 'busy' ? 'observed_busy' : ai.status === 'idle' ? (ai.fresh ? 'observed_fresh' : 'observed_idle') : 'observed_unknown';
     var line = c('agent', [ai.tool === 'codex' ? 'Codex' : ai.tool === 'claude' ? 'Claude' : text(ai.tool), i18n('ops.s.' + st), ago(ai.at) || '—']);
     var workers = list(s.bgAgents);
     if (workers.length) line += ' · ' + c('workers', [workers.length, workers.map(function (w) { return text(w.track) || text(w.kind); }).filter(Boolean).join(', ') || '—']);
@@ -198,7 +220,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
   function tag(state) { var k = CREW_STATE[state] || CREW_STATE.unknown; return el('span', 'ops-crew-tag t-' + k[0], c(k[1])); }
   function excludedList() { return list(supervision && supervision.excluded).map(function (x) { return { serverId: text(x.serverId), session: text(x.session) }; }); }
-  function teamRow(server, d) {
+  function teamRow(server, d, compact) {
     var team = list(server.teams).find(function (t) { return t.session === d.session && t.root === d.root; });
     var state = d.excluded ? 'unknown' : team ? teamState(server, team) : 'unknown';
     var row = el('div', 'ops-crew-team' + (d.excluded ? ' is-off' : '')), box = el('input'), main = el('div', 'ops-crew-main');
@@ -209,7 +231,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       crewControl({ enabled: supervision.enabled, autoEnroll: true, excluded: next }, function (s) { return JSON.stringify(list(s.excluded)) === JSON.stringify(next); });
     };
     var head = el('div', 'ops-crew-head'); head.append(el('b', '', d.session), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(state));
-    main.append(head, el('div', 'ops-crew-tasks', ids(d.taskIds).length ? ids(d.taskIds).join(' · ') : '—'), el('div', 'ops-note', agentLine(server.id, d.session)));
+    if (compact) {
+      // A machine that cannot nudge (or is offline) says so on every row of its teams.
+      var mode = machineMode(server);
+      head.append(el('small', 'ops-crew-machine-name', text(server.name)));
+      if (mode[1] === 'mode_watch' || mode[1] === 'mode_offline') head.append(el('span', 'ops-crew-tag t-' + mode[0], c(mode[1])));
+    }
+    main.append(head, el('div', 'ops-crew-tasks', ids(d.taskIds).length ? ids(d.taskIds).join(' · ') : '—'));
+    // In Settings a row says who and which task; the detail (agent, progress, last nudge) is in the Ops hub and side panel.
+    if (compact) { row.append(box, main); return row; }
+    main.append(el('div', 'ops-note', agentLine(server.id, d.session)));
     if (!d.excluded && team) {
       var detail = [explanation(team.reason)];
       detail.push(team.lastProgressAt ? c('progress', [ago(team.lastProgressAt) || stamp(team.lastProgressAt)]) : c('no_progress'));
@@ -270,11 +301,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     h.append(el('b', '', text(server.name)), el('span', 'ops-crew-tag t-' + mode[0], c(mode[1])),
       el('span', 'ops-note', hostConnected(server) ? c('observed', [ago(server.observedAt) || stamp(server.observedAt)]) : c('offline', [stamp(server.observedAt)])));
     m.append(h);
-    found.forEach(function (d) { m.append(teamRow(server, d)); });
+    found.forEach(function (d) { m.append(teamRow(server, d, inSettings)); });
     var ub = unboundBlock(server); if (ub) m.append(ub);
     if (!found.length && !ub) m.append(el('p', 'ops-note', c('no_crew')));
     var last = list(server.audits).filter(function (a) { return !a.active; }).pop();
-    if (inSettings && crewOn() && last) m.append(el('p', 'ops-note', c('audit_last', [ago(last.createdAt) || stamp(last.createdAt), explanation(last.reason)])));
+    if (inSettings && crewOn() && last && Date.now() - msOf(last.createdAt) < 2 * 3600000) m.append(el('p', 'ops-note', c('audit_last', [ago(last.createdAt) || stamp(last.createdAt), explanation(last.reason)])));
     return m;
   }
   // Session side panel: what crew work this session leads (only when it is a discovered leader), from the same data.
@@ -302,7 +333,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var tasks = list(team && team.tasks);
     if (!tasks.length) box.append(el('div', 'ops-crew-tasks', ids(d.taskIds).join(' · ') || '—'));
     tasks.forEach(function (t) {
-      var tr = list(t.tracks), done = tr.filter(function (k) { return TRACK_DONE.indexOf(k.state) >= 0; }).length;
+      var tr = list(t.tracks), done = tr.filter(function (k) { return TRACK_DONE.indexOf(k.state) >= 0 || k.verdict === 'verified'; }).length;
       var card = el('div', 'ops-crew-task');
       card.append(el('b', 'ops-crew-task-title', text(t.title) || text(t.id)), el('small', 'ops-note', text(t.id) + ' · ' + text(t.status)));
       if (tr.length) {
@@ -311,10 +342,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         var chips = el('div', 'ops-crew-chips');
         tr.forEach(function (k) {
           // Exit 7 = the dispatcher rejected the worker's verification evidence: code exists, verification is still open.
-          var unverified = k.state === 'failed' && k.lastExit === '7';
-          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : unverified ? 'wait' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
-          var chip = el('button', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : unverified ? c('track_unverified') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : ''));
-          chip.type = 'button'; chip.title = c('track_open');
+          // The verdict reads the worker's STATUS and the newest verification the leader ran (crewpack verdictOf).
+          var V = { verified: 'done', verify_failed: 'bad', blocked: 'bad', coded: 'wait', unverified: 'wait' }, vd = V[k.verdict] ? k.verdict : '';
+          var unverified = !vd && k.state === 'failed' && k.lastExit === '7';
+          var running = live.indexOf(text(k.id)) >= 0, cls = running ? 'run' : TRACK_DONE.indexOf(k.state) >= 0 ? 'done' : vd ? V[vd] : unverified ? 'wait' : /fail|blocked/.test(k.state) ? 'bad' : 'wait';
+          var chip = el('button', 'ops-crew-chip c-' + cls, text(k.id) + ' ' + (running ? c('track_running') : vd ? c('track_' + vd, [k.proof ? k.proof.failed : 0]) : unverified ? c('track_unverified') : trackLabel(k.state)) + (k.fixRounds ? ' · fix ' + k.fixRounds : ''));
+          chip.type = 'button'; chip.title = (k.proof ? (k.proof.line ? c('proof_status', [text(k.proof.file), stamp(k.proof.at), text(k.proof.line)]) : c('proof_verify', [text(k.proof.file), stamp(k.proof.at), k.proof.passed, k.proof.failed])) + '\n' : '') + c('track_open');
           chip.onclick = function () { trackPopup(serverId, d.root, t, k, running); };
           chips.append(chip);
         });
@@ -370,7 +403,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       var get = function (n) { var x = current.filter(function (y) { return y.n === n; })[0]; return x ? text(x.f.text) : ''; };
       // One plain status: what state the track is in right now.
       var done = TRACK_DONE.indexOf(k.state) >= 0, exit = last ? text(last.exit) : '';
-      var status = running ? ['run', c('ts_running')] : done ? ['done', c('ts_done')] : exit === '7' ? ['wait', c('ts_unverified')] :
+      // The verdict (newest evidence: the leader's verification beats an older worker STATUS) speaks first.
+      var vd = text(k.verdict), proof = k.proof || null;
+      var status = running ? ['run', c('ts_running')] : done ? ['done', c('ts_done')] : vd === 'verified' ? ['done', c('ts_verified')] : vd === 'verify_failed' ? ['bad', c('ts_verify_failed', [proof ? proof.failed : 0])] :
+        vd === 'blocked' ? ['bad', c('ts_blocked')] : exit === '7' ? ['wait', c('ts_unverified')] :
         /fail|blocked/.test(k.state) ? ['bad', c('ts_failed')] : ['idle', trackLabel(k.state)];
       if (r.goal) head.firstChild.textContent = text(k.id) + ' · ' + text(r.goal);
       var badge = el('div', 'ops-track-badge s-' + status[0]); badge.append(el('b', '', status[1]), el('span', '', last ? c('ts_when', [ago(Date.parse(last.endedAt)) || stamp(Date.parse(last.endedAt))]) : ''));
@@ -379,8 +415,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       var sum = el('dl', 'ops-track-sum');
       var result = firstSentence(get('last-message.md') || get('STATUS.md'));
       var block = firstSentence(get('EVIDENCE-FAILED.md') || get('BLOCKED.md') || get('CORRECTION-REFUSED.md') || get('DISPATCH-REFUSED.md'));
-      var next = running ? c('next_running') : done ? c('next_done') : exit === '7' ? c('next_verify') : exit === '8' ? c('next_queued') : exit === '9' ? c('next_budget') : exit === '11' ? c('next_quota') : /fail|blocked/.test(k.state) ? c('next_failed') : c('next_wait');
-      [[c('sum_result'), result || '—'], [c('sum_block'), done ? '—' : block || '—'], [c('sum_next'), next]].forEach(function (p) { sum.append(el('dt', '', p[0]), el('dd', '', p[1])); });
+      var next = running ? c('next_running') : done ? c('next_done') : vd === 'verified' ? c('next_verified') : vd === 'verify_failed' ? c('next_verify_failed') : vd === 'blocked' ? c('next_blocked') : exit === '7' ? c('next_verify') : exit === '8' ? c('next_queued') : exit === '9' ? c('next_budget') : exit === '11' ? c('next_quota') : /fail|blocked/.test(k.state) ? c('next_failed') : c('next_wait');
+      var evidence = proof ? (proof.line ? c('proof_status', [text(proof.file), stamp(proof.at), text(proof.line)]) : c('proof_verify', [text(proof.file), stamp(proof.at), proof.passed, proof.failed])) : '';
+      // A refused-evidence note is history once the leader verified the code.
+      [[c('sum_result'), result || '—'], [c('sum_block'), done || vd === 'verified' ? '—' : block || '—'], [c('sum_next'), next]].concat(evidence ? [[c('sum_evidence'), evidence]] : []).forEach(function (p) { sum.append(el('dt', '', p[0]), el('dd', '', p[1])); });
       body.append(sum);
       // One line of numbers.
       var mins = rounds.reduce(function (n, x) { return n + (x.seconds || 0); }, 0) / 60, files_ = /(\d+) files? changed/.exec(text(ch.stat)), add = /(\d+) insertions?/.exec(text(ch.stat)), del = /(\d+) deletions?/.exec(text(ch.stat));
@@ -427,7 +465,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
           out.push({ server: server, session: t.session, who: t.session || ids(t.taskIds).join(', '), why: explanation(t.recovery && t.recovery.requiresOwner ? t.recovery.code : t.reason), tasks: ids(t.taskIds), bad: st === 'blocked' });
         }
       });
-      var a = list(server.audits).filter(function (x) { return x.requiresOwner; }).pop();
+      // Only a recent audit problem needs a person; an old timed-out one stays in history, not here.
+      var a = list(server.audits).filter(function (x) { return x.requiresOwner && Date.now() - msOf(x.createdAt) < 2 * 3600000; }).pop();
       if (a) out.push({ server: server, who: 'ops-audit', why: explanation(a.reason), tasks: [], bad: false });
     });
     list(supervision.auditReadiness).forEach(function (a) {
@@ -445,7 +484,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var on = crewOn(), legacy = !!supervision && supervision.enabled && !supervision.autoEnroll;
     crewSwitch.checked = on; crewSwitch.disabled = supervisionPending || !supervision;
     var minutes = supervision && supervision.intervalMinutes || 30;
-    supervisionBox.querySelector('.ops-crew-audit-rule').textContent = c('rule_audit', [minutes]);
+    crewHeroTitle.textContent = c(on ? 'hero_on' : 'hero_off'); supervisionBox.querySelector('.ops-crew-hero').classList.toggle('on', on);
+    drawCrewStats(on);
     crewSwitchNote.textContent = !supervision ? '' : legacy ? c('legacy', [list(supervision.leaders).length]) : on ? c('on', [minutes]) : c('off');
     var opts = [15, 30, 60]; if (opts.indexOf(minutes) < 0) opts.push(minutes);
     if (crewInterval.dataset.opts !== opts.join()) { crewInterval.textContent = ''; opts.sort(function (a, b) { return a - b; }).forEach(function (m) { var o = el('option', '', c('minutes', [m])); o.value = String(m); crewInterval.append(o); }); crewInterval.dataset.opts = opts.join(); }
@@ -454,25 +494,31 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     if (crewMessage) crewBody.append(el('p', 'ops-super-alert', crewMessage));
     if (!supervision) { crewBody.append(el('p', 'ops-super-alert', i18n(supervisionError ? 'ops.super.unavailable' : 'ops.super.loading'))); return; }
     list(supervision.errors).forEach(function (e) { crewBody.append(el('p', 'ops-super-alert', explanation(e))); });
+    // Settings hold the switch and which teams are watched. What needs you and how work progresses live in the Ops
+    // hub (Operations tab), so they are not repeated here.
     if (on) {
-      var need = needYou(), nb = el('div', 'ops-crew-need');
-      nb.append(el('h4', '', c('need_you', [need.length])));
-      if (!need.length) nb.append(el('p', 'ops-note', c('none_need')));
-      need.forEach(function (n) {
-        var item = el('div', 'ops-crew-item' + (n.bad ? ' is-bad' : ''));
-        item.append(el('b', '', text(n.server.name) + ' · ' + n.who), el('span', '', ' — ' + n.why));
-        if (n.tasks.length) item.append(el('div', 'ops-note', n.tasks.join(' · ')));
-        nb.append(item);
-      });
-      crewBody.append(nb);
+      var need = needYou(), link = el('div', 'ops-crew-link');
+      link.append(el('span', '', need.length ? c('need_link', [need.length]) : c('none_need')), button(c('open_hub'), 'ghost', function () {
+        document.querySelectorAll('dialog[open]').forEach(function (d) { d.close(); }); TW.app().setView('ops');
+      }));
+      crewBody.append(link);
     }
-    crewBody.append(el('h4', '', c('teams')));
-    var any = false;
-    if (crewVisible()) list(supervision.servers).forEach(function (server) {
-      if (!list(server.discovered).length && !list(server.teams).some(function (t) { return !t.session && ids(t.taskIds).length && t.status !== 'completed'; }) && hostConnected(server)) return;
-      any = true; crewBody.append(crewMachine(server, true));
+    var all = crewVisible() ? list(supervision.servers) : [], rows = 0, watched = 0;
+    all.forEach(function (server) { list(server.discovered).forEach(function (d) { rows++; if (!d.excluded) watched++; }); });
+    var h4 = el('h4', '', c('teams')); h4.append(el('span', 'ops-count', watched + '/' + rows)); crewBody.append(h4);
+    var any = false, quiet = [], box = el('div', 'ops-crew-list');
+    all.forEach(function (server) {
+      // A machine with no leader shows as one name in a footnote, not as a card full of hidden leftovers.
+      if (!list(server.discovered).length && !list(server.teams).some(function (t) { return !t.session && !t.dormant && ids(t.taskIds).length && t.status !== 'completed'; })) { quiet.push(text(server.name)); return; }
+      any = true;
+      list(server.discovered).forEach(function (d) { box.append(teamRow(server, d, true)); });
+      var ub = unboundBlock(server); if (ub) box.append(ub);
+      var last = list(server.audits).filter(function (x) { return !x.active; }).pop();
+      if (crewOn() && last && Date.now() - msOf(last.createdAt) < 2 * 3600000) box.append(el('p', 'ops-note ops-crew-auditline', text(server.name) + ' · ' + c('audit_last', [ago(last.createdAt) || stamp(last.createdAt), explanation(last.reason)])));
     });
+    if (any) crewBody.append(box);
     if (!any) crewBody.append(el('p', 'ops-note', on ? c('no_teams') : c('no_teams_off')));
+    if (quiet.length) crewBody.append(el('p', 'ops-note', c('quiet_machines', [quiet.join(', ')])));
   }
 
   function loadSupervision(force) {
@@ -954,8 +1000,17 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
 
   (function () {
-    var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) { page = box; box.classList.add('ops-page'); box.append(el('p', 'ops-empty', i18n('ops.loading'))); }, onShow: load });
+    var v = TW.addView({ id: 'ops', label: i18n('ops.tab'), mount: function (box) {
+      // The Ops hub (features/opshub.js) owns the slot above; this page redraws only its own part below it.
+      box.classList.add('ops-page'); var hub = el('div', 'ops-hub-slot'); hub.id = 'ops-hub-slot'; page = el('div', 'ops-body');
+      // The hub above shows progress, waiting questions and reports; the rule board (nudge buttons, per-machine detail,
+      // nudge log) stays available but folded, so the page tells one story.
+      var legacy = el('details', 'ops-legacy'), sum = el('summary', 'ops-legacy-h', i18n('ops.legacy_title'));
+      try { legacy.open = localStorage.getItem('tw-ops-legacy') === '1'; } catch (e) { /* optional */ }
+      legacy.addEventListener('toggle', function () { try { localStorage.setItem('tw-ops-legacy', legacy.open ? '1' : '0'); } catch (e) { /* optional */ } });
+      legacy.append(sum, page); box.append(hub, legacy); page.append(el('p', 'ops-empty', i18n('ops.loading'))); }, onShow: load });
     if (v) tab = v.tab;
+    TW.opsTrackPopup = trackPopup;
     pluginPage = document.getElementById('plugins-settings-mount');
     if (pluginPage) pluginPage.addEventListener('focusout', function () { setTimeout(drawPlugins, 0); });
     TW.on('ready', draw); TW.on('server-backup-updated', draw); mountSettings();

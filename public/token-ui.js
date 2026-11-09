@@ -4,7 +4,7 @@ window.TokenUI = function (hooks) {
   const $ = id => document.getElementById(id);
   const node = (tag, cls, text) => { const n=document.createElement(tag);n.className=cls||'';if(text!=null)n.textContent=text;return n; };
   // The server (token modules) sends a few reasons in Vietnamese: show them in the chosen language.
-  const REASONS={'Chưa có phiên':'tokenui.chua_co_phien','Chưa có dữ liệu tuần':'tokenui.chua_co_du_lieu_tuan','Chưa có dữ liệu':'tokenui.chua_co_du_lieu','Chưa có bản ghi usage':'tokenui.chua_co_ban_ghi_usage'};
+  const REASONS={'Chưa có phiên':'tokenui.chua_co_phien','Chưa có dữ liệu tuần':'tokenui.chua_co_du_lieu_tuan','Chưa có dữ liệu':'tokenui.chua_co_du_lieu','Chưa có bản ghi usage':'tokenui.chua_co_ban_ghi_usage','Không có giới hạn 5 giờ':'tokenui.khong_co_gioi_han_5_gio'};
   const reasonText=r=>REASONS[r]?i18n(REASONS[r]):r;
   const fmt = n => n == null ? i18n('tokenui.khong_doc_duoc') : new Intl.NumberFormat(i18n('lang.locale'),{notation:'compact',maximumFractionDigits:1}).format(n);
   let showAllSessions=false, rendered=null, completeView=false, ages=[];
@@ -83,7 +83,7 @@ window.TokenUI = function (hooks) {
       c.dataset.tool=a.tool;c.title=(a.sourceWarnings || []).join('\n');identity.append(node('b','', label(a)),node('span','token-email',a.email||i18n('tokenui.khong_doc_duoc_email')));const source=node('small','token-sources',(a.plan?i18n('tokenui.goi', [a.plan]):'')+a.hostName);source.title=a.hostName;identity.append(source);
       const mark=node('span','token-mark');if(window.PetArt)mark.innerHTML=window.PetArt.pet(a.tool==='claude'?'cat':'fox','run');h.append(mark);
       const rename=node('button','btn token-rename',i18n('tokenui.doi_ten'));rename.onclick=()=>editAccounts(a);h.append(identity,rename);
-      const windows=node('div','token-windows');windows.append(ring(i18n('tokenui.phien_5_gio'),a.limits.session,a.limits.reasons?.session),ring(i18n('tokenui.tuan_nay'),a.limits.weekly,a.limits.reasons?.weekly));
+      const windows=node('div','token-windows');if(!a.limits.noSession)windows.append(ring(i18n('tokenui.phien_5_gio'),a.limits.session,a.limits.reasons?.session));windows.append(ring(i18n('tokenui.tuan_nay'),a.limits.weekly,a.limits.reasons?.weekly));
       const line=node('div','token-today');line.append(node('span','',i18n('tokenui.hom_nay_token', [fmt(a.today), (a.threshold?i18n('tokenui.nguong', [fmt(a.threshold)]):'')])));
       const bar=node('div','token-meter'), fill=node('i');fill.style.width=a.threshold&&a.today!=null?Math.min(100,a.today/a.threshold*100)+'%':'0';bar.append(fill);if(a.threshold)line.append(bar);
       c.append(h,windows,line);

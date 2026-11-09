@@ -1440,3 +1440,8 @@ dialog.drop-remote{display:none}
 /* Viewer maximised to the whole window (wide mockups, reports) */
 .file-viewer.is-max{left:0;top:0;width:auto !important;z-index:120;border-left:0}
 .file-viewer.is-max>.handle,.file-viewer.is-max .viewer-resize{display:none}
+
+.al-old{margin-top:6px}.al-old>summary{cursor:pointer;padding:8px 4px;font-size:13px;color:var(--fg-3)}
+
+/* The note about hidden empty profiles spans the whole row instead of taking a card's slot. */
+.token-empty-profiles{grid-column:1/-1;margin:0}

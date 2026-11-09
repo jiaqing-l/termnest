@@ -372,3 +372,22 @@ test('an unresolved crash/send ambiguity cannot be released just by age and repe
   f.audit().aiStatus.status = 'idle'; f.advance(1); await f.tick();
   assert.equal(f.active(), null); assert.equal(f.core.host('vm0').history[0].verification, 'unverified');
 });
+
+test('no per-workspace audit where the host grants no lease (macOS/Windows), or while the Ops hub audits the fleet', async () => {
+  const mac = fixture({ io: { coordinate: async () => ({ code: 'coordination_platform_unavailable' }) } });
+  await mac.tick(); await mac.tick();
+  assert.equal(mac.active(), undefined); assert.equal(mac.calls.open.length, 0);
+  const hub = fixture({ io: { hubAudits: () => true } });
+  await hub.tick(); await hub.tick();
+  assert.equal(hub.active(), undefined); assert.equal(hub.calls.open.length, 0);
+});
+
+test('a track that exited 7 (code committed, evidence refused) does not mark its team blocked', async () => {
+  const f = fixture({ io: { hubAudits: () => true } });
+  const t = f.data.get('vm0').roots[0].tasks[0];
+  t.tracks = [{ id: 'W0', state: 'failed', rounds: 1, fixRounds: 0, lastRound: { round: '1', endedAt: '', result: '7', kind: 'new' } }];
+  await f.tick();
+  assert.notEqual(f.core.teams(f.remotes[0])[0].reason.code, 'task_track_failed');
+  t.tracks[0].lastRound.result = '1'; f.advance(130000); await f.tick();
+  assert.equal(f.core.teams(f.remotes[0])[0].reason.code, 'task_track_failed');
+});

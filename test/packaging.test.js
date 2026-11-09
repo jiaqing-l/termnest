@@ -17,7 +17,7 @@ test('native runtime support copies only installers, health CLI and root runbook
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'termnest-support-test-'));
   const source = path.join(temp, 'source'), out = path.join(temp, 'payload');
   const allowed = ['scripts/install-supervisor.sh', 'scripts/install-supervisor-macos.sh',
-    'scripts/install-supervisor.ps1', 'scripts/supervisor-check.js', 'docs/supervisor.md'];
+    'scripts/install-supervisor.ps1', 'scripts/supervisor-check.js', 'scripts/set-password.js', 'docs/supervisor.md'];
   try {
     for (const file of [...allowed, 'scripts/developer.js', 'scripts/.env', 'scripts/vault.json',
       'scripts/private.key', 'scripts/native.node', 'docs/private.md', 'data/vault.json']) {

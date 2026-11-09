@@ -64,7 +64,10 @@ window.UsageUI = function (hooks) {
     if (loading) status.textContent = data ? i18n('usageui.dang_cap_nhat_bao_cao') : i18n('usageui.dang_doc_bao_cao_bang');
     else if (error) status.textContent = error;
     else if (data && !data.accounts.length) status.textContent = i18n('usageui.chua_khai_bao_tai_khoan');
-    bad.forEach((a) => { const s = node('span', 'us-warn', '⚠ ' + a.label + ': ' + a.error + (a.stale ? i18n('usageui.dang_hien_so_lan_truoc') : '')); status.append(status.textContent ? document.createTextNode(' ') : '', s); });
+    // One line per kind of problem, not one per account: "3 accounts show the previous numbers (ccusage: …)".
+    const groups = new Map();
+    bad.forEach((a) => { const k = a.error + '|' + !!a.stale; if (!groups.has(k)) groups.set(k, { error: a.error, stale: !!a.stale, names: [] }); groups.get(k).names.push(a.label); });
+    groups.forEach((g) => { const s = node('span', 'us-warn', '⚠ ' + (g.stale ? i18n('usageui.stale_group', [g.names.join(', '), g.error]) : g.names.join(', ') + ': ' + g.error)); status.append(status.textContent ? document.createTextNode(' ') : '', s); });
     status.hidden = !status.textContent && !status.children.length;
   }
 

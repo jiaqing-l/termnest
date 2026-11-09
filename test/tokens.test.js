@@ -43,6 +43,15 @@ test('Codex identity decodes email only, quota failure never leaks secrets', asy
 test('provider normalizes only valid percentages and reset times',()=>{
  assert.equal(rt.quota({five_hour:{utilization:101,resets_at:at}},'claude').session,null);
  assert.equal(rt.quota({five_hour:{utilization:40,resets_at:at},seven_day:{utilization:12,resets_at:at}},'claude').weekly.percent,12);
+ // A plan with weekly limits only (five_hour null, limits lists weekly kinds): no 5-hour dial, not "no session yet".
+ const weeklyOnly=rt.quota({five_hour:null,seven_day:{utilization:39,resets_at:at},limits:[{kind:'weekly_all',group:'weekly'},{kind:'weekly_scoped',group:'weekly'}]},'claude');
+ assert.equal(weeklyOnly.noSession,true); assert.equal(weeklyOnly.reasons.session,'Không có giới hạn 5 giờ'); assert.equal(weeklyOnly.weekly.percent,39);
+ assert.equal(rt.quota({five_hour:null,seven_day:{utilization:39,resets_at:at}},'claude').noSession,undefined);
+ // Codex with only the weekly window: no 5-hour dial either; with a 5-hour window present it stays.
+ const sec=Math.floor(Date.parse(at)/1000);
+ assert.equal(rt.quota({primary:{used_percent:41,window_minutes:10080,resets_at:sec}},'codex').noSession,true);
+ assert.equal(rt.quota({primary:{used_percent:5,window_minutes:300,resets_at:sec},secondary:{used_percent:41,window_minutes:10080,resets_at:sec}},'codex').noSession,undefined);
+ assert.equal(require('../lib/tokens').aggregate([{tool:'claude',email:'a@b.co',limits:weeklyOnly}]).accounts[0].limits.noSession,true);
 });
 test('week boundaries use viewer timezone, not UTC; missing is null',()=>{
  const events=[{at:Date.parse('2026-11-01T18:00:00Z'),session:'s',total:15}];

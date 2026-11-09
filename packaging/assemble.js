@@ -44,6 +44,8 @@ function copyRuntimeSupport(root, out) {
     ['scripts/install-supervisor-macos.sh', 'scripts/install-supervisor-macos.sh'],
     ['scripts/install-supervisor.ps1', 'scripts/install-supervisor.ps1'],
     ['scripts/supervisor-check.js', 'scripts/supervisor-check.js'],
+    // Sets the password from a terminal when the setup screen is gone (see the login page's desktop hint).
+    ['scripts/set-password.js', 'scripts/set-password.js'],
     ['docs/supervisor.md', 'SUPERVISOR.md'],
   ];
   for (const [source, destination] of files) {
