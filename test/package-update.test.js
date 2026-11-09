@@ -16,7 +16,7 @@ function put(dir, name, bytes, mode = 0o644) {
 test('bundle contains exact runnable sources, manifests, platform scripts and file modes', t => {
   const dir = fixture(t), output = path.join(dir, 'termnest-update-test.tar.gz');
   const result = build({ output });
-  const extracted = path.join(dir, 'out'); fs.mkdirSync(extracted); execFileSync('tar', ['-xzpf', path.basename(output), '-C', extracted], { cwd: path.dirname(output) });
+  const extracted = path.join(dir, 'out'); fs.mkdirSync(extracted); execFileSync('tar', ['-xzpf', path.relative(extracted, output).split(path.sep).join('/')], { cwd: extracted });
   assert.match(result.sha256, /^[a-f0-9]{64}$/);
   for (const name of ['server.js', 'lib/vault.js', 'package.json', 'package-lock.json', 'docs/supervisor.md', 'docs/server-backups.md', 'scripts/install-supervisor.sh', 'scripts/prepare-pty.js']) assert.ok(result.entries.includes(name), name);
   for (const name of ['scripts/install-supervisor.ps1', 'scripts/install-supervisor-macos.sh']) if (fs.existsSync(path.join(root, name))) assert.ok(result.entries.includes(name), 'platform installer included');
@@ -34,7 +34,7 @@ test('real extracted source archive boots on loopback with pinned dependencies a
   assert.ok(entries.includes('lib/vault.js'));
   for (const name of entries) assert.ok(name === 'SHA256SUMS' || safeEntry(name), name);
   assert.ok(!entries.some(name => name.split('/').includes('node_modules')));
-  fs.mkdirSync(extracted); execFileSync('tar', ['-xzpf', path.basename(output), '-C', extracted], { cwd: path.dirname(output) });
+  fs.mkdirSync(extracted); execFileSync('tar', ['-xzpf', path.relative(extracted, output).split(path.sep).join('/')], { cwd: extracted });
   fs.symlinkSync(fs.realpathSync(path.join(root, 'node_modules')), path.join(extracted, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   const fromArchive = createRequire(path.join(extracted, 'package.json'));
   const pkg = fromArchive('./package.json'), lock = fromArchive('./package-lock.json');
@@ -98,7 +98,7 @@ test('sentinel secrets, recursive archives, hidden metadata and native extension
   const { entries } = build({ source, output });
   for (const name of excluded) assert.ok(!entries.includes(name), name);
   for (const name of ['scripts/install-supervisor.ps1', 'scripts/install-supervisor-macos.sh']) assert.ok(entries.includes(name), 'platform installer is included: ' + name);
-  const out = path.join(dir, 'out'); fs.mkdirSync(out); execFileSync('tar', ['-xzf', path.basename(output), '-C', out], { cwd: path.dirname(output) });
+  const out = path.join(dir, 'out'); fs.mkdirSync(out); execFileSync('tar', ['-xzf', path.relative(out, output).split(path.sep).join('/')], { cwd: out });
   for (const name of entries) assert.ok(!fs.readFileSync(path.join(out, name)).includes('SENTINEL-SECRET'));
   assert.deepEqual(build({ source, output }).entries, entries, 'repeat build does not recursively include output');
 });

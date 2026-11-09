@@ -16,6 +16,9 @@ function safeEntry(name) {
     // This audited implementation module is required by server.js; vault DATA stays excluded.
     (name === 'lib/vault.js' || !/(?:^|\/)(?:vault|credentials?|secrets?|password|id_rsa|id_ed25519)(?:[._-]|$)/i.test(name));
 }
+// GNU tar on Windows reads "D:\\…" (in -f and -C) as a remote host: run tar inside the folder and pass a relative
+// archive path with forward slashes.
+const rel = (from, to) => path.relative(from, to).split(path.sep).join('/');
 function build({ source = path.resolve(__dirname, '..'), output = path.join(source, 'implementation', 'termnest-update-test.tar.gz'), tar = 'tar' } = {}) {
   source = path.resolve(source); output = path.resolve(output);
   // Stage exact file bytes and modes. Never follow symlinks or archive a directory recursively.
@@ -48,12 +51,12 @@ function build({ source = path.resolve(__dirname, '..'), output = path.join(sour
     temp = path.join(path.dirname(output), '.' + path.basename(output) + '.' + crypto.randomBytes(8).toString('hex') + '.tmp');
     const names = entries.map(e => e.path).concat(manifest);
     // The archive is named relative to its own folder: GNU tar on Windows reads "D:\\…" as a remote host "D".
-    execFileSync(tar, ['-czf', path.basename(temp), '-C', stage, '--', ...names], { cwd: path.dirname(temp), stdio: 'pipe', env: { ...process.env, COPYFILE_DISABLE: '1', TAR_OPTIONS: '' } });
+    execFileSync(tar, ['-czf', rel(stage, temp), '--', ...names], { cwd: stage, stdio: 'pipe', env: { ...process.env, COPYFILE_DISABLE: '1', TAR_OPTIONS: '' } });
     const actual = execFileSync(tar, ['-tzf', path.basename(temp)], { cwd: path.dirname(temp), encoding: 'utf8', env: { ...process.env, TAR_OPTIONS: '' } }).trim().split('\n');
     if (JSON.stringify(actual) !== JSON.stringify(names)) throw Error('Bundle entry verification failed');
     // Verify decompression and content before the atomic rename, including the generated manifest.
     const check = path.join(stage, 'verify'); fs.mkdirSync(check);
-    execFileSync(tar, ['-xzpf', path.basename(temp), '-C', check], { cwd: path.dirname(temp), stdio: 'pipe', env: { ...process.env, TAR_OPTIONS: '' } });
+    execFileSync(tar, ['-xzpf', rel(check, temp)], { cwd: check, stdio: 'pipe', env: { ...process.env, TAR_OPTIONS: '' } });
     for (const e of entries) {
       const file = path.join(check, e.path), st = fs.lstatSync(file);
       if (!st.isFile() || hash(fs.readFileSync(file)) !== e.sha256 || (process.platform !== 'win32' && (st.mode & 0o777) !== e.mode)) throw Error('Bundle content verification failed: ' + e.path);

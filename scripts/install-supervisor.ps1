@@ -219,7 +219,11 @@ public static class TermnestNativeCpu {
 } catch {
   # Never print native exception/path/credential data. Report only fixed application codes.
   $code = [string]$_.Exception.Message
-  if ($code -notmatch '^RUNTIME_[A-Z_]+$') { $code = 'RUNTIME_INSTALL_FAILED' }
+  if ($code -notmatch '^RUNTIME_[A-Z_]+$') {
+    # Diagnostics for tests only: the exception TYPE and failing line, never its message (may hold paths or data).
+    if ($env:TERMNEST_INSTALL_DIAG -eq '1') { [Console]::Error.WriteLine('DIAG ' + $_.Exception.GetType().FullName + ' line ' + $_.InvocationInfo.ScriptLineNumber) }
+    $code = 'RUNTIME_INSTALL_FAILED'
+  }
   [Console]::Error.WriteLine($code)
   exit 2
 }

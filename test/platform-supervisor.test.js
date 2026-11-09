@@ -576,6 +576,7 @@ function New-Object {
  if($ComObject){if($ComObject -ne 'Schedule.Service'){throw 'unexpected COM'};return $script:scheduler}
  return Microsoft.PowerShell.Utility\\New-Object @PSBoundParameters
 }
+$env:TERMNEST_INSTALL_DIAG='1'
 $installer=Join-Path $c.root 'scripts/install-supervisor.ps1'
 $first=& $installer -DataDir $data -PasswordFile $secret -NodePath $c.node
 $second=& $installer -DataDir $data -PasswordFile $secret -NodePath $c.node
