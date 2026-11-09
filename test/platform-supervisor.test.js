@@ -561,7 +561,7 @@ $global:folder | Add-Member ScriptMethod RegisterTaskDefinition {
  $definition.RegistrationInfo.Date='2000-01-01T00:00:00'
  $definition.RegistrationInfo.URI='\\Native-added-uri'
  $global:state.task=[pscustomobject]@{Definition=$definition;State=3;LastTaskResult=0}
- $global:state.task | Add-Member ScriptMethod Run {param($args) $global:state.run++;$this.State=4}
+ $global:state.task | Add-Member ScriptMethod Run {param($flags) $global:state.run++;$this.State=4}
  return $global:state.task
 }
 $global:folder | Add-Member ScriptMethod DeleteTask {param($name,$flags) $global:state.delete++;$global:state.task=$null}
@@ -588,7 +588,7 @@ first=$first;second=$second;status=$status;uninstall=$uninstall;
 vaultIntact=([IO.File]::ReadAllText($vault) -eq 'encrypted-fixture');secretIntact=([IO.File]::ReadAllText($secret) -eq $c.password)} | ConvertTo-Json -Compress
 `, JSON.stringify({ dir, root: ROOT, node: process.execPath, password: 'synthetic-fixture-password' }));
     let result; try { result = JSON.parse(run.out); } catch { assert.fail('installer output: ' + run.out + ' | stderr: ' + run.err); }
-    assert.equal(result.register, 1, 'stderr: ' + run.err); assert.equal(result.run, 1); assert.equal(result.delete, 1);
+    assert.equal(result.register, 1, 'stderr: ' + run.err); assert.equal(result.run, 1, 'stderr: ' + run.err); assert.equal(result.delete, 1, 'stderr: ' + run.err);
     assert.equal(result.configured, false); assert.equal(result.vaultIntact, true); assert.equal(result.secretIntact, true);
     assert.match(result.first, /LOGIN_SESSION_ONLY/); assert.match(result.second, /LOGIN_SESSION_ONLY/);
     assert.equal(JSON.parse(result.status).mode, 'login_session'); assert.match(result.uninstall, /workers were not stopped/);

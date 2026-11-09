@@ -86,7 +86,8 @@ test('real extracted source archive boots on loopback with pinned dependencies a
     const stopped = await stop();
     if (process.platform !== 'win32') assert.deepEqual(stopped, [0, null], outputText); // Windows has no SIGTERM: kill() ends it at once
     assert.equal(forced, false, 'owned server stopped gracefully');
-    assert.equal(fs.existsSync(path.join(data, 'service.lock')), false, 'DATA lock released');
+    // Windows ends the process at once (no exit handler); the next start recognises the stale lock instead.
+    if (process.platform !== 'win32') assert.equal(fs.existsSync(path.join(data, 'service.lock')), false, 'DATA lock released');
     assert.equal(fs.existsSync(path.join(data, 'vault.json')), false, 'no real or synthetic accounts loaded');
   } finally { await stop(); }
 });
