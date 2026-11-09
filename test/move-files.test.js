@@ -6,7 +6,8 @@ const { spawnSync } = require('node:child_process');
 const mf = require('../lib/move-files');
 const { shq } = require('../lib/parse');
 
-test('related files travel with a moved chat: written, named and HTML assets; a different target file is kept as a backup', async () => {
+// Session moves run between tmux hosts (Linux, macOS); symlink fixtures also need privileges on Windows.
+test('related files travel with a moved chat: written, named and HTML assets; a different target file is kept as a backup', { skip: process.platform === 'win32' }, async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-move-files-')), src = path.join(tmp, 'src'), dst = path.join(tmp, 'dst'), profile = path.join(tmp, 'profile');
   const put = (root, rel, text) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
   put(src, 'docs/mock/page.html', '<img src="shots/a.png"><link href="style.css"><a href="https://x.dev/y.png">');
