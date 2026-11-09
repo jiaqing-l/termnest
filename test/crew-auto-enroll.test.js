@@ -113,3 +113,15 @@ test('open tasks without a leader are split into recent and dormant (untouched f
   assert.equal(by['task-fresh'], false); assert.equal(by['task-stale'], true);
   assert.equal(f.core.status([f.r]).servers[0].teams.find(t => t.session === 'crew-a').dormant, false);
 });
+
+// parsePoll used to delete the tmux session id, so every real leader identity was invalid (only fixtures had one).
+test('a parsed poll keeps the tmux session id that a live leader identity needs', () => {
+  const { parsePoll } = require('../lib/parse');
+  const { liveIdentity, validIdentity } = require('../lib/supervision-state');
+  const S = '|~|', out = ['@@SESS', ['$6', 'lead', '1', '1794157564', '1794157600', 'claude', '200x50', '/ws'].join(S),
+    '@@OWNERS', ['$6', '18217', '%6'].join(S)].join('\n');
+  const s = parsePoll(out, 1794157700).sessions[0];
+  assert.equal(s.id, '$6'); assert.deepEqual(s.paneIds, ['%6']);
+  Object.assign(s, { aiPid: 19763, aiStatus: { startedAt: 1794157576179, cfg: '.claude-tech2' } });
+  assert.equal(validIdentity(liveIdentity({ snapshot: { bootId: 'darwin:1' } }, s)), true);
+});

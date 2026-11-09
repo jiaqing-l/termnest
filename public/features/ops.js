@@ -272,6 +272,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       var off = excludedList().filter(function (x) { return x.serverId === server.id; }).map(function (x) { return x.session; });
       list(server.teams).forEach(function (t) {
         if (t.session && off.indexOf(t.session) >= 0) return;
+        if (t.dormant) return; // untouched for days and nobody leads it: shown once under "dormant", not as needing you
         var st = teamState(server, t);
         if (['waiting_owner', 'blocked', 'stalled'].indexOf(st) >= 0 || t.recovery && t.recovery.requiresOwner) {
           out.push({ server: server, session: t.session, who: t.session || ids(t.taskIds).join(', '), why: explanation(t.recovery && t.recovery.requiresOwner ? t.recovery.code : t.reason), tasks: ids(t.taskIds), bad: st === 'blocked' });
