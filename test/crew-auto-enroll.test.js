@@ -147,3 +147,22 @@ test('Operations: a dormant blocked team does not become a "needs you" row; a re
   const owners = opsSessionRows(board, supervision).filter(r => r.f.rule === 'owner').map(r => r.f.key);
   assert.deepEqual(owners, ['super/m/new']);
 });
+
+test('a Claude session waiting on background shells ("shell") keeps its pid and reads as busy', () => {
+  const { parsePoll } = require('../lib/parse');
+  const S = '|~|', out = ['@@SESS', ['$6', 'lead', '1', '1794157564', '1794157600', 'claude', '200x50', '/ws'].join(S),
+    '@@OWNERS', ['$6', '18217', '%6'].join(S), '@@DETAIL', ['$6', '18217', '0', ''].join(S), '@@PS', '18217 1219 1 -zsh', '19763 18217 1 claude', '@@FOREGROUND', '18217 18217 19763', '19763 19763 19763',
+    '@@AGENTIDS', 'claude 19763 91818af2-7c92-4ba8-9694-d9e6db0f0c75 /ws', 'claudestat 19763 interactive shell 1794199747425 - 0 1794157576179 .claude-tech2 ws'].join('\n');
+  const s = parsePoll(out, 1794199800).sessions[0];
+  assert.equal(s.aiStatus && s.aiStatus.status, 'busy'); assert.equal(s.aiPid, 19763);
+});
+
+test('a machine with only dormant leftovers gets no ops-audit (no Claude session, no quota spent)', async () => {
+  const f = fixture();
+  const start = 1800000000000;
+  f.data.roots[0].nudge = [];
+  f.data.roots[0].tasks = [{ id: 'old-1', title: '', status: 'planning', blocked: '', heartbeat: {}, tracks: [], activeAt: start - 5 * 86400000 }];
+  await f.tick(); await f.tick();
+  await f.core.schedule(f.r);
+  assert.equal(f.core.host('vm0').active || null, null);
+});

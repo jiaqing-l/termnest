@@ -607,7 +607,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
         var st = el('div', 'pl-stale'), sh = el('div', 'pl-stale-h');
         sh.append(el('span', '', i18n('pl.phien_ban_cu', [v.stale.length])));
         var reload = button(i18n('pl.nap_lai_tat_ca', [v.stale.length]), 'primary', function () {
-          TW.api('POST', '/api/features/plugins/reload', { server: v.id, all: true }).then(function (x) { pluginNotice(i18n('pl.da_nap', [x.now, x.queued])); TW.app().say(pluginFeedback, true, 4000); loadPlugins(); }).catch(pluginError);
+          TW.api('POST', '/api/features/plugins/reload', { server: v.id, all: true }).then(function (x) { pluginNotice(i18n('pl.da_nap', [x.now, x.queued]) + (x.parked && x.parked.length ? ' ' + i18n('pl.parked_note', [x.parked.join(', ')]) : '')); TW.app().say(pluginFeedback, true, 4000); loadPlugins(); }).catch(pluginError);
         });
         reload.dataset.pluginFocus = JSON.stringify(['reload', v.id]); sh.append(reload);
         st.append(sh);

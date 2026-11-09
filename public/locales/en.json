@@ -1534,6 +1534,7 @@
   "pl.phien_ban_cu": "{0} sessions started before the plugin changed — they run the old version",
   "pl.nap_lai_tat_ca": "Reload ({0})",
   "pl.da_nap": "Sent /reload-plugins to {0} sessions; {1} wait until idle.",
+  "pl.parked_note": "{0}: showing a conversation that runs in Claude's background list, so Termnest cannot type into it; open the session, return to the main conversation and type /reload-plugins.",
   "pl.st_idle": "idle — reload now",
   "pl.st_busy": "working — waits",
   "pl.st_waiting": "waiting for you — waits",

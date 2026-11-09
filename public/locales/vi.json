@@ -1517,6 +1517,7 @@
   "pl.phien_ban_cu": "{0} phiên mở trước lần plugin thay đổi — đang dùng bản cũ",
   "pl.nap_lai_tat_ca": "Nạp lại ({0})",
   "pl.da_nap": "Đã gửi /reload-plugins cho {0} phiên; {1} phiên chờ tới lúc rảnh.",
+  "pl.parked_note": "{0}: đang xem một hội thoại chạy nền của Claude nên Termnest không tự gõ được; mở phiên, quay về hội thoại chính rồi gõ /reload-plugins.",
   "pl.st_idle": "rảnh — nạp được ngay",
   "pl.st_busy": "đang làm — chờ",
   "pl.st_waiting": "đang chờ bạn — chờ",
