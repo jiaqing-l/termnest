@@ -242,6 +242,7 @@
   // The machine has no Node.js (the reader runs there): say so in plain words and give the command for its system, to copy or to type
   // into the session's own terminal (which is on that same machine). Nothing runs until the user presses Enter.
   const NODE_CMDS=[['debian',/ubuntu|debian|mint|pop[!_ ]?os|raspbian|kali/i,'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs'],['rhel',/fedora|rhel|red hat|centos|rocky|alma|amazon/i,'sudo dnf install -y nodejs'],['alpine',/alpine/i,'sudo apk add nodejs'],['arch',/arch|manjaro|endeavour/i,'sudo pacman -S --noconfirm nodejs'],['suse',/suse|sles/i,'sudo zypper install -y nodejs'],['mac',/darwin|mac/i,'brew install node'],['win',/windows|win32|mingw|msys|cygwin/i,'winget install OpenJS.NodeJS.LTS']];
+  const NODE_NOSUDO='(mkdir -p ~/.local/node && cd ~/.local/node && A=$(uname -m | sed \'s/x86_64/x64/;s/aarch64/arm64/\') && V=$(curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt | grep -o "node-v[0-9.]*-linux-$A.tar.xz" | head -1) && curl -fsSL "https://nodejs.org/dist/latest-v22.x/$V" | tar -xJ --strip-components=1 && ./bin/node -v)';
   function nodeHelp(target,os,retry){
    target.textContent='';
    const box=doc.createElement('div');box.className='viewer-nodehelp';
@@ -260,6 +261,8 @@
    box.append(title,intro);
    if(os){const d=doc.createElement('small');d.className='viewer-os';d.textContent=i18n('nodehelp.detected',[os]);box.append(d);}
    const main=found||NODE_CMDS[0];box.append(cmdBox(main[0],main[2]));
+   // Linux without sudo: unpack the official build into ~/.local/node; TERMNEST looks there by itself (no PATH change needed).
+   if(!['mac','win'].includes(main[0])){const ns=cmdBox('nosudo',NODE_NOSUDO);const why=doc.createElement('small');why.className='viewer-os';why.textContent=i18n('nodehelp.nosudo_note');ns.insertBefore(why,ns.children[1]);box.append(ns);}
    const more=doc.createElement('details');const sum=doc.createElement('summary');sum.textContent=i18n('nodehelp.other');more.append(sum);
    NODE_CMDS.filter(c=>c!==main).forEach(c=>more.append(cmdBox(c[0],c[2])));box.append(more);
    const hint=doc.createElement('small');hint.textContent=i18n('nodehelp.note');box.append(hint);

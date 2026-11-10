@@ -1286,7 +1286,18 @@
   try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () { /* optional */ }); } catch (e) { /* optional */ }
 
   /* Dialogs */
-  function loadDirs(path) {
+  // Drives of a Windows machine (C:, D: … or /mnt/c, /mnt/d under WSL): one click to another drive.
+  function renderDrives(data) {
+    var box = $('dir-drives'), drives = data.drives || []; box.textContent = ''; box.hidden = drives.length < 2;
+    if (box.hidden) return;
+    box.append(el('small', 'hint', i18n('html.dir_drives')));
+    drives.forEach(function (d) {
+      var root = d.path.replace(/[\\/]+$/, '').toLowerCase(), here = data.path.toLowerCase(), on = here === root || here.indexOf(root + '/') === 0 || here.indexOf(root + '\\') === 0;
+      var b = el('button', 'btn dir-drive' + (on ? ' on' : ''), d.label); b.type = 'button'; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.onclick = function () { loadDirs(d.path); }; box.append(b);
+    });
+  }
+  function loadDirs(path, autoPick) {
     var request = ++dirRequest;
     dirCurrent = null; $('dir-ok').disabled = true; $('dir-up').disabled = true;
     $('dir-path').textContent = path || i18n('app.thu_muc_mac_dinh');
@@ -1297,6 +1308,8 @@
         if (request !== dirRequest || !$('dlg-dir').open) return;
         dirCurrent = data; $('dir-path').textContent = data.path;
         $('dir-ok').disabled = false; $('dir-up').disabled = data.parent === null;
+        renderDrives(data);
+        if (autoPick) { $('dir-ok').click(); return; }
         $('dir-note').textContent = data.truncated ? i18n('app.chi_hien_thi_500_thu') : '';
         if (!data.dirs.length) $('dir-list').append(el('p', 'hint', i18n('app.khong_co_thu_muc_con')));
         data.dirs.forEach(function (name) {
@@ -1334,8 +1347,28 @@
   $('n-cancel').onclick = function () { $('dlg-new').close(); };
   $('n-srv').onchange = function () { $('n-dir').value = ''; };
   // The folder browser is shared: "Phiên mới" fills #n-dir, other dialogs pass a callback that receives the chosen path.
-  function browseDir(hostId, start, pick) { dirServer = hostId; dirPick = pick || null; $('dlg-dir').showModal(); loadDirs(start || ''); }
-  $('n-browse').onclick = function () { browseDir($('n-srv').value, $('n-dir').value, null); };
+  function browseDir(hostId, start, pick) {
+    dirServer = hostId; dirPick = pick || null;
+    // On this computer the desktop app can show the system folder dialog (every drive, recent places, search).
+    var host = srv(hostId); $('dir-native').hidden = !(window.TW_DESKTOP && window.TW_DESKTOP.pickFolder && host && host.local);
+    $('dir-drives').hidden = true; $('dlg-dir').showModal(); loadDirs(start || '');
+  }
+  $('dir-native').onclick = function () {
+    window.TW_DESKTOP.pickFolder().then(function (chosen) { if (chosen && $('dlg-dir').open) loadDirs(String(chosen), true); })
+      .catch(function (e) { $('dir-err').textContent = (e && e.message) || String(e); });
+  };
+  // On this computer in the desktop app, "Chọn" opens the system folder dialog straight away (every drive, Finder/Explorer
+  // favourites). The path is checked by the folder listing (which also turns D:\x into /mnt/d/x under WSL) before it is used.
+  // Other servers, the browser version, or a dialog error: the built-in folder list.
+  $('n-browse').onclick = function () {
+    var id = $('n-srv').value, host = srv(id), b = $('n-browse');
+    if (!(window.TW_DESKTOP && window.TW_DESKTOP.pickFolder && host && host.local)) { browseDir(id, $('n-dir').value, null); return; }
+    b.disabled = true;
+    window.TW_DESKTOP.pickFolder().then(function (chosen) {
+      if (!chosen) return;
+      return api('GET', '/api/servers/' + id + '/dirs?path=' + encodeURIComponent(String(chosen))).then(function (data) { $('n-dir').value = data.path; });
+    }).catch(function () { browseDir(id, $('n-dir').value, null); }).finally(function () { b.disabled = false; });
+  };
   $('dir-up').onclick = function () { if (dirCurrent && dirCurrent.parent !== null) loadDirs(dirCurrent.parent); };
   $('dir-cancel').onclick = function () { $('dlg-dir').close(); };
   $('dlg-dir').onclose = function () { dirRequest++; dirCurrent = null; dirPick = null; };

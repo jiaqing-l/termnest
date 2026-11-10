@@ -252,7 +252,7 @@ test('local readiness/action helper uses an asynchronous isolated exec transport
     remotes: () => [remote], onSnapshot() {}, route() {}, log() {} };
   const running = cp.register(host, { setInterval: () => ({ unref() {} }), clearInterval() {} }); t.after(() => running.stop());
   const status = await running.facade.status(); assert.equal(status.auditReadiness[0].code, 'audit_account_required');
-  assert.equal(commands.length, 1); assert.ok(commands[0].startsWith('node -e ')); assert.ok(commands[0].includes('coordination_platform_unavailable'));
+  assert.equal(commands.length, 1); assert.match(commands[0], /^sh -c '.*command -v node.*' node -e /s); assert.ok(commands[0].includes('coordination_platform_unavailable'));
 });
 
 test('track popup data: rounds, failure files with time, log tail; tokens masked; nothing outside the task', async (t) => {

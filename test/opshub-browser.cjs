@@ -21,18 +21,18 @@ async function fleetData() {
     return { remotes: [r], crewOf: () => crew.roots };
   }
   const iso = (ms) => now - ms;
-  const crew = [{ root: '/Users/admin/ws', nudge: [['%6', '20261109-sv2-r7-robustness']], tasks: [{ id: '20261109-sv2-r7-robustness', title: 'SV2 R7 độ bền: chính sách theo phạm vi, biến thể, phủ thẻ/dòng mở, chất lượng ảnh', status: 'running', activeAt: iso(60000),
+  const crew = [{ root: '/home/demo/ws', nudge: [['%6', '20261109-checkout-v2']], tasks: [{ id: '20261109-checkout-v2', title: 'Checkout v2: giỏ hàng nhiều cửa hàng, mã giảm giá, thanh toán lại', status: 'running', activeAt: iso(60000),
     tracks: [{ id: 'W0', state: 'failed', rounds: 1, fixRounds: 0, lastRound: { result: '7', kind: 'new' }, lastEnd: iso(3600000) }, { id: 'W1', state: 'running', rounds: 2, fixRounds: 1, lastRound: { result: '7', kind: 'fix' }, lastEnd: iso(600000) },
       { id: 'W2', state: 'queued', rounds: 1, lastRound: { result: '8', kind: 'new' }, lastEnd: iso(1200000) }, { id: 'W5', state: 'done', rounds: 1, lastRound: { result: '0' }, lastEnd: iso(5400000) }], heartbeat: { armed: true, alive: true } }] }];
-  const st = (status, ago, o = {}) => ({ tool: 'claude', status, at: now - ago, waitingFor: '', cfg: '.claude-tech2', ...o });
+  const st = (status, ago, o = {}) => ({ tool: 'claude', status, at: now - ago, waitingFor: '', cfg: '.claude-work', ...o });
   const sessions = [
-    { name: 'Smart-Visibility-v2', created: 1, cmd: 'claude', paneIds: ['%6'], aiTool: 'claude', lines: [], aiStatus: st('busy', 60000) },
-    { name: 'Display-Program', created: 2, cmd: 'claude', aiTool: 'claude', asking: true, lines: ['Bạn duyệt hướng [IntegrationService] hay chọn permission riêng?', '❯ 1. Yes'], aiStatus: st('waiting', 720000, { waitingFor: 'permission' }) },
-    { name: 'PG-App', created: 3, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('idle', 7200000) },
-    { name: 'termnest-new', created: 4, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('idle', 30000, { fresh: true }) },
+    { name: 'Shop-Portal', created: 1, cmd: 'claude', paneIds: ['%6'], aiTool: 'claude', lines: [], aiStatus: st('busy', 60000) },
+    { name: 'Billing-API', created: 2, cmd: 'claude', aiTool: 'claude', asking: true, lines: ['Bạn duyệt hướng [PaymentGateway] hay chọn permission riêng?', '❯ 1. Yes'], aiStatus: st('waiting', 720000, { waitingFor: 'permission' }) },
+    { name: 'Mobile-App', created: 3, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('idle', 7200000) },
+    { name: 'notes-app', created: 4, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('idle', 30000, { fresh: true }) },
     { name: 'tn-ops', created: 5, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('idle', 90000) }];
-  const r1 = { cfg: { id: 'mac', name: 'MacBook-Air' }, ready: true, lastPoll: now, snapshot: { hostname: 'MacBook-Air', cpu: 78, ram: 61, sessions, workers: [{ kind: 'codex', task: '20261109-sv2-r7-robustness', track: 'W1', owner: { name: 'Smart-Visibility-v2' }, elapsed: 300 }] } };
-  const r2 = { cfg: { id: 'vm2', name: 'dev-ubuntu-02' }, ready: true, lastPoll: now, snapshot: { hostname: 'dev-ubuntu-02', cpu: 20, ram: 40, sessions: [{ name: 'AAV-Xspire', created: 7, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('busy', 30000) }] } };
+  const r1 = { cfg: { id: 'mac', name: 'demo-mac' }, ready: true, lastPoll: now, snapshot: { hostname: 'demo-mac', cpu: 78, ram: 61, sessions, workers: [{ kind: 'codex', task: '20261109-checkout-v2', track: 'W1', owner: { name: 'Shop-Portal' }, elapsed: 300 }] } };
+  const r2 = { cfg: { id: 'vm2', name: 'demo-linux' }, ready: true, lastPoll: now, snapshot: { hostname: 'demo-linux', cpu: 20, ram: 40, sessions: [{ name: 'Data-Sync', created: 7, cmd: 'claude', aiTool: 'claude', lines: [], aiStatus: st('busy', 30000) }] } };
   return { remotes: [r1, r2], crewOf: (id) => id === 'mac' ? crew : [] };
 }
 
@@ -42,15 +42,15 @@ async function state() {
   const { remotes, crewOf } = await fleetData(), fleet = hub.buildFleet(remotes, crewOf, Date.now()), findings = hub.ruleFindings(remotes, crewOf, fleet, Date.now());
   const counts = { BLOCKER: 0, WASTE: 0, DRIFT: 0, INFO: 0 }; findings.forEach((f) => counts[f.cat]++);
   const report = { id: 'r1', at: now - 300000, trigger: 'schedule', counts, findings, stats: { machines: fleet.machines.length, online: fleet.machines.length, sessions: fleet.sessions.length, tasks: fleet.tasks.length, waiting: fleet.waiting.length },
-    ai: quota ? { status: 'failed', code: 'ops_quota' } : { status: 'done', at: now - 200000, model: 'sonnet', account: '.claude-tech2', summary: 'sv2-r7: 2/4 track đã code; W1 kẹt vì test gọi constructor cũ (CS7036). Display-Program chờ anh 12 phút.',
-      findings: [{ cat: 'BLOCKER', session: 'Smart-Visibility-v2', machine: 'MacBook-Air', task: '20261109-sv2-r7-robustness', problem: 'W1 thoát 7 hai vòng', cause: 'Test gọi constructor cũ sau khi W0 đổi hợp đồng', next: 'fix-2 chỉ sửa test', owner: 'leader', evidence: 'Sv2KnowledgeCurationAppServiceTests.cs:561' }] } };
+    ai: quota ? { status: 'failed', code: 'ops_quota' } : { status: 'done', at: now - 200000, model: 'sonnet', account: '.claude-work', summary: 'checkout-v2: 2/4 track đã code; W1 kẹt vì test gọi constructor cũ (CS7036). Billing-API chờ anh 12 phút.',
+      findings: [{ cat: 'BLOCKER', session: 'Shop-Portal', machine: 'demo-mac', task: '20261109-checkout-v2', problem: 'W1 thoát 7 hai vòng', cause: 'Test gọi constructor cũ sau khi W0 đổi hợp đồng', next: 'fix-2 chỉ sửa test', owner: 'leader', evidence: 'CheckoutServiceTests.cs:561' }] } };
   return { fleet, findings, report, asks,
-    ops: { cfg: { enabled: true, server: 'mac', root: '/Users/admin/ws', accounts: ['.claude-tech2', '.claude'], model: 'sonnet', perm: 'acceptEdits', interval: 30 }, phase: quota ? 'paused' : 'ready', code: quota ? 'ops_quota' : 'ops_ready',
-      account: '.claude-tech2', session: 'tn-ops', lastReportAt: now - 300000, nextReportAt: now + 1500000, job: null },
+    ops: { cfg: { enabled: true, server: 'mac', root: '/home/demo/ws', accounts: ['.claude-work', '.claude'], model: 'sonnet', perm: 'acceptEdits', interval: 30 }, phase: quota ? 'paused' : 'ready', code: quota ? 'ops_quota' : 'ops_ready',
+      account: '.claude-work', session: 'tn-ops', lastReportAt: now - 300000, nextReportAt: now + 1500000, job: null },
     notify: { telegram: null, webhook: null, events: { owner_question: true, quota: true, blocker: true, ops_down: true, daily: true }, dailyHour: 18 } };
 }
-const tokens = { accounts: [{ tool: 'claude', email: 'hqsoft.technology@example.com', directory: '/Users/admin/.claude-tech2', limits: { session: { percent: 76, resetAt: Math.floor(now / 1000) + 3600 } } },
-  { tool: 'claude', email: 'agent03@example.com', directory: '/Users/admin/.claude', limits: { weekly: { percent: 100, resetAt: Math.floor(now / 1000) + 86400 } } }] };
+const tokens = { accounts: [{ tool: 'claude', email: 'work@example.com', directory: '/home/demo/.claude-work', limits: { session: { percent: 76, resetAt: Math.floor(now / 1000) + 3600 } } },
+  { tool: 'claude', email: 'team@example.com', directory: '/home/demo/.claude', limits: { weekly: { percent: 100, resetAt: Math.floor(now / 1000) + 86400 } } }] };
 const posts = [];
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/features/ops.css"><link rel="stylesheet" href="/features/opshub.css"><style>body{overflow:auto}.view.on{display:block}.main-top{position:static}</style></head><body><div class="main-top"><div class="seg"><button>Tổng quan</button><button>Terminal</button></div></div><section id="v-token"></section><dialog id="dlg-fixture-settings"><div id="ops-settings-mount"></div><div id="plugins-settings-mount"></div></dialog><script src="/vendor/markdown-it.js"></script><script src="/features-host.js"></script><script>
 const locale=${fs.readFileSync(path.join(publicDir, 'locales/vi.json'), 'utf8')};
@@ -72,7 +72,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST') posts.push({ url: req.url, body: body ? JSON.parse(body) : null });
   if (req.url === '/api/features/opshub/state') return res.end(JSON.stringify(await state()));
   if (req.url === '/api/features/opshub/reports') { const s = await state(); return res.end(JSON.stringify({ reports: [s.report, { ...s.report, id: 'r0', at: now - 2100000, ai: null }] })); }
-  if (req.url === '/api/features/opshub/config') return res.end(JSON.stringify({ cfg: (await state()).ops.cfg, notify: (await state()).notify, choices: [{ id: 'mac', name: 'MacBook-Air', online: true, roots: ['/Users/admin/ws'], accounts: ['.claude', '.claude-tech2'] }] }));
+  if (req.url === '/api/features/opshub/config') return res.end(JSON.stringify({ cfg: (await state()).ops.cfg, notify: (await state()).notify, choices: [{ id: 'mac', name: 'demo-mac', online: true, roots: ['/home/demo/ws'], accounts: ['.claude', '.claude-work'] }] }));
   if (req.url === '/api/features/opshub/ask') { const q = JSON.parse(body).q; asks.unshift({ id: 'a' + asks.length, q, at: Date.now(), state: 'done', answer: '**W1** thiếu tham số `policies` — xem `x.cs:561`.', doneAt: Date.now() }); return res.end(JSON.stringify({ ask: asks[0] })); }
   if (req.url.startsWith('/api/features/opshub/')) return res.end('{}');
   if (req.url.startsWith('/api/tokens')) return res.end(JSON.stringify(tokens));
@@ -110,9 +110,9 @@ let chrome, ws;
   const real = process.env.REAL_LOCAL === '1';
   if (!real) {
     assert.match(await evaluate('document.querySelector(".hub-title").textContent'), /1 team đang chạy · 1 việc cần anh/);
-    assert.match(await evaluate('document.querySelector(".hub-rail").textContent'), /Display-Program[\s\S]*IntegrationService/);
+    assert.match(await evaluate('document.querySelector(".hub-rail").textContent'), /Billing-API[\s\S]*PaymentGateway/);
     // A fresh session is shown as just opened, never as finished.
-    assert.match(await evaluate('document.querySelector(".hub-panel-b").textContent'), /termnest-new[\s\S]*Vừa mở/);
+    assert.match(await evaluate('document.querySelector(".hub-panel-b").textContent'), /notes-app[\s\S]*Vừa mở/);
     await shot('progress', 1440);
     // Search a track id → the team card with that track focused; the chip opens the track popup.
     await evaluate('(()=>{const i=document.querySelector(".hub-ask input");i.value="W1";i.dispatchEvent(new Event("input"));})()');
@@ -120,9 +120,9 @@ let chrome, ws;
     await evaluate('document.querySelector(".hub-sugg button").click()');
     await until('document.querySelector(".hub-trk.focus")', 'focused track');
     const card = await evaluate('document.querySelector(".hub-task").textContent');
-    assert.match(card, /Smart-Visibility-v2/); assert.match(card, /W0chờ xác minh/); assert.match(card, /W1đang chạy/); assert.match(card, /W2xếp hàng/); assert.match(card, /1\/4 xong/);
+    assert.match(card, /Shop-Portal/); assert.match(card, /W0chờ xác minh/); assert.match(card, /W1đang chạy/); assert.match(card, /W2xếp hàng/); assert.match(card, /1\/4 xong/);
     await evaluate('document.querySelector(".hub-trk.focus").click()');
-    assert.deepEqual(await evaluate('__popups.map(p=>[p[0],p[1],p[2].id,p[3].id,p[4]])'), [['mac', '/Users/admin/ws', '20261109-sv2-r7-robustness', 'W1', true]]);
+    assert.deepEqual(await evaluate('__popups.map(p=>[p[0],p[1],p[2].id,p[3].id,p[4]])'), [['mac', '/home/demo/ws', '20261109-checkout-v2', 'W1', true]]);
     // Report: AI summary first, rule findings folded below.
     await evaluate('[...document.querySelectorAll(".hub-tabs button")][1].click()');
     await until('document.querySelector(".hub-aisum")', 'AI report');
@@ -137,7 +137,7 @@ let chrome, ws;
     // Settings: form with the machine and account priority.
     await evaluate('[...document.querySelectorAll(".hub-tabs button")][3].click()');
     await until('document.querySelector(".hub-set select")', 'settings');
-    assert.match(await evaluate('document.querySelector(".hub-panel-b").textContent'), /Tài khoản Claude \(thứ tự ưu tiên\)[\s\S]*\.claude-tech2/);
+    assert.match(await evaluate('document.querySelector(".hub-panel-b").textContent'), /Tài khoản Claude \(thứ tự ưu tiên\)[\s\S]*\.claude-work/);
     await shot('settings', 1440);
     await evaluate('[...document.querySelectorAll(".hub-tabs button")][0].click()');
     await evaluate('document.querySelector(".hub-chip").click()');

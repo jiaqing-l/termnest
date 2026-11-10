@@ -462,8 +462,10 @@ function sessionDir(dir, r) {
   return dir ? `d=${shq(dir)}` : `d=${shq(DEFAULT_DIR)}\n[ -d "$d" ] || d="$HOME"`;
 }
 
+const { wslDrives, wslPath } = require('./lib/wsl-dirs');
 async function listDirs(res, r, dir) {
   dir = dir.trim();
+  if (r.mode === 'wsl' && /^[A-Za-z]:([\\/]|$)/.test(dir)) dir = await wslPath(r, dir.length === 2 ? dir + '\\' : dir);
   if (!validDir(dir) || (r.mode !== 'powershell' && dir && !dir.startsWith('/'))) { fail(res, 400, tr('srv.server.thu_muc_chua_dung')); return; }
   if (r.mode === 'powershell') { send(res, 200, await r.listPlainDirs(dir)); return; }
   const script = [
@@ -476,7 +478,9 @@ async function listDirs(res, r, dir) {
   ].join('\n');
   const out = await r.exec(`sh -c ${shq(script)}`);
   if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_mo_duoc_thu_muc')); return; }
-  send(res, 200, parseDirs(out.out));
+  const data = parseDirs(out.out);
+  if (r.mode === 'wsl') data.drives = await wslDrives(r);
+  send(res, 200, data);
 }
 
 async function createSession(req, res, r) {

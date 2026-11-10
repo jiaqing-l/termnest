@@ -288,6 +288,9 @@ dialog .f h2{margin:0}
 #dlg-dir{max-height:90vh;overflow:auto}
 #dir-path{font:13px/1.5 var(--mono);overflow-wrap:anywhere;white-space:pre-wrap;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
 #dir-up{justify-self:start}
+.dir-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dir-drives{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.dir-drives .hint{margin-right:2px}
+.dir-drive{min-width:44px;justify-content:center;font-weight:600}.dir-drive.on{border-color:var(--primary);color:var(--primary)}
 #dir-list{display:grid;gap:6px;max-height:38vh;overflow:auto;min-width:0}
 #dir-list .dir-folder{width:100%;min-width:0;text-align:left;justify-content:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}
 #dlg-dir .dlg-actions{flex-wrap:wrap}

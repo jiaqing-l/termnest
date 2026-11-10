@@ -154,8 +154,8 @@ test('a chat moves from the local machine (in-process runtimes) to another machi
 
 test('scripts for the local machine use the node that runs Termnest, not one from PATH', () => {
   assert.equal(move.nodeFor({ cfg: { local: true }, mode: 'native' }, shq), shq(process.execPath));
-  assert.equal(move.nodeFor({ cfg: { local: true }, mode: 'wsl' }, shq), 'node');
-  assert.equal(move.nodeFor({ cfg: {} }, shq), 'node');
+  assert.match(move.nodeFor({ cfg: { local: true }, mode: 'wsl' }, shq), /^sh -c '.*command -v node.*' node$/);
+  assert.match(move.nodeFor({ cfg: {} }, shq), /^sh -c '.*\.local\/node\/bin\/node.*' node$/);
   assert.ok(move.writeScript('claude', 'x', 'r', '/d', shq, undefined, 'e', Buffer.from('a'), 'default', shq(process.execPath)).startsWith(shq(process.execPath) + ' -e '));
 });
 
