@@ -146,7 +146,8 @@
 <dialog id="dlg-dir" aria-labelledby="dir-title"><div class="f">
   <h2 id="dir-title" data-i18n="html.chon_thu_muc"></h2>
   <div id="dir-path" aria-live="polite"></div>
-  <button type="button" class="btn" id="dir-up" disabled data-i18n="fileviewer.len_mot_cap"></button>
+  <div class="dir-tools"><button type="button" class="btn" id="dir-up" disabled data-i18n="fileviewer.len_mot_cap"></button><button type="button" class="btn" id="dir-native" hidden data-i18n="html.dir_native"></button></div>
+  <div id="dir-drives" class="dir-drives" hidden></div>
   <div id="dir-list" aria-busy="false" data-i18n-attrs="aria-label:html.thu_muc_con"></div>
   <p class="hint" id="dir-note" role="status"></p>
   <div class="err" id="dir-err" role="alert"></div>

@@ -260,6 +260,20 @@ async fn save_export(app: tauri::AppHandle, name: String, data: Vec<u8>) -> Resu
     .map_err(|e| e.to_string())?
 }
 
+// The system folder dialog, for "Phiên mới" on this computer (any drive on Windows). Returns the chosen path or nothing.
+#[tauri::command]
+async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || match app.dialog().file().blocking_pick_folder() {
+        Some(path) => path
+            .into_path()
+            .map(|p| Some(p.to_string_lossy().into_owned()))
+            .map_err(|e| e.to_string()),
+        None => Ok(None),
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 fn start(app: tauri::AppHandle) {
     diagnostic("starting server discovery");
     let state = app.state::<Server>();
@@ -496,6 +510,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             save_export,
+            pick_folder,
             open_external,
             set_fullscreen,
             desktop_ready,
