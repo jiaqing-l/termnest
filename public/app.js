@@ -656,7 +656,16 @@
       return true;
     });
     p.term.onData(p.ime.onData); p.term.onBinary(send);
-    p.term.onResize(function (size) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows })); });
+    p.term.onResize(function (size) {
+      if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows }));
+      // A full-screen app (Claude, Codex) redraws only the lines it believes it drew, so a resize that lands after it has printed
+      // leaves old wrapped text mixed into the new. Once the size has settled, ask it to repaint (Ctrl+L).
+      clearTimeout(p.repaint);
+      p.repaint = setTimeout(function () {
+        if (!p.ws || p.ws.readyState !== 1 || p.ro || p.ime.isComposing() || !p.scroll || !p.scroll.alternate) return;
+        rawSend(p, '\x0c');
+      }, 500);
+    });
     p.observer = new ResizeObserver(function () { fitPane(p); }); p.observer.observe(p.host);
     p.node.addEventListener('pointerdown', function () { focusPane(index, false); });
     p.node.addEventListener('focusin', function () { if (focusedPane !== index) focusPane(index, false); });
@@ -678,6 +687,21 @@
   function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
   function connectTerm() { if (panes.length && !wallOn) { panes[focusedPane].cur = cur; panes.forEach(connectPane); syncPanePickers(); } }
+  // A brand-new tmux session can attach before its first screen is drawn and stay blank until a key is pressed. If the pane is
+  // still empty shortly after connecting, resize by one column and back: tmux redraws on every size change.
+  function nudgeBlank(p, sock) {
+    if (plainPane(p)) return;
+    [500, 1500].forEach(function (ms) {
+      setTimeout(function () {
+        if (p.ws !== sock || sock.readyState !== 1) return;
+        var b = p.term.buffer.active, blank = true;
+        for (var i = 0; i < p.term.rows - 1 && blank; i++) { var l = b.getLine(b.baseY + i); if (l && l.translateToString(true).trim()) blank = false; }
+        if (!blank) return;
+        sock.send(JSON.stringify({ t: 'resize', rows: p.term.rows, cols: Math.max(10, p.term.cols - 1) }));
+        sock.send(JSON.stringify({ t: 'resize', rows: p.term.rows, cols: p.term.cols }));
+      }, ms);
+    });
+  }
   function connectPane(p) {
     var x = paneItem(p); if (!x || p.ime.isComposing()) return;
     var key = x.v.id + '/' + x.s.name;
@@ -690,7 +714,9 @@
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
     p.term.options.scrollback = plainPane(p) ? 50000 : 3000;
-    sock.onopen = function () { if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
+    sock.onopen = function () { if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p);
+      // A fit() while the socket was still connecting could not tell the server: tmux kept the old size and drew garbled or repeated lines.
+      sock.send(JSON.stringify({ t: 'resize', cols: p.term.cols, rows: p.term.rows })); nudgeBlank(p, sock); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
     sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
@@ -1013,6 +1039,9 @@
       if (s.stateSource !== 'status') return;
       // Termnest's own Ops sessions finish turns all day: only a question from them is worth a notification.
       if (!s.asking && /^tn-ops(?:-audit)?(?:-|$)/.test(s.name)) return;
+      // A session that has only just been created and is already "waiting" was opened, not finished: Claude can take longer than
+      // the 5 s start window to settle on a slow link, and nothing was ever asked of it.
+      if (!s.asking && s.created && (stateAt(s) || 0) - s.created * 1000 < 60000) return;
       if (waitStates && waitStates[key] && waitStates[key] !== 'wait' && wantAlert(waitCat(s))) meow();
       var since = s.stateSince;
       // A question is reported after a few seconds; a session that finished after 30 quiet seconds (it may only be pausing).
