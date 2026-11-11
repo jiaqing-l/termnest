@@ -1,0 +1,58 @@
+/* Crew panes. Only TermNest tokens; layouts are plain CSS on #split. */
+.ops-crew-detail{display:none!important} /* replaced by the Crew box (state measured from the panes) */
+#split.crewL{grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:minmax(0,1fr)}
+#split.crewL>.pane.crew-lead{grid-row:1/-1;grid-column:1}
+#split.crewL.n2{grid-template-rows:repeat(2,minmax(0,1fr))}
+#split.crewL.n3,#split.crewL.n4{grid-template-columns:minmax(0,5fr) minmax(0,3.5fr) minmax(0,3.5fr);grid-template-rows:repeat(2,minmax(0,1fr))}
+#split.crewL.n3>.pane:last-child{grid-column:2/-1}
+#split.crewT{grid-template-rows:minmax(0,1.3fr) minmax(0,1fr)}
+#split.crewT>.pane.crew-lead{grid-column:1/-1}
+#split.crewT.n1{grid-template-columns:minmax(0,1fr)}
+#split.crewT.n2{grid-template-columns:repeat(2,minmax(0,1fr))}
+#split.crewT.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+#split.crewT.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pane[data-ro="1"] .terminal{cursor:default}
+.cp-ro{position:absolute;right:8px;bottom:8px;z-index:6;font:700 11px var(--sans);padding:2px 10px;border-radius:99px;border:0;background:rgba(255,255,255,.14);color:#dfe6f5;min-height:24px}
+.cp-ro:hover{background:rgba(255,255,255,.26)}.cp-ro.on{background:var(--wait-soft);color:var(--wait)}
+.pane{position:relative}
+
+.cp-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--line);min-width:0;flex:none}
+.cp-bar[hidden]{display:none}
+.cp-nm{display:flex;align-items:center;gap:8px;min-width:0;flex:none}.cp-nm b{font:800 15px var(--round);white-space:nowrap}.cp-nm .pt{width:28px;height:28px;display:block}.cp-nm .pt svg{width:28px;height:28px}
+.cp-steps{display:flex;align-items:center;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none;flex:1}.cp-steps::-webkit-scrollbar{display:none}
+.cp-step{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);font-size:12px;font-weight:700;white-space:nowrap;min-height:28px}
+.cp-step i{width:8px;height:8px;border-radius:50%;background:var(--idle);flex:none}.cp-step.dispatched{border-color:var(--hero-a)}.cp-step.dispatched i{background:#19c37d}
+.cp-step.done{color:var(--ok)}.cp-step.done i{background:var(--ok)}.cp-step.queued i{background:var(--wait-line)}
+.cp-arrow{color:var(--fg-3);font-size:12px;flex:none}
+.cp-src{font-size:11px;color:var(--fg-3)}
+.cp-menu{position:absolute;right:14px;top:100%;z-index:40;background:var(--surface);border:1px solid var(--line-strong);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:grid;gap:2px;min-width:220px}
+.cp-menu button{text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:10px;font-weight:600;font-size:13px}.cp-menu button:hover{background:var(--surface-2)}.cp-menu .dg{color:var(--bad)}
+.cp-bar{position:relative}
+.cp-slots{display:flex;gap:6px;overflow-x:auto;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--line);scrollbar-width:none;flex:none}.cp-slots::-webkit-scrollbar{display:none}
+/* Crew screen: terminals get the whole width; the detail box slides in on demand */
+#app.crew-mode .detail{display:none}
+#app.crew-mode.cp-detail .detail{display:flex;position:absolute;right:0;top:57px;bottom:0;width:340px;z-index:30;box-shadow:-18px 0 30px -22px rgba(20,30,60,.5)}
+#app.crew-mode .focus-body{position:relative}
+
+.cp-box{display:grid;gap:10px}.cp-box h3{margin:0}
+.cp-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cp-alert{border-radius:10px;padding:8px 10px;font-size:12.5px;font-weight:600;background:var(--wait-soft);color:var(--wait)}.cp-alert.err{background:var(--bad-soft);color:var(--bad)}
+.cp-fact{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px;align-items:baseline;margin:0}.cp-fact dt{color:var(--fg-3);font-size:12px}.cp-fact dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.cp-fact .bad{color:var(--bad)}.cp-fact .ok{color:var(--ok)}.cp-fact .wait{color:var(--wait)}
+.cp-acts{display:grid;gap:6px}
+.pill.check{background:var(--wait-soft);color:var(--wait)}.pill.unknown{background:var(--surface-3);color:var(--fg-2)}
+/* sidebar + overview */
+.cp-group{border:1.5px solid var(--line);border-radius:16px;padding:4px 4px 1px;margin-bottom:8px;background:var(--surface-2)}
+.cp-group .sess{margin-bottom:2px}.cp-group .sess.w{margin-left:12px;width:calc(100% - 12px)}
+.card.crewcard{grid-column:1/-1;cursor:pointer}
+.cp-mini3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:0 12px 12px}
+.cp-mini3 .mini{height:84px;border-radius:10px;cursor:pointer}
+#app.side-mini .cp-group .sess.w{margin-left:0;width:100%}
+/* dialog */
+#dlg-crew .cp-radio{display:flex;gap:6px}
+#dlg-crew .cp-diagram{display:grid;gap:3px;background:var(--term-line);padding:3px;border-radius:10px;width:150px;height:84px}
+#dlg-crew .cp-diagram i{background:var(--term);border-radius:4px;display:grid;place-items:center;color:var(--term-dim);font:700 10px var(--mono);font-style:normal}
+#app.crew-mode .detail .cp-box{order:-1}
+.cp-pet{display:block;width:44px;height:44px;flex:none}.cp-pet svg{width:44px;height:44px}
+.card.crewcard .card-head{display:flex;align-items:center;gap:12px;padding:12px 14px}.card.crewcard .card-head .t{flex:1;min-width:0}
+#app.compact .cp-steps{display:none}#app.compact .cp-bar{gap:6px;padding:6px 10px}#app.compact .cp-nm .pill{display:none}

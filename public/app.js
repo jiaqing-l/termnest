@@ -63,6 +63,8 @@
     return i18n('app.ngay', [Math.floor(sec / 86400)]);
   }
   function scoped() { return scope === 'all' ? servers : servers.filter(function (v) { return v.id === scope; }); }
+  // Sessions that belong to a Crew (features/crewpanes) are shown as one group, not as loose sessions.
+  function inCrew(v, s) { return !!(window.TW && window.TW.crewOf && window.TW.crewOf(v.id, s.name)); }
   function vis() {
     var out = [];
     scoped().forEach(function (v) { v.sessions.forEach(function (s) { out.push({ v: v, s: s }); }); });
@@ -140,8 +142,9 @@
     row('all', i18n('app.tat_ca_may_chu'), i18n('app.so_may_chu', [servers.length]), total, false, 'all');
     servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
+    if (window.TW && window.TW.sideCrews) window.TW.sideCrews(box, { open: openCrewLayout });
     [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
-      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s); }); if (!list.length) return;
+      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s) && !inCrew(x.v, x.s); }); if (!list.length) return;
       box.append(el('div', 'group', g[1]));
       list.forEach(function (x) {
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
@@ -265,11 +268,12 @@
         var g = el('div', 'grid');
         // Grouped by state like the sidebar: waiting for you, then running, then idle (the usual order inside each group).
         var RANK = { wait: 0, run: 1, idle: 2 };
-        v.sessions.filter(matches).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
+        v.sessions.filter(matches).filter(function (s) { return !inCrew(v, s); }).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
           var key = v.id + '/' + s.name, old = previous[key];
           if (old && old.input && (old.input === active || old.input.value)) { var message = old.card.querySelector('.pet-message'); if (message) message.classList.remove('message-arrives'); cardRefs[key] = old; g.append(old.card); signature = '';  }
           else g.append(sessionCard(v, s));
         });
+        if (window.TW && window.TW.gridCrews) window.TW.gridCrews(g, v, { open: openCrewLayout });
         var add = el('button', 'card add'); add.innerHTML = pet(ORDER[v.sessions.length % ORDER.length], 'run'); add.append(i18n('app.phien_moi'));
         add.setAttribute('aria-label', i18n('app.tao_phien_moi_tren', [v.name])); add.onclick = function () { newDlg(v.id); }; g.append(add);
         sec.append(g);
@@ -522,6 +526,7 @@
   function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
   // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
   function paneSend(p, d) {
+    if (p.ro) return; // read-only Crew pane: the toggle on the pane lets the person step in
     if (p.scroll && p.scroll.inMode && !plainPane(p)) {
       p.scroll.inMode = false;
       p.sendChain = scrollCall(p, 'bottom').catch(function () {}).then(function () { rawSend(p, d); });
@@ -697,9 +702,29 @@
     if (n === 1 && focusedPane) { closePane(panes[0]); panes[0].cur = chosen; }
     while (panes.length > n) { var p = panes.pop(); closePane(p); p.observer.disconnect(); p.ime.dispose(); p.term.dispose(); p.node.remove(); }
     while (panes.length < n) { createPane(); var x = vis()[panes.length - 1]; if (x) panes[panes.length - 1].cur = { id: x.v.id, name: x.s.name }; }
-    paneCount = n; focusedPane = Math.min(focusedPane, n - 1); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one';
+    paneCount = n; focusedPane = Math.min(focusedPane, n - 1); panes.forEach(function (q) { q.node.classList.remove('crew-lead'); }); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one'; if (window.TW) window.TW.emit('layout', $('split').className);
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
+  // Crew layout: open several sessions at once, one per pane (orchestrator first), with a CSS layout class and optional read-only panes.
+  function showPanes(items, cls, ro) {
+    if (wallOn) setWall(false);
+    if ($('app').classList.contains('compact')) { items = items.slice(0, 1); cls = 'one'; ro = []; }
+    if (!panes.length) createPane();
+    while (panes.length > items.length) { var q = panes.pop(); closePane(q); q.observer.disconnect(); q.ime.dispose(); q.term.dispose(); q.node.remove(); }
+    while (panes.length < items.length) createPane();
+    items.forEach(function (it, i) {
+      var p = panes[i];
+      if (!p.cur || p.cur.id !== it.id || p.cur.name !== it.name) { closePane(p); p.cur = { id: it.id, name: it.name }; }
+      p.ro = !!(ro && ro[i]); p.node.dataset.ro = p.ro ? '1' : ''; p.node.classList.toggle('crew-lead', i === 0 && /^crew/.test(cls));
+    });
+    paneCount = items.length; focusedPane = 0; cur = panes[0].cur; $('split').className = cls;
+    if (window.TW) window.TW.emit('layout', cls);
+    focusPane(0, false); syncPanePickers();
+    if (view !== 'focus') setView('focus'); else { panes.forEach(connectPane); render(); }
+    renderCommands(); requestAnimationFrame(sizeTerm);
+  }
+  function setPaneRo(i, on) { var p = panes[i]; if (!p) return; p.ro = !!on; p.node.dataset.ro = p.ro ? '1' : ''; }
+  function openCrewLayout(crew) { if (window.TW) window.TW.emit('open-crew', crew); }
   // A new session can be missing from the first refresh (a poll that started before it was created): opening it then found
   // nothing and fell back to the All tab. Wait for it to appear (a few quick refreshes), then open it.
   function openWhenReady(id, name, tries) {
@@ -1583,7 +1608,7 @@
     if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
     var c = $('set-browser'); c.checked = true; c.onchange.call(c);
   }
-  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, showPanes: showPanes, setPaneRo: setPaneRo, focusPane: function (i) { focusPane(i, true); }, compact: function () { return $('app').classList.contains('compact'); }, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });
