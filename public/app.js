@@ -492,7 +492,7 @@
   function focusPane(index, focus) {
     // A Crew worker pane is only watched: picking it must not turn the detail panel (and the tab) into the worker's; they stay the session's.
     var pc = panes[index] && panes[index].cur;
-    if (pc && window.TW && window.TW.crewWorker && window.TW.crewWorker(pc.id, pc.name) && cur && !(cur.id === pc.id && cur.name === pc.name)) { focusedPane = index; panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); }); return; }
+    if (pc && typeof window !== 'undefined' && window.TW && window.TW.crewWorker && window.TW.crewWorker(pc.id, pc.name) && cur && !(cur.id === pc.id && cur.name === pc.name)) { focusedPane = index; panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); }); return; }
     if (focusedPane === index && cur === panes[index].cur) { if (focus) focusTerminal(panes[index]); return; }
     focusedPane = index; cur = panes[index].cur;
     panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); });
