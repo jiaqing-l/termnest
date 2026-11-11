@@ -2528,5 +2528,6 @@
   "cp.src_kind_round": "Vòng gần nhất: đọc từ ROUNDS.tsv của track",
   "cp.src_kind_manifest": "Khai báo trong MANIFEST (chưa có vòng chạy để đối chiếu)",
   "cp.src_kind_none": "Chưa biết: track chưa giao nên chưa có thông tin",
-  "cp.log_wait_running": "Đang chạy, chưa có dòng log nào (worker ghi log khi có đầu ra)."
+  "cp.log_wait_running": "Đang chạy, chưa có dòng log nào (worker ghi log khi có đầu ra).",
+  "cp.detail_session": "Chi tiết phiên"
 }

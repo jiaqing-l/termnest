@@ -2545,5 +2545,6 @@
   "cp.src_kind_round": "Latest round: read from the track's ROUNDS.tsv",
   "cp.src_kind_manifest": "Declared in MANIFEST (no round has run to confirm it)",
   "cp.src_kind_none": "Unknown: the track has not been dispatched, so there is nothing to read",
-  "cp.log_wait_running": "Running, no log line yet (the worker writes its log when it has output)."
+  "cp.log_wait_running": "Running, no log line yet (the worker writes its log when it has output).",
+  "cp.detail_session": "Session details"
 }

@@ -253,8 +253,30 @@
   function seg(items, value, on) {
     var s = el('div', 'seg'); items.forEach(function (it) { var b = el('button', '', it[1]); b.type = 'button'; b.setAttribute('aria-pressed', String(value === it[0])); b.onclick = function () { on(it[0]); }; s.append(b); }); return s;
   }
+  // An ordinary session gets the same slim bar as a Crew: name, state, where it runs, then ⓘ (details on demand) and ⋯ (pet / detach / stop).
+  function drawPlainBar(host) {
+    var app0 = document.getElementById('app'), a = app(), x = a.current && a.view && a.view() === 'focus' ? a.current() : null, split = document.getElementById('split');
+    var v = x && x.v ? (a.servers() || []).filter(function (q) { return q.id === x.v.id; })[0] : null, s0 = v && v.sessions ? v.sessions.filter(function (q) { return q.name === x.s.name; })[0] : null;
+    if (!s0 || a.compact() || split.hidden || split.className !== 'one') { host.hidden = true; host.textContent = ''; delete host.dataset.html; app0.classList.remove('slim', 'cp-detail'); return; }
+    var b = el('div'), nm = el('div', 'cp-nm');
+    nm.append(el('b', '', s0.name), pill(s0.state === 'wait' ? 'wait' : s0.state === 'run' ? 'run' : '', s0.state === 'wait' ? i18n('app.cho_ban') : s0.state === 'run' ? i18n('app.dang_chay') : i18n('app.dang_nghi')));
+    var where = el('div', 'cp-task', v.name + (s0.path ? ' · ' + s0.path : '')); where.title = where.textContent;
+    var det = el('button', 'btn icon-btn', 'ⓘ'); det.type = 'button'; det.title = i18n('cp.detail_session'); det.setAttribute('aria-label', det.title); det.onclick = function () { app0.classList.toggle('cp-detail'); };
+    var more = el('button', 'btn icon-btn', '⋯'); more.type = 'button'; more.title = i18n('cp.more'); more.setAttribute('aria-label', more.title); more.onclick = function () { menuOpen = !menuOpen; drawBar(); };
+    b.append(nm, where, det, more);
+    if (menuOpen) {
+      var m = el('div', 'cp-menu'); m.setAttribute('role', 'menu');
+      var click = function (q) { return function () { var t = document.querySelector(q); if (t) t.click(); else app().say(i18n('cp.no_session_detail'), false, 2500); }; };
+      [[i18n('app.doi_thu_cung'), click('#detail > button.btn')], [i18n('app.roi_van_chay'), click('#detail .detail-actions .btn:not(.danger)')], [i18n('app.dung'), click('#detail .detail-actions .btn.danger'), true]].forEach(function (it) {
+        var i2 = el('button', it[2] ? 'dg' : '', it[0]); i2.type = 'button'; i2.onclick = function () { menuOpen = false; drawBar(); it[1](); }; m.append(i2);
+      });
+      b.append(m);
+    }
+    host.hidden = false; app0.classList.add('slim');
+    if (b.innerHTML !== host.dataset.html) { host.dataset.html = b.innerHTML; host.replaceChildren.apply(host, Array.prototype.slice.call(b.childNodes)); }
+  }
   function drawBar() {
-    var host = barNode(), c = currentCrew(); host.hidden = !c; if (!c) { host.textContent = ''; delete host.dataset.html; return; } // forget the markup too, or the same bar is never drawn again after leaving the Crew
+    var host = barNode(), c = currentCrew(); if (!c) { drawPlainBar(host); return; } document.getElementById('app').classList.remove('slim'); host.hidden = false; // forget the markup too, or the same bar is never drawn again after leaving the Crew
     var b = el('div'); // built aside, swapped in only when the markup changed (keeps clicks and focus stable)
     var sm = summary(c), nm = el('div', 'cp-nm'), pt = el('span', 'pt'); pt.innerHTML = petSvg(0, sm.k); nm.append(pt, el('b', '', c.name), pill(sm.cls, sm.label));
     var steps = el('div', 'cp-steps'), t = ((tracks[c.id] || {}).tracks) || [];
@@ -379,7 +401,7 @@
     setInterval(function () {
       boxes = boxes.filter(function (b) { return b.box.isConnected; });
       boxes.forEach(function (b) { var c = crews.filter(function (x) { return x.id === b.id; })[0]; if (c) drawBox(b.box, c); });
-      if (cur) { drawBar(); placeGut(); }
+      if (cur) { drawBar(); placeGut(); } else drawPlainBar(barNode());
     }, 1000);
   });
 })();
