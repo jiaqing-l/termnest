@@ -103,3 +103,10 @@
 .pets-off .cp-pet{display:none}
 /* pets off: no empty box before the Crew name in the bar (the tabs and cards show no icon either) */
 .pets-off .cp-nm .pt{display:none}
+
+/* closing line of a worker pane */
+.cp-wf{flex:none;padding:0 10px;font:700 12px/22px var(--mono);display:none}
+.cp-wf.done,.cp-wf.failed,.cp-wf.queued{display:block}
+.cp-wf.done{background:rgba(25,195,125,.16);color:#49dca0;border-top:1px solid rgba(73,220,160,.35)}
+.cp-wf.failed{background:rgba(229,72,77,.16);color:#ff8a96;border-top:1px solid rgba(255,138,150,.35)}
+.cp-wf.queued{background:#161d36;color:#8c98b5;border-top:1px solid var(--term-line)}

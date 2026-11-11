@@ -196,7 +196,7 @@
   function wlogPane(c, nm) {
     var t = c.trackMap[nm] || {}, p = el('section', 'cp-wlog'); p.dataset.w = nm; p.dataset.crew = c.id;
     var h = el('div', 'cp-wh'); h.append(el('i', 'cp-dot'), el('b', '', nm), el('span', 'cp-kind', kindLabel(c, nm)), el('span', 'cp-wt', t.title || ''), el('span', 'cp-st', ''));
-    p.append(h, el('pre', 'cp-wl', i18n('cp.log_reading'))); return p;
+    p.append(h, el('pre', 'cp-wl', i18n('cp.log_reading')), el('div', 'cp-wf')); return p;
   }
   function stripAnsi(x) { return String(x || '').replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, '').replace(/\r/g, ''); }
   function refreshLogs() {
@@ -204,6 +204,9 @@
       var c = crews.filter(function (x) { return x.id === p.dataset.crew; })[0]; if (!c) return; var nm = p.dataset.w, t = c.trackMap[nm]; if (!t) return;
       var st = paneState(c, nm), dot = p.querySelector('.cp-dot'); dot.className = 'cp-dot ' + (st.k === 'run' || st.k === 'done' ? 'ok' : st.k === 'failed' ? 'bad' : st.k === 'wait' ? 'wait' : ''); p.querySelector('.cp-st').textContent = LABEL[st.k] || '';
       p.classList.toggle('need', st.k === 'failed');
+      // The end of a worker's pane says how it ended: a green line when done, red when failed, grey while it waits its turn.
+      var wf = p.querySelector('.cp-wf'), mark = st.k === 'done' ? ['done', '✔ ' + LABEL.done] : st.k === 'failed' ? ['failed', '✖ ' + LABEL.failed] : st.k === 'queued' ? ['queued', '… ' + LABEL.queued] : null;
+      wf.className = 'cp-wf' + (mark ? ' ' + mark[0] : ''); wf.textContent = mark ? mark[1] : '';
       var q = 'server=' + encodeURIComponent(c.server) + '&session=' + encodeURIComponent(c.name) + '&task=' + encodeURIComponent(t.task) + '&track=' + encodeURIComponent(t.track);
       TW.api('GET', '/api/features/crew/log?' + q).then(function (r) {
         var pre = p.querySelector('.cp-wl'), near = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40, lines = stripAnsi(r.text).split('\n').slice(-200).join('\n');
