@@ -1,6 +1,6 @@
 {
   "name": "termnest",
-  "version": "1.1.20",
+  "version": "1.1.21",
   "description": "A home for every tmux session: local and SSH terminals, monitoring and AI session tools.",
   "main": "server.js",
   "scripts": {

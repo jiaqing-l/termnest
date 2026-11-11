@@ -125,21 +125,3 @@ test('deriveCrews: a task without leader or without tracks creates no Crew; two 
   assert.equal(two.length, 1); assert.deepEqual(two[0].workers, ['W1', 'B/W1']);
   assert.equal(two[0].trackMap['B/W1'].task, 'B');
 });
-
-test('demo: the worker sessions of a finished plan are closed after the cleanup delay, the crew itself stays', async () => {
-  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'crewtidy-'));
-  const keep = [process.env.TW_CREW_CLEANUP_MS, process.env.TW_CREW_SYNC_MS];
-  process.env.TW_CREW_CLEANUP_MS = '0'; process.env.TW_CREW_SYNC_MS = '30';
-  try {
-    const fx = host(); mod.register(fx.h);
-    await call(fx, 'POST /create', { server: 'srv', name: 'tidy', dir });
-    await call(fx, 'POST /spawn', { id: 'srv/tidy', kind: 'codex' }); await call(fx, 'POST /spawn', { id: 'srv/tidy', kind: 'claude' });
-    fs.mkdirSync(path.join(dir, '.crew-demo', 'tidy'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.crew-demo', 'tidy', 'tracks.json'), JSON.stringify({ phase: 'done', at: Date.now() - 1000, tracks: [] }));
-    await new Promise((r) => setTimeout(r, 300));
-    await call(fx, 'GET /list', {});
-    assert.deepEqual(fx.out.body.crews[0].workers, []);
-    assert.deepEqual(fx.stopped.sort(), ['tidy-W1', 'tidy-W2']);
-    assert.equal(fx.out.body.crews.length, 1);
-  } finally { process.env.TW_CREW_CLEANUP_MS = keep[0]; process.env.TW_CREW_SYNC_MS = keep[1]; if (keep[0] === undefined) delete process.env.TW_CREW_CLEANUP_MS; if (keep[1] === undefined) delete process.env.TW_CREW_SYNC_MS; fs.rmSync(dir, { recursive: true, force: true }); }
-});

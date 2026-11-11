@@ -122,24 +122,13 @@
   };
   TW.crewWorker = function (id, name) { var c = crewOf(id, name); return !!c && name !== c.name; };
   // More workers than panes: panes go to the ones that need a look (waiting, quiet, running); the rest stay as chips.
-  var MAXPANES = 6, TIDY_MS = 8000, pins = {}, showAll = {}, doneSeen = {}, hidden = loadHidden(), LEADKEY = 'tw-crew-lead', HIDEKEY = 'tw-crew-hide';
+  var MAXPANES = 6, pins = {}, hidden = loadHidden(), LEADKEY = 'tw-crew-lead', HIDEKEY = 'tw-crew-hide';
   function loadHidden() { try { return JSON.parse(localStorage.getItem('tw-crew-hide') || '{}') || {}; } catch (e) { return {}; } }
   function setHidden(id, on) { if (on) hidden[id] = true; else delete hidden[id]; try { localStorage.setItem(HIDEKEY, JSON.stringify(hidden)); } catch (e) { /* optional */ } }
   function leadShare() { try { var v = parseFloat(localStorage.getItem(LEADKEY)); return v >= 0.25 && v <= 0.85 ? v : 0; } catch (e) { return 0; } }
   function prio(c, n) { var k = paneState(c, n).k; return k === 'wait' || k === 'quiet' || k === 'gone' || k === 'failed' ? 3 : k === 'run' ? 2 : k === 'idle' || k === 'queued' ? 1 : 0; }
-  // Tidy: a worker that has finished leaves the grid a few seconds later (its chip stays); waiting, failed and running ones stay,
-  // and so does any worker the person picked. When everything is done the grid folds away and the orchestrator's chat gets the space.
-  function visibleBase(c) {
-    var all = liveWorkers(c).slice().sort(); if (showAll[c.id]) return all;
-    var now = Date.now(), pin = pins[c.id] || [];
-    return all.filter(function (n) {
-      var key = c.id + '|' + n, k = paneState(c, n).k;
-      if (k !== 'done') { delete doneSeen[key]; return true; }
-      if (!doneSeen[key]) doneSeen[key] = now;
-      return pin.indexOf(n) >= 0 || now - doneSeen[key] < TIDY_MS;
-    });
-  }
-  function allDone(c) { var w = liveWorkers(c); return w.length > 0 && w.every(function (n) { return paneState(c, n).k === 'done'; }); }
+  // Every worker of the Crew stays in the grid, finished or not (only the person hides them, with the button in the bar).
+  function visibleBase(c) { return liveWorkers(c).slice().sort(); }
   function pickShown(c) {
     var w = visibleBase(c);
     if (w.length <= MAXPANES) return w;
@@ -275,19 +264,22 @@
     // The action used most is one click away; only rare ones (stop, layout) sit in the ⋯ menu.
     var nd = el('button', 'btn icon-btn'); nd.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg>'; nd.type = 'button'; nd.title = i18n('cp.nudge'); nd.setAttribute('aria-label', i18n('cp.nudge')); nd.onclick = function () { nudge(c); };
     var tg = el('button', 'btn icon-btn'); tg.type = 'button';
-    var manual = !!hidden[c.id], folded = !manual && !(cur.shown || []).length && liveWorkers(c).length > 0 && !showAll[c.id], off = manual || folded;
+    var off = !!hidden[c.id];
     tg.innerHTML = '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 13h18"' + (off ? ' stroke-dasharray="2 2"' : '') + '/></svg>';
-    tg.title = manual ? i18n('cp.tg_show') : folded ? i18n('cp.tg_show_done') : showAll[c.id] ? i18n('cp.tg_only_needed') : i18n('cp.tg_hide'); tg.setAttribute('aria-label', tg.title); tg.setAttribute('aria-pressed', String(off));
-    tg.onclick = function () { if (manual) setHidden(c.id, false); else if (folded) showAll[c.id] = true; else if (showAll[c.id]) delete showAll[c.id]; else setHidden(c.id, true); openCrew(c, c.name); };
+    tg.title = off ? i18n('cp.tg_show') : i18n('cp.tg_hide'); tg.setAttribute('aria-label', tg.title); tg.setAttribute('aria-pressed', String(off));
+    tg.onclick = function () { setHidden(c.id, !hidden[c.id]); openCrew(c, c.name); };
     var det = el('button', 'btn icon-btn', 'ⓘ'); det.type = 'button'; det.title = i18n('cp.detail'); det.setAttribute('aria-label', i18n('cp.detail')); det.onclick = function () { document.getElementById('app').classList.toggle('cp-detail'); };
     var more = el('button', 'btn icon-btn', '⋯'); more.type = 'button'; more.title = i18n('cp.more'); more.setAttribute('aria-label', i18n('cp.more')); more.onclick = function () { menuOpen = !menuOpen; drawBar(); };
     b.append(nd, tg, det, more);
     if (menuOpen) {
       var m = el('div', 'cp-menu'); m.setAttribute('role', 'menu');
-      var items = c.derived ? [] : [[layoutMode === '1' ? i18n('cp.view_crew') : 'Xem 1 pane', function () { layoutMode = layoutMode === '1' ? 'T' : '1'; openCrew(c, cur.focus); }]];
+      // The session's own actions (detach / stop) are the ones of the detail panel; the menu reaches them in one click.
+      var sessBtn = function (danger) { return function () { var b = document.querySelector('#detail .detail-actions .btn' + (danger ? '.danger' : ':not(.danger)')); if (b) b.click(); else app().say(i18n('cp.no_session_detail'), false, 2500); }; };
+      var items = c.derived ? [] : [[layoutMode === '1' ? i18n('cp.view_crew') : i18n('cp.view_one'), function () { layoutMode = layoutMode === '1' ? 'T' : '1'; openCrew(c, cur.focus); }]];
+      items.push([i18n('app.roi_van_chay'), sessBtn(false)]);
+      if (c.derived) items.push([i18n('cp.stop_leader'), sessBtn(true), true]);
       if (demoMode) items.push(['Giả lập thợ treo (demo)', function () { hang(c); }]);
       if (!c.derived) items.push([i18n('cp.stop_crew'), function () { stopCrew(c); }, true]);
-      if (!items.length) menuOpen = false;
       items.forEach(function (it) { var i2 = el('button', it[2] ? 'dg' : '', it[0]); i2.type = 'button'; i2.onclick = function () { menuOpen = false; drawBar(); it[1](); }; m.append(i2); });
       b.append(m);
     }
@@ -381,12 +373,7 @@
     setInterval(function () {
       boxes = boxes.filter(function (b) { return b.box.isConnected; });
       boxes.forEach(function (b) { var c = crews.filter(function (x) { return x.id === b.id; })[0]; if (c) drawBox(b.box, c); });
-      if (cur) {
-        var c2 = currentCrew();
-        if (c2 && !allDone(c2)) delete showAll[c2.id];
-        if (c2 && layoutMode !== '1' && !hidden[c2.id] && cur.cls !== 'one' && pickShown(c2).join() !== (cur.shown || []).join()) openCrew(c2, c2.name);
-        else { drawBar(); placeGut(); }
-      }
+      if (cur) { drawBar(); placeGut(); }
     }, 1000);
   });
 })();

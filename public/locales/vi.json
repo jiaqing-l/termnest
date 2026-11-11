@@ -2500,8 +2500,6 @@
   "cp.panes_tip": " pane (ưu tiên thợ cần bạn, đang chạy). Bấm chip để xem thợ khác.",
   "cp.nudge": "Nhắc điều phối tiếp tục",
   "cp.tg_show": "Hiện các thợ",
-  "cp.tg_show_done": "Hiện cả các thợ đã xong",
-  "cp.tg_only_needed": "Chỉ hiện thợ cần xem",
   "cp.tg_hide": "Ẩn các thợ (điều phối rộng hơn)",
   "cp.detail": "Chi tiết Crew",
   "cp.more": "Thêm",
@@ -2522,5 +2520,8 @@
   "cp.state_done": "Xong",
   "cp.done_l": "xong",
   "cp.n_done_tracks": " track xong",
-  "cp.n_done": " xong"
+  "cp.n_done": " xong",
+  "cp.stop_leader": "Dừng phiên điều phối",
+  "cp.view_one": "Xem 1 pane",
+  "cp.no_session_detail": "Chưa có chi tiết phiên để thao tác. Bấm ⓘ rồi thử lại."
 }

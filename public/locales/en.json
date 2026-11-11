@@ -2517,8 +2517,6 @@
   "cp.panes_tip": " panes (workers that need you or are running come first). Click a chip to see another worker.",
   "cp.nudge": "Nudge the orchestrator to continue",
   "cp.tg_show": "Show the workers",
-  "cp.tg_show_done": "Show finished workers too",
-  "cp.tg_only_needed": "Show only workers that need a look",
   "cp.tg_hide": "Hide the workers (more room for the orchestrator)",
   "cp.detail": "Crew details",
   "cp.more": "More",
@@ -2539,5 +2537,8 @@
   "cp.state_done": "Done",
   "cp.done_l": "done",
   "cp.n_done_tracks": " tracks done",
-  "cp.n_done": " done"
+  "cp.n_done": " done",
+  "cp.stop_leader": "Stop the orchestrator session",
+  "cp.view_one": "View one pane",
+  "cp.no_session_detail": "No session details yet. Click ⓘ and try again."
 }
