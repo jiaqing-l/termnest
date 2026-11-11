@@ -1022,6 +1022,14 @@ function clampSize(v, lo, hi, dflt) {
 function attach(ws, r, name, url) {
   const cols = clampSize(url.searchParams.get('cols'), 10, 400, 100);
   const rows = clampSize(url.searchParams.get('rows'), 4, 200, 30);
+  // The browser sends its real size (and the first keys) as soon as the socket opens, while the terminal channel is still being
+  // opened. Hold the latest size and the input until it exists; dropped, tmux keeps the size from the URL and the screen is misaligned.
+  let live = null, size = null; const early = [];
+  ws.on('message', (msg, isBinary) => {
+    if (live) return;
+    if (isBinary) { early.push(msg); return; }
+    try { const c = JSON.parse(msg.toString('utf8')); if (c.t === 'resize') size = c; } catch { /* ignore a malformed control frame */ }
+  });
   r.attach(name, cols, rows, (err, stream) => {
     if (err) { ws.close(4000, 'attach failed'); return; }
     // The viewer may have switched tabs while the SSH channel was opening: its socket is gone and its 'close' already fired.
@@ -1035,6 +1043,9 @@ function attach(ws, r, name, url) {
     stream.on('data', (d) => { if (ws.readyState === ws.OPEN) ws.send(d, { binary: true }); });
     stream.stderr.on('data', (d) => { if (ws.readyState === ws.OPEN) ws.send(d, { binary: true }); });
     stream.on('close', () => ws.close(4001, 'ended'));
+    live = stream;
+    if (size) stream.setWindow(clampSize(size.rows, 4, 200, rows), clampSize(size.cols, 10, 400, cols), 0, 0);
+    for (const m of early.splice(0)) stream.write(m);
     ws.on('message', (msg, isBinary) => {
       if (isBinary) { stream.write(msg); return; }
       try {
