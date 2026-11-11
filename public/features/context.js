@@ -63,5 +63,5 @@
       Object.keys(details).forEach(function (k) { var p = k.split('/'); if (details[k].isConnected) draw(details[k], info(p[0], p.slice(1).join('/')), k); else delete details[k]; });
     }).catch(function () { /* optional */ });
   }
-  refresh(); setInterval(refresh, 20000); TW.on('state', function () { /* chips are refilled on the next poll */ });
+  refresh(); setInterval(function () { if (!document.hidden) refresh(); }, 20000); TW.on('state', function () { /* chips are refilled on the next poll */ });
 })();

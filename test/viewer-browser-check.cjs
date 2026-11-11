@@ -48,11 +48,13 @@ async function main() {
           stream.on('data', (b) => { if (!b.toString().startsWith('\x1b[M') && !b.toString().startsWith('\x1b[<')) stream.write(b); }); return;
         }
         let text = '';
-        if(info.command.startsWith('node -e ') && info.command.includes('function fileRuntime')) {
+        // Host scripts start Node through the lookup wrapper (sh -c '…' node -e …) since 1.1.16.
+        const nodeCmd = info.command.startsWith('node -e ') || /^sh -c '.*command -v node.*' node -e /s.test(info.command);
+        if(nodeCmd && info.command.includes('function fileRuntime')) {
           exec(info.command,{maxBuffer:32*1024*1024,timeout:15000},(error,out)=>{stream.end(out);stream.exit(error?1:0);});return;
         }
         if(info.command.startsWith('tmux display-message'))text=files+'\n';
-        else if(info.command.startsWith('node -e ')) text=JSON.stringify({tool:'claude',email:'claude.work@example.com',plan:'max',reason:'',events:Array.from({length:14},(_,i)=>({at:Date.now()-(13-i)*86400000,session:claudeSessionId('/workspace','claude-work'),total:50000+i*1000})),limits:{session:{percent:62,resetAt:Date.now()+8000000},weekly:{percent:36,resetAt:Date.now()+300000000},reason:''}});
+        else if(nodeCmd) text=JSON.stringify({tool:'claude',email:'claude.work@example.com',plan:'max',reason:'',events:Array.from({length:14},(_,i)=>({at:Date.now()-(13-i)*86400000,session:claudeSessionId('/workspace','claude-work'),total:50000+i*1000})),limits:{session:{percent:62,resetAt:Date.now()+8000000},weekly:{percent:36,resetAt:Date.now()+300000000},reason:''}});
         else if (info.command.includes('@@HOST')) text = poll();
         else if (info.command.includes('@@OS')) text = '@@OS\nSSH fixture\n@@END\n';
         else if (info.command.includes('tail -c 65536')) {

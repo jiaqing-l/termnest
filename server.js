@@ -1,6 +1,8 @@
 'use strict';
 const { tr, langOf, setLang } = require('./lib/i18n-server');
 const crypto = require('crypto');
+const zlib = require('zlib');
+const HISTORY_LINES = 100000;
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -170,9 +172,36 @@ function authed(req) {
   return vault.unlocked;
 }
 
+// JSON answers above 2 KiB are gzipped when the browser accepts it: /api/state is asked every 3 s while a page is open,
+// which matters on a phone over VPN. Small answers are sent as they are (compressing them costs more than it saves).
+const accepts = (res) => /\bgzip\b/.test(String((res.req && res.req.headers['accept-encoding']) || ''));
 function send(res, code, body) {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
-  res.end(JSON.stringify(body));
+  const json = JSON.stringify(body), headers = { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS };
+  if (json.length > 2048 && accepts(res)) {
+    res.writeHead(code, { ...headers, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' });
+    res.end(zlib.gzipSync(json, { level: 4 })); return;
+  }
+  res.writeHead(code, headers);
+  res.end(json);
+}
+// Page files (scripts, styles, fonts, locales): compressed once and revalidated by ETag. A reload asks "changed?" and gets
+// 304 instead of ~830 KB; a new version (new content) is fetched at once. API answers stay no-store.
+const assets = new Map();
+function asset(key, stamp, load) {
+  let a = assets.get(key);
+  if (!a || a.stamp !== stamp) {
+    const raw = load(), gz = zlib.gzipSync(raw, { level: 9 });
+    a = { stamp, raw, gz: gz.length < raw.length * 0.9 ? gz : null, etag: '"' + crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 22) + '"' };
+    assets.set(key, a);
+  }
+  return a;
+}
+function sendAsset(req, res, type, a) {
+  const headers = { 'Content-Type': type, ...HEADERS, 'Cache-Control': 'no-cache', ETag: a.etag, Vary: 'Accept-Encoding' };
+  if (String(req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(a.etag)) { res.writeHead(304, headers); res.end(); return; }
+  const gz = a.gz && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  res.writeHead(200, gz ? { ...headers, 'Content-Encoding': 'gzip' } : headers);
+  res.end(gz ? a.gz : a.raw);
 }
 function fail(res, code, error, extra) { send(res, code, { error, ...(extra || {}) }); }
 
@@ -339,8 +368,9 @@ async function login(req, res) {
   send(res, 200, vault.recovered ? { ok: true, recoveredAt: vault.recovered.at } : { ok: true });
 }
 
-function publicState() {
-  lastSeen = Date.now();
+// seen=false: a hidden tab checking for alerts. It does not keep every machine on the fast (3 s) poll.
+function publicState(seen = true) {
+  if (seen) lastSeen = Date.now();
   const previousDay = vault.data.daily?.day;
   vault.data.daily = daily.advance(vault.data.daily, '', [], Date.now());
   if (previousDay !== vault.data.daily.day) saveVault();
@@ -531,7 +561,10 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
       `(cd "$d" && printf '\\000TW_DIR\\000' && pwd -P && printf '\\000') || { echo NODIR; exit 3; }`,
       `tmux -u has-session -t ${shq(`=${name}`)} 2>/dev/null && { echo EXISTS; exit 4; }`,
       // Without a UTF-8 locale bash drops Vietnamese input. -e needs tmux 3.2, so older ones fall back.
-      `tmux -u new-session -d -s ${shq(name)} -c "$d" -e "LANG=\${LANG:-C.UTF-8}" 2>/dev/null || tmux -u new-session -d -s ${shq(name)} -c "$d"`,
+      // tmux keeps 2000 lines per pane by default: a long Claude chat loses its beginning. Raise (never lower) the default
+      // for new panes to 100000 (memory grows only with lines really written) in the same tmux call that creates the pane, so even the first session on a fresh server gets it.
+      `H=''; [ "$(tmux show-options -gv history-limit 2>/dev/null)" -ge ${HISTORY_LINES} ] 2>/dev/null || H='set-option -g history-limit ${HISTORY_LINES}'`,
+      `{ [ -n "$H" ] && tmux -u $H \\; new-session -d -s ${shq(name)} -c "$d" -e "LANG=\${LANG:-C.UTF-8}" 2>/dev/null; } || tmux -u new-session -d -s ${shq(name)} -c "$d" -e "LANG=\${LANG:-C.UTF-8}" 2>/dev/null || tmux -u new-session -d -s ${shq(name)} -c "$d"`,
     ].join('\n'))}`);
     if (out.code === 3) throw new Error(tr('srv.server.khong_thay_thu_muc_nay'));
     if (out.code === 4) { const err = new Error(tr('srv.server.ten_nay_da_co')); err.status = 409; throw err; }
@@ -664,7 +697,8 @@ async function sendKeys(req, res, r, name) {
   const b = await readJson(req);
   // "Xóa lịch sử cuộn" from the terminal menu: drop tmux's scrollback of the pane (the screen itself stays).
   if (b.clearHistory === true) {
-    if (!name || name.length > 128 || r.mode === 'powershell') { fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return; }
+    if (!name || name.length > 128) { fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return; }
+    if (r.mode === 'powershell') { if (!r.clearPlain(name)) { fail(res, 400, tr('srv.server.noi_dung_chua_dung')); return; } send(res, 200, { ok: true }); return; }
     const out = await r.exec(`tmux clear-history -t ${shq(`=${name}:`)}`);
     if (out.code !== 0) { fail(res, 400, tr('srv.server.khong_gui_duoc_noi_dung')); return; }
     send(res, 200, { ok: true }); return;
@@ -754,7 +788,7 @@ async function api(req, res, url) {
     send(res, 200, { ok: true });
     return;
   }
-  if (p === '/api/state' && m === 'GET') { send(res, 200, publicState()); return; }
+  if (p === '/api/state' && m === 'GET') { send(res, 200, publicState(req.headers['x-tw-hidden'] !== '1')); return; }
   if ((p === '/api/file' || p === '/api/file-preview') && m === 'GET') {
     try {
       // temp=1: a file in the machine's private "Send file" folder, not in the session folder.
@@ -768,7 +802,7 @@ async function api(req, res, url) {
         let page = value.text;
         try {
           const backend = remotes.get(url.searchParams.get('server')), session = url.searchParams.get('session'), reader = require('./lib/file-viewer').readSessionFile;
-          if (!temp) page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs));
+          if (!temp) page = await require('./lib/html-assets').inlineAssets(page, value.path, (abs) => reader(backend, session, abs), (paths) => require('./lib/file-viewer').readSessionFiles(backend, session, paths));
         } catch { /* the report still opens, just without its pictures */ }
         res.end(injectReportLinks(page));return;
       }
@@ -950,13 +984,13 @@ const server = http.createServer(async (req, res) => {
     } finally { activeRequests--; }
     return;
   }
-  if (url.pathname === '/locales.js' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', ...HEADERS }); res.end(localesScript()); return; }
+  if (url.pathname === '/locales.js' && req.method === 'GET') { const script = localesScript(); sendAsset(req, res, 'text/javascript; charset=utf-8', asset('/locales.js', localesCache.stamp, () => Buffer.from(script))); return; }
   const entry = STATIC[url.pathname] || (req.method === 'GET' ? features.staticFile(url.pathname) : null);
   if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
-  fs.readFile(entry[0], (err, buf) => {
+  fs.stat(entry[0], (err, st) => {
     if (err) { res.writeHead(500); res.end(); return; }
-    res.writeHead(200, { 'Content-Type': entry[1], ...HEADERS });
-    res.end(buf);
+    let a; try { a = asset(entry[0], st.mtimeMs + ':' + st.size, () => fs.readFileSync(entry[0])); } catch { res.writeHead(500); res.end(); return; }
+    sendAsset(req, res, entry[1], a);
   });
 });
 
@@ -985,6 +1019,9 @@ function attach(ws, r, name, url) {
   const rows = clampSize(url.searchParams.get('rows'), 4, 200, 30);
   r.attach(name, cols, rows, (err, stream) => {
     if (err) { ws.close(4000, 'attach failed'); return; }
+    // The viewer may have switched tabs while the SSH channel was opening: its socket is gone and its 'close' already fired.
+    // Close the late channel at once, or every quick switch leaks one (OpenSSH allows 10 per connection; then new tabs stay black).
+    if (ws.readyState !== ws.OPEN) { try { stream.close(); } catch { /* already closed */ } return; }
     // Build the session folder's file-name index while the user reads, so a bare file name opens at once.
     require('./lib/file-viewer').prewarm(r, name);
     openTerms.add(ws);

@@ -60,9 +60,13 @@
   var TABS = ['progress', 'report', 'deep', 'settings'], tabBtns = {};
   TABS.forEach(function (t) { var b = el('button', '', h('tab.' + t)); b.type = 'button'; b.onclick = function () { setTab(t); }; tabBtns[t] = b; seg.append(b); });
   // Refresh: now (button) and automatically every N seconds while this tab is open (per viewer, remembered locally).
+  // The button makes every machine poll and every crew folder rescan (SSH work). The timer only reads what Termnest already
+  // keeps up to date (the open page polls every few seconds), so several open tabs or phones never multiply the SSH load.
   var refreshing = false;
   function refreshNow(quiet) {
-    if (refreshing) return Promise.resolve(); refreshing = true; refreshBtn.disabled = true; refreshBtn.textContent = '↻ ' + h('refreshing');
+    if (refreshing) return Promise.resolve(); refreshing = true;
+    if (quiet) return load().catch(function () { /* the next tick retries */ }).finally(function () { refreshing = false; });
+    refreshBtn.disabled = true; refreshBtn.textContent = '↻ ' + h('refreshing');
     return api('POST', '/refresh', {}).then(function () { reports = null; return load(); }).catch(function () { if (!quiet) say(h('action_failed'), false); })
       .finally(function () { refreshing = false; refreshBtn.disabled = false; refreshBtn.textContent = '↻ ' + h('refresh'); });
   }
@@ -116,8 +120,17 @@
     list(s && s.workers).forEach(function (w) { if (w.task === t.id && w.track) out[w.track] = true; });
     return out;
   }
+  // Redraw only when something changed (or once a minute for the "x minutes ago" texts): no DOM rebuild every 10 s on a
+  // phone, and open sections, scroll position and text selection stay as they are.
+  var drawnSig = '', drawnAt = 0;
   function load() {
-    return api('GET', '/state').then(function (r) { data = r; loadErr = false; draw(); }).catch(function () { loadErr = true; draw(); });
+    return api('GET', '/state').then(function (r) {
+      var sig = ''; try { sig = JSON.stringify(Object.assign({}, r, { fleet: Object.assign({}, r.fleet, { at: 0 }) })); } catch (e) { /* draw */ }
+      var same = sig && sig === drawnSig && !loadErr && Date.now() - drawnAt < 60000;
+      data = r; loadErr = false;
+      if (same) { refreshAt.textContent = h('updated', [ago(data.fleet.at)]); return; }
+      drawnSig = sig; drawnAt = Date.now(); draw();
+    }).catch(function () { loadErr = true; drawnSig = ''; draw(); });
   }
   function loadTokens() {
     return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)).then(function (r) { tokens = r; drawQuota(); }).catch(function () { /* optional */ });
@@ -259,6 +272,8 @@
     who.append(el('b', 'hub-mono', t.leader || h('no_leader')), el('small', '', t.machineName + ' · ' + t.id));
     head.append(ava, who, leader ? stateTag(leader) : tag('idle', h('no_leader')));
     card.append(head, el('div', 'hub-task-title', t.title || t.id));
+    // Why no leader was found (machine, workspace and chats were checked): what to do about it, in one line.
+    if (!t.leader && t.leaderHint && t.leaderHint.code) card.append(el('div', 'hub-foot', h('leader_hint.' + t.leaderHint.code, [list(t.leaderHint.sessions).join(', '), t.id])));
     if (tracks.length) {
       var prog = el('div', 'hub-prog'), stack = el('div', 'hub-stack');
       ['ok', 'wait', 'run', 'bad', 'idle'].forEach(function (k) { if (n[k]) { var i = el('i', 'c-' + k); i.style.width = (n[k] / tracks.length * 100) + '%'; stack.append(i); } });

@@ -75,7 +75,8 @@ test('actual board sessions are deduplicated by actionable priority and keep unk
 
 test('fresh supervisor owner waits, blocks and stalls join sessions and preserve unmatched legitimate issues', () => {
   const { opsSessionRows } = require('../public/features/ops');
-  const board = { servers: [{ id: 'vm1', online: true, sessions: ['leader', 'blocked', 'stalled'].map(name => ({ name, ai: { status: 'busy' } })), findings: [] }] };
+  // A leader that is idle with no crew progress is stalled; one that is busy working is not paged (see the next block).
+  const board = { servers: [{ id: 'vm1', online: true, sessions: ['leader', 'blocked', 'stalled'].map(name => ({ name, ai: { status: name === 'stalled' ? 'idle' : 'busy' } })), findings: [] }] };
   const host = { id: 'vm1', online: true, observedAt: Date.now(), freshness: { snapshotFresh: true, taskEvidenceFresh: true }, teams: [
     { id: 'one', session: 'leader', requiresOwner: true, status: 'waiting_owner', reason: { code: 'owner_decision' } },
     { id: 'two', session: 'blocked', requiresOwner: true, status: 'blocked', reason: { code: 'task_blocked' } },
@@ -89,6 +90,9 @@ test('fresh supervisor owner waits, blocks and stalls join sessions and preserve
   assert.equal(rows[3].f.settings, true);
   board.servers[0].findings.push({ session: 'leader', rule: 'asking', severity: 'urgent' });
   assert.equal(opsSessionRows(board, { enabled: true, servers: [host] })[0].f.rule, 'asking');
+  // Busy leader, crew files unchanged for a while: it is working, not stuck.
+  board.servers[0].sessions.find(x => x.name === 'stalled').ai.status = 'busy';
+  assert.equal(opsSessionRows(board, { enabled: true, servers: [host] }).filter(x => x.f.ownerKind === 'stalled').length, 0);
 });
 
 test('unknown, stale and configuration supervisor flags never promote measured busy sessions or urgent counts', () => {

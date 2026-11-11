@@ -22,7 +22,7 @@
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function api(method, path, body) {
-    var headers = body ? { 'Content-Type': 'application/json' } : {}; if (window.TW_I18N) headers['X-TW-Lang'] = window.TW_I18N.lang();
+    var headers = body ? { 'Content-Type': 'application/json' } : {}; if (window.TW_I18N) headers['X-TW-Lang'] = window.TW_I18N.lang(); if (document.hidden) headers['X-TW-Hidden'] = '1';
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
@@ -468,6 +468,15 @@
     var v = p && p.cur && srv(p.cur.id), session = v && v.sessions.filter(function (s) { return s.name === p.cur.name; })[0];
     return session ? { v: v, s: session } : null;
   }
+  var screens = {}; // session key -> the text of its screen when last viewed
+  function snapshotPane(p) {
+    if (!p.key || !p.term) return;
+    try {
+      var b = p.term.buffer.active, lines = [];
+      for (var i = 0; i < p.term.rows; i++) { var l = b.getLine(b.viewportY + i); lines.push(l ? l.translateToString(true) : ''); }
+      if (lines.some(function (l) { return l.trim(); })) screens[p.key] = lines;
+    } catch (e) { /* nothing to keep */ }
+  }
   function closePane(p) {
     clearTimeout(p.retry); p.key = '';
     p.scroll = null; p.sendChain = null; if (p.bar) p.bar.hidden = true;
@@ -513,7 +522,7 @@
   function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
   // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
   function paneSend(p, d) {
-    if (p.scroll && p.scroll.inMode) {
+    if (p.scroll && p.scroll.inMode && !plainPane(p)) {
       p.scroll.inMode = false;
       p.sendChain = scrollCall(p, 'bottom').catch(function () {}).then(function () { rawSend(p, d); });
       return;
@@ -521,6 +530,8 @@
     if (p.sendChain) { p.sendChain = p.sendChain.then(function () { rawSend(p, d); }); return; }
     rawSend(p, d);
   }
+  // A plain PowerShell session (Windows without WSL) has no tmux: the browser terminal keeps the history itself.
+  function plainPane(p) { var v = p && p.cur && srv(p.cur.id); return !!(v && v.mode === 'powershell'); }
   function scrollPath(p) { return '/api/servers/' + p.cur.id + '/sessions/' + encodeURIComponent(p.cur.name) + '/scroll'; }
   function scrollCall(p, op, n) {
     if (!p.cur) return Promise.reject(new Error('no session'));
@@ -558,6 +569,7 @@
     // l > 0 scrolls toward the newest output (wheel down, finger up). Shared by the wheel and by touch swipes.
     function applyScroll(l, x, y) {
       if (!l) return;
+      if (plainPane(p)) { p.term.scrollLines(l); return; }
       if (p.scroll && p.scroll.alternate) {
         // Fullscreen apps (Claude, Codex) keep their conversation on the alternate screen: hand the scroll to the app as
         // mouse wheel events when it asked for the mouse, instead of showing the shell history underneath.
@@ -578,7 +590,7 @@
     }
     // Capture on the host keeps xterm from turning the wheel into Up/Down keys for the app; Ctrl+wheel stays zoom.
     p.host.addEventListener('wheel', function (e) {
-      if (e.ctrlKey || !p.cur || !e.deltaY) return;
+      if (e.ctrlKey || !p.cur || !e.deltaY || plainPane(p)) return; // plain session: xterm scrolls its own history
       e.preventDefault(); e.stopPropagation();
       applyScroll(lines(e), e.clientX, e.clientY);
     }, { capture: true, passive: false });
@@ -597,7 +609,7 @@
       p.bar.addEventListener('pointerup', function () { p.bar.removeEventListener('pointermove', move); }, { once: true });
     });
     // Keep the thumb honest when the pane changes on its own (new output, resize, another client).
-    p.scrollTimer = setInterval(function () { if (view === 'focus' && p.cur && p.ws && p.ws.readyState === 1 && !busy) scrollCall(p, 'state').catch(function () {}); }, 3000);
+    p.scrollTimer = setInterval(function () { if (view === 'focus' && p.cur && p.ws && p.ws.readyState === 1 && !busy && !plainPane(p)) scrollCall(p, 'state').catch(function () {}); }, 3000);
   }
   function createPane() {
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
@@ -615,14 +627,18 @@
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
       // Copy: ⌘C on a Mac; Ctrl+Shift+C anywhere; on Windows/Linux plain Ctrl+C copies while text is selected (else it interrupts).
-      if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey || event.ctrlKey && !event.altKey && !/Mac/.test(navigator.platform || '')) && p.term.getSelection()) {
-        event.preventDefault(); copySelection(p);
+      // Like Windows Terminal: copying never also sends Ctrl+C (interrupt) to the app; without a selection Ctrl+C interrupts.
+      var isMac = /Mac/.test(navigator.platform || ''), k = (event.key || '').toLowerCase();
+      if (event.type === 'keydown' && k === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey || event.ctrlKey && !event.altKey && !isMac) && p.term.getSelection()) {
+        event.preventDefault(); copySelection(p); p.term.clearSelection(); return false;
       }
       // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
       var keySeq = window.TerminalKeys && window.TerminalKeys.sequence(event, /Mac/.test(navigator.platform || ''));
       if (keySeq != null) { event.preventDefault(); send(keySeq); return false; }
-      if (window.TW_DESKTOP && event.type === 'keydown' && event.key.toLowerCase() === 'v' && (event.metaKey || event.ctrlKey && event.shiftKey)) {
-        event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say(i18n('app.khong_dan_duoc'), false, 4000); }); return false;
+      // Paste: ⌘V on a Mac; Ctrl+V on Windows/Linux (never sent to the app as ^V); Ctrl+Shift+V anywhere.
+      if (event.type === 'keydown' && k === 'v' && !event.altKey && (event.metaKey || event.ctrlKey && (event.shiftKey || !isMac))) {
+        if (window.TW_DESKTOP) { event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say(i18n('app.khong_dan_duoc'), false, 4000); }); }
+        return false; // in a browser the default action delivers the clipboard to xterm's own paste handler
       }
       return true;
     });
@@ -653,10 +669,15 @@
     var x = paneItem(p); if (!x || p.ime.isComposing()) return;
     var key = x.v.id + '/' + x.s.name;
     if (p.key === key && p.ws && p.ws.readyState <= 1) return;
-    closePane(p); p.key = key; p.term.reset(); fitPane(p);
+    snapshotPane(p); closePane(p); p.key = key; p.term.reset(); fitPane(p);
+    // Show the screen this session had when it was last viewed (dimmed) at once; tmux's own redraw replaces it as soon as
+    // it arrives. On a slow link that is the difference between a black pane and an instant switch. tmux only: a plain
+    // session replays its output and would append to it.
+    if (screens[key] && x.v.mode !== 'powershell') p.term.write('\x1b[2m' + screens[key].join('\r\n') + '\x1b[0m\x1b[H');
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
-    sock.onopen = function () { scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
+    p.term.options.scrollback = plainPane(p) ? 50000 : 3000;
+    sock.onopen = function () { if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
     sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
@@ -678,6 +699,13 @@
     while (panes.length < n) { createPane(); var x = vis()[panes.length - 1]; if (x) panes[panes.length - 1].cur = { id: x.v.id, name: x.s.name }; }
     paneCount = n; focusedPane = Math.min(focusedPane, n - 1); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one';
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
+  }
+  // A new session can be missing from the first refresh (a poll that started before it was created): opening it then found
+  // nothing and fell back to the All tab. Wait for it to appear (a few quick refreshes), then open it.
+  function openWhenReady(id, name, tries) {
+    var v = srv(id), here = v && v.sessions.some(function (s) { return s.name === name; });
+    if (here || (tries || 0) >= 12) { openSession(id, name); return; }
+    setTimeout(function () { refresh(true).then(function () { openWhenReady(id, name, (tries || 0) + 1); }, function () { openWhenReady(id, name, (tries || 0) + 1); }); }, 500);
   }
   function openSession(id, name) { if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
@@ -1388,7 +1416,7 @@
     e.preventDefault(); var n = $('n-name').value.trim(), id = $('n-srv').value;
     if (!/^[A-Za-z0-9_-]+$/.test(n)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong_2'); return; }
     api('POST', '/api/servers/' + id + '/sessions', { name: n, dir: $('n-dir').value, run: $('n-run').value })
-      .then(function () { $('dlg-new').close(); api('GET', '/api/prefs').then(function (data) { prefs = data; }).catch(function () { /* next login reloads prefs */ }); return refresh(true); }).then(function () { openSession(id, n); })
+      .then(function () { $('dlg-new').close(); api('GET', '/api/prefs').then(function (data) { prefs = data; }).catch(function () { /* next login reloads prefs */ }); return refresh(true); }).then(function () { openWhenReady(id, n); })
       .catch(function (err) { $('n-err').textContent = err.message; });
   };
   $('form-srv').onsubmit = function (e) {
@@ -1502,7 +1530,15 @@
       if (online) { online = false; $('app').classList.add('offline'); say(i18n('app.mat_ket_noi_toi_web')); if (view === 'over') renderHero(); petSync(); }
     });
   }
-  function startPolling() { stopPolling(); pollTimer = setInterval(function(){refresh();}, 2500); tokenTimer = setInterval(function(){tokens.poll();}, 5000); }
+  // A hidden tab (another tab, minimised window, phone in the pocket) checks every 15 s instead of 2.5 s, enough for alerts,
+  // and the server is told so it does not keep every machine on its fast poll. Coming back refreshes at once.
+  var hiddenTicks = 0;
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(function () { if (document.hidden && ++hiddenTicks % 6) return; hiddenTicks = 0; refresh(); }, 2500);
+    tokenTimer = setInterval(function(){tokens.poll();}, 5000); // token-ui skips hidden pages itself
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && pollTimer) { hiddenTicks = 0; refresh(); } });
   function stopPolling() { clearInterval(pollTimer); clearInterval(tokenTimer); pollTimer = null; tokenTimer = null; }
   // The desktop app passes a one-time setup token in the first URL. Keep it for this tab until the password exists,
   // so a reload of the window does not leave a fresh install with no way to create one.

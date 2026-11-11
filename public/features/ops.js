@@ -28,8 +28,9 @@ function opsSessionRows(board, supervision) {
       var fresh = host && host.online === true && freshness.snapshotFresh !== false && at > 0 && at <= Date.now() + 5000 && Date.now() - at <= (Number.isFinite(maxAge) && maxAge > 0 ? maxAge : 120000);
       function owner(item, key, audit) {
         if (!fresh || !item.requiresOwner || audit && item.active !== true) return;
-        // The leader is busy handling it (e.g. re-running a failed track): do not page the owner yet.
-        var lead = !audit && item.session && item.reason && item.reason.code === 'task_track_failed' && (srv.sessions || []).find(function (v) { return v.name === item.session; });
+        // The leader is busy handling it (re-running a failed track, or working while crew files have not moved yet):
+        // do not page the owner. An idle leader without progress is nudged by the autopilot and still reported here.
+        var lead = !audit && item.session && item.reason && /^(task_track_failed|no_task_progress)$/.test(item.reason.code) && (srv.sessions || []).find(function (v) { return v.name === item.session; });
         if (lead && lead.ai && lead.ai.status === 'busy') return;
         var code = typeof item.reason === 'string' ? item.reason : item.reason && item.reason.code || item.code;
         var recovery = item.recovery, unresolved = recovery && recovery.requiresOwner ? recovery.code : code;
@@ -123,7 +124,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     // The agent reports itself busy but crew has recorded no round yet: say exactly that, not "unknown".
     var code = t.reason && t.reason.code;
     // A failed track while the leader is busy is the leader fixing it (re-dispatch, fix round): not yet the owner's problem.
-    if ((t.status === 'unknown' && code === 'awaiting_task_progress' || t.status === 'blocked' && code === 'task_track_failed') && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy'; }
+    // No crew progress for a while but the leader is working (its own status says busy): it is doing something, maybe
+    // research or another part of the plan. Shown as busy with the age of the last crew progress, not as "check this".
+    // Stalled stays for a leader that is idle, waiting or gone; the autopilot nudges the idle one.
+    if ((t.status === 'unknown' && code === 'awaiting_task_progress' || t.status === 'blocked' && code === 'task_track_failed' || t.status === 'stalled' && code === 'no_task_progress') && t.session) { var b = boardSession(s.id, t.session); if (b && b.ai && b.ai.status === 'busy') return 'busy';
+      // Right after Termnest starts no crew change has been seen yet: say what the leader itself reports instead of "unknown".
+      if (t.status === 'unknown' && b && b.ai && b.ai.status === 'idle') return 'idle'; }
     return t.status;
   }
 
@@ -325,8 +331,11 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var d = server && list(server.discovered).find(function (x) { return x.session === name; });
     box.hidden = !d; if (!d) return;
     var team = list(server.teams).find(function (t) { return t.session === name && t.root === d.root; });
-    var head = el('div', 'ops-crew-head'); head.append(el('h3', '', c('detail_title')), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(team ? teamState(server, team) : 'unknown'));
+    var st = d.excluded ? '' : team ? teamState(server, team) : 'unknown';
+    var head = el('div', 'ops-crew-head'); head.append(el('h3', '', c('detail_title')), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(st));
     box.append(head);
+    // "Unknown" always says why (no snapshot, crew files not read lately, waiting for a first change …).
+    if (st === 'unknown') box.append(el('small', 'ops-note', !hostConnected(server) ? explanation('snapshot_stale') : !hostFresh(server) ? explanation('task_evidence_stale') : explanation(team && team.reason)));
     // Per task: title, tracks done / total, and one chip per track (state from the crew MANIFEST; "running" when a worker for
     // that track is alive in this session's process tree).
     var live = list((boardSession(serverId, name) || {}).bgAgents).map(function (w) { return text(w.track); });
