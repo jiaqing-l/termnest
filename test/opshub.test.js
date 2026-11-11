@@ -72,6 +72,17 @@ test('old or finished work is not a running team, even when nudge.conf still nam
   assert.ok(!h.api.makeReport('manual').findings.some((x) => x.task === 'OLD-DONE' || x.task === 'OLD-OPEN'));
 });
 
+test('a team whose workers all finished is not running, but stays in wrapped with its leader session for the Crew screen', () => {
+  const crew = [{ root: '/ws', nudge: [['%3', 'DONE-A'], ['%3', 'RUN-B']], tasks: [
+    { id: 'DONE-A', title: 'first topic', status: 'running', activeAt: NOW - 3600000, tracks: [{ id: 'W1', state: 'done' }, { id: 'W2', state: 'done' }] },
+    { id: 'RUN-B', title: 'second topic', status: 'running', activeAt: NOW - 60000, tracks: [{ id: 'W1', state: 'running' }] },
+    { id: 'STALE', title: 'old', status: 'running', activeAt: NOW - 6 * 86400000, tracks: [{ id: 'W1', state: 'done' }] }] }];
+  const h = harness({ crew, sessions: [claude('Lead', 'busy', { pane: '%3' })] });
+  const f = h.api.fleet();
+  assert.deepEqual(f.tasks.map((t) => t.id), ['RUN-B']);
+  assert.deepEqual(f.wrapped.map((t) => [t.id, t.leader, t.tracks.length]), [['DONE-A', 'Lead', 2]]);
+});
+
 test('a session out of quota shows the limit line, not the status bar', () => {
   const s = claude('GPS', 'idle', { lines: ["You've hit your weekly limit · resets Nov 11 at 1pm", 'new task? /clear to save 182.9k tokens', '▸▸ auto mode on (shift+tab to cycle)'] });
   const h = harness({ sessions: [s] });
