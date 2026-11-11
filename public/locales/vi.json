@@ -2523,5 +2523,9 @@
   "cp.n_done": " xong",
   "cp.stop_leader": "Dừng phiên điều phối",
   "cp.view_one": "Xem 1 pane",
-  "cp.no_session_detail": "Chưa có chi tiết phiên để thao tác. Bấm ⓘ rồi thử lại."
+  "cp.no_session_detail": "Chưa có chi tiết phiên để thao tác. Bấm ⓘ rồi thử lại.",
+  "cp.src_kind_process": "Đang chạy thật: đọc từ tiến trình của máy chủ",
+  "cp.src_kind_round": "Vòng gần nhất: đọc từ ROUNDS.tsv của track",
+  "cp.src_kind_manifest": "Khai báo trong MANIFEST (chưa có vòng chạy để đối chiếu)",
+  "cp.src_kind_none": "Chưa biết: track chưa giao nên chưa có thông tin"
 }

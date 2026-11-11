@@ -2540,5 +2540,9 @@
   "cp.n_done": " done",
   "cp.stop_leader": "Stop the orchestrator session",
   "cp.view_one": "View one pane",
-  "cp.no_session_detail": "No session details yet. Click ⓘ and try again."
+  "cp.no_session_detail": "No session details yet. Click ⓘ and try again.",
+  "cp.src_kind_process": "Running now: read from the server process",
+  "cp.src_kind_round": "Latest round: read from the track's ROUNDS.tsv",
+  "cp.src_kind_manifest": "Declared in MANIFEST (no round has run to confirm it)",
+  "cp.src_kind_none": "Unknown: the track has not been dispatched, so there is nothing to read"
 }

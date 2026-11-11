@@ -132,3 +132,25 @@ test('deriveCrews: the kind (Codex or Claude) of a track comes from its executor
   assert.deepEqual(c.kinds, { W1: 'codex', W2: 'claude', W3: '' });
   assert.equal(c.models.W1, 'gpt-5.6-codex');
 });
+
+test('deriveCrews: what is running beats the record, the record beats the manifest, and the source is kept', () => {
+  const c = deriveCrews({
+    sessions: [{ machine: 'm', name: 'L', workers: [{ kind: 'claude', model: 'opus', task: 'T', track: 'W1' }] }],
+    tasks: [{ machine: 'm', root: '/r', id: 'T', title: 't', leader: 'L', tracks: [
+      { id: 'W1', state: 'dispatched', executor: 'codex', executorSrc: 'manifest', model: 'gpt' },
+      { id: 'W2', state: 'done', executor: 'codex', executorSrc: 'round', model: 'gpt-5.6-codex' },
+      { id: 'W3', state: 'queued', executor: 'claude', executorSrc: 'manifest' },
+      { id: 'W4', state: 'pending' }] }] })[0];
+  assert.deepEqual(c.kinds, { W1: 'claude', W2: 'codex', W3: 'claude', W4: '' });
+  assert.deepEqual(c.kindSrc, { W1: 'process', W2: 'round', W3: 'manifest', W4: '' });
+  assert.equal(c.models.W1, 'opus'); assert.equal(c.models.W2, 'gpt-5.6-codex'); assert.equal(c.models.W4, '');
+});
+
+test('deriveCrews: a dispatch running now is running even if the scanned manifest still says queued', () => {
+  const c = deriveCrews({
+    sessions: [{ machine: 'm', name: 'L', workers: [{ kind: 'codex', model: '', task: 'T', track: 'W2' }] }],
+    tasks: [{ machine: 'm', root: '/r', id: 'T', title: 't', leader: 'L', tracks: [
+      { id: 'W1', state: 'done' }, { id: 'W2', state: 'queued' }, { id: 'W3', state: 'queued' }] }] })[0];
+  assert.equal(c.trackMap.W2.state, 'running'); assert.equal(c.trackMap.W2.fromProcess, true);
+  assert.equal(c.trackMap.W3.state, 'queued'); assert.equal(c.trackMap.W1.state, 'done');
+});

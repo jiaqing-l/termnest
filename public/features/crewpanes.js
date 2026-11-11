@@ -13,14 +13,21 @@
   var TRACK_UI = { running: 'run', dispatched: 'run', fix: 'run', review: 'run', queued: 'queued', pending: 'queued', blocked: 'queued', failed: 'failed', done: 'done', merged: 'done' };
   function deriveCrews(fleet) {
     var by = {}, kinds = {}, kindOf = function (x) { return /codex/i.test(x || '') ? 'codex' : /claude/i.test(x || '') ? 'claude' : ''; };
-    (fleet.sessions || []).forEach(function (s) { (s.workers || []).forEach(function (w) { if (w.task && w.track) kinds[s.machine + '|' + w.task + '|' + w.track] = w.kind || ''; }); });
+    (fleet.sessions || []).forEach(function (s) { (s.workers || []).forEach(function (w) { if (w.task && w.track) kinds[s.machine + '|' + w.task + '|' + w.track] = { kind: w.kind || '', model: w.model || '', running: true }; }); });
     (fleet.tasks || []).forEach(function (t) {
       if (!t.leader || !(t.tracks || []).length) return;
-      var id = t.machine + '/' + t.leader, c = by[id] || (by[id] = { id: id, server: t.machine, name: t.leader, dir: t.root, derived: true, workers: [], kinds: {}, models: {}, trackMap: {}, tasks: [] });
+      var id = t.machine + '/' + t.leader, c = by[id] || (by[id] = { id: id, server: t.machine, name: t.leader, dir: t.root, derived: true, workers: [], kinds: {}, models: {}, kindSrc: {}, trackMap: {}, tasks: [] });
       c.tasks.push({ id: t.id, title: t.title });
       t.tracks.forEach(function (k) {
         var nm = c.trackMap[k.id] ? t.id + '/' + k.id : k.id;
-        c.workers.push(nm); c.kinds[nm] = kindOf(k.executor) || kinds[t.machine + '|' + t.id + '|' + k.id] || ''; c.models[nm] = k.model || ''; c.trackMap[nm] = { task: t.id, track: k.id, state: k.state, title: t.title };
+        c.workers.push(nm);
+        // What is really running beats what was written down: the process, then the last round's record, then the manifest's declaration.
+        var live = kinds[t.machine + '|' + t.id + '|' + k.id] || {}, fromRun = kindOf(live.kind), fromRec = kindOf(k.executor);
+        c.kinds[nm] = fromRun || fromRec || ''; c.models[nm] = fromRun ? (live.model || (fromRec === fromRun ? k.model : '') || '') : (k.model || '');
+        c.kindSrc[nm] = fromRun ? 'process' : fromRec ? (k.executorSrc === 'manifest' ? 'manifest' : 'round') : ''; // The files are scanned every 30-120 s but the process table every few seconds: a dispatch that is running right now is "running",
+        // whatever the manifest still says (it can lag behind a leader that has just dispatched).
+        var ranNow = !!(live.kind || live.model || live.running) && k.state !== 'done' && k.state !== 'merged';
+        c.trackMap[nm] = { task: t.id, track: k.id, state: ranNow ? 'running' : k.state, title: t.title, fromProcess: ranNow };
       });
     });
     return Object.keys(by).map(function (k) { return by[k]; });
@@ -184,7 +191,7 @@
   function removeLogs() { document.querySelectorAll('#split .cp-wlog').forEach(function (n) { n.remove(); }); }
   function wlogPane(c, nm) {
     var t = c.trackMap[nm] || {}, p = el('section', 'cp-wlog'); p.dataset.w = nm; p.dataset.crew = c.id;
-    var h = el('div', 'cp-wh'); h.append(el('i', 'cp-dot'), el('b', '', nm), el('span', 'cp-kind ' + ((c.kinds || {})[nm] || 'none'), kindLabel(c, nm)), el('span', 'cp-wt', t.title || ''), el('span', 'cp-st', ''));
+    var h = el('div', 'cp-wh'); h.append(el('i', 'cp-dot'), el('b', '', nm), (function () { var kb = el('span', 'cp-kind ' + ((c.kinds || {})[nm] || 'none'), kindLabel(c, nm)); var src = (c.kindSrc || {})[nm]; kb.title = src ? i18n('cp.src_kind_' + src) : i18n('cp.src_kind_none'); return kb; })(), el('span', 'cp-wt', t.title || ''), el('span', 'cp-st', ''));
     p.append(h, el('pre', 'cp-wl', i18n('cp.log_reading')), el('div', 'cp-wf')); return p;
   }
   function stripAnsi(x) { return String(x || '').replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, '').replace(/\r/g, ''); }

@@ -158,7 +158,7 @@ test('findWorkers ties a detached worker to its dispatch and hides raw arguments
   ];
   const w = findWorkers(procs, new Map([[10, '/w']]));
   assert.equal(w.length, 2);
-  assert.deepEqual(w[0], { kind: 'codex', task: 't1', track: 'W1', elapsed: 600, cwd: '/w', dispatcherPid: 10, owner: null });
+  assert.deepEqual(w[0], { kind: 'codex', model: '', task: 't1', track: 'W1', elapsed: 600, cwd: '/w', dispatcherPid: 10, owner: null });
   assert.deepEqual(w[1], { kind: 'claude', task: '', track: '', elapsed: 30, cwd: '' });
   assert.ok(!JSON.stringify(w).includes('SECRET'));
 });
@@ -1036,4 +1036,19 @@ test('a restore starts the agent with the model and mode it ran with (listed fla
   assert.ok(calls.some((c) => c.includes('claude --resume') && c.includes('--model') && c.includes('opus') && c.includes('plan')));
   assert.ok(!calls.some((c) => c.includes('boom')));
   assert.ok(calls.some((c) => c.includes(`codex resume ${xid}`) && c.includes('gpt-6') && c.includes('--full-auto')));
+});
+
+test('a running crew worker reports the model it was started with, never the command line', () => {
+  const { findWorkers } = require('../lib/parse');
+  const ps = [{ pid: 30, ppid: 1, args: 'bash crew-dispatch.sh --task t1 --track W1', elapsed: 80 },
+    { pid: 40, ppid: 30, args: 'codex exec -m gpt-5.6-codex --token SECRET123 work', elapsed: 70 },
+    { pid: 31, ppid: 1, args: 'bash crew-dispatch.sh --task t1 --track W2', elapsed: 60 },
+    { pid: 41, ppid: 31, args: 'claude -p --model=opus do it', elapsed: 50 },
+    { pid: 32, ppid: 1, args: 'bash crew-dispatch.sh --task t1 --track W3', elapsed: 40 },
+    { pid: 42, ppid: 32, args: 'codex exec work', elapsed: 30 }];
+  const by = Object.fromEntries(findWorkers(ps, new Map(), []).map((w) => [w.track, w]));
+  assert.equal(by.W1.kind, 'codex'); assert.equal(by.W1.model, 'gpt-5.6-codex');
+  assert.equal(by.W2.kind, 'claude'); assert.equal(by.W2.model, 'opus');
+  assert.equal(by.W3.model, '');
+  assert.ok(!JSON.stringify(by).includes('SECRET123'));
 });
