@@ -2465,5 +2465,6 @@
   "hub.auto_m": "{0} min",
   "hub.auto_label": "Auto refresh: {0}",
   "srv.nudge.crew_title": "Managed supervision check for tasks {0}.",
-  "srv.nudge.crew_body": "Continue this task's approved plan: remeasure the blocker with current evidence, then take the next step the plan and crew rules allow — including dispatching or re-dispatching this task's pending tracks. Report concrete evidence and the next step; stop and ask only when an owner decision is truly needed. Do not answer approval dialogs, stop running workers, touch another team's work or lease, merge, deploy, or change credentials."
+  "srv.nudge.crew_body": "Continue this task's approved plan: remeasure the blocker with current evidence, then take the next step the plan and crew rules allow — including dispatching or re-dispatching this task's pending tracks. Report concrete evidence and the next step; stop and ask only when an owner decision is truly needed. Do not answer approval dialogs, stop running workers, touch another team's work or lease, merge, deploy, or change credentials.",
+  "srv.server.chua_cai_tmux": "tmux is not installed on this machine (inside WSL/Linux). Open WSL and run: sudo apt install -y tmux"
 }

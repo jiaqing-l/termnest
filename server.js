@@ -557,6 +557,7 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
     const out = await r.exec(`sh -c ${shq([
       sessionDir(dir, r),
       `[ -d "$d" ] || { echo NODIR; exit 3; }`,
+      `command -v tmux >/dev/null 2>&1 || { echo NOTMUX; exit 5; }`,
       // A framed record keeps tmux output and error markers out of the physical path.
       `(cd "$d" && printf '\\000TW_DIR\\000' && pwd -P && printf '\\000') || { echo NODIR; exit 3; }`,
       `tmux -u has-session -t ${shq(`=${name}`)} 2>/dev/null && { echo EXISTS; exit 4; }`,
@@ -568,7 +569,11 @@ async function executeStartSession(r, { name, dir, run, restoring = false, resum
     ].join('\n'))}`);
     if (out.code === 3) throw new Error(tr('srv.server.khong_thay_thu_muc_nay'));
     if (out.code === 4) { const err = new Error(tr('srv.server.ten_nay_da_co')); err.status = 409; throw err; }
-    if (out.code !== 0) throw new Error(tr('srv.server.khong_tao_duoc_phien'));
+    if (out.code === 5) throw new Error(tr('srv.server.chua_cai_tmux'));
+    if (out.code !== 0) {
+      const why = String(out.err || out.out || '').replace(/\0/g, '').trim().split('\n')[0].slice(0, 160);
+      throw new Error(tr('srv.server.khong_tao_duoc_phien') + (why ? ' (' + why + ')' : ''));
+    }
     const records = out.out.split('\0');
     const record = records.indexOf('TW_DIR');
     if (record < 0 || !records[record + 1]?.endsWith('\n')) throw new Error(tr('srv.server.khong_doc_duoc_thu_muc'));

@@ -540,20 +540,22 @@
   function drawScrollbar(p) {
     var st = p.scroll, bar = p.bar;
     if (!bar) return;
-    if (!st || st.history <= 0 || st.alternate) { bar.hidden = true; return; }
+    // The "newest" button follows the same rule on every path: a pane on the alternate screen (Claude, Codex) or without history never leaves a stale one behind.
+    var behind = !!(st && st.inMode && st.position > 0 && st.history > 0 && !st.alternate);
+    if (p.toBottom) p.toBottom.hidden = !behind;
+    if (!st || st.history <= 0 || st.alternate) { bar.hidden = true; bar.classList.remove('scrolled'); return; }
     bar.hidden = false; // measure only after it is shown: a hidden element has no height
     var total = st.history + st.height, track = bar.clientHeight || 1;
     var size = Math.max(24, Math.round(track * st.height / total));
     p.thumb.style.height = size + 'px';
     p.thumb.style.top = Math.round((track - size) * (st.history - st.position) / st.history) + 'px';
     bar.classList.toggle('scrolled', st.inMode && st.position > 0);
-    if (p.toBottom) p.toBottom.hidden = !(st.inMode && st.position > 0);
   }
   function scrollbar(p) {
     p.bar = el('div', 'tscroll'); p.thumb = el('div', 'tscroll-thumb'); p.bar.append(p.thumb); p.bar.hidden = true; p.host.append(p.bar);
     // One tap back to the newest output after reading history: the thin scrollbar is hard to hit with a finger.
     p.toBottom = el('button', 'tbottom'); p.toBottom.type = 'button'; p.toBottom.textContent = i18n('app.moi_nhat'); p.toBottom.hidden = true; p.host.append(p.toBottom);
-    p.toBottom.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); scrollCall(p, 'bottom').catch(function () {}); });
+    p.toBottom.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); p.toBottom.hidden = true; scrollCall(p, 'bottom').catch(function () {}); });
     var pending = 0, busy = false, hinted = '';
     function flush() {
       if (busy || !pending) return;
