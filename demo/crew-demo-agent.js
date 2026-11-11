@@ -2,8 +2,9 @@
 'use strict';
 // Demo agents for the Crew prototype: they behave like a Claude orchestrator and Codex workers (plan -> OK -> dispatch ->
 // work -> report) so the Crew UI can be tried without spending any tokens. Not used in production.
-//   node crew-demo-agent.js orch   --crew NAME --dir DIR --workers N [--sock SOCKET]
-//   node crew-demo-agent.js worker --crew NAME --n 1 --dir DIR [--sock SOCKET]
+//   node crew-demo-agent.js orch   --crew NAME --dir DIR [--sock SOCKET]
+//   node crew-demo-agent.js worker --crew NAME --name NAME-W1 --kind codex|claude --dir DIR [--sock SOCKET]
+// The orchestrator decides how many workers it needs and of which kind (its plan lists them); TermNest creates them.
 const fs = require('fs'), path = require('path'), cp = require('child_process'), readline = require('readline');
 const [, , role, ...rest] = process.argv, arg = (k, d) => { const i = rest.indexOf('--' + k); return i >= 0 ? rest[i + 1] : d; };
 const crew = arg('crew', 'crew'), dir = arg('dir', process.cwd()), sock = arg('sock', process.env.TW_TMUX_SOCKET || '');
@@ -20,9 +21,9 @@ rl.on('SIGINT', () => { say(C.p + '^C' + C.r); });
 if (role === 'worker') worker(); else orch();
 
 function worker() {
-  const n = arg('n', '1'), me = `${crew}-codex-${n}`;
+  const me = arg('name', `${crew}-W1`), kind = arg('kind', 'codex'), label = kind === 'claude' ? 'Claude' : 'Codex';
   let hang = false, job = null;
-  say(`${C.d}● Codex · ${me}${C.r}`); say(`${C.d}Rảnh. Điều phối sẽ giao việc khi cần.${C.r}`);
+  say(`${C.d}● ${label} · ${me}${C.r}`); say(`${C.d}Rảnh. Điều phối sẽ giao việc khi cần.${C.r}`);
   const STEPS = ['đọc brief + grep file liên quan …', `${C.g}+${C.r} sửa public/app.js, public/app.css`, `${C.d}$ node --test${C.r}`, `${C.g}✔ pass 12/12${C.r}`, `${C.g}+${C.r} ghi out.md`];
   rl.on('line', async (line) => {
     const m = /^TASK (W\d+) (.*)$/.exec(line.trim());
@@ -41,18 +42,20 @@ function worker() {
 }
 
 function orch() {
-  const W = Number(arg('workers', '2'));
-  let workers = Array.from({ length: W }, (_, i) => ({ n: i + 1, busy: null })), tracks = [], phase = 'idle', task = '';
+  let tracks = [], phase = 'idle', task = '';
   fs.mkdirSync(dataDir, { recursive: true });
   const save = () => fs.writeFileSync(path.join(dataDir, 'tracks.json'), JSON.stringify({ task, phase, tracks, at: Date.now() }));
   say(`${C.d}● Claude · điều phối ${crew}${C.r}`); say(`Gõ task bên dưới; tôi lập plan, chờ bạn OK rồi giao cho thợ.`); save();
-  const free = () => workers.find((w) => !w.busy);
+  let retry = null;
+  const hasSession = (name) => tmux('has-session', '-t', '=' + name).status === 0;
+  // A track starts when its dependencies are done and its worker (created by TermNest from the plan) is on the machine.
   function dispatch() {
     for (const t of tracks) {
       if (t.state !== 'queued' || t.dep.some((d) => tracks.find((x) => x.id === d).state !== 'done')) continue;
-      const w = free(); if (!w) { say(`${C.y}Không còn thợ rảnh cho ${t.id}. Thêm thợ để tiếp tục.${C.r}`); break; }
-      w.busy = t.id; t.state = 'dispatched'; t.worker = `codex-${w.n}`;
-      say(`${C.d}$ crew-panes send ${w.n} ${t.id}${C.r}`); type(`${crew}-codex-${w.n}`, `TASK ${t.id} ${t.title}`);
+      const name = `${crew}-${t.id}`;
+      if (!hasSession(name)) { if (!retry) retry = setTimeout(() => { retry = null; dispatch(); }, 1000); continue; }
+      t.state = 'dispatched'; t.worker = t.id;
+      say(`${C.d}$ crew-panes send ${t.id} (${t.agent})${C.r}`); setTimeout(() => type(name, `TASK ${t.id} ${t.title}`), 1500);
     }
     save();
   }
@@ -66,23 +69,26 @@ function orch() {
     const done = /^DONE (W\d+) (\S+)$/.exec(line);
     if (done) {
       const t = tracks.find((x) => x.id === done[1]); if (!t) return;
-      t.state = 'done'; const w = workers.find((x) => `codex-${x.n}` === t.worker); if (w) w.busy = null;
+      t.state = 'done';
       say(`${C.g}✔${C.r} ${done[2]} báo xong ${C.b}${t.id}${C.r}`); save();
       return tracks.every((x) => x.state === 'done') ? finish() : dispatch();
     }
-    if (/^__workers__ \+1$/.test(line)) { workers.push({ n: workers.length + 1, busy: null }); say(`${C.d}+ thêm thợ codex-${workers.length}${C.r}`); if (phase === 'running') dispatch(); return; }
+    // A nudge from the Crew bar is not a new task.
+    if (/^Tiếp tục kế hoạch/i.test(line)) { say(`${C.d}Đã nhận nhắc: ${phase === 'running' ? 'đang chạy, sẽ báo tiến độ' : phase === 'await_ok' ? 'đang chờ bạn OK plan' : 'chưa có việc đang chạy'}.${C.r}`); return; }
     if (phase === 'await_ok' && /^(ok|oke|đồng ý|duyệt|y|yes)\b/i.test(line)) {
-      phase = 'running'; say(`${C.g}✔${C.r} Đã duyệt. Giao việc…`); return dispatch();
+      phase = 'running'; say(`${C.g}✔${C.r} Đã duyệt. Tạo thợ theo plan rồi giao việc…`); save(); return dispatch();
     }
     if (phase === 'await_ok' && /^(sửa|huỷ|hủy|no)\b/i.test(line)) { phase = 'idle'; tracks = []; save(); say(`${C.y}Plan bị hủy. Nhập lại yêu cầu.${C.r}`); return; }
     if (phase === 'running') { say(`${C.y}…${C.r} Đang chạy plan đã duyệt. Tôi ghi nhận ý bạn cho track kế tiếp.`); return; }
     task = line; phase = 'planning'; save(); say(`${C.y}… đang phân tích yêu cầu${C.r}`); await sleep(1200);
-    const n = workers.length, par = n >= 4 ? 3 : n === 3 ? 2 : n === 2 ? 1 : 0, T = ['Mockup + giao diện', 'Logic / API phía server', 'Tài liệu + changelog'];
-    tracks = []; for (let i = 0; i < par; i++) tracks.push({ id: 'W' + (i + 1), title: T[i], state: 'queued', dep: [] });
-    tracks.push({ id: 'W' + (par + 1), title: 'Test + build + review', state: 'queued', dep: tracks.map((t) => t.id) });
+    // "... 8 worker" / "6 thợ" in the task asks for that many workers (2-8); the last one is always the Claude reviewer.
+    const asked = /(\d+)\s*(worker|thợ|tho)/i.exec(task), total = Math.max(2, Math.min(8, asked ? Number(asked[1]) : 3));
+    const POOL = ['Mockup + giao diện', 'Logic / API phía server', 'Tài liệu + changelog', 'Migration + seed', 'Localization en/vi', 'Báo cáo + export', 'Phân quyền + màn hình'];
+    tracks = Array.from({ length: total - 1 }, (_, i) => ({ id: 'W' + (i + 1), title: POOL[i % POOL.length], agent: i % 3 === 2 ? 'claude' : 'codex', state: 'queued', dep: [] }));
+    tracks.push({ id: 'W' + total, title: 'Test + build + review', agent: 'claude', state: 'queued', dep: tracks.map((t) => t.id) });
     phase = 'await_ok'; save();
     say(`${C.g}✔${C.r} Plan cho “${task.slice(0, 48)}”:`);
-    tracks.forEach((t) => say(`  ${C.b}${t.id}${C.r} ${t.title}${t.dep.length ? ` ${C.y}(chờ ${t.dep.join(', ')})${C.r}` : ''}`));
+    tracks.forEach((t) => say(`  ${C.b}${t.id}${C.r} ${t.title} ${C.d}[${t.agent}]${C.r}${t.dep.length ? ` ${C.y}(chờ ${t.dep.join(', ')})${C.r}` : ''}`));
     say(`${C.y}Trả lời OK để giao việc.${C.r}`);
   });
 }

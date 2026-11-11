@@ -65,6 +65,8 @@
   function scoped() { return scope === 'all' ? servers : servers.filter(function (v) { return v.id === scope; }); }
   // Sessions that belong to a Crew (features/crewpanes) are shown as one group, not as loose sessions.
   function inCrew(v, s) { return !!(window.TW && window.TW.crewOf && window.TW.crewOf(v.id, s.name)); }
+  // A crew worker is one pane inside its Crew's tab, not a tab of its own (20 crews x N workers would drown the tab bar).
+  function visTabs() { return vis().filter(function (x) { return !(window.TW && window.TW.crewWorker && window.TW.crewWorker(x.v.id, x.s.name)); }); }
   function vis() {
     var out = [];
     scoped().forEach(function (v) { v.sessions.forEach(function (s) { out.push({ v: v, s: s }); }); });
@@ -96,7 +98,7 @@
     $('hero-t').textContent = !servers.length ? i18n('app.them_may_chu_dau_tien') : w ? (i18n('app.co_viec_dang_cho_ban', [w])) : r ? i18n('app.moi_viec_dang_chay_tot') : i18n('app.chua_co_viec_nao_dang');
     var box = $('chips'); box.textContent = '';
     function chip(num, t, c) { var e = el('span', 'chip ' + (c || '')); e.append(el('b', '', num), t); box.append(e); }
-    chip(on + '/' + servers.length, i18n('app.may_chu')); chip(vis().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
+    chip(on + '/' + servers.length, i18n('app.may_chu')); chip(visTabs().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
     if (w) chip(w, i18n('app.cho_ban_2'), 'alert');
     box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
     // The first session waiting for you gets a reply button right in the summary.
@@ -296,7 +298,7 @@
   }
   function closeTab(x) {
     if (!tabHide) return;
-    var list = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
+    var list = visTabs().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
     var wasCurrent = cur && cur.id === x.v.id && cur.name === x.s.name, next = list[i + 1] || list[i - 1];
     tabHide.hide(tabKey(x)); noteClosed([tabKey(x)]);
     if (wasCurrent && next && next !== x) { cur = { id: next.v.id, name: next.s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
@@ -310,7 +312,7 @@
     var wasCurrent = cur && list.some(function (y) { return y.v.id === cur.id && y.s.name === cur.name; }), keys = list.map(tabKey);
     keys.forEach(function (k) { tabHide.hide(k); }); noteClosed(keys);
     if (wasCurrent) {
-      var rest = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); });
+      var rest = visTabs().filter(function (y) { return !tabHide.isHidden(tabKey(y)); });
       if (rest.length) { cur = { id: rest[0].v.id, name: rest[0].s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
       else { cur = null; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } setWall(true); }   // no tab left: stay in the terminal on the All tab
     }
@@ -350,7 +352,7 @@
   function tabContextMenu(x, ev) {
     ev.preventDefault(); ev.stopPropagation();
     var old = document.querySelector('.tab-menu'); if (old) old.remove();
-    var open = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), others = open.filter(function (y) { return tabKey(y) !== tabKey(x); });
+    var open = visTabs().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), others = open.filter(function (y) { return tabKey(y) !== tabKey(x); });
     var menu = el('div', 'tab-menu'); menu.setAttribute('role', 'menu');
     [[i18n('app.dong_tab_nay'), function () { closeTab(x); }, true],
      [i18n('app.dong_cac_tab_khac', [others.length]), function () { closeMany(others, i18n('app.da_dong_tab_khac_cac', [others.length])); }, others.length > 0],
@@ -362,16 +364,16 @@
     function away(e) { if (!menu.contains(e.target)) gone(); } function esc(e) { if (e.key === 'Escape') gone(); }
     setTimeout(function () { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); }, 0);
   }
-  function hiddenItems() { return tabHide ? vis().filter(function (y) { return tabHide.isHidden(tabKey(y)); }) : []; }
+  function hiddenItems() { return tabHide ? visTabs().filter(function (y) { return tabHide.isHidden(tabKey(y)); }) : []; }
   function renderTabs() {
     var box = $('tabs'); box.textContent = '';
     // Only forget a hidden tab once its host is loaded, online and really no longer has that session.
     if (tabHide) tabHide.prune(function (k) { var id = k.split('/')[0], v = srv(id); return !v || !v.on || v.sessions.some(function (s) { return id + '/' + s.name === k; }); });
     var allTab = el('button', 'tab tab-all'); allTab.style.setProperty('--c', '#7c6cf0'); allTab.setAttribute('role', 'tab'); allTab.setAttribute('aria-selected', String(wallOn));
     allTab.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
-    allTab.append(i18n('wall.all') + ' ' + vis().length); allTab.onclick = function () { setWall(true); };
+    allTab.append(i18n('wall.all') + ' ' + visTabs().length); allTab.onclick = function () { setWall(true); };
     box.append(allTab);
-    vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
+    visTabs().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
       b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name);
@@ -431,7 +433,7 @@
     ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'focus'); });
     render();
     if (v === 'focus') {
-      if (!curItem() && !wallOn) { var all = vis(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
+      if (!curItem() && !wallOn) { var all = visTabs(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
       ensureTerm(); connectTerm(); if (panes.length) focusPane(focusedPane, true);
     }
   }
@@ -488,6 +490,9 @@
     if (p.ws) { p.ws.onclose = null; p.ws.close(); p.ws = null; }
   }
   function focusPane(index, focus) {
+    // A Crew worker pane is only watched: picking it must not turn the detail panel (and the tab) into the worker's; they stay the session's.
+    var pc = panes[index] && panes[index].cur;
+    if (pc && window.TW && window.TW.crewWorker && window.TW.crewWorker(pc.id, pc.name) && cur && !(cur.id === pc.id && cur.name === pc.name)) { focusedPane = index; panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); }); return; }
     if (focusedPane === index && cur === panes[index].cur) { if (focus) focusTerminal(panes[index]); return; }
     focusedPane = index; cur = panes[index].cur;
     panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); });
@@ -732,7 +737,11 @@
     if (here || (tries || 0) >= 12) { openSession(id, name); return; }
     setTimeout(function () { refresh(true).then(function () { openWhenReady(id, name, (tries || 0) + 1); }, function () { openWhenReady(id, name, (tries || 0) + 1); }); }, 500);
   }
-  function openSession(id, name) { if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
+  function openSession(id, name) {
+    // A Crew's tab opens the whole Crew; any other session leaves the Crew layout (it must not land in a worker's pane).
+    if (window.TW && window.TW.openCrewFor && window.TW.openCrewFor(id, name)) return;
+    if (/\bcrew[TL]\b/.test($('split').className) && !inCrew({ id: id }, { name: name })) { focusedPane = 0; setSplit(1); }
+    if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   $('key-more-btn').onclick = function (e) { e.stopPropagation(); popToggle(this, $('key-more')); };
@@ -1618,7 +1627,7 @@
   api('GET', '/api/status').then(function (s) { $('set-quit').hidden = !s.packaged; if (s.authed) enter(); else showLogin(); });
   // ---- "All" wall: every session as a light, text-only tile (public/wall.js); a click opens the real terminal.
   wall = window.Wall.create({
-    root: $('wall'), api: api, items: vis, color: color,
+    root: $('wall'), api: api, items: visTabs, color: color, // a Crew is one card there; its workers are not
     stateLabel: function (s) { return i18n('wall.f.' + (s.state === 'wait' ? 'wait' : s.state === 'idle' ? 'idle' : 'run')); },
     label: function (f) { return i18n('wall.f.' + f); },
     emptyText: function () { return i18n('wall.empty'); },
