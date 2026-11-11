@@ -125,3 +125,10 @@ test('deriveCrews: a task without leader or without tracks creates no Crew; two 
   assert.equal(two.length, 1); assert.deepEqual(two[0].workers, ['W1', 'B/W1']);
   assert.equal(two[0].trackMap['B/W1'].task, 'B');
 });
+
+test('deriveCrews: the kind (Codex or Claude) of a track comes from its executor even when nothing is running', () => {
+  const c = deriveCrews({ tasks: [{ machine: 'm', root: '/r', id: 'T', title: 't', leader: 'L', tracks: [
+    { id: 'W1', state: 'done', executor: 'codex', model: 'gpt-5.6-codex' }, { id: 'W2', state: 'queued', executor: 'claude-opus' }, { id: 'W3', state: 'pending', executor: '' }] }] })[0];
+  assert.deepEqual(c.kinds, { W1: 'codex', W2: 'claude', W3: '' });
+  assert.equal(c.models.W1, 'gpt-5.6-codex');
+});

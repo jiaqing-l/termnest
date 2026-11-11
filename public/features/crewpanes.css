@@ -89,7 +89,7 @@
 .cp-wh{display:flex;align-items:center;gap:7px;height:26px;padding:0 8px;background:var(--surface-2);flex:none;min-width:0;font:12px var(--mono);color:var(--fg)}
 .cp-wh b{font-weight:700}.cp-wh .cp-wt{flex:1;min-width:0;color:var(--fg-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cp-wl{flex:1;min-height:0;margin:0;padding:6px 10px;overflow:auto;color:#dfe6f5;font:12px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;background:#101527}
-@container (max-width:330px){.cp-wh .cp-wt,.cp-wh .cp-kind{display:none}}
+@container (max-width:330px){.cp-wh .cp-wt{display:none}}
 .cp-step.failed i{background:#e5484d}
 
 /* the picked worker: bright border that stays, with a short glow when picked */
@@ -110,3 +110,9 @@
 .cp-wf.done{background:rgba(25,195,125,.16);color:#49dca0;border-top:1px solid rgba(73,220,160,.35)}
 .cp-wf.failed{background:rgba(229,72,77,.16);color:#ff8a96;border-top:1px solid rgba(255,138,150,.35)}
 .cp-wf.queued{background:#161d36;color:#8c98b5;border-top:1px solid var(--term-line)}
+
+/* which tool runs the worker: always visible in its header */
+.cp-wh .cp-kind{flex:none;padding:0 7px;border-radius:99px;font:700 11px/18px var(--mono);white-space:nowrap}
+.cp-wh .cp-kind.codex{background:rgba(16,163,127,.2);color:#3fd0a8}
+.cp-wh .cp-kind.claude{background:rgba(217,119,87,.22);color:#f0a184}
+.cp-wh .cp-kind.none{background:var(--surface-3);color:var(--fg-3)}

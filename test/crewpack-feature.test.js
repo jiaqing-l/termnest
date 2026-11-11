@@ -40,6 +40,9 @@ test('reads crew files only from a workspace that has _crew/tasks, starting from
   assert.equal(byId['t-rounds'].tracks[0].fixRounds, 2);
   assert.equal(byId['t-blocked'].blocked, 'waiting for DB slot');
   assert.equal(byId['t-asleep'].maxFix, 3);
+  // The executor named in the manifest travels with the track (the Crew screen shows Codex / Claude from it).
+  assert.equal(byId['t-asleep'].tracks[0].executor, 'codex');
+  assert.equal(byId['t-blocked'].tracks[0].executor, '');
   assert.equal((await cp.crewRuntime()({ cwds: [os.tmpdir()], days: 3 })).roots.length, 0);
 });
 

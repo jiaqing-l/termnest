@@ -12,15 +12,15 @@
   // Vận hành screen reads (opshub fleet: tasks[].leader, tasks[].tracks, sessions[].workers). A worker is a track, not a session.
   var TRACK_UI = { running: 'run', dispatched: 'run', fix: 'run', review: 'run', queued: 'queued', pending: 'queued', blocked: 'queued', failed: 'failed', done: 'done', merged: 'done' };
   function deriveCrews(fleet) {
-    var by = {}, kinds = {};
+    var by = {}, kinds = {}, kindOf = function (x) { return /codex/i.test(x || '') ? 'codex' : /claude/i.test(x || '') ? 'claude' : ''; };
     (fleet.sessions || []).forEach(function (s) { (s.workers || []).forEach(function (w) { if (w.task && w.track) kinds[s.machine + '|' + w.task + '|' + w.track] = w.kind || ''; }); });
     (fleet.tasks || []).forEach(function (t) {
       if (!t.leader || !(t.tracks || []).length) return;
-      var id = t.machine + '/' + t.leader, c = by[id] || (by[id] = { id: id, server: t.machine, name: t.leader, dir: t.root, derived: true, workers: [], kinds: {}, trackMap: {}, tasks: [] });
+      var id = t.machine + '/' + t.leader, c = by[id] || (by[id] = { id: id, server: t.machine, name: t.leader, dir: t.root, derived: true, workers: [], kinds: {}, models: {}, trackMap: {}, tasks: [] });
       c.tasks.push({ id: t.id, title: t.title });
       t.tracks.forEach(function (k) {
         var nm = c.trackMap[k.id] ? t.id + '/' + k.id : k.id;
-        c.workers.push(nm); c.kinds[nm] = kinds[t.machine + '|' + t.id + '|' + k.id] || ''; c.trackMap[nm] = { task: t.id, track: k.id, state: k.state, title: t.title };
+        c.workers.push(nm); c.kinds[nm] = kindOf(k.executor) || kinds[t.machine + '|' + t.id + '|' + k.id] || ''; c.models[nm] = k.model || ''; c.trackMap[nm] = { task: t.id, track: k.id, state: k.state, title: t.title };
       });
     });
     return Object.keys(by).map(function (k) { return by[k]; });
@@ -36,7 +36,7 @@
   }
   // With pets turned off the app shows initials in the avatar; the Crew rows must do the same (they were blank squares).
   function ini(name) { var p = String(name).split(/[-_\s.\/]+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '').slice(1, 2))).toUpperCase(); }
-  function kindLabel(c, n) { var k = (c.kinds || {})[n]; return k === 'claude' ? 'Claude' : k === 'codex' ? 'Codex' : 'track'; }
+  function kindLabel(c, n) { var k = (c.kinds || {})[n], m = (c.models || {})[n]; return (k === 'claude' ? 'Claude' : k === 'codex' ? 'Codex' : 'track') + (m ? ' · ' + m : ''); }
   function post(path, body) { return TW.api('POST', '/api/features/crewpanes' + path, body); }
   function get(path) { return TW.api('GET', '/api/features/crewpanes' + path); }
   function petSvg(i, st) { return PET ? PET.pet(KINDS[i % KINDS.length], st === 'run' ? 'run' : st === 'wait' ? 'wait' : 'idle') : ''; }
@@ -184,7 +184,7 @@
   function removeLogs() { document.querySelectorAll('#split .cp-wlog').forEach(function (n) { n.remove(); }); }
   function wlogPane(c, nm) {
     var t = c.trackMap[nm] || {}, p = el('section', 'cp-wlog'); p.dataset.w = nm; p.dataset.crew = c.id;
-    var h = el('div', 'cp-wh'); h.append(el('i', 'cp-dot'), el('b', '', nm), el('span', 'cp-kind', kindLabel(c, nm)), el('span', 'cp-wt', t.title || ''), el('span', 'cp-st', ''));
+    var h = el('div', 'cp-wh'); h.append(el('i', 'cp-dot'), el('b', '', nm), el('span', 'cp-kind ' + ((c.kinds || {})[nm] || 'none'), kindLabel(c, nm)), el('span', 'cp-wt', t.title || ''), el('span', 'cp-st', ''));
     p.append(h, el('pre', 'cp-wl', i18n('cp.log_reading')), el('div', 'cp-wf')); return p;
   }
   function stripAnsi(x) { return String(x || '').replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, '').replace(/\r/g, ''); }
@@ -256,7 +256,7 @@
     t.forEach(function (x) {
       var wname = c.derived ? x.id : c.name + '-' + x.id;
       var chip = el('button', 'cp-step ' + (trackDone(c, x) ? 'done' : x.state) + (cur.focus === wname ? ' sel' : '')); chip.type = 'button';
-      chip.title = x.id + ' · ' + x.title + ' · ' + (trackDone(c, x) ? i18n('cp.done_l') : x.state === 'dispatched' ? i18n('cp.chip_running') + x.agent + ')' : i18n('cp.chip_queued'));
+      chip.title = x.id + ' · ' + kindLabel(c, wname) + ' · ' + x.title + ' · ' + (trackDone(c, x) ? i18n('cp.done_l') : x.state === 'dispatched' ? i18n('cp.chip_running') + x.agent + ')' : i18n('cp.chip_queued'));
       chip.append(el('i'), document.createTextNode(x.id)); chip.onclick = function () { if (cur && cur.focus === wname && document.querySelector('#split .cx-pick')) clearPick(); else selectWorker(c, wname); }; steps.append(chip);
     });
     b.textContent = ''; b.append(nm, steps);
