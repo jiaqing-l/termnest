@@ -5,7 +5,7 @@ const test = require('node:test'), assert = require('node:assert/strict'), fs = 
 
 test('a terminal channel granted after its viewer left is closed immediately', () => {
   const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
-  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 1200);
+  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 2400);
   assert.match(body, /if \(ws\.readyState !== ws\.OPEN\) \{ try \{ stream\.close\(\); \} catch \{[^}]*\} return; \}/);
   assert.ok(body.indexOf('ws.readyState !== ws.OPEN') < body.indexOf('openTerms.add(ws)'), 'checked before the channel is wired');
 });
@@ -20,5 +20,13 @@ test('switching back shows the last screen at once (tmux sessions) and window-si
   const app = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8'), remote = fs.readFileSync(path.join(__dirname, '../lib/remote.js'), 'utf8');
   assert.match(app, /snapshotPane\(p\); closePane\(p\); p\.key = key; p\.term\.reset\(\); fitPane\(p\);/);
   assert.match(app, /if \(screens\[key\] && x\.v\.mode !== 'powershell'\) p\.term\.write\(/);
-  assert.match(remote, /if \(!this\.sized\.has\(name\)\) \{ this\.sized\.add\(name\); this\.exec\(`tmux set-option -q -t/);
+  assert.match(remote, /if \(this\.sized\.has\(name\)\) \{ go\(\); return; \}\n\s+this\.sized\.add\(name\);\n\s+this\.exec\(`tmux set-option -q -t[^\n]*\.then\(go\)/);
+});
+
+test('the first resize and keystrokes sent while the channel opens are kept and applied', () => {
+  const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 2400);
+  assert.ok(body.indexOf("ws.on('message'") < body.indexOf('r.attach('), 'listens before the channel exists');
+  assert.match(body, /stream\.setWindow\(clampSize\(size\.rows/);
+  assert.match(body, /for \(const m of early\.splice\(0\)\) stream\.write\(m\)/);
 });
