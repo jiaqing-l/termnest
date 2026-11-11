@@ -38,8 +38,20 @@
       var ui = TRACK_UI[c.trackMap[nm].state] || 'queued'; return { id: nm, title: c.trackMap[nm].title, state: ui === 'done' ? 'done' : ui === 'run' ? 'dispatched' : ui === 'failed' ? 'failed' : 'queued', worker: nm, agent: c.kinds[nm] };
     }) };
   }
+  // A Crew is only known once the first scan of _crew has finished (up to a couple of minutes after the app starts). A leader that was
+  // opened before that stays in the plain single-pane view: switch it to the Crew layout, once, as soon as the Crew is known.
+  var adopted = {};
+  function adoptOpenLeader() {
+    var a = app(); if (!a.current || !a.view || a.view() !== 'focus') return;
+    var x = a.current(); if (!x) return; var xid = x.v ? x.v.id : x.id, xname = x.s ? x.s.name : x.name; // the app's current item is { v: server, s: session }
+    var c = crewOf(xid, xname); if (!c || xname !== c.name || adopted[c.id]) return;
+    adopted[c.id] = true;
+    if (/crew[TL]/.test(document.getElementById('split').className)) return;
+    if (!liveWorkers(c).length) { delete adopted[c.id]; return; }
+    openCrew(c, c.name);
+  }
   function loadDerived() {
-    return TW.api('GET', '/api/features/opshub/state').then(function (r) { derived = deriveCrews((r && r.fleet) || {}); derived.forEach(function (c) { tracks[c.id] = planOfDerived(c); }); mergeCrews(); }).catch(function () { derived = []; mergeCrews(); });
+    return TW.api('GET', '/api/features/opshub/state').then(function (r) { derived = deriveCrews((r && r.fleet) || {}); derived.forEach(function (c) { tracks[c.id] = planOfDerived(c); }); mergeCrews(); adoptOpenLeader(); }).catch(function () { derived = []; mergeCrews(); });
   }
   // With pets turned off the app shows initials in the avatar; the Crew rows must do the same (they were blank squares).
   function ini(name) { var p = String(name).split(/[-_\s.\/]+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '').slice(1, 2))).toUpperCase(); }
