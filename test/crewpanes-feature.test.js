@@ -154,3 +154,12 @@ test('deriveCrews: a dispatch running now is running even if the scanned manifes
   assert.equal(c.trackMap.W2.state, 'running'); assert.equal(c.trackMap.W2.fromProcess, true);
   assert.equal(c.trackMap.W3.state, 'queued'); assert.equal(c.trackMap.W1.state, 'done');
 });
+
+test('deriveCrews: a task whose workers all finished stays a Crew (opshub wrapped), and is not listed twice', () => {
+  const done = { machine: 'm', root: '/r', id: 'T9', title: 'finished', leader: 'LEAD', tracks: [{ id: 'W1', state: 'done' }, { id: 'W2', state: 'done' }] };
+  const crews = deriveCrews({ sessions: [], tasks: [], wrapped: [done, done] });
+  assert.equal(crews.length, 1);
+  assert.deepEqual(crews[0].workers, ['W1', 'W2']);
+  assert.equal(crews[0].trackMap.W1.state, 'done');
+  assert.equal(deriveCrews({ sessions: [], tasks: [{ ...done }], wrapped: [done] })[0].workers.length, 2);
+});

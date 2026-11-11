@@ -14,7 +14,9 @@
   function deriveCrews(fleet) {
     var by = {}, kinds = {}, kindOf = function (x) { return /codex/i.test(x || '') ? 'codex' : /claude/i.test(x || '') ? 'claude' : ''; };
     (fleet.sessions || []).forEach(function (s) { (s.workers || []).forEach(function (w) { if (w.task && w.track) kinds[s.machine + '|' + w.task + '|' + w.track] = { kind: w.kind || '', model: w.model || '', running: true }; }); });
-    (fleet.tasks || []).forEach(function (t) {
+    // A task whose workers have all finished stays a Crew too (opshub 'wrapped'): the Crew does not vanish with the work.
+    var seen = {};
+    (fleet.tasks || []).concat(fleet.wrapped || []).filter(function (t) { var k = t.machine + '|' + t.root + '|' + t.id; return seen[k] ? false : (seen[k] = true); }).forEach(function (t) {
       if (!t.leader || !(t.tracks || []).length) return;
       var id = t.machine + '/' + t.leader, c = by[id] || (by[id] = { id: id, server: t.machine, name: t.leader, dir: t.root, derived: true, workers: [], kinds: {}, models: {}, kindSrc: {}, trackMap: {}, tasks: [] });
       c.tasks.push({ id: t.id, title: t.title });
