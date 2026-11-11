@@ -9,10 +9,11 @@
   // Windows desktop app: the OS-level full screen leaves WebView2 without mouse input until the window loses focus, so focus mode there is
   // page-only (all the chrome hidden, the terminal fills the window) and the native full screen is never asked for.
   var pageOnly = /Win/i.test(o.navigator.platform || o.navigator.userAgent || '') && !!o.window.TW_DESKTOP;
+  var MIN_FONT = 6; // small enough to read a whole screen of a long log at a glance (declared before the first read: clamp uses it)
   var terminalFont = read('tw-term-font', null, 28), crewFont = read('tw-crew-font', 12, 24);
   var lastCrew = false, pendingFont = false, pendingFullscreen = null, fullscreen = false, busy = false;
   var handled = new WeakSet(), wheelAt = { terminal: -Infinity, crew: -Infinity };
-  function clamp(n, max) { return Math.max(9, Math.min(max, Math.round(n))); }
+  function clamp(n, max) { return Math.max(MIN_FONT, Math.min(max, Math.round(n))); }
   function read(key, fallback, max) {
     try { var raw = o.storage.getItem(key), n = Number(raw); return raw !== null && raw !== undefined && raw !== '' && Number.isFinite(n) ? clamp(n, max) : fallback; }
     catch (_) { return fallback; }
@@ -32,8 +33,10 @@
     if (o.composing()) { pendingFont = true; return; }
     pendingFont = false;
     o.panes().forEach(function (p) { if (p.term.options.fontSize !== font()) p.term.options.fontSize = font(); });
-    o.fit(); updateLabels();
+    shareFont(); o.fit(); updateLabels();
   }
+  // Panes that are not xterm (a Crew worker's log) read the size from this variable, so A- / A+ / Ctrl+wheel reach them too.
+  function shareFont() { try { doc.documentElement.style.setProperty('--tw-term-font', font() + 'px'); } catch (_) { /* no document element in tests */ } }
   function zoom(target, step) {
     if (target === 'crew') {
       crewFont = step === 0 ? 12 : clamp(crewFont + step, 24);
@@ -103,7 +106,7 @@
   o.crewOutput.addEventListener('wheel', wheel('crew'), { passive: false });
   doc.addEventListener('fullscreenchange', function () { syncFullscreen(!!doc.fullscreenElement); });
   win.addEventListener('tw-fullscreen', function (e) { if (!pageOnly) syncFullscreen(e.detail); });   // the window is never full screen in page-only mode
-  o.crewOutput.style.setProperty('--crew-font', crewFont + 'px'); updateLabels();
+  o.crewOutput.style.setProperty('--crew-font', crewFont + 'px'); shareFont(); updateLabels();
   return { font: font, zoom: zoom, handleKey: handleKey, applyTerminalFont: applyTerminalFont,
     flush: function () {
       if (o.composing()) return;

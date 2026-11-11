@@ -124,3 +124,6 @@
 #app.slim.cp-detail .detail{display:flex;position:absolute;right:0;top:57px;bottom:0;width:340px;z-index:30;box-shadow:-18px 0 30px -22px rgba(20,30,60,.5)}
 #app.slim .focus-body{position:relative}
 .cp-bar .cp-task{flex:1 1 0;min-width:0;color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* worker log panes follow A- / A+ / Ctrl+wheel like the terminals */
+.cp-wl{font-size:var(--tw-term-font,12px);line-height:1.5}

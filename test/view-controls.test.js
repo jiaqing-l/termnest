@@ -55,7 +55,7 @@ test('global terminal size steps, clamps, resets, persists and initializes new p
   for (let i = 0; i < 40; i++) f.c.zoom('terminal', 1);
   assert.equal(f.c.font(), 28); assert.match(f.o.termPlus.title, /28 px/);
   for (let i = 0; i < 40; i++) f.c.zoom('terminal', -1);
-  assert.equal(f.c.font(), 9);
+  assert.equal(f.c.font(), 6);
   f.o.termReset.onclick(); assert.equal(f.c.font(), 13);
   const compact = fixture({ compact: true }); assert.equal(compact.c.font(), 12);
   compact.c.zoom('terminal', 1); compact.c.zoom('terminal', 0); assert.equal(compact.c.font(), 12);
@@ -70,7 +70,7 @@ test('Crew uses its own persisted CSS size and bounds, without affecting termina
   for (let i = 0; i < 40; i++) f.c.zoom('crew', 1);
   assert.equal(f.o.crewOutput.style['--crew-font'], '24px');
   for (let i = 0; i < 40; i++) f.c.zoom('crew', -1);
-  assert.equal(f.o.crewOutput.style['--crew-font'], '9px');
+  assert.equal(f.o.crewOutput.style['--crew-font'], '6px');
   f.c.zoom('crew', 0); assert.equal(f.o.crewOutput.style['--crew-font'], '12px');
   assert.equal(f.o.crewPanel.style.height, undefined);
   assert.match(fs.readFileSync(require.resolve('../public/app.css'), 'utf8'), /#crew-output\{font-size:var\(--crew-font,12px\);height:250px\}/);
