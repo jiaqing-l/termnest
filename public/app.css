@@ -1464,3 +1464,7 @@ dialog.drop-remote{display:none}
 .detail{width:236px;padding:10px;gap:10px}
 .term-tools{padding:3px 8px;gap:4px;row-gap:3px}.term-tools .keybar{gap:4px}.term-tools #cmds{gap:4px;row-gap:3px}
 .term-tools .keybar .btn,.term-tools #cmds .btn{min-height:26px;padding:1px 8px;font-size:11.5px;border-radius:8px}
+
+/* Toasts sit at the bottom centre: at the top they covered the tab strip and the Crew bar. */
+#banner{top:auto;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translate(-50%,8px)}
+#banner.show{transform:translate(-50%,0)}

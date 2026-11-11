@@ -92,11 +92,19 @@
     if (c.derived) return document.querySelector('#split .cp-wlog[data-w="' + (window.CSS && CSS.escape ? CSS.escape(name) : name) + '"]');
     var i = paneNames(c).indexOf(name); return i < 0 ? null : document.querySelectorAll('#split .pane')[i] || null;
   }
+  var pickTimer = null, PICK_MS = 5000;
+  // The bright border is a pointer, not a state: it fades after a few seconds, a second click on the same chip clears it at once,
+  // and so does a click in the orchestrator's pane.
+  function clearPick() {
+    clearTimeout(pickTimer); document.querySelectorAll('#split .cx-pick').forEach(function (n) { n.classList.remove('cx-pick', 'cx-pulse'); });
+    var c = cur && currentCrew(); if (c) cur.focus = c.name; if (cur) drawBar();
+  }
   function highlight(c, name) {
-    document.querySelectorAll('#split .cx-pick').forEach(function (n) { n.classList.remove('cx-pick'); });
+    clearTimeout(pickTimer); document.querySelectorAll('#split .cx-pick').forEach(function (n) { n.classList.remove('cx-pick'); });
     var node = paneNodeOf(c, name); if (!node) return false;
     node.classList.add('cx-pick'); node.classList.remove('cx-pulse'); void node.offsetWidth; node.classList.add('cx-pulse');
     if (cur) cur.focus = name;
+    pickTimer = setTimeout(clearPick, PICK_MS);
     drawBar(); return true;
   }
   function selectWorker(c, name) {
@@ -106,6 +114,12 @@
     openCrew(c, name);
   }
   TW.openCrewFor = function (id, name) { var c = crewOf(id, name); if (!c || name !== c.name) return false; openCrew(c, name); return true; }; // always re-lay the whole Crew: falling through put the lead into whichever pane was focused (a worker's)
+  // "2 thợ · 1 cần bạn": the note the ordinary sidebar row of a Crew's leader carries.
+  TW.crewNote = function (id, name) {
+    var c = crewOf(id, name); if (!c || name !== c.name) return ''; var w = liveWorkers(c); if (!w.length) return '';
+    var ks = w.map(function (n) { return paneState(c, n).k; }), need = ks.filter(function (k) { return k === 'wait' || k === 'quiet' || k === 'gone' || k === 'failed'; }).length, run = ks.filter(function (k) { return k === 'run'; }).length;
+    return w.length + i18n('cp.n_workers') + (need ? ' · ' + need + i18n('cp.n_need') : run ? ' · ' + run + i18n('cp.n_running') : '');
+  };
   TW.crewWorker = function (id, name) { var c = crewOf(id, name); return !!c && name !== c.name; };
   // More workers than panes: panes go to the ones that need a look (waiting, quiet, running); the rest stay as chips.
   var MAXPANES = 6, TIDY_MS = 8000, pins = {}, showAll = {}, doneSeen = {}, hidden = loadHidden(), LEADKEY = 'tw-crew-lead', HIDEKEY = 'tw-crew-hide';
@@ -137,33 +151,6 @@
 
   // ----- sidebar + overview -----
   function pill(cls, text) { return el('span', 'pill ' + cls, text); }
-  var openKey = 'tw-crew-open';
-  function crewOpen(id) { try { return (JSON.parse(localStorage.getItem(openKey) || '{}'))[id] === 1; } catch (e) { return false; } }
-  function setCrewOpen(id, on) { try { var m = JSON.parse(localStorage.getItem(openKey) || '{}'); if (on) m[id] = 1; else delete m[id]; localStorage.setItem(openKey, JSON.stringify(m)); } catch (e) { /* optional */ } }
-  // One row per Crew (its workers are panes inside the Crew tab); the row folds open to show the workers.
-  TW.sideCrews = function (box, api) {
-    if (!crews.length) return;
-    box.append(el('div', 'group', 'Crew'));
-    crews.forEach(function (c) {
-      var g = el('div', 'cp-group'), sm = summary(c), open = crewOpen(c.id), cnt = function (k) { return sm.st.slice(1).filter(function (x) { return x.k === k; }).length; };
-      var b = el('button', 'sess'); b.style.setProperty('--c', COLORS[0]); b.title = 'Crew ' + c.name;
-      b.setAttribute('aria-current', String(!!cur && cur.id === c.id));
-      var a = el('span', 'ava'); a.innerHTML = petSvg(0, sm.k); a.append(el('span', 'ava-i', ini(c.name)), el('span', 'flag ' + (sm.k === 'run' ? 'run' : sm.k === 'wait' ? 'wait' : '')));
-      var sub = liveWorkers(c).length ? liveWorkers(c).length + i18n('cp.n_workers') + (cnt('run') ? ' · ' + cnt('run') + i18n('cp.n_running') : '') + (cnt('wait') + cnt('quiet') ? ' · ' + (cnt('wait') + cnt('quiet')) + i18n('cp.n_need') : '') : i18n('cp.no_workers');
-      var t = el('span', 'txt'); t.append(el('span', 'n', c.name), el('span', 's', sub));
-      b.append(a, t);
-      if (liveWorkers(c).length) { var tg = el('span', 'cp-fold', open ? '▾' : '▸'); tg.setAttribute('role', 'button'); tg.setAttribute('aria-label', open ? i18n('cp.fold_workers') : i18n('cp.unfold_workers')); tg.title = open ? i18n('cp.fold') : i18n('cp.show_each');
-        tg.onclick = function (e) { e.stopPropagation(); setCrewOpen(c.id, !open); app().refresh(); }; b.append(tg); }
-      b.onclick = function () { openCrew(c, c.name); }; g.append(b);
-      if (open) liveWorkers(c).slice().sort().forEach(function (name, k) {
-        var st = paneState(c, name), w = el('button', 'sess w'); w.style.setProperty('--c', COLORS[(k + 1) % COLORS.length]); w.title = name;
-        var av = el('span', 'ava'); av.innerHTML = petSvg(k + 1, st.k); av.append(el('span', 'ava-i', ini(name.replace(c.name + '-', ''))), el('span', 'flag ' + (st.k === 'run' ? 'run' : st.k === 'wait' ? 'wait' : '')));
-        var tx = el('span', 'txt'); tx.append(el('span', 'n', name.replace(c.name + '-', '')), el('span', 's', kindLabel(c, name) + ' · ' + LABEL[st.k].toLowerCase()));
-        w.append(av, tx); w.onclick = function () { selectWorker(c, name); }; g.append(w);
-      });
-      box.append(g);
-    });
-  };
   // "Tất cả": one compact card per Crew (workers are not cards): status, counts, the orchestrator's last lines, and a dot per worker.
   TW.gridCrews = function (g, v) {
     crews.filter(function (c) { return c.server === v.id; }).forEach(function (c) {
@@ -249,6 +236,7 @@
     var g = gut(); if (!g) return; var lead = document.querySelector('#split .pane.crew-lead') || document.querySelector('#split .pane');
     if (lead) g.style.top = (lead.offsetTop + lead.offsetHeight - 3) + 'px';
   }
+  document.getElementById('split').addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('.crew-lead') && document.querySelector('#split .cx-pick')) clearPick(); });
   TW.on('open-crew', function (c) { openCrew(c, c.name); });
   TW.on('layout', function (cls) {
     if (cur && cur.cls !== cls) cur = null;
@@ -277,7 +265,7 @@
       var wname = c.derived ? x.id : c.name + '-' + x.id;
       var chip = el('button', 'cp-step ' + (trackDone(c, x) ? 'done' : x.state) + (cur.focus === wname ? ' sel' : '')); chip.type = 'button';
       chip.title = x.id + ' · ' + x.title + ' · ' + (trackDone(c, x) ? i18n('cp.done_l') : x.state === 'dispatched' ? i18n('cp.chip_running') + x.agent + ')' : i18n('cp.chip_queued'));
-      chip.append(el('i'), document.createTextNode(x.id)); chip.onclick = function () { selectWorker(c, wname); }; steps.append(chip);
+      chip.append(el('i'), document.createTextNode(x.id)); chip.onclick = function () { if (cur && cur.focus === wname && document.querySelector('#split .cx-pick')) clearPick(); else selectWorker(c, wname); }; steps.append(chip);
     });
     b.textContent = ''; b.append(nm, steps);
     if (liveWorkers(c).length > MAXPANES) { var hid = el('span', 'cp-hid', cur.shown.length + '/' + liveWorkers(c).length); hid.title = i18n('cp.showing') + cur.shown.length + i18n('cp.panes_tip'); b.append(hid); }

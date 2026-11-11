@@ -64,6 +64,8 @@
   }
   function scoped() { return scope === 'all' ? servers : servers.filter(function (v) { return v.id === scope; }); }
   // Sessions that belong to a Crew (features/crewpanes) are shown as one group, not as loose sessions.
+  // Only the workers of a Crew are folded away; its leader is an ordinary session in the ordinary state groups.
+  function inCrewWorker(v, s) { return !!(window.TW && window.TW.crewWorker && window.TW.crewWorker(v.id, s.name)); }
   function inCrew(v, s) { return !!(window.TW && window.TW.crewOf && window.TW.crewOf(v.id, s.name)); }
   // A crew worker is one pane inside its Crew's tab, not a tab of its own (20 crews x N workers would drown the tab bar).
   function visTabs() { return vis().filter(function (x) { return !(window.TW && window.TW.crewWorker && window.TW.crewWorker(x.v.id, x.s.name)); }); }
@@ -144,16 +146,16 @@
     row('all', i18n('app.tat_ca_may_chu'), i18n('app.so_may_chu', [servers.length]), total, false, 'all');
     servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
-    if (window.TW && window.TW.sideCrews) window.TW.sideCrews(box, { open: openCrewLayout });
     [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
-      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s) && !inCrew(x.v, x.s); }); if (!list.length) return;
+      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s) && !inCrewWorker(x.v, x.s); }); if (!list.length) return;
       box.append(el('div', 'group', g[1]));
       list.forEach(function (x) {
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
         var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
         b.title = x.s.name + ' · ' + x.v.name;
-        var t = el('span', 'txt'); t.append(el('span', 'n', x.s.name), el('span', 's', scope === 'all' ? x.v.name : subOf(x.s)));
+        var t = el('span', 'txt'); var crewNote = window.TW && window.TW.crewNote ? window.TW.crewNote(x.v.id, x.s.name) : '', baseSub = scope === 'all' ? x.v.name : subOf(x.s);
+        t.append(el('span', 'n', x.s.name), el('span', 's', crewNote ? baseSub + ' · ' + crewNote : baseSub));
         b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
       });
     });
