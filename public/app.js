@@ -726,6 +726,8 @@
       if (!p.cur || p.cur.id !== it.id || p.cur.name !== it.name) { closePane(p); p.cur = { id: it.id, name: it.name }; }
       p.ro = !!(ro && ro[i]); p.node.dataset.ro = p.ro ? '1' : ''; p.node.classList.toggle('crew-lead', i === 0 && /^crew/.test(cls));
     });
+    // Opening a Crew brings back the tab of its leader even if the person had closed it (openSession does the same for any session).
+    if (tabHide && items.length) tabHide.show(items[0].id + '/' + items[0].name);
     paneCount = items.length; focusedPane = 0; cur = panes[0].cur; $('split').className = cls;
     if (window.TW) window.TW.emit('layout', cls);
     focusPane(0, false); syncPanePickers();
