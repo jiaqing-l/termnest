@@ -272,12 +272,11 @@
         var g = el('div', 'grid');
         // Grouped by state like the sidebar: waiting for you, then running, then idle (the usual order inside each group).
         var RANK = { wait: 0, run: 1, idle: 2 };
-        v.sessions.filter(matches).filter(function (s) { return !inCrew(v, s); }).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
+        v.sessions.filter(matches).filter(function (s) { return !inCrewWorker(v, s); }).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
           var key = v.id + '/' + s.name, old = previous[key];
           if (old && old.input && (old.input === active || old.input.value)) { var message = old.card.querySelector('.pet-message'); if (message) message.classList.remove('message-arrives'); cardRefs[key] = old; g.append(old.card); signature = '';  }
           else g.append(sessionCard(v, s));
         });
-        if (window.TW && window.TW.gridCrews) window.TW.gridCrews(g, v, { open: openCrewLayout });
         var add = el('button', 'card add'); add.innerHTML = pet(ORDER[v.sessions.length % ORDER.length], 'run'); add.append(i18n('app.phien_moi'));
         add.setAttribute('aria-label', i18n('app.tao_phien_moi_tren', [v.name])); add.onclick = function () { newDlg(v.id); }; g.append(add);
         sec.append(g);

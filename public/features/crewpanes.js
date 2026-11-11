@@ -147,32 +147,19 @@
 
   // ----- sidebar + overview -----
   function pill(cls, text) { return el('span', 'pill ' + cls, text); }
-  // "Tất cả": one compact card per Crew (workers are not cards): status, counts, the orchestrator's last lines, and a dot per worker.
-  TW.gridCrews = function (g, v) {
-    crews.filter(function (c) { return c.server === v.id; }).forEach(function (c) {
-      var sm = summary(c), ws = sm.st.slice(1), n = function (ks) { return ws.filter(function (x) { return ks.indexOf(x.k) >= 0; }).length; };
-      var card = el('div', 'card crewcard' + (sm.k === 'wait' || sm.k === 'check' ? ' wait' : '')); card.style.setProperty('--c', COLORS[0]); card.tabIndex = 0;
-      var h = el('div', 'card-head'), pet = el('span', 'cp-pet'); pet.innerHTML = petSvg(0, sm.k);
-      var t = el('div', 't'), parts = [];
-      if (liveWorkers(c).length) { parts.push(liveWorkers(c).length + i18n('cp.n_workers')); if (n(['done'])) parts.push(n(['done']) + i18n('cp.n_done')); if (n(['run'])) parts.push(n(['run']) + i18n('cp.n_running')); } else parts.push(i18n('cp.no_workers'));
-      t.append(el('span', 'n', c.name), el('span', 's cp-sub', parts.join(' · '))); h.append(pet, t, pill(sm.cls, sm.label));
-      var need = n(['wait', 'quiet', 'gone', 'failed']);
-      var o = sess(c, c.name), mini = el('div', 'mini'); mini.style.cssText = 'height:auto;padding:6px 12px;margin:0 12px 8px;border-radius:10px';
-      (o && o.lines || []).filter(function (l) { return l.trim(); }).slice(-2).forEach(function (l) { mini.append(el('div', '', l)); });
-      card.append(h, mini);
-      if (liveWorkers(c).length) {
-        var dots = el('div', 'cp-dots');
-        liveWorkers(c).slice().sort().forEach(function (name) {
-          var st = paneState(c, name), d = el('button', 'cp-dotb ' + (st.k === 'wait' || st.k === 'quiet' || st.k === 'gone' || st.k === 'failed' ? 'need' : st.k === 'run' ? 'run' : st.k === 'done' ? 'done' : ''), name.replace(c.name + '-', ''));
-          d.type = 'button'; d.title = name.replace(c.name + '-', '') + ' · ' + LABEL[st.k] + (st.track ? ' · ' + st.track.title : '');
-          d.onclick = function (e) { e.stopPropagation(); openCrew(c, name); }; dots.append(d);
-        });
-        card.append(dots);
-      }
-      var f = el('div', 'card-foot'); var ft = el('span', 'foot-t', need ? need + i18n('cp.need_look') : sm.label); ft.title = sm.sub; f.append(ft, el('span', 'foot-p', c.dir)); card.append(f);
-      card.onclick = function () { openCrew(c, c.name); }; g.append(card);
+  // "Tổng quan": the leader of a Crew keeps its ordinary session card; the Crew adds one row of chips (count + a chip per worker).
+  TW.addCardDecorator(function (card, v, s) {
+    var c = crewOf(v.id, s.name); if (!c || s.name !== c.name) return;
+    var ws = liveWorkers(c); if (!ws.length) return;
+    var sm = summary(c), need = sm.st.slice(1).filter(function (x) { return x.k === 'wait' || x.k === 'quiet' || x.k === 'gone' || x.k === 'failed'; }).length;
+    var row = el('div', 'cp-dots'), note = TW.crewNote(v.id, s.name); row.append(el('span', 'cp-dnote' + (need ? ' need' : ''), note));
+    ws.slice().sort().forEach(function (name) {
+      var st = paneState(c, name), d = el('button', 'cp-dotb ' + (st.k === 'wait' || st.k === 'quiet' || st.k === 'gone' || st.k === 'failed' ? 'need' : st.k === 'run' ? 'run' : st.k === 'done' ? 'done' : ''), name.replace(c.name + '-', ''));
+      d.type = 'button'; d.title = name.replace(c.name + '-', '') + ' · ' + kindLabel(c, name) + ' · ' + LABEL[st.k] + (st.track ? ' · ' + st.track.title : '');
+      d.onclick = function (e) { e.stopPropagation(); openCrew(c, name); }; row.append(d);
     });
-  };
+    var foot = card.querySelector('.card-foot'); if (foot) card.insertBefore(row, foot); else card.append(row);
+  });
 
   // ----- opening a crew in the terminal view -----
   function openCrew(c, focusName) {
@@ -206,7 +193,7 @@
       var q = 'server=' + encodeURIComponent(c.server) + '&session=' + encodeURIComponent(c.name) + '&task=' + encodeURIComponent(t.task) + '&track=' + encodeURIComponent(t.track);
       TW.api('GET', '/api/features/crew/log?' + q).then(function (r) {
         var pre = p.querySelector('.cp-wl'), near = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40, lines = stripAnsi(r.text).split('\n').slice(-200).join('\n');
-        if (pre.textContent !== lines) { pre.textContent = lines || i18n('cp.log_none'); if (near) pre.scrollTop = pre.scrollHeight; }
+        if (pre.textContent !== lines) { pre.textContent = lines || (st.k === 'run' ? i18n('cp.log_wait_running') : i18n('cp.log_none')); if (near) pre.scrollTop = pre.scrollHeight; }
       }).catch(function () { var pre = p.querySelector('.cp-wl'); if (!pre.dataset.err) { pre.dataset.err = '1'; pre.textContent = i18n('cp.log_error'); } });
     });
   }

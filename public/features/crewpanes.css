@@ -46,7 +46,6 @@
 /* sidebar + overview */
 .cp-group{border:1.5px solid var(--line);border-radius:16px;padding:4px 4px 1px;margin-bottom:8px;background:var(--surface-2)}
 .cp-group .sess{margin-bottom:2px}.cp-group .sess.w{margin-left:12px;width:calc(100% - 12px)}
-.card.crewcard{cursor:pointer}
 .cp-mini3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:0 12px 12px}
 .cp-mini3 .mini{height:84px;border-radius:10px;cursor:pointer}
 #app.side-mini .cp-group .sess.w{margin-left:0;width:100%}
@@ -57,8 +56,6 @@
 /* identity (pet, name, info) stays at the top of the detail panel; the Crew summary follows, and the actions live in the bar's menu */
 
 .cp-pet{display:block;width:30px;height:30px;flex:none}.cp-pet svg{width:30px;height:30px}
-/* same header as the other cards (padding, gap, 30px icon, name over a small line) */
-.card.crewcard .card-head .cp-sub{display:block!important;padding:0;margin:0;font-size:11px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #app.compact .cp-steps{display:none}#app.compact .cp-bar{gap:6px;padding:6px 10px}#app.compact .cp-nm .pill{display:none}
 
 /* bar: name + status | progress chips (scroll) | ⓘ ⋯ — never wider than the screen */
@@ -116,3 +113,8 @@
 .cp-wh .cp-kind.codex{background:rgba(16,163,127,.2);color:#3fd0a8}
 .cp-wh .cp-kind.claude{background:rgba(217,119,87,.22);color:#f0a184}
 .cp-wh .cp-kind.none{background:var(--surface-3);color:var(--fg-3)}
+
+/* Crew chips on an ordinary session card */
+.cp-dnote{font:700 11px var(--mono);color:var(--fg-2);align-self:center;margin-right:2px}
+.cp-dnote.need{color:var(--wait)}
+#app.crew-mode #cmds .pane-opt{display:none}
