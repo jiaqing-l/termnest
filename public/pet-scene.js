@@ -15,7 +15,7 @@
   field.append(ball); $('pet-yard').append(field, pond);
   const score = element('span', 'yard-score', i18n('petscene.0_0_tro_choi_thu'));
   document.querySelector('.playground > b').append(score); // kept for the hero shelf's own match state; hidden by CSS, pet-yard.js shows the real score
-  try { enabled = localStorage.getItem('tw-pets') !== 'off'; } catch { /* optional storage */ }
+  try { enabled = localStorage.getItem('tw-pets') === 'on'; } catch { /* optional storage */ }
   function element(tag, cls, text) {
     const n = document.createElement(tag); n.className = cls || '';
     if (text !== undefined) n.textContent = text;

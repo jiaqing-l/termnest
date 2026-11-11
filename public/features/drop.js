@@ -2,7 +2,7 @@
 // Drag or paste a file onto the terminal: it is uploaded to the session's host and its path is typed (no Enter).
 (function () {
   var TW = window.TW; if (!TW) return;
-  var el = TW.el, MAX = 25 * 1024 * 1024, BLOCKED = /\.(exe|dll|msi|com|scr|bat|cmd|app|dmg|pkg|apk|ipa)$/i, tray = null, zone = null;
+  var el = TW.el, MAX = 100 * 1024 * 1024, BLOCKED = /\.(exe|dll|msi|com|scr|bat|cmd|app|dmg|pkg|apk|ipa)$/i, tray = null, zone = null;
   function app() { return TW.app(); }
   function ensure(host) {
     if (tray) return;
@@ -28,12 +28,45 @@
   TW.upload = upload; TW.dropTarget = target;
   // The app's current() is {v: server, s: session}; accept {id, name} too. (Reading cur.id directly sent "server=undefined", so every upload failed.)
   function target(cur) { return cur && cur.v && cur.s ? { id: cur.v.id, name: cur.s.name } : cur && cur.id ? { id: cur.id, name: cur.name } : null; }
-  function send(file) {
+  // Pictures are made lighter before they travel: at most 2000 px on the long side (an AI model looks at about that much
+  // anyway) and the smallest of PNG / WebP / JPEG, used only when it really is smaller. Text in screenshots stays sharp
+  // (PNG/WebP at high quality). Shift while dropping sends the original untouched.
+  var SIDE = 2000, LIGHT = 1.5 * 1024 * 1024;
+  function mb(n) { return (n / 1048576).toFixed(n < 10485760 ? 1 : 0).replace('.', ',') + ' MB'; }
+  function shrink(file, keep) {
+    if (keep || !/^image\/(png|jpeg|webp)$/.test(file.type) || !window.createImageBitmap) return Promise.resolve(file);
+    return createImageBitmap(file).then(function (img) {
+      var big = Math.max(img.width, img.height), k = big > SIDE ? SIDE / big : 1;
+      if (k === 1 && file.size <= LIGHT) { img.close && img.close(); return file; }
+      var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); img.close && img.close();
+      var enc = function (type, q) { return new Promise(function (ok) { c.toBlob(function (b) { ok(b && b.type === type ? b : null); }, type, q); }); };
+      var tries = file.type === 'image/jpeg' ? [enc('image/jpeg', 0.9), enc('image/webp', 0.9)] : [enc('image/png'), enc('image/webp', 0.92)];
+      return Promise.all(tries).then(function (blobs) {
+        var best = blobs.filter(Boolean).sort(function (x, y) { return x.size - y.size; })[0];
+        if (!best || best.size >= file.size) return file;
+        var ext = { 'image/png': 'png', 'image/webp': 'webp', 'image/jpeg': 'jpg' }[best.type];
+        var out = new File([best], file.name.replace(/\.[A-Za-z0-9]{1,8}$/, '') + '.' + ext, { type: best.type });
+        out.shrunkFrom = file.size; return out;
+      });
+    }).catch(function () { return file; });
+  }
+  // At most 3 uploads at a time: 20 dropped screenshots go out steadily instead of all fighting for the link.
+  var running = 0, queue = [];
+  function next() { while (running < 3 && queue.length) { running++; queue.shift()().finally(function () { running--; next(); }); } }
+  function send(file, keep) {
     var a = app(), cur = a && a.current && target(a.current()); if (!cur) { if (a && a.say) a.say(i18n('drop.chua_mo_phien_nao_de'), false, 3000); return; }
     var ui = chip(file);
-    if (file.size > MAX) { ui.fail(i18n('drop.qua_25_mb')); return; }
     if (BLOCKED.test(file.name)) { ui.fail(i18n('drop.loai_file_chua_ho_tro')); return; }
-    upload(cur.id, cur.name, file).then(function (path) { ui.ok(path); a.typeText(path + ' '); }).catch(function (e) { ui.fail(e.message); });
+    queue.push(function () {
+      ui.state(/^image\//.test(file.type) && !keep ? i18n('drop.thu_nho') : i18n('drop.dang_tai'));
+      return shrink(file, keep).then(function (f) {
+        if (f.size > MAX) throw new Error(i18n('drop.qua_25_mb'));
+        ui.state(f.shrunkFrom ? i18n('drop.da_thu_nho', [mb(f.shrunkFrom), mb(f.size)]) : i18n('drop.dang_tai'));
+        return upload(cur.id, cur.name, f);
+      }).then(function (path) { ui.ok(path); a.typeText(path + ' '); }).catch(function (e) { ui.fail(e.message); });
+    });
+    next();
   }
   function files(dt) { return dt && dt.files ? Array.prototype.slice.call(dt.files) : []; }
   function hasFiles(dt) { return !!dt && Array.prototype.indexOf.call(dt.types || [], 'Files') >= 0; }
@@ -57,11 +90,22 @@
       if (data.host && data.host !== cur.id) { if (a.say) a.say(i18n('drop.khac_may'), false, 3500); return; }
       a.typeText(data.path + ' ');
     }, true);
-    host.addEventListener('dragenter', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) { depth++; zone.hidden = false; } });
-    host.addEventListener('dragover', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) e.preventDefault(); });
-    host.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) zone.hidden = true; });
-    host.addEventListener('drop', function (e) { if (inWall(e)) return; depth = 0; zone.hidden = true; var f = files(e.dataTransfer); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
-    host.addEventListener('paste', function (e) { if (inWall(e)) return; var f = files(e.clipboardData); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 5).forEach(send); }, true);
+    // The "drop here" layer must never stay up. Counting enter/leave alone is not enough: Windows sends no dragleave when a
+    // drag is cancelled (Esc), dropped outside the pane, or dropped on a listener that stops it. So it also closes when the
+    // drag ends anywhere, on Esc, on a click, when the window loses focus, and when dragover stops arriving (it repeats
+    // every few hundred ms while a drag is really over the pane).
+    var lastOver = 0, watch = null;
+    var hideZone = function () { depth = 0; zone.hidden = true; clearInterval(watch); watch = null; };
+    var showZone = function () { zone.hidden = false; lastOver = Date.now(); if (!watch) watch = setInterval(function () { if (Date.now() - lastOver > 1200) hideZone(); }, 400); };
+    host.addEventListener('dragenter', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) { depth++; showZone(); } });
+    host.addEventListener('dragover', function (e) { if (inWall(e)) return; if (hasFiles(e.dataTransfer)) { e.preventDefault(); lastOver = Date.now(); if (zone.hidden) showZone(); } });
+    host.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) hideZone(); });
+    ['drop', 'dragend'].forEach(function (type) { window.addEventListener(type, hideZone, true); });
+    window.addEventListener('blur', hideZone);
+    window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !zone.hidden) hideZone(); }, true);
+    window.addEventListener('mousedown', function () { if (!zone.hidden) hideZone(); }, true); // the layer lets clicks through
+    host.addEventListener('drop', function (e) { if (inWall(e)) return; hideZone(); var f = files(e.dataTransfer); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 20).forEach(function (x) { send(x, e.shiftKey); }); }, true);
+    host.addEventListener('paste', function (e) { if (inWall(e)) return; var f = files(e.clipboardData); if (!f.length) return; e.preventDefault(); e.stopPropagation(); f.slice(0, 20).forEach(function (x) { send(x, false); }); }, true);
     return true;
   }
   // A phone has no drag and drop: a button in the key bar opens the gallery / camera / file picker and sends through the same upload.
@@ -69,7 +113,7 @@
     var bar = document.querySelector('.keybar'); if (!bar) return false;
     if (document.getElementById('drop-pick')) return true;
     var input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.hidden = true; input.id = 'drop-input';
-    input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 5).forEach(send); input.value = ''; });
+    input.addEventListener('change', function () { Array.prototype.slice.call(input.files || []).slice(0, 20).forEach(function (x) { send(x, false); }); input.value = ''; });
     var b = el('button', 'btn', i18n('drop.gui_anh')); b.type = 'button'; b.id = 'drop-pick'; b.title = i18n('drop.gui_anh_hoac_file_vao');
     b.addEventListener('click', function () { chooseFile(b, input); });
     bar.insertBefore(b, bar.firstChild); document.body.append(input);

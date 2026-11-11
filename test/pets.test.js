@@ -95,7 +95,8 @@ test('remote log script reads only bounded regular logs and rejects symlink esca
   assert.equal(run().status, 3);
 });
 
-function sceneHarness({ stored = null, reduced = false, storageThrows = false, hour=12, random=.1 } = {}) {
+const VI = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/locales/vi.json'), 'utf8'));
+function sceneHarness({ stored = 'on', reduced = false, storageThrows = false, hour=12, random=.1 } = {}) {
   const vm = require('node:vm');
   class Node {
     constructor() { this.children = []; this.dataset = {}; this.className = ''; this.textContent = ''; this.classes = new Set(); this.style = {}; this.clientWidth = 600;
@@ -111,7 +112,7 @@ function sceneHarness({ stored = null, reduced = false, storageThrows = false, h
     getElementById: (id) => nodes[id], querySelector: (sel) => nodes[sel], addEventListener() {} };
   let now = new Date(2026,10,1,hour).getTime(), timer, frame;
   const media = { matches: reduced, addEventListener() {} };
-  const context = { window: { PetState: P, PetArt: { ORDER: ['cat'], pet: () => '<svg></svg>' }, matchMedia: () => media },
+  const context = { i18n: (key, args = []) => String(VI[key] ?? key).replace(/\{(\d+)\}/g, (_, i) => args[i]), window: { PetState: P, PetArt: { ORDER: ['cat'], pet: () => '<svg></svg>' }, matchMedia: () => media },
     document: doc, localStorage: { getItem() { if (storageThrows) throw Error('blocked'); return stored; },
       setItem() { if (storageThrows) throw Error('blocked'); } },
     Date: class extends Date { static now() { return now; } }, Math: Object.assign(Object.create(Math), { random: () => random }),
@@ -305,4 +306,13 @@ test('one waiting session does not start a match on its own and keeps waiting', 
   h.sync([{ name: 'a', created: 1, state: 'wait' }]);
   h.tick(24000);
   assert.equal(h.nodes['pet-yard'].querySelectorAll('.yard-pet.act-sleep').length, 0);
+});
+
+test('pets are off for a new install and on only after the user turned them on', () => {
+  const fresh = sceneHarness({ stored: null });
+  fresh.sync([{ name: 'a', created: 1, state: 'wait' }]);
+  assert.ok(fresh.doc.documentElement.classes.has('pets-off'));
+  const chosen = sceneHarness({ stored: 'on' });
+  chosen.sync([{ name: 'a', created: 1, state: 'wait' }]);
+  assert.ok(!chosen.doc.documentElement.classes.has('pets-off'));
 });

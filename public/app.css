@@ -1448,3 +1448,23 @@ dialog.drop-remote{display:none}
 
 /* The note about hidden empty profiles spans the whole row instead of taking a card's slot. */
 .token-empty-profiles{grid-column:1/-1;margin:0}
+
+/* Compact controls: same look, smaller buttons/icons/avatars so the terminal gets more room.
+   Remove this block to return to the previous sizes. */
+.top{min-height:54px;padding:6px 14px}.brand-lockup{height:34px}
+.btn{min-height:28px;padding:2px 9px;font-size:12px;border-radius:10px}
+.icon-btn{width:30px;min-height:30px;padding:0}svg.i{width:14px;height:14px}
+.main-top{padding:6px 14px 0}.seg button{min-height:26px;padding:2px 11px;font-size:12px}
+.side{width:226px}.side-scroll{padding:8px}.group{font-size:11px;padding:7px 6px 4px}
+.sess{padding:4px 7px;gap:8px;margin-bottom:2px;border-radius:12px}
+.ava{width:34px;height:34px;border-radius:11px}.ava svg{width:28px;height:28px}
+.sess .n{font-size:12px}.sess .s{font-size:11px}
+.tabs{padding:5px 10px 0}.tab{padding:3px 10px 4px 4px;font-size:12px}.tab svg{width:20px;height:20px}
+#cmds{padding:4px 8px;gap:4px}#cmds .btn{min-height:26px;padding:1px 8px;font-size:11.5px}
+.detail{width:236px;padding:10px;gap:10px}
+.term-tools{padding:3px 8px;gap:4px;row-gap:3px}.term-tools .keybar{gap:4px}.term-tools #cmds{gap:4px;row-gap:3px}
+.term-tools .keybar .btn,.term-tools #cmds .btn{min-height:26px;padding:1px 8px;font-size:11.5px;border-radius:8px}
+
+/* Toasts sit at the bottom centre: at the top they covered the tab strip and the Crew bar. */
+#banner{top:auto;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translate(-50%,8px)}
+#banner.show{transform:translate(-50%,0)}

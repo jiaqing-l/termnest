@@ -88,3 +88,25 @@ test('local scripts next to the page become inline scripts in order; remote and 
   assert.ok(out.includes('<script type="module">render(window.DATA);</script>'), out);
   assert.ok(out.includes('<script src="https://cdn.example/x.js"></script>') && out.includes('<script src="missing.js"></script>'));
 });
+
+test('all pictures of a report are fetched in ONE call when a batch reader is given (slow links: one round trip)', async () => {
+  const { inlineAssets } = require('../lib/html-assets');
+  const png = Buffer.from('89504e470d0a1a0a', 'hex').toString('base64');
+  const calls = [], single = [];
+  const html = '<img src="shots/a.png"><img src="shots/b.png"><img src="shots/a.png"><img src="https://x/y.png">';
+  const out = await inlineAssets(html, '/w/r/report.html', async (p) => { single.push(p); return { error: 'x' }; },
+    async (paths) => { calls.push(paths); return paths.map(() => ({ kind: 'image', mime: 'image/png', base64: png })); });
+  assert.equal(calls.length, 1); assert.deepEqual(calls[0], ['/w/r/shots/a.png', '/w/r/shots/b.png']); assert.deepEqual(single, []);
+  assert.equal((out.match(/data:image\/png;base64,/g) || []).length, 3); assert.match(out, /https:\/\/x\/y\.png/);
+});
+
+test('the batch reader runs the same contained file reader for each path, with a total size cap', async () => {
+  const fs = require('fs'), os = require('os'), path = require('path'), { manyRuntime } = require('../lib/file-viewer');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-many-'));
+  try {
+    fs.mkdirSync(path.join(dir, 'shots')); fs.writeFileSync(path.join(dir, 'shots', 'a.png'), Buffer.from('89504e470d0a1a0a0000', 'hex'));
+    const got = await manyRuntime()({ cwd: dir, paths: [path.join(dir, 'shots', 'a.png'), '/etc/passwd', path.join(dir, 'missing.png')], max: 1024 });
+    assert.equal(got.length, 3); assert.equal(got[0].kind, 'image'); assert.ok(got[1].error); assert.ok(got[2].error);
+    assert.match(String(manyRuntime), /^function manyRuntime\(\)\{const one=\(function fileRuntime/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

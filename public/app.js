@@ -22,7 +22,7 @@
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function api(method, path, body) {
-    var headers = body ? { 'Content-Type': 'application/json' } : {}; if (window.TW_I18N) headers['X-TW-Lang'] = window.TW_I18N.lang();
+    var headers = body ? { 'Content-Type': 'application/json' } : {}; if (window.TW_I18N) headers['X-TW-Lang'] = window.TW_I18N.lang(); if (document.hidden) headers['X-TW-Hidden'] = '1';
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
@@ -63,6 +63,12 @@
     return i18n('app.ngay', [Math.floor(sec / 86400)]);
   }
   function scoped() { return scope === 'all' ? servers : servers.filter(function (v) { return v.id === scope; }); }
+  // Sessions that belong to a Crew (features/crewpanes) are shown as one group, not as loose sessions.
+  // Only the workers of a Crew are folded away; its leader is an ordinary session in the ordinary state groups.
+  function inCrewWorker(v, s) { return !!(window.TW && window.TW.crewWorker && window.TW.crewWorker(v.id, s.name)); }
+  function inCrew(v, s) { return !!(window.TW && window.TW.crewOf && window.TW.crewOf(v.id, s.name)); }
+  // A crew worker is one pane inside its Crew's tab, not a tab of its own (20 crews x N workers would drown the tab bar).
+  function visTabs() { return vis().filter(function (x) { return !(window.TW && window.TW.crewWorker && window.TW.crewWorker(x.v.id, x.s.name)); }); }
   function vis() {
     var out = [];
     scoped().forEach(function (v) { v.sessions.forEach(function (s) { out.push({ v: v, s: s }); }); });
@@ -94,7 +100,7 @@
     $('hero-t').textContent = !servers.length ? i18n('app.them_may_chu_dau_tien') : w ? (i18n('app.co_viec_dang_cho_ban', [w])) : r ? i18n('app.moi_viec_dang_chay_tot') : i18n('app.chua_co_viec_nao_dang');
     var box = $('chips'); box.textContent = '';
     function chip(num, t, c) { var e = el('span', 'chip ' + (c || '')); e.append(el('b', '', num), t); box.append(e); }
-    chip(on + '/' + servers.length, i18n('app.may_chu')); chip(vis().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
+    chip(on + '/' + servers.length, i18n('app.may_chu')); chip(visTabs().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
     if (w) chip(w, i18n('app.cho_ban_2'), 'alert');
     box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
     // The first session waiting for you gets a reply button right in the summary.
@@ -141,14 +147,15 @@
     servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
     [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
-      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s); }); if (!list.length) return;
+      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s) && !inCrewWorker(x.v, x.s); }); if (!list.length) return;
       box.append(el('div', 'group', g[1]));
       list.forEach(function (x) {
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
         var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
         b.title = x.s.name + ' · ' + x.v.name;
-        var t = el('span', 'txt'); t.append(el('span', 'n', x.s.name), el('span', 's', scope === 'all' ? x.v.name : subOf(x.s)));
+        var t = el('span', 'txt'); var crewNote = window.TW && window.TW.crewNote ? window.TW.crewNote(x.v.id, x.s.name) : '', baseSub = scope === 'all' ? x.v.name : subOf(x.s);
+        t.append(el('span', 'n', x.s.name), el('span', 's', crewNote ? baseSub + ' · ' + crewNote : baseSub));
         b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
       });
     });
@@ -265,7 +272,7 @@
         var g = el('div', 'grid');
         // Grouped by state like the sidebar: waiting for you, then running, then idle (the usual order inside each group).
         var RANK = { wait: 0, run: 1, idle: 2 };
-        v.sessions.filter(matches).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
+        v.sessions.filter(matches).filter(function (s) { return !inCrewWorker(v, s); }).map(function (s, i) { return { s: s, i: i }; }).sort(function (a, b) { return ((RANK[a.s.state] || 0) - (RANK[b.s.state] || 0)) || a.i - b.i; }).map(function (o) { return o.s; }).forEach(function (s) {
           var key = v.id + '/' + s.name, old = previous[key];
           if (old && old.input && (old.input === active || old.input.value)) { var message = old.card.querySelector('.pet-message'); if (message) message.classList.remove('message-arrives'); cardRefs[key] = old; g.append(old.card); signature = '';  }
           else g.append(sessionCard(v, s));
@@ -292,7 +299,7 @@
   }
   function closeTab(x) {
     if (!tabHide) return;
-    var list = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
+    var list = visTabs().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), i = list.findIndex(function (y) { return tabKey(y) === tabKey(x); });
     var wasCurrent = cur && cur.id === x.v.id && cur.name === x.s.name, next = list[i + 1] || list[i - 1];
     tabHide.hide(tabKey(x)); noteClosed([tabKey(x)]);
     if (wasCurrent && next && next !== x) { cur = { id: next.v.id, name: next.s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
@@ -306,7 +313,7 @@
     var wasCurrent = cur && list.some(function (y) { return y.v.id === cur.id && y.s.name === cur.name; }), keys = list.map(tabKey);
     keys.forEach(function (k) { tabHide.hide(k); }); noteClosed(keys);
     if (wasCurrent) {
-      var rest = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); });
+      var rest = visTabs().filter(function (y) { return !tabHide.isHidden(tabKey(y)); });
       if (rest.length) { cur = { id: rest[0].v.id, name: rest[0].s.name }; if (panes.length) panes[focusedPane].cur = cur; connectTerm(); }
       else { cur = null; if (panes.length) { closePane(panes[focusedPane]); panes[focusedPane].cur = null; panes[focusedPane].term.reset(); } setWall(true); }   // no tab left: stay in the terminal on the All tab
     }
@@ -346,7 +353,7 @@
   function tabContextMenu(x, ev) {
     ev.preventDefault(); ev.stopPropagation();
     var old = document.querySelector('.tab-menu'); if (old) old.remove();
-    var open = vis().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), others = open.filter(function (y) { return tabKey(y) !== tabKey(x); });
+    var open = visTabs().filter(function (y) { return !tabHide.isHidden(tabKey(y)); }), others = open.filter(function (y) { return tabKey(y) !== tabKey(x); });
     var menu = el('div', 'tab-menu'); menu.setAttribute('role', 'menu');
     [[i18n('app.dong_tab_nay'), function () { closeTab(x); }, true],
      [i18n('app.dong_cac_tab_khac', [others.length]), function () { closeMany(others, i18n('app.da_dong_tab_khac_cac', [others.length])); }, others.length > 0],
@@ -358,16 +365,16 @@
     function away(e) { if (!menu.contains(e.target)) gone(); } function esc(e) { if (e.key === 'Escape') gone(); }
     setTimeout(function () { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); }, 0);
   }
-  function hiddenItems() { return tabHide ? vis().filter(function (y) { return tabHide.isHidden(tabKey(y)); }) : []; }
+  function hiddenItems() { return tabHide ? visTabs().filter(function (y) { return tabHide.isHidden(tabKey(y)); }) : []; }
   function renderTabs() {
     var box = $('tabs'); box.textContent = '';
     // Only forget a hidden tab once its host is loaded, online and really no longer has that session.
     if (tabHide) tabHide.prune(function (k) { var id = k.split('/')[0], v = srv(id); return !v || !v.on || v.sessions.some(function (s) { return id + '/' + s.name === k; }); });
     var allTab = el('button', 'tab tab-all'); allTab.style.setProperty('--c', '#7c6cf0'); allTab.setAttribute('role', 'tab'); allTab.setAttribute('aria-selected', String(wallOn));
     allTab.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
-    allTab.append(i18n('wall.all') + ' ' + vis().length); allTab.onclick = function () { setWall(true); };
+    allTab.append(i18n('wall.all') + ' ' + visTabs().length); allTab.onclick = function () { setWall(true); };
     box.append(allTab);
-    vis().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
+    visTabs().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
       b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name);
@@ -427,7 +434,7 @@
     ['tab-focus', 'nav-focus'].forEach(function (i) { $(i).setAttribute('aria-pressed', v === 'focus'); });
     render();
     if (v === 'focus') {
-      if (!curItem() && !wallOn) { var all = vis(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
+      if (!curItem() && !wallOn) { var all = visTabs(), l = all.filter(function (y) { return !tabHide || !tabHide.isHidden(tabKey(y)); })[0] || all[0]; if (l) { openSession(l.v.id, l.s.name); return; } }
       ensureTerm(); connectTerm(); if (panes.length) focusPane(focusedPane, true);
     }
   }
@@ -468,6 +475,15 @@
     var v = p && p.cur && srv(p.cur.id), session = v && v.sessions.filter(function (s) { return s.name === p.cur.name; })[0];
     return session ? { v: v, s: session } : null;
   }
+  var screens = {}; // session key -> the text of its screen when last viewed
+  function snapshotPane(p) {
+    if (!p.key || !p.term) return;
+    try {
+      var b = p.term.buffer.active, lines = [];
+      for (var i = 0; i < p.term.rows; i++) { var l = b.getLine(b.viewportY + i); lines.push(l ? l.translateToString(true) : ''); }
+      if (lines.some(function (l) { return l.trim(); })) screens[p.key] = lines;
+    } catch (e) { /* nothing to keep */ }
+  }
   function closePane(p) {
     clearTimeout(p.retry); p.key = '';
     p.scroll = null; p.sendChain = null; if (p.bar) p.bar.hidden = true;
@@ -475,6 +491,9 @@
     if (p.ws) { p.ws.onclose = null; p.ws.close(); p.ws = null; }
   }
   function focusPane(index, focus) {
+    // A Crew worker pane is only watched: picking it must not turn the detail panel (and the tab) into the worker's; they stay the session's.
+    var pc = panes[index] && panes[index].cur;
+    if (pc && typeof window !== 'undefined' && window.TW && window.TW.crewWorker && window.TW.crewWorker(pc.id, pc.name) && cur && !(cur.id === pc.id && cur.name === pc.name)) { focusedPane = index; panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); }); return; }
     if (focusedPane === index && cur === panes[index].cur) { if (focus) focusTerminal(panes[index]); return; }
     focusedPane = index; cur = panes[index].cur;
     panes.forEach(function (p, i) { p.node.classList.toggle('active', i === index); });
@@ -513,7 +532,8 @@
   function rawSend(p, d) { if (p.ws && p.ws.readyState === 1) p.ws.send(new TextEncoder().encode(d)); }
   // Typing while tmux is in copy-mode would hit copy-mode keys: leave it first, keeping keystroke order.
   function paneSend(p, d) {
-    if (p.scroll && p.scroll.inMode) {
+    if (p.ro) return; // read-only Crew pane: the toggle on the pane lets the person step in
+    if (p.scroll && p.scroll.inMode && !plainPane(p)) {
       p.scroll.inMode = false;
       p.sendChain = scrollCall(p, 'bottom').catch(function () {}).then(function () { rawSend(p, d); });
       return;
@@ -521,6 +541,8 @@
     if (p.sendChain) { p.sendChain = p.sendChain.then(function () { rawSend(p, d); }); return; }
     rawSend(p, d);
   }
+  // A plain PowerShell session (Windows without WSL) has no tmux: the browser terminal keeps the history itself.
+  function plainPane(p) { var v = p && p.cur && srv(p.cur.id); return !!(v && v.mode === 'powershell'); }
   function scrollPath(p) { return '/api/servers/' + p.cur.id + '/sessions/' + encodeURIComponent(p.cur.name) + '/scroll'; }
   function scrollCall(p, op, n) {
     if (!p.cur) return Promise.reject(new Error('no session'));
@@ -529,20 +551,22 @@
   function drawScrollbar(p) {
     var st = p.scroll, bar = p.bar;
     if (!bar) return;
-    if (!st || st.history <= 0 || st.alternate) { bar.hidden = true; return; }
+    // The "newest" button follows the same rule on every path: a pane on the alternate screen (Claude, Codex) or without history never leaves a stale one behind.
+    var behind = !!(st && st.inMode && st.position > 0 && st.history > 0 && !st.alternate);
+    if (p.toBottom) p.toBottom.hidden = !behind;
+    if (!st || st.history <= 0 || st.alternate) { bar.hidden = true; bar.classList.remove('scrolled'); return; }
     bar.hidden = false; // measure only after it is shown: a hidden element has no height
     var total = st.history + st.height, track = bar.clientHeight || 1;
     var size = Math.max(24, Math.round(track * st.height / total));
     p.thumb.style.height = size + 'px';
     p.thumb.style.top = Math.round((track - size) * (st.history - st.position) / st.history) + 'px';
     bar.classList.toggle('scrolled', st.inMode && st.position > 0);
-    if (p.toBottom) p.toBottom.hidden = !(st.inMode && st.position > 0);
   }
   function scrollbar(p) {
     p.bar = el('div', 'tscroll'); p.thumb = el('div', 'tscroll-thumb'); p.bar.append(p.thumb); p.bar.hidden = true; p.host.append(p.bar);
     // One tap back to the newest output after reading history: the thin scrollbar is hard to hit with a finger.
     p.toBottom = el('button', 'tbottom'); p.toBottom.type = 'button'; p.toBottom.textContent = i18n('app.moi_nhat'); p.toBottom.hidden = true; p.host.append(p.toBottom);
-    p.toBottom.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); scrollCall(p, 'bottom').catch(function () {}); });
+    p.toBottom.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); p.toBottom.hidden = true; scrollCall(p, 'bottom').catch(function () {}); });
     var pending = 0, busy = false, hinted = '';
     function flush() {
       if (busy || !pending) return;
@@ -558,6 +582,7 @@
     // l > 0 scrolls toward the newest output (wheel down, finger up). Shared by the wheel and by touch swipes.
     function applyScroll(l, x, y) {
       if (!l) return;
+      if (plainPane(p)) { p.term.scrollLines(l); return; }
       if (p.scroll && p.scroll.alternate) {
         // Fullscreen apps (Claude, Codex) keep their conversation on the alternate screen: hand the scroll to the app as
         // mouse wheel events when it asked for the mouse, instead of showing the shell history underneath.
@@ -578,7 +603,7 @@
     }
     // Capture on the host keeps xterm from turning the wheel into Up/Down keys for the app; Ctrl+wheel stays zoom.
     p.host.addEventListener('wheel', function (e) {
-      if (e.ctrlKey || !p.cur || !e.deltaY) return;
+      if (e.ctrlKey || !p.cur || !e.deltaY || plainPane(p)) return; // plain session: xterm scrolls its own history
       e.preventDefault(); e.stopPropagation();
       applyScroll(lines(e), e.clientX, e.clientY);
     }, { capture: true, passive: false });
@@ -597,7 +622,7 @@
       p.bar.addEventListener('pointerup', function () { p.bar.removeEventListener('pointermove', move); }, { once: true });
     });
     // Keep the thumb honest when the pane changes on its own (new output, resize, another client).
-    p.scrollTimer = setInterval(function () { if (view === 'focus' && p.cur && p.ws && p.ws.readyState === 1 && !busy) scrollCall(p, 'state').catch(function () {}); }, 3000);
+    p.scrollTimer = setInterval(function () { if (view === 'focus' && p.cur && p.ws && p.ws.readyState === 1 && !busy && !plainPane(p)) scrollCall(p, 'state').catch(function () {}); }, 3000);
   }
   function createPane() {
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
@@ -615,19 +640,32 @@
     p.term.attachCustomKeyEventHandler(function(event) {
       if (viewControls.handleKey(event)) return false;
       // Copy: ⌘C on a Mac; Ctrl+Shift+C anywhere; on Windows/Linux plain Ctrl+C copies while text is selected (else it interrupts).
-      if (event.type === 'keydown' && event.key.toLowerCase() === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey || event.ctrlKey && !event.altKey && !/Mac/.test(navigator.platform || '')) && p.term.getSelection()) {
-        event.preventDefault(); copySelection(p);
+      // Like Windows Terminal: copying never also sends Ctrl+C (interrupt) to the app; without a selection Ctrl+C interrupts.
+      var isMac = /Mac/.test(navigator.platform || ''), k = (event.key || '').toLowerCase();
+      if (event.type === 'keydown' && k === 'c' && (event.ctrlKey && event.shiftKey || event.metaKey || event.ctrlKey && !event.altKey && !isMac) && p.term.getSelection()) {
+        event.preventDefault(); copySelection(p); p.term.clearSelection(); return false;
       }
       // Mac editing keys and Shift+Enter: the default keydown would also fire a keypress, so cancel it here.
       var keySeq = window.TerminalKeys && window.TerminalKeys.sequence(event, /Mac/.test(navigator.platform || ''));
       if (keySeq != null) { event.preventDefault(); send(keySeq); return false; }
-      if (window.TW_DESKTOP && event.type === 'keydown' && event.key.toLowerCase() === 'v' && (event.metaKey || event.ctrlKey && event.shiftKey)) {
-        event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say(i18n('app.khong_dan_duoc'), false, 4000); }); return false;
+      // Paste: ⌘V on a Mac; Ctrl+V on Windows/Linux (never sent to the app as ^V); Ctrl+Shift+V anywhere.
+      if (event.type === 'keydown' && k === 'v' && !event.altKey && (event.metaKey || event.ctrlKey && (event.shiftKey || !isMac))) {
+        if (window.TW_DESKTOP) { event.preventDefault(); window.TW_DESKTOP.paste().then(function(text) { p.ime.preparePaste(); p.term.paste(text); }).catch(function() { say(i18n('app.khong_dan_duoc'), false, 4000); }); }
+        return false; // in a browser the default action delivers the clipboard to xterm's own paste handler
       }
       return true;
     });
     p.term.onData(p.ime.onData); p.term.onBinary(send);
-    p.term.onResize(function (size) { if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows })); });
+    p.term.onResize(function (size) {
+      if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows }));
+      // A full-screen app (Claude, Codex) redraws only the lines it believes it drew, so a resize that lands after it has printed
+      // leaves old wrapped text mixed into the new. Once the size has settled, ask it to repaint (Ctrl+L).
+      clearTimeout(p.repaint);
+      p.repaint = setTimeout(function () {
+        if (!p.ws || p.ws.readyState !== 1 || p.ro || p.ime.isComposing() || !p.scroll || !p.scroll.alternate) return;
+        rawSend(p, '\x0c');
+      }, 500);
+    });
     p.observer = new ResizeObserver(function () { fitPane(p); }); p.observer.observe(p.host);
     p.node.addEventListener('pointerdown', function () { focusPane(index, false); });
     p.node.addEventListener('focusin', function () { if (focusedPane !== index) focusPane(index, false); });
@@ -649,14 +687,36 @@
   function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
   function connectTerm() { if (panes.length && !wallOn) { panes[focusedPane].cur = cur; panes.forEach(connectPane); syncPanePickers(); } }
+  // A brand-new tmux session can attach before its first screen is drawn and stay blank until a key is pressed. If the pane is
+  // still empty shortly after connecting, resize by one column and back: tmux redraws on every size change.
+  function nudgeBlank(p, sock) {
+    if (plainPane(p)) return;
+    [500, 1500].forEach(function (ms) {
+      setTimeout(function () {
+        if (p.ws !== sock || sock.readyState !== 1) return;
+        var b = p.term.buffer.active, blank = true;
+        for (var i = 0; i < p.term.rows - 1 && blank; i++) { var l = b.getLine(b.baseY + i); if (l && l.translateToString(true).trim()) blank = false; }
+        if (!blank) return;
+        sock.send(JSON.stringify({ t: 'resize', rows: p.term.rows, cols: Math.max(10, p.term.cols - 1) }));
+        sock.send(JSON.stringify({ t: 'resize', rows: p.term.rows, cols: p.term.cols }));
+      }, ms);
+    });
+  }
   function connectPane(p) {
     var x = paneItem(p); if (!x || p.ime.isComposing()) return;
     var key = x.v.id + '/' + x.s.name;
     if (p.key === key && p.ws && p.ws.readyState <= 1) return;
-    closePane(p); p.key = key; p.term.reset(); fitPane(p);
+    snapshotPane(p); closePane(p); p.key = key; p.term.reset(); fitPane(p);
+    // Show the screen this session had when it was last viewed (dimmed) at once; tmux's own redraw replaces it as soon as
+    // it arrives. On a slow link that is the difference between a black pane and an instant switch. tmux only: a plain
+    // session replays its output and would append to it.
+    if (screens[key] && x.v.mode !== 'powershell') p.term.write('\x1b[2m' + screens[key].join('\r\n') + '\x1b[0m\x1b[H');
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
-    sock.onopen = function () { scrollCall(p, 'state').catch(function () {}); fitPane(p); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
+    p.term.options.scrollback = plainPane(p) ? 50000 : 3000;
+    sock.onopen = function () { if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p);
+      // A fit() while the socket was still connecting could not tell the server: tmux kept the old size and drew garbled or repeated lines.
+      sock.send(JSON.stringify({ t: 'resize', cols: p.term.cols, rows: p.term.rows })); nudgeBlank(p, sock); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
     sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
@@ -676,10 +736,43 @@
     if (n === 1 && focusedPane) { closePane(panes[0]); panes[0].cur = chosen; }
     while (panes.length > n) { var p = panes.pop(); closePane(p); p.observer.disconnect(); p.ime.dispose(); p.term.dispose(); p.node.remove(); }
     while (panes.length < n) { createPane(); var x = vis()[panes.length - 1]; if (x) panes[panes.length - 1].cur = { id: x.v.id, name: x.s.name }; }
-    paneCount = n; focusedPane = Math.min(focusedPane, n - 1); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one';
+    paneCount = n; focusedPane = Math.min(focusedPane, n - 1); panes.forEach(function (q) { q.node.classList.remove('crew-lead'); }); $('split').className = n === 4 ? 'four' : n === 2 ? 'two' : 'one'; if (window.TW) window.TW.emit('layout', $('split').className);
     focusPane(focusedPane, false); syncPanePickers(); if (view === 'focus') panes.forEach(connectPane); renderCommands(); requestAnimationFrame(sizeTerm);
   }
-  function openSession(id, name) { if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
+  // Crew layout: open several sessions at once, one per pane (orchestrator first), with a CSS layout class and optional read-only panes.
+  function showPanes(items, cls, ro) {
+    if (wallOn) setWall(false);
+    if ($('app').classList.contains('compact')) { items = items.slice(0, 1); cls = 'one'; ro = []; }
+    if (!panes.length) createPane();
+    while (panes.length > items.length) { var q = panes.pop(); closePane(q); q.observer.disconnect(); q.ime.dispose(); q.term.dispose(); q.node.remove(); }
+    while (panes.length < items.length) createPane();
+    items.forEach(function (it, i) {
+      var p = panes[i];
+      if (!p.cur || p.cur.id !== it.id || p.cur.name !== it.name) { closePane(p); p.cur = { id: it.id, name: it.name }; }
+      p.ro = !!(ro && ro[i]); p.node.dataset.ro = p.ro ? '1' : ''; p.node.classList.toggle('crew-lead', i === 0 && /^crew/.test(cls));
+    });
+    // Opening a Crew brings back the tab of its leader even if the person had closed it (openSession does the same for any session).
+    if (tabHide && items.length) tabHide.show(items[0].id + '/' + items[0].name);
+    paneCount = items.length; focusedPane = 0; cur = panes[0].cur; $('split').className = cls;
+    if (window.TW) window.TW.emit('layout', cls);
+    focusPane(0, false); syncPanePickers();
+    if (view !== 'focus') setView('focus'); else { panes.forEach(connectPane); render(); }
+    renderCommands(); requestAnimationFrame(sizeTerm);
+  }
+  function setPaneRo(i, on) { var p = panes[i]; if (!p) return; p.ro = !!on; p.node.dataset.ro = p.ro ? '1' : ''; }
+  function openCrewLayout(crew) { if (window.TW) window.TW.emit('open-crew', crew); }
+  // A new session can be missing from the first refresh (a poll that started before it was created): opening it then found
+  // nothing and fell back to the All tab. Wait for it to appear (a few quick refreshes), then open it.
+  function openWhenReady(id, name, tries) {
+    var v = srv(id), here = v && v.sessions.some(function (s) { return s.name === name; });
+    if (here || (tries || 0) >= 12) { openSession(id, name); return; }
+    setTimeout(function () { refresh(true).then(function () { openWhenReady(id, name, (tries || 0) + 1); }, function () { openWhenReady(id, name, (tries || 0) + 1); }); }, 500);
+  }
+  function openSession(id, name) {
+    // A Crew's tab opens the whole Crew; any other session leaves the Crew layout (it must not land in a worker's pane).
+    if (window.TW && window.TW.openCrewFor && window.TW.openCrewFor(id, name)) return;
+    if (/\bcrew[TL]\b/.test($('split').className) && !inCrew({ id: id }, { name: name })) { focusedPane = 0; setSplit(1); }
+    if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
   var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   $('key-more-btn').onclick = function (e) { e.stopPropagation(); popToggle(this, $('key-more')); };
@@ -946,6 +1039,9 @@
       if (s.stateSource !== 'status') return;
       // Termnest's own Ops sessions finish turns all day: only a question from them is worth a notification.
       if (!s.asking && /^tn-ops(?:-audit)?(?:-|$)/.test(s.name)) return;
+      // A session that has only just been created and is already "waiting" was opened, not finished: Claude can take longer than
+      // the 5 s start window to settle on a slow link, and nothing was ever asked of it.
+      if (!s.asking && s.created && (stateAt(s) || 0) - s.created * 1000 < 60000) return;
       if (waitStates && waitStates[key] && waitStates[key] !== 'wait' && wantAlert(waitCat(s))) meow();
       var since = s.stateSince;
       // A question is reported after a few seconds; a session that finished after 30 quiet seconds (it may only be pausing).
@@ -1388,7 +1484,7 @@
     e.preventDefault(); var n = $('n-name').value.trim(), id = $('n-srv').value;
     if (!/^[A-Za-z0-9_-]+$/.test(n)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong_2'); return; }
     api('POST', '/api/servers/' + id + '/sessions', { name: n, dir: $('n-dir').value, run: $('n-run').value })
-      .then(function () { $('dlg-new').close(); api('GET', '/api/prefs').then(function (data) { prefs = data; }).catch(function () { /* next login reloads prefs */ }); return refresh(true); }).then(function () { openSession(id, n); })
+      .then(function () { $('dlg-new').close(); api('GET', '/api/prefs').then(function (data) { prefs = data; }).catch(function () { /* next login reloads prefs */ }); return refresh(true); }).then(function () { openWhenReady(id, n); })
       .catch(function (err) { $('n-err').textContent = err.message; });
   };
   $('form-srv').onsubmit = function (e) {
@@ -1502,7 +1598,15 @@
       if (online) { online = false; $('app').classList.add('offline'); say(i18n('app.mat_ket_noi_toi_web')); if (view === 'over') renderHero(); petSync(); }
     });
   }
-  function startPolling() { stopPolling(); pollTimer = setInterval(function(){refresh();}, 2500); tokenTimer = setInterval(function(){tokens.poll();}, 5000); }
+  // A hidden tab (another tab, minimised window, phone in the pocket) checks every 15 s instead of 2.5 s, enough for alerts,
+  // and the server is told so it does not keep every machine on its fast poll. Coming back refreshes at once.
+  var hiddenTicks = 0;
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(function () { if (document.hidden && ++hiddenTicks % 6) return; hiddenTicks = 0; refresh(); }, 2500);
+    tokenTimer = setInterval(function(){tokens.poll();}, 5000); // token-ui skips hidden pages itself
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && pollTimer) { hiddenTicks = 0; refresh(); } });
   function stopPolling() { clearInterval(pollTimer); clearInterval(tokenTimer); pollTimer = null; tokenTimer = null; }
   // The desktop app passes a one-time setup token in the first URL. Keep it for this tab until the password exists,
   // so a reload of the window does not leave a fresh install with no way to create one.
@@ -1547,7 +1651,7 @@
     if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
     var c = $('set-browser'); c.checked = true; c.onchange.call(c);
   }
-  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, showPanes: showPanes, current: function () { return cur; }, view: function () { return view; }, setPaneRo: setPaneRo, focusPane: function (i) { focusPane(i, true); }, compact: function () { return $('app').classList.contains('compact'); }, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });
@@ -1557,7 +1661,7 @@
   api('GET', '/api/status').then(function (s) { $('set-quit').hidden = !s.packaged; if (s.authed) enter(); else showLogin(); });
   // ---- "All" wall: every session as a light, text-only tile (public/wall.js); a click opens the real terminal.
   wall = window.Wall.create({
-    root: $('wall'), api: api, items: vis, color: color,
+    root: $('wall'), api: api, items: visTabs, color: color, // a Crew is one card there; its workers are not
     stateLabel: function (s) { return i18n('wall.f.' + (s.state === 'wait' ? 'wait' : s.state === 'idle' ? 'idle' : 'run')); },
     label: function (f) { return i18n('wall.f.' + f); },
     emptyText: function () { return i18n('wall.empty'); },

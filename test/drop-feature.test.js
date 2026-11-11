@@ -87,3 +87,11 @@ test('a machine that is not connected is reported as not connected, not as unsup
   assert.match(fails[0], /chưa kết nối/);
   assert.match(fails[1], /chưa hỗ trợ/);
 });
+
+test('dropped pictures are made lighter in the browser (≤2000 px, smallest format, only if smaller); Shift keeps the original; 20 files, 3 at a time', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../public/features/drop.js'), 'utf8');
+  assert.match(src, /var SIDE = 2000, LIGHT = 1\.5 \* 1024 \* 1024;/);
+  assert.match(src, /if \(!best \|\| best\.size >= file\.size\) return file;/);
+  assert.match(src, /f\.slice\(0, 20\)\.forEach\(function \(x\) \{ send\(x, e\.shiftKey\); \}\);/);
+  assert.match(src, /while \(running < 3 && queue\.length\)/);
+});
