@@ -204,12 +204,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     crewStats.hidden = !on;
   }
   // POST is not authoritative: the change counts only when a fresh GET reads it back.
+  // A click while a save is in flight is kept (latest wins) and sent right after, instead of being dropped.
+  var crewQueued = null;
   function crewControl(body, check) {
-    if (supervisionPending || !supervision) return;
+    if (!supervision) return;
+    if (supervisionPending) { crewQueued = { body: body, check: check }; return; }
     supervisionPending = true; crewMessage = ''; supervisionRevision++; renderSupervision();
-    post('/supervision', body).then(function () { return loadSupervision(true); }).then(function () {
-      if (!supervision || !check(supervision)) throw Error('readback');
-    }).catch(function () { crewMessage = c('save_failed'); }).finally(function () { supervisionPending = false; loadSupervision(true); });
+    post('/supervision', body).then(function () { return TW.api('GET', '/api/features/ops/supervision'); }).then(function (r) {
+      if (!r || typeof r.enabled !== 'boolean' || !Array.isArray(r.servers)) throw Error('invalid supervision');
+      supervision = r; supervisionError = false;
+      if (!crewQueued && !check(supervision)) throw Error('readback');
+    }).catch(function () { crewQueued = null; crewMessage = c('save_failed'); }).finally(function () {
+      supervisionPending = false;
+      var q = crewQueued; crewQueued = null;
+      if (q) { crewControl(q.body, q.check); return; }
+      loadSupervision(true);
+    });
   }
   function boardSession(serverId, name) {
     var srv = data && list(data.servers).find(function (s) { return s.id === serverId; });
@@ -227,13 +237,16 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   function tag(state) { var k = CREW_STATE[state] || CREW_STATE.unknown; return el('span', 'ops-crew-tag t-' + k[0], c(k[1])); }
   function excludedList() { return list(supervision && supervision.excluded).map(function (x) { return { serverId: text(x.serverId), session: text(x.session) }; }); }
   function teamRow(server, d, compact) {
+    // The list we just sent is the truth until the read-back lands; rebuilding from stale rows flipped the box back.
+    d = Object.assign({}, d, { excluded: excludedList().some(function (x) { return x.serverId === server.id && x.session === d.session; }) });
     var team = list(server.teams).find(function (t) { return t.session === d.session && t.root === d.root; });
     var state = d.excluded ? 'unknown' : team ? teamState(server, team) : 'unknown';
     var row = el('div', 'ops-crew-team' + (d.excluded ? ' is-off' : '')), box = el('input'), main = el('div', 'ops-crew-main');
-    box.type = 'checkbox'; box.checked = !d.excluded; box.disabled = supervisionPending || !crewOn(); box.title = c('watch'); box.setAttribute('aria-label', c('watch') + ' ' + d.session);
+    box.type = 'checkbox'; box.checked = !d.excluded; box.disabled = !crewOn(); box.title = c('watch'); box.setAttribute('aria-label', c('watch') + ' ' + d.session);
     box.onchange = function () {
       var next = excludedList().filter(function (x) { return !(x.serverId === server.id && x.session === d.session); });
       if (!box.checked) next.push({ serverId: server.id, session: d.session });
+      supervision.excluded = next; // optimistic: the next click composes on this
       crewControl({ enabled: supervision.enabled, autoEnroll: true, excluded: next }, function (s) { return JSON.stringify(list(s.excluded)) === JSON.stringify(next); });
     };
     var head = el('div', 'ops-crew-head'); head.append(el('b', '', d.session), d.excluded ? el('span', 'ops-crew-tag t-idle', c('excluded')) : tag(state));
