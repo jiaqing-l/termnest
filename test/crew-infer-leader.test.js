@@ -41,7 +41,7 @@ test('ambiguous, already enrolled, closed, auto-enrol off: nothing is written', 
 });
 
 test('chat evidence: reads only the given transcripts and returns counts, never text', async () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-ev-')), old = process.env.HOME;
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-ev-')), old = process.env.HOME, oldProfile = process.env.USERPROFILE;
   try {
     const dir = path.join(home, '.claude', 'projects', '-home-dev-ws'); fs.mkdirSync(dir, { recursive: true });
     const sid = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -50,10 +50,10 @@ test('chat evidence: reads only the given transcripts and returns counts, never 
       JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', input: { command: 'bash scripts/crew/crew-dispatch.sh --task 20261110-cttb-cham-1-man --track R1' } }] } }),
       JSON.stringify({ type: 'user', message: { content: 'see 20261110-cttb-cham-1-man-old too' } }),
     ].join('\n'));
-    process.env.HOME = home;
+    process.env.HOME = home; process.env.USERPROFILE = home; // os.homedir() reads USERPROFILE on Windows
     const out = await leaderEvidenceRuntime()({ taskIds: ['20261110-cttb-cham-1-man', 'other-task'], sessions: [{ name: 'Display-Program', sessionId: sid, config: '.claude' }, { name: 'x', sessionId: '../../etc', config: '.claude' }] });
     assert.deepEqual(out, { evidence: { '20261110-cttb-cham-1-man': { 'Display-Program': { init: true, used: 2 } } } });
-  } finally { process.env.HOME = old; fs.rmSync(home, { recursive: true, force: true }); }
+  } finally { process.env.HOME = old; if (oldProfile === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = oldProfile; fs.rmSync(home, { recursive: true, force: true }); }
 });
 
 test('the found leader is merged into the root the UI and the hub read, marked inferred', async () => {

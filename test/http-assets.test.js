@@ -21,7 +21,7 @@ test('static files: gzip + ETag/304; JSON: gzip when large; API stays no-store',
   new Vault(path.join(data, 'vault.json')).create('demo-password', { servers: [{ id: '11111111-1111-4111-8111-111111111111', name: 'demo-server', host: '192.0.2.10', port: 22, user: 'demo', auth: 'password' }] });
   const port = await new Promise((r) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
   const app = spawn(process.execPath, ['--require', path.join(__dirname, 'readme-fixture.cjs'), 'server.js'], { cwd: root,
-    env: { PATH: process.env.PATH, HOME: scratch, USERPROFILE: scratch, TMPDIR: scratch, TW_DATA: data, TW_PORT: String(port), TW_POLL_MS: '1000', TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    env: { ...process.env, HOME: scratch, USERPROFILE: scratch, TMPDIR: scratch, TW_DATA: data, TW_PORT: String(port), TW_POLL_MS: '1000', TZ: 'UTC', TW_PASSWORD_FILE: undefined, TW_PACKAGED: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; app.stdout.on('data', (b) => { log += b; }); app.stderr.on('data', (b) => { log += b; });
   t.after(async () => { const gone = new Promise((r) => app.once('exit', r)); app.kill(); await Promise.race([gone, new Promise((r) => setTimeout(r, 3000))]); fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
   for (let i = 0; i < 100 && !log.includes('Termnest:'); i++) await new Promise((r) => setTimeout(r, 100));
