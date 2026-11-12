@@ -125,3 +125,18 @@ test('the Token AI account button opens the add dialog, not the rename dialog',(
  assert.match(src,/config\.onclick\s*=\s*\(\)\s*=>\s*editAccounts\(\)/);
  assert.match(src,/if\(selected&&typeof selected\.id!=='string'\)selected=null/);
 });
+test('an idle worker is released after a finished scan and a fresh one starts for the next scan',async t=>{
+ const f=cacheFixture(t);f.cache.idleMs=5;f.get();const first=f.worker;let terminated=0;first.terminate=async()=>{terminated++;};
+ first.emit('message',{key:first.message.views[0].key,value:JSON.stringify({accounts:[],updatedAt:100000,scanning:false})});first.emit('message',{done:true});
+ await new Promise(r=>setTimeout(r,30));
+ assert.equal(terminated,1);assert.equal(f.cache.worker,null);
+ f.advance();assert.equal(f.get().scanning,true);assert.notEqual(f.worker,first);
+});
+test('the local incremental scan cache is written to disk and read back after a restart',()=>{
+ const os=require('node:os'),path=require('node:path'),src=fs.readFileSync(path.join(__dirname,'../lib/tokens.js'),'utf8');
+ assert.match(src,/token-scan-cache/);assert.match(src,/cacheDir:options\.cacheDir/);
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'tn-scan-')),file=path.join(dir,'x','c.json'),vm2={};
+ const {saveScanCache}=require('../lib/tokens');assert.equal(typeof saveScanCache,'function');
+ const entry={cache:{a:{size:1}}};saveScanCache(file,entry);assert.deepEqual(JSON.parse(fs.readFileSync(file,'utf8')),{a:{size:1}});
+ const mtime=fs.statSync(file).mtimeMs;saveScanCache(file,entry);assert.equal(fs.statSync(file).mtimeMs,mtime,'unchanged cache is not rewritten');void vm2;
+});

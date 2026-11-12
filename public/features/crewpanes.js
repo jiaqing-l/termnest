@@ -390,7 +390,9 @@
     // The orchestrator creates workers one after another: re-lay the panes once, after the list has stopped changing
     // (attaching to a session that was started a moment ago left a blank pane).
     var seenKey = null, stable = 0, pendingLayout = false, key = function (l) { return JSON.stringify(l.map(function (c) { return c.id + liveWorkers(c).join(); })); };
+    // Nothing here needs to run while the window is hidden; one catch-up pass runs when it comes back (see visibilitychange below).
     setInterval(function () {
+      if (document.hidden) return;
       get('/list').then(function (r) {
         registry = r.crews || []; mergeCrews(); var k = key(crews);
         if (seenKey === null) { seenKey = k; return; } // what is already on screen at load needs no second layout (it blanked the panes for a while)
@@ -398,9 +400,11 @@
         if (pendingLayout && ++stable >= 2) { pendingLayout = false; app().refresh().then(function () { if (cur && currentCrew()) openCrew(currentCrew(), cur.focus); }); }
       }).catch(function () {});
     }, 2000);
-    setInterval(pollTracks, 2000);
-    setInterval(loadDerived, 5000); setInterval(function () { if (!document.hidden) refreshLogs(); }, 2500);
+    setInterval(function () { if (!document.hidden) pollTracks(); }, 2000);
+    setInterval(function () { if (!document.hidden) loadDerived(); }, 5000); setInterval(function () { if (!document.hidden) refreshLogs(); }, 2500);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) { loadDerived().catch(function () {}); pollTracks(); refreshLogs(); } });
     setInterval(function () {
+      if (document.hidden) return;
       boxes = boxes.filter(function (b) { return b.box.isConnected; });
       boxes.forEach(function (b) { var c = crews.filter(function (x) { return x.id === b.id; })[0]; if (c) drawBox(b.box, c); });
       if (cur) { drawBar(); placeGut(); } else drawPlainBar(barNode());
