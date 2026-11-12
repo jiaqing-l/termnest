@@ -87,3 +87,10 @@ test('sessions sharing one folder each get the log that matches their screen; an
     assert.equal(out.sa.ctx, 111001); assert.equal(out.sb.ctx, 55001); assert.equal(out.sc, undefined);
   } finally { cpc.spawnSync('tmux', ['-L', sock, 'kill-server']); }
 });
+
+test('context reader looks past the ten newest logs when many sessions share one folder', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../lib/features/context.js'), 'utf8');
+  assert.match(src, /for \(const c of cands\.slice\(0, 30\)\)/);
+  assert.match(src, /const tails = new Map\(\)/);
+  assert.match(src, /capture-pane', '-p', '-J'\], extra/);
+});

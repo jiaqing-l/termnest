@@ -29,6 +29,7 @@ const { acquireDataLock, unlockFromFile } = require('./lib/service-runtime');
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
 const DATA = process.env.TW_DATA || path.join(__dirname, 'data');
+require('./lib/crash-guard').install(DATA);
 const tokenCache = new TokenCache({dataDir:DATA});
 const usage = new UsageService();
 const POLL_MS = Number(process.env.TW_POLL_MS || 3000);
