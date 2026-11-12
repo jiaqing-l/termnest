@@ -206,7 +206,7 @@
       wf.className = 'cp-wf' + (mark ? ' ' + mark[0] : ''); wf.textContent = mark ? mark[1] : '';
       var q = 'server=' + encodeURIComponent(c.server) + '&session=' + encodeURIComponent(c.name) + '&task=' + encodeURIComponent(t.task) + '&track=' + encodeURIComponent(t.track);
       TW.api('GET', '/api/features/crew/log?' + q).then(function (r) {
-        var pre = p.querySelector('.cp-wl'), near = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40, lines = stripAnsi(r.text).split('\n').slice(-200).join('\n');
+        var pre = p.querySelector('.cp-wl'), near = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40, lines = r.feed || stripAnsi(r.text).split('\n').slice(-200).join('\n');
         if (pre.textContent !== lines) { pre.textContent = lines || (st.k === 'run' ? i18n('cp.log_wait_running') : i18n('cp.log_none')); if (near) pre.scrollTop = pre.scrollHeight; }
       }).catch(function () { var pre = p.querySelector('.cp-wl'); if (!pre.dataset.err) { pre.dataset.err = '1'; pre.textContent = i18n('cp.log_error'); } });
     });

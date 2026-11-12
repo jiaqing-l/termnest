@@ -147,11 +147,14 @@
     }
     draw();
   }
+  let fieldWasOn = true;
   function animate(now) {
     const dt = frameTime ? Math.min(now - frameTime, 50) : 0; frameTime = now;
     const active = allowed() && overview && clock < playUntil && play === 'soccer';
+    if (!active && !fieldWasOn) return false;
     const pets = [...$('pet-yard').querySelectorAll('.yard-pet.act-soccer')];
     field.hidden = !active || pets.length !== 2;
+    fieldWasOn = !field.hidden;
     if (!field.hidden) {
       matchTime += dt;
       if (matchTime >= matchLength) { scores[(scores[0] + scores[1]) % 2]++; matchTime %= matchLength; score.textContent = i18n('petscene.tro_choi_thu_cung', [scores.join(' – ')]); }
@@ -174,8 +177,16 @@
       $('pet-yard').querySelectorAll('.yard-pet').forEach((p) => { p.style.left = ''; p.style.bottom = ''; p.firstChild.style.transform = ''; });
     }
   }
-  function frame(now) { try { animate(now); } catch { /* optional decoration */ } requestAnimationFrame(frame); }
-  requestAnimationFrame(frame);
+  // The loop only runs while the football match is on screen; otherwise it stops and the 1 s tick below wakes it when needed.
+  // (It used to run 60 times a second forever, rewriting the pet styles each frame: a whole CPU core on a busy page.)
+  let looping = false;
+  function frame(now) {
+    let more = false;
+    try { more = animate(now) !== false; } catch { /* optional decoration */ }
+    if (more) requestAnimationFrame(frame); else { looping = false; frameTime = 0; }
+  }
+  function kick() { if (!looping) { looping = true; requestAnimationFrame(frame); } }
+  kick();
   $('pets-enabled').onchange = function () {
     enabled = this.checked;
     try { localStorage.setItem('tw-pets', enabled ? 'on' : 'off'); } catch { /* optional */ }
@@ -183,7 +194,7 @@
   };
   media.addEventListener('change', settings);
   document.addEventListener('visibilitychange', () => { nextPlay = Date.now() + L.idleMin; settings(); });
-  setInterval(() => { try { tick(); } catch { /* decoration must never break input */ } }, 1000);
+  setInterval(() => { try { tick(); kick(); } catch { /* decoration must never break input */ } }, 1000);
   settings();
   window.PetScene = { sync, event };
 })();
