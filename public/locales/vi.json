@@ -25,6 +25,7 @@
   "app.cho_ban_2": "chờ bạn",
   "app.da_ket_noi": "Đã kết nối",
   "app.mat_mang": "Mất mạng",
+  "app.n_may_chu_mat_ket_noi": "{0} máy chủ mất kết nối",
   "app.may_chu_2": "Máy chủ",
   "app.tai_khoan": "{0} tài khoản",
   "app.khong_can_ssh": "{0} · không cần SSH",

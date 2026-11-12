@@ -25,6 +25,7 @@
   "app.cho_ban_2": "waiting",
   "app.da_ket_noi": "Connected",
   "app.mat_mang": "Offline",
+  "app.n_may_chu_mat_ket_noi": "{0} host(s) offline",
   "app.may_chu_2": "Server",
   "app.tai_khoan": "{0} accounts",
   "app.khong_can_ssh": "{0} · no SSH needed",

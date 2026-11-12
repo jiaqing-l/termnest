@@ -102,7 +102,10 @@
     function chip(num, t, c) { var e = el('span', 'chip ' + (c || '')); e.append(el('b', '', num), t); box.append(e); }
     chip(on + '/' + servers.length, i18n('app.may_chu')); chip(visTabs().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
     if (w) chip(w, i18n('app.cho_ban_2'), 'alert');
-    box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
+    // This dot is the link between this window and Termnest. When it is fine but some machines are down, say so: a green "connected"
+    // beside "2/3 machines" read as if every machine was reachable.
+    var down = servers.length - on;
+    box.append(el('span', 'chip conn' + (online && down ? ' partial' : ''), !online ? i18n('app.mat_mang') : down ? i18n('app.n_may_chu_mat_ket_noi', [down]) : i18n('app.da_ket_noi')));
     // The first session waiting for you gets a reply button right in the summary.
     var first = vis().filter(function (x) { return x.s.state === 'wait'; })[0];
     // One waiting session: reply to it. Several: show only the waiting ones (the "Chờ bạn" filter) and scroll to them.
