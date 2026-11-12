@@ -662,7 +662,7 @@
       // leaves old wrapped text mixed into the new. Once the size has settled, ask it to repaint (Ctrl+L).
       clearTimeout(p.repaint);
       p.repaint = setTimeout(function () {
-        if (!p.ws || p.ws.readyState !== 1 || p.ro || p.ime.isComposing() || !p.scroll || !p.scroll.alternate) return;
+        var it = paneItem(p); if (!p.ws || p.ws.readyState !== 1 || p.ro || p.ime.isComposing() || !p.scroll || !p.scroll.alternate || !(it && it.s && it.s.aiTool)) return; // only a known Claude/Codex session; never a shell or another program
         rawSend(p, '\x0c');
       }, 500);
     });
