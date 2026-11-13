@@ -1482,11 +1482,11 @@ dialog.drop-remote{display:none}
 html.tab-hidden *,html.tab-hidden *::before,html.tab-hidden *::after{animation-play-state:paused!important}
 
 /* ===== UI redesign (navy / neutral) — overrides of the earlier look; names kept ===== */
-:root{--ui-z:.8}
+:root{--ui-z:1}
 @media (max-width:859.98px){:root{--ui-z:1!important}}
-html{zoom:var(--ui-z,.8)}
-html,body{height:calc(100vh / var(--ui-z,.8))}
-@supports (height:100dvh){html,body{height:calc(100dvh / var(--ui-z,.8))}}
+html{zoom:var(--ui-z,1)}
+html,body{height:calc(100vh / var(--ui-z,1))}
+@supports (height:100dvh){html,body{height:calc(100dvh / var(--ui-z,1))}}
 body{font:400 14px/1.45 var(--sans);-webkit-font-smoothing:antialiased;letter-spacing:0}
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 h1,h2,h3,.group{font-family:var(--sans)}
@@ -1771,7 +1771,7 @@ html .pane.active{border-color:var(--brand-line)}
 html .pane:focus-within{outline:0}
 .xterm:focus,.pane :focus{outline:0}
 /* Crew layout: orchestrator card, dock, then the worker row (mockup). #split dissolves into the term-wrap grid. */
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)){display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-template-rows:auto minmax(0,1fr) auto;grid-auto-rows:clamp(200px,32vh,330px);gap:12px}
+html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)){display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-template-rows:auto minmax(46vh,1fr) auto;grid-auto-rows:clamp(130px,17vh,210px);gap:12px;overflow:auto}
 html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split{display:contents}
 html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) .cp-bar{grid-column:1/-1;grid-row:1}
 html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split>.pane.crew-lead{grid-column:1/-1;grid-row:2;border:1px solid var(--term-line);border-radius:var(--r-l)}
@@ -1788,8 +1788,8 @@ html #app.crew-mode .term-wrap:has(#split.crewT.n4){grid-template-columns:repeat
 html select,html .grpbar select,html dialog select,html .f select{appearance:none;-webkit-appearance:none;background-color:var(--surface);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%238790AB' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m1 1.5 5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;border:1px solid var(--line-strong);border-radius:var(--r-m);min-height:38px;color:var(--fg)}
 html .grpbar select{min-height:34px;width:auto;max-width:170px}
 /* dialogs: centred, rounded 24px, scroll inside, roomy */
-html dialog{border-radius:var(--r-xl);padding:24px;max-height:min(92vh,calc(100vh/var(--ui-z,.8) - 32px));overflow:auto;margin:auto;max-width:calc(100vw/var(--ui-z,.8) - 24px)}
-html dialog#dlg-new{width:min(520px,calc(100vw/var(--ui-z,.8) - 32px))}
+html dialog{border-radius:var(--r-xl);padding:24px;max-height:min(92vh,calc(100vh/var(--ui-z,1) - 32px));overflow:auto;margin:auto;max-width:calc(100vw/var(--ui-z,1) - 24px)}
+html dialog#dlg-new{width:min(520px,calc(100vw/var(--ui-z,1) - 32px))}
 html dialog .f{gap:14px;display:grid}
 html dialog .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 html dialog label>span,html dialog .lab-s{font:700 12.5px var(--sans);color:var(--fg-2)}
@@ -1832,3 +1832,9 @@ html dialog::-webkit-scrollbar{width:8px}html dialog::-webkit-scrollbar-thumb{ba
 .playground.compact #pet-yard2 .yw[data-mode="wait"]::after{background:var(--warn)}
 .playground.compact #pet-yard2 .yw[data-mode="idle"]::after,.playground.compact #pet-yard2 .yw[data-mode="sleep"]::after{background:var(--idle)}
 .playground.compact #pet-yard2 .yw[data-mode="bad"]::after{background:var(--bad)}
+
+/* ===== Wall tiles stretch to fill the height when there are few sessions (like the mockup) ===== */
+.wall{display:flex;flex-direction:column}
+.wall .w-grid{flex:1 1 auto;min-height:0;grid-auto-rows:minmax(calc(14 * 1.45 * var(--w-font,11.5px) + 110px),1fr);align-content:stretch}
+.wall .w-tile{min-height:0}
+.wall .w-body{flex:1 1 auto;height:auto;min-height:calc(14 * 1.45 * var(--w-font,11.5px) + 18px);display:flex;flex-direction:column;justify-content:flex-end}
