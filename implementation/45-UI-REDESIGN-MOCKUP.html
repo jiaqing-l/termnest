@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TERMNEST · Mockup giao diện mới</title>
+<style>
+/* ───────── Design tokens: 8px grid · 1 màu chủ đạo · màu ngữ nghĩa có ý nghĩa ───────── */
+:root{
+  --bg:#F2F4F8; --surface:#FFFFFF; --surface-2:#F7F8FB; --line:#E6E9F0; --line-2:#D9DEE8;
+  --ink:#121826; --ink-2:#4A5468; --ink-3:#8A93A6;
+  --primary:#4F5BD5; --primary-ink:#fff; --primary-soft:#ECEEFC; --primary-line:#C9CEF5;
+  --ok:#1E9E6A; --ok-soft:#E3F6EE; --warn:#C98512; --warn-soft:#FDF2DA; --bad:#D6453D; --bad-soft:#FCE9E7;
+  --term:#0F1424; --term-2:#161C31; --term-ink:#D7DCEC; --term-dim:#7C86A5;
+  --hero:linear-gradient(120deg,#F9D8CF 0%,#F6E3C8 45%,#E4E3F8 100%);
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:24px;
+  --sh:0 1px 2px rgba(18,24,38,.04),0 8px 24px rgba(18,24,38,.06);
+  --font:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,monospace;
+}
+:root[data-theme=dark]{
+  --bg:#0B0F1A; --surface:#141A2B; --surface-2:#10162A; --line:#232B42; --line-2:#2D3752;
+  --ink:#EEF1F8; --ink-2:#A9B2C8; --ink-3:#6F7A94;
+  --primary:#7C86F2; --primary-ink:#0B0F1A; --primary-soft:#1E2442; --primary-line:#343E7A;
+  --ok:#3CC58C; --ok-soft:#13322A; --warn:#E6AE3A; --warn-soft:#3A2D10; --bad:#F0736B; --bad-soft:#3B1A18;
+  --term:#080B15; --term-2:#0E1324;
+  --hero:linear-gradient(120deg,#3A2A3E 0%,#3B3040 45%,#262C58 100%);
+  --sh:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font:14px/1.45 var(--font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ───────── Khung xem mockup ───────── */
+.viewer{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.vnav{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 16px;background:var(--surface);border-right:1px solid var(--line)}
+.vnav h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px}
+.vnav p{color:var(--ink-3);font-size:12px;margin-bottom:16px}
+.vnav h5{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:20px 8px 8px}
+.vnav a{display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--r-s);color:var(--ink-2);text-decoration:none;font-size:13px;cursor:pointer}
+.vnav a:hover{background:var(--surface-2)}
+.vnav a.on{background:var(--primary-soft);color:var(--primary);font-weight:600}
+.vnav .tt{display:flex;gap:8px;margin-top:16px}
+.vnav .tt button{flex:1;padding:8px;border:1px solid var(--line-2);border-radius:var(--r-s);font-size:12px}
+.vnav .tt button.on{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}
+.stage{padding:32px;overflow:auto}
+.stage .cap{display:flex;justify-content:space-between;align-items:end;margin-bottom:16px;gap:16px}
+.stage .cap h2{font-size:22px;letter-spacing:-.01em}
+.stage .cap p{color:var(--ink-2);font-size:13px;max-width:760px;margin-top:4px}
+.note{background:var(--primary-soft);border:1px solid var(--primary-line);color:var(--ink);padding:12px 16px;border-radius:var(--r-m);font-size:13px;margin-top:16px;max-width:980px}
+.note b{color:var(--primary)}
+
+/* ───────── Ứng dụng TERMNEST (khung 1280×800) ───────── */
+.win{width:1280px;max-width:100%;height:800px;background:var(--bg);border-radius:var(--r-xl);box-shadow:var(--sh);border:1px solid var(--line);overflow:hidden;display:grid;grid-template-rows:64px 1fr;position:relative}
+.top{display:flex;align-items:center;gap:16px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.08em;font-size:15px}
+.logo i{width:28px;height:28px;border-radius:8px;background:var(--ink);display:grid;place-items:center;color:var(--bg);font-style:normal;font-size:13px}
+.quota{display:flex;gap:8px;margin-left:8px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);font-size:12px;color:var(--ink-2);white-space:nowrap}
+.pill b{color:var(--ink);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.sp{flex:1}
+.ib{width:40px;height:40px;border-radius:var(--r-m);display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);position:relative}
+.ib:hover{background:var(--surface-2)}
+.ib .bd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;display:grid;place-items:center;padding:0 4px;font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r-m);border:1px solid var(--line-2);background:var(--surface);font-weight:600;font-size:13px}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{height:32px;padding:0 12px;font-size:12px;border-radius:var(--r-s)}
+.body{display:grid;grid-template-columns:288px 1fr;min-height:0}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:16px;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+.side h6{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:16px 8px 4px;display:flex;justify-content:space-between}
+.srv,.ses{display:flex;align-items:center;gap:12px;padding:8px;border-radius:var(--r-m);cursor:pointer}
+.srv:hover,.ses:hover{background:var(--surface-2)}
+.srv.on,.ses.on{background:var(--primary-soft)}
+.av{width:36px;height:36px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;font-size:18px;position:relative;flex:none}
+.av .dot{position:absolute;right:-2px;bottom:-2px;border:2px solid var(--surface);width:12px;height:12px}
+.srv b,.ses b{display:block;font-size:13px;font-weight:600;line-height:1.2}
+.srv small,.ses small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:156px}
+.cnt{margin-left:auto;min-width:22px;height:22px;border-radius:11px;background:var(--warn-soft);color:var(--warn);font-size:12px;font-weight:700;display:grid;place-items:center;padding:0 6px}
+.cnt.ok{background:var(--ok-soft);color:var(--ok)}
+.health{margin-top:auto;border:1px solid var(--line);border-radius:var(--r-m);padding:12px;display:grid;gap:8px;font-size:12px;color:var(--ink-2)}
+.meter{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--primary);border-radius:3px}
+.meter i.w{background:var(--warn)}.meter i.b{background:var(--bad)}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.nav{display:flex;align-items:center;gap:16px;padding:16px 24px 0}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:4px;gap:4px;margin-left:auto}
+.seg button{padding:8px 16px;border-radius:var(--r-m);color:var(--ink-2);font-weight:600;font-size:13px;display:flex;gap:8px;align-items:center}
+.seg button.on{background:var(--primary);color:var(--primary-ink)}
+.seg button em{font-style:normal;background:var(--warn-soft);color:var(--warn);border-radius:9px;font-size:11px;padding:0 6px;font-weight:700}
+.seg button.on em{background:rgba(255,255,255,.25);color:#fff}
+.page{flex:1;min-height:0;overflow:hidden;padding:16px 24px 24px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh);padding:16px}
+.card h3{font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.card h3 span{font-weight:500;color:var(--ink-3);font-size:12px}
+.hero{border-radius:var(--r-xl);background:var(--hero);padding:24px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden;min-height:136px}
+.hero h1{font-size:26px;letter-spacing:-.02em}
+.hero p{color:var(--ink-2);margin:4px 0 16px}
+.hero .orb{position:absolute;right:48px;top:-24px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff8 0,#fff0 60%),conic-gradient(from 200deg,#F4B6A6,#F6D49A,#C9CDF8,#F4B6A6);opacity:.9;filter:blur(.5px)}
+.hero .orb.s{right:220px;top:60px;width:96px;height:96px;opacity:.7}
+.chips{display:flex;gap:8px;flex-wrap:wrap;position:relative}
+.chip{padding:4px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:12px;font-weight:600;display:inline-flex;gap:8px;align-items:center}
+.chip.partial{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kpi small{color:var(--ink-3);font-size:12px}
+.kpi b{display:block;font-size:28px;letter-spacing:-.02em;line-height:1.2;margin-top:4px}
+.kpi span{font-size:12px;font-weight:600}
+.kpi span.up{color:var(--ok)}.kpi span.dn{color:var(--bad)}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr 1fr}.g21{grid-template-columns:2fr 1fr}.g12{grid-template-columns:1fr 2fr}
+.tools{display:flex;gap:8px;align-items:center}
+.input{height:40px;border:1px solid var(--line-2);border-radius:var(--r-m);background:var(--surface);padding:0 12px;display:flex;align-items:center;gap:8px;color:var(--ink-3);min-width:240px}
+.f-chip{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:12px;font-weight:600;color:var(--ink-2);display:inline-flex;align-items:center}
+.f-chip.on{background:var(--primary-soft);color:var(--primary);border-color:var(--primary-line)}
+.scard{display:flex;flex-direction:column;gap:12px}
+.scard .hd{display:flex;gap:12px;align-items:center}
+.scard .hd b{font-size:14px}.scard .hd small{color:var(--ink-3);font-size:12px;display:block}
+.tag{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:4px;padding:0 8px;height:22px;border-radius:11px;font-size:11px;font-weight:700;background:var(--surface-2);color:var(--ink-2)}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.warn{background:var(--warn-soft);color:var(--warn)}.tag.bad{background:var(--bad-soft);color:var(--bad)}.tag.pri{background:var(--primary-soft);color:var(--primary)}
+.snip{background:var(--term);color:var(--term-ink);border-radius:var(--r-s);padding:8px 12px;font:12px/1.5 var(--mono);height:64px;overflow:hidden;white-space:pre}
+.ctx{display:grid;gap:4px;font-size:12px;color:var(--ink-2)}
+.ctx div{display:flex;justify-content:space-between}
+/* terminal */
+.thead{display:flex;align-items:center;gap:12px}
+.thead h2{font-size:18px;letter-spacing:-.01em}
+.wchips{display:flex;gap:8px}
+.wchip{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:inline-flex;gap:8px;align-items:center;font-weight:700;font-size:12px}
+.tbody{flex:1;min-height:0;display:grid;gap:16px}
+.term{background:var(--term);border-radius:var(--r-l);color:var(--term-ink);font:12.5px/1.6 var(--mono);padding:16px;overflow:hidden;position:relative;border:1px solid #232B48}
+.term .l{white-space:pre-wrap}
+.term .g{color:#5AD1A0}.term .y{color:#E6C26A}.term .r{color:#F28B82}.term .d{color:var(--term-dim)}.term .b{color:#8FA2FF}
+.term .tb{position:absolute;right:16px;top:16px;font-size:11px;color:var(--term-dim);background:#1A2140;padding:0 8px;border-radius:6px}
+.term .jump{position:absolute;right:16px;bottom:16px;background:var(--primary);color:var(--primary-ink);padding:8px 16px;border-radius:999px;font:600 12px var(--font)}
+.dock{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dock .btn{height:32px;font-size:12px;border-radius:var(--r-s);padding:0 12px}
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:16px;display:grid;gap:16px;align-content:start;overflow:hidden}
+.detail h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.ring{--p:57;width:96px;height:96px;border-radius:50%;background:conic-gradient(var(--primary) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;flex:none}
+.ring i{width:72px;height:72px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:18px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:12px}.kv span{color:var(--ink-3)}.kv b{text-align:right;font-weight:600}
+/* worker pane */
+.wp{background:var(--term);border:1px solid #232B48;border-radius:var(--r-m);overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.wp .h{white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--term-2);color:var(--term-ink);font-size:12px;border-bottom:1px solid #232B48}
+.wp .h b{font-weight:700}
+.wp .h .k{background:#1D3B33;color:#5AD1A0;border-radius:6px;padding:0 8px;font-weight:600}
+.wp .h .s{flex:none;margin-left:auto;color:var(--term-dim)}
+.wp .f{padding:12px;font:12px/1.55 var(--mono);color:var(--term-ink);overflow:hidden;display:grid;gap:4px;align-content:start}
+.wp .f div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wp .f .ex{color:#C9D1F0}.wp .f .ed{color:#E6C26A}.wp .f .sy{color:#8FA2FF}.wp .f .ok{color:#5AD1A0}.wp .f .no{color:#F28B82}
+/* tables / lists */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:8px;border-bottom:1px solid var(--line);font-weight:600}
+.tbl td{padding:12px 8px;border-bottom:1px solid var(--line)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:96px}
+.bar i{display:block;height:100%;background:var(--primary);border-radius:4px}
+.bar i.ok{background:var(--ok)}.bar i.w{background:var(--warn)}.bar i.b{background:var(--bad)}
+.row{display:flex;align-items:center;gap:12px}
+.row .grow{flex:1;min-width:0}
+.mut{color:var(--ink-3);font-size:12px}
+.chart{height:168px;display:flex;align-items:end;gap:8px;padding-top:8px}
+.chart i{flex:1;background:var(--primary-soft);border-radius:6px 6px 0 0;position:relative;min-height:8px}
+.chart i.hi{background:var(--primary)}
+.chart i.ac{background:var(--warn)}
+.axis{display:flex;gap:8px;color:var(--ink-3);font-size:11px}.axis span{flex:1;text-align:center}
+.notes{display:grid;grid-template-columns:272px 1fr;gap:16px;flex:1;min-height:0}
+.nlist{display:grid;gap:8px;align-content:start}
+.nitem{padding:12px;border-radius:var(--r-m);border:1px solid var(--line);background:var(--surface)}
+.nitem.on{border-color:var(--primary-line);background:var(--primary-soft)}
+.nitem b{display:block;font-size:13px}.nitem small{color:var(--ink-3);font-size:12px}
+.editor h2{font-size:22px;margin-bottom:8px;letter-spacing:-.01em}
+.editor p,.editor li{color:var(--ink-2);margin-bottom:8px}
+.editor code{background:var(--surface-2);border:1px solid var(--line);padding:0 4px;border-radius:4px;font:12px var(--mono)}
+.timeline{display:grid;gap:12px}
+.tl{display:grid;grid-template-columns:16px 1fr auto;gap:12px;align-items:start}
+.tl i{width:10px;height:10px;border-radius:50%;background:var(--primary);margin-top:6px}
+.tl i.ok{background:var(--ok)}.tl i.bad{background:var(--bad)}.tl i.w{background:var(--warn)}
+/* settings + dialogs */
+.set{display:grid;grid-template-columns:200px 1fr;gap:24px;flex:1;min-height:0}
+.setnav{display:grid;gap:4px;align-content:start}
+.setnav a{padding:8px 12px;border-radius:var(--r-m);color:var(--ink-2);font-weight:600;font-size:13px}
+.setnav a.on{background:var(--primary-soft);color:var(--primary)}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border:0}.srow small{display:block;color:var(--ink-3);font-size:12px}
+.sw{width:44px;height:24px;border-radius:12px;background:var(--line-2);position:relative;flex:none}
+.sw:after{content:'';position:absolute;left:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003}
+.sw.on{background:var(--primary)}.sw.on:after{left:22px}
+.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.theme{border:2px solid var(--line);border-radius:var(--r-m);padding:8px;display:grid;gap:8px;font-size:12px;font-weight:600}
+.theme.on{border-color:var(--primary)}
+.theme i{height:48px;border-radius:8px;display:block}
+.scrim{position:absolute;inset:64px 0 0 0;background:rgba(10,14,26,.45);display:grid;place-items:center;backdrop-filter:blur(2px)}
+.dlg{width:480px;background:var(--surface);border-radius:var(--r-xl);box-shadow:0 24px 64px rgba(0,0,0,.28);padding:24px;display:grid;gap:16px}
+.dlg h2{font-size:18px;letter-spacing:-.01em}
+.dlg .fld{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.dlg .fld div{height:40px;border:1px solid var(--line-2);border-radius:var(--r-m);padding:0 12px;display:flex;align-items:center;color:var(--ink);font-weight:500;font-size:13px;background:var(--surface)}
+.dlg .acts{display:flex;justify-content:flex-end;gap:8px}
+.dlg .hint{font-size:12px;color:var(--ink-3)}
+.dlgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.dlgs .box{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-xl);padding:32px;display:grid;place-items:center}
+.dlgs .dlg{width:100%}
+/* login */
+.login{display:grid;grid-template-columns:1.1fr 1fr;height:100%}
+.login .art{background:linear-gradient(150deg,#2E3A9E,#5B67E0 55%,#B7A6F0);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.login .art h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;max-width:420px}
+.login .art p{opacity:.85;max-width:380px;margin-top:16px}
+.login .art .orb{position:absolute;right:-60px;bottom:-60px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff6,#fff0 65%),conic-gradient(#fff3,#fff0,#fff3)}
+.login .form{display:grid;place-items:center;background:var(--surface)}
+.login .form .dlg{box-shadow:none;width:360px;padding:0}
+/* mobile */
+.phones{display:flex;gap:32px;flex-wrap:wrap}
+.phone{width:390px;height:780px;border-radius:40px;background:var(--bg);border:8px solid var(--ink);overflow:hidden;display:grid;grid-template-rows:auto 1fr auto;box-shadow:var(--sh)}
+.phone .ph{padding:16px;background:var(--surface);border-bottom:1px solid var(--line);display:grid;gap:8px}
+.phone .pb{padding:16px;display:grid;gap:12px;align-content:start;overflow:hidden}
+.phone .tabbar{display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-top:1px solid var(--line);padding:8px 0 16px}
+.phone .tabbar a{display:grid;justify-items:center;gap:2px;font-size:10px;color:var(--ink-3);font-weight:600}
+.phone .tabbar a.on{color:var(--primary)}
+.keys{display:flex;gap:8px;overflow:hidden}
+/* design system */
+.ds{display:grid;gap:24px;max-width:1120px}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.sw1{border-radius:var(--r-m);border:1px solid var(--line);overflow:hidden;font-size:12px}
+.sw1 i{display:block;height:56px}.sw1 div{padding:8px;background:var(--surface)}.sw1 b{display:block}.sw1 span{color:var(--ink-3)}
+.t1{font-size:28px;font-weight:800;letter-spacing:-.02em}.t2{font-size:18px;font-weight:700}.t3{font-size:14px;font-weight:600}.t4{font-size:13px;color:var(--ink-2)}.t5{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.space{display:flex;gap:16px;align-items:end}.space div{background:var(--primary-soft);border:1px dashed var(--primary);text-align:center;font-size:11px;color:var(--primary);padding-top:4px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.cmp .bad,.cmp .good{border-radius:var(--r-l);padding:16px;border:1px solid var(--line);background:var(--surface);font-size:13px}
+.cmp h5{display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:13px}
+.cmp .x{color:var(--bad)}.cmp .v{color:var(--primary)}
+@media (max-width:1100px){.viewer{grid-template-columns:1fr}.vnav{position:static;height:auto}}
+</style>
+</head>
+<body>
+<div class="viewer">
+  <nav class="vnav" id="vnav"></nav>
+  <main class="stage" id="stage"></main>
+</div>
+
+<script>
+/* ───────── Bộ icon nhỏ (cùng nét 1.8) ───────── */
+const I = {
+  plus:'<path d="M12 5v14M5 12h14"/>', bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/>',
+  sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  out:'<path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/>',
+  home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>', term:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9l3 3-3 3M13 15h4"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>', note:'<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+  ops:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', srv:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+  laptop:'<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 20h20"/>', clip:'<path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>',
+  stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>', exp:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
+  more:'<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', check:'<path d="M5 12l5 5 9-10"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  down:'<path d="M12 5v14M6 13l6 6 6-6"/>', users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-4 3-6 6.5-6s6 2 6.5 6M16 5a3.5 3.5 0 0 1 0 7M18 14c2 .7 3.2 2.7 3.5 6"/>',
+  cpu:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+  set:'<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/>',
+  zap:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', file:'<path d="M6 3h9l4 4v14H6zM14 3v5h5"/>', refresh:'<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>'
+};
+const ic = (n, s) => `<svg class="i" viewBox="0 0 24 24"${s ? ` style="width:${s}px;height:${s}px"` : ''}>${I[n]}</svg>`;
+
+/* ───────── Dữ liệu mẫu (lấy từ màn thật) ───────── */
+const SERVERS = [
+  ['laptop','Máy này','MacBook-Air-cua-H…','ok',3],['srv','dev-ubuntu-02','root@10.10.62.170','ok',1],
+  ['srv','dev-ubuntu-03','thanhlg@10.10.62.107','ok',2],['srv','dev-ubuntu-02','thanhlg · mất kết nối','bad',0]
+];
+const WAIT = [['🦊','Display-Program','Máy này'],['🐸','PG-App','Máy này'],['🦊','Smart-Visibility-v2','Máy này'],['🐰','Move-Data','dev-ubuntu-02']];
+const RUN = [['🐻','SV2-Agent03','dev-ubuntu-03 · 3 thợ · 1 c…'],['🐼','FES-Support','dev-ubuntu-02 · 3 thợ · 3 c…']];
+const IDLE = [['😴','GPS-Integrity','Máy này'],['🐸','Xspire-Support','dev-ubuntu-02']];
+
+function side(active) {
+  const srv = SERVERS.map((s, i) => `<div class="srv ${i === active ? 'on' : ''}"><div class="av">${ic(s[0])}<span class="dot ${s[3]}"></span></div><div><b>${s[1]}</b><small>${s[2]}</small></div>${s[4] ? `<span class="cnt">${s[4]}</span>` : ''}</div>`).join('');
+  const ses = (a, cur) => a.map((s) => `<div class="ses ${s[1] === cur ? 'on' : ''}"><div class="av">${s[0]}<span class="dot warn"></span></div><div><b>${s[1]}</b><small>${s[2]}</small></div></div>`).join('');
+  return `<aside class="side">
+    <h6>Máy chủ</h6>${srv}
+    <h6>Chờ bạn <span>4</span></h6>${ses(WAIT.slice(0, 3))}
+    <h6>Đang chạy <span>2</span></h6>${ses(RUN, window.__cur || '')}
+    <h6>Đang nghỉ <span>2</span></h6>${ses(IDLE.slice(0, 1))}
+    <div class="health"><div class="row"><span>CPU</span><div class="grow meter"><i style="width:38%"></i></div><b>38%</b></div><div class="row"><span>RAM</span><div class="grow meter"><i class="w" style="width:71%"></i></div><b>71%</b></div><div class="row"><span>Đĩa</span><div class="grow meter"><i style="width:44%"></i></div><b>44%</b></div></div>
+  </aside>`;
+}
+function topbar() {
+  return `<header class="top"><div class="logo"><i>▍_</i>TERMNEST</div>
+    <div class="quota"><span class="pill"><span class="dot ok"></span>Agent03 <b>40%</b></span><span class="pill"><span class="dot bad"></span>Technology <b>100%</b></span><span class="pill"><span class="dot bad"></span>Codex · hqsoft.agent03 <b>100%</b></span></div>
+    <div class="sp"></div><span class="ib">${ic('bell')}<span class="bd">9</span></span><span class="ib">${ic('sliders')}</span><span class="ib">${ic('sun')}</span>
+    <button class="btn primary">${ic('plus')}Phiên mới</button><span class="ib">${ic('out')}</span></header>`;
+}
+function nav(on) {
+  const t = [['Tổng quan', 'over'], ['Terminal', 'term'], ['Token AI', 'tok'], ['Ghi chú', 'note'], ['Vận hành', 'ops']];
+  return `<div class="nav"><div class="seg">${t.map((x) => `<button class="${x[1] === on ? 'on' : ''}">${x[0]}${x[1] === 'ops' ? '<em>2</em>' : ''}</button>`).join('')}</div></div>`;
+}
+const win = (inner, opt = {}) => `<div class="win">${topbar()}<div class="body">${side(opt.srv ?? 0)}<main class="main">${nav(opt.nav)}${inner}</main></div>${opt.over || ''}</div>`;
+
+/* ───────── Các màn ───────── */
+const SCREENS = {};
+const card = (s) => `<div class="card scard"><div class="hd"><div class="av">${s[0]}</div><div><b>${s[1]}</b><small>${s[2]}</small></div><span class="tag ${s[3]}" style="margin-left:auto">${s[4]}</span></div>
+  <div class="snip">${s[5]}</div><div class="ctx"><div><span>Ngữ cảnh</span><b>${s[6]}</b></div><div class="bar"><i class="${s[7]}" style="width:${s[6]}"></i></div></div></div>`;
+
+SCREENS.over = { g: 'Màn chính', t: 'Tổng quan', d: 'Trang đầu: tình trạng toàn bộ máy chủ và phiên. Banner dịu thay cảnh minh hoạ cũ; bộ lọc gọn một hàng; thẻ phiên có trạng thái, đoạn xem nhanh và thanh ngữ cảnh.', f: () => win(`
+  <div class="page"><div class="hero"><div><h1>Chào buổi tối, Thanh</h1><p>11 phiên trên 4 máy chủ · 2 đang chạy · 4 đang chờ bạn.</p>
+    <div class="chips"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${ic('users', 14)}6 thợ đang chạy</span></div></div><i class="orb"></i><i class="orb s"></i></div>
+    <div class="tools"><div class="input">${ic('search')}Tìm phiên theo tên, thú cưng, thư mục…</div><span class="f-chip on">Tất cả 11</span><span class="f-chip">Chờ bạn 4</span><span class="f-chip">Đang chạy 2</span><span class="f-chip">Đang nghỉ 5</span><span class="sp"></span><span class="f-chip">Sắp xếp: Mới hoạt động</span></div>
+    <div class="grid g3">${[
+      ['🐼', 'FES-Support', 'dev-ubuntu-02 · Claude', 'ok', 'Đang chạy', '● Bash(python3 -c "import json…")\n● Hai repo cần sửa xspire-crew…', '57%', ''],
+      ['🐻', 'SV2-Agent03', 'dev-ubuntu-03 · Codex', 'ok', 'Đang chạy', '$ dotnet test --no-build  ✔ 41s\n✎ Sv2Ingest/Detector.cs', '33%', ''],
+      ['🦊', 'Display-Program', 'Máy này · Claude', 'warn', 'Chờ bạn', '› Bạn muốn tôi tạo MR luôn\n  hay chờ review?', '71%', 'w']].map(card).join('')}</div></div>`, { nav: 'over' }) };
+
+SCREENS.focus = { g: 'Terminal', t: 'Terminal · một phiên', d: 'Terminal chiếm gần hết chiều ngang. Tiêu đề phiên có trạng thái và chip thợ; thanh phím bên dưới chia nhóm; panel chi tiết (ngữ cảnh, token, thư mục) mở được từ nút (i).', f: () => { window.__cur = 'FES-Support'; const r = win(`
+  <div class="page"><div class="thead"><div class="av">🐼</div><h2>FES-Support</h2><span class="tag ok">Đang chạy</span><div class="wchips"><span class="wchip"><span class="dot ok"></span>W1</span><span class="wchip"><span class="dot ok"></span>W2</span><span class="wchip"><span class="dot ok"></span>W3</span></div><span class="sp"></span><span class="ib">${ic('bell')}</span><span class="ib">${ic('info')}</span><span class="ib">${ic('more')}</span></div>
+    <div class="tbody" style="grid-template-columns:1fr 300px;grid-template-rows:1fr auto">
+      <div class="term"><span class="tb">57/9882</span><div class="l"><span class="d"># DONE/FAILED and the correction ledger; reconciliation must not invent a failed run.</span>
+<span class="d">  … +27 lines (ctrl+o to expand)</span>
+
+<span class="g">●</span> Nên sửa <b>devkit là chính</b>, còn Termnest chỉ nên thêm một lớp dự phòng.
+
+  1. <b>Phía tôi</b>: khởi chạy crew bằng lệnh tay, bỏ sót 2 bước skill yêu cầu.
+  2. <b>Lỗ hổng thật của devkit</b>: crew-dispatch.sh chỉ đồng bộ track vào MANIFEST khi worker kết thúc.
+
+<span class="d">✻ Worked for 31s · 4 shells still running</span>
+
+<span class="b">›</span> đồng ý, mở crew sửa devkit luôn cho các skill đều hoạt động tốt
+<span class="g">●</span> Rõ yêu cầu. Trước khi tách track, tôi xác định đúng chỗ cần sửa…
+<span class="g">●</span> Bash(cd /data/thanhlg/xspire-crew && grep -n "crew_resolve_executor" …)
+<span class="d">  ⎿ 2:519-  EXECUTOR_REQUESTED="\${1:-auto}"</span>
+<span class="d">    … +12 lines (ctrl+o to expand)</span></div><span class="jump">↓ Mới nhất</span></div>
+      <div class="detail"><div class="row"><div class="ring" style="--p:57"><i>57%</i></div><div><h4>Ngữ cảnh phiên</h4><div class="t3">570k / 1M</div><div class="mut">Chính xác · từ log phiên</div></div></div>
+        <div><h4>Token hôm nay</h4><div class="kv"><span>Vào</span><b>1,2M</b><span>Ra</span><b>184k</b><span>Cache</span><b>41,8M</b></div></div>
+        <div><h4>Thư mục</h4><div class="kv"><span>cwd</span><b>/data/thanhlg/xspire</b><span>Nhánh</span><b>thanhLG</b><span>Máy</span><b>dev-ubuntu-02</b></div></div>
+        <div><h4>Crew</h4><div class="row"><span class="tag ok">3 thợ</span><span class="tag">3 task</span></div></div></div>
+      <div class="dock" style="grid-column:1/-1"><button class="btn">${ic('clip', 14)}Gửi file</button><button class="btn">${ic('file', 14)}Mở file</button><button class="btn">${ic('stop', 14)}Ngắt</button><button class="btn">Esc</button><button class="btn">Phím ▾</button><button class="btn">⚡ Lệnh mẫu ▾</button><span class="sp"></span><button class="btn">Chọn chữ</button><button class="btn">Sao chép</button><button class="btn">A−</button><button class="btn">A+</button><button class="btn">${ic('exp', 14)}</button></div>
+    </div></div>`, { nav: 'term', srv: 1 }); window.__cur = ''; return r; } };
+
+const wp = (n, st, lines) => `<div class="wp"><div class="h"><b>${n}</b><span class="k">Codex</span><span style="overflow:hidden;text-overflow:ellipsis">eSales BO function picker</span><span class="s">${st}</span></div><div class="f">${lines.map((l) => `<div class="${l[0]}">${l[1]}</div>`).join('')}</div></div>`;
+SCREENS.crew = { g: 'Terminal', t: 'Terminal · Crew (điều phối + thợ)', d: 'Đây là chỗ sửa lớn nhất: mỗi thợ hiện luồng hoạt động THỰC SỰ của Codex (lệnh đang chạy ✔/✖, file đang sửa ✎, lời nó nói ›) thay vì đuôi log thô. Thợ xong tự gọn lại, thanh kéo chia chiều cao.', f: () => win(`
+  <div class="page"><div class="thead"><div class="av">🐼</div><h2>FES-Support</h2><span class="tag ok">Đang chạy</span><span class="tag pri">Crew · 3 thợ</span><span class="sp"></span><button class="btn sm">${ic('bell', 14)}Nhắc điều phối</button><button class="btn sm">Hiện cả thợ đã xong</button><button class="btn sm">Ẩn các thợ</button></div>
+    <div class="tbody" style="grid-template-rows:1.1fr 1fr"><div class="term"><div class="l"><span class="g">●</span> Bash(python3 -c "import json;d=json.load(open('.xspire-layout.json'))…")
+<span class="d">  ⎿ {'hqsoft.abp.docs': 'docs/hqsoft.abp.docs', 'xspire-crew': 'tooling/xspire-crew'}</span>
+<span class="g">●</span> Hai repo cần sửa là xspire-crew và hqsoft.abp.docs; tôi đang kiểm tra trạng thái cả hai.
+<span class="g">●</span> Bash(for r in tooling/xspire-crew docs/hqsoft.abp.docs; do echo "== $r: …)
+<span class="d">  ⎿ == tooling/xspire-crew: main | dirty=0 | default=origin/main</span></div><span class="jump">↓ Mới nhất</span></div>
+      <div class="grid g3" style="min-height:0">${wp('W1', '● Đang chạy', [['ex', '$ git status --porcelain  <span class="ok">✔ 0.2s</span>'], ['ed', '✎ crew/_lib.sh, crew/crew-dispatch.sh'], ['ex', '$ bash tests/test_dispatch.sh  <span class="ok">✔ 12.4s</span>'], ['sy', '› Đã thêm reconcile khi worker được nhận.'], ['ex', '$ shellcheck crew-dispatch.sh  …']])}
+      ${wp('W2', '● Đang chạy', [['ex', '$ dotnet build -c Release  <span class="ok">✔ 38.1s</span>'], ['ed', '✎ Picker/FunctionPicker.razor'], ['ex', '$ dotnet test --filter Picker  <span class="no">✖ exit 1 9.8s</span>'], ['sy', '› 2 test đỏ, đang xem lại selector.']])}
+      ${wp('W3', '✔ Xong', [['ed', '✎ W3/STATUS.md, W3/BLOCKED.md'], ['ex', '$ git commit -m "format số"  <span class="ok">✔ 0.4s</span>'], ['sy', '› Đã commit 2a7f259 sửa định dạng số.'], ['sy', '› Chưa DONE: verifier bị dừng do tiến trình con.']])}</div></div></div>`, { nav: 'term', srv: 1 }) };
+
+SCREENS.wall = { g: 'Terminal', t: 'Terminal · lưới nhiều phiên', d: 'Xem 4 phiên một lúc (chế độ lưới 1/2/4). Mỗi ô có viền trạng thái; ô đang chờ bạn có viền vàng và nút trả lời nhanh.', f: () => win(`
+  <div class="page"><div class="thead"><h2>Lưới phiên</h2><span class="tag">4 phiên</span><span class="sp"></span><div class="seg" style="margin:0"><button>1</button><button>2</button><button class="on">4</button></div></div>
+    <div class="tbody grid g2" style="grid-template-rows:1fr 1fr">${[['🐼 FES-Support', 'ok', 'Đang chạy'], ['🐻 SV2-Agent03', 'ok', 'Đang chạy'], ['🦊 Display-Program', 'warn', 'Chờ bạn'], ['🐸 PG-App', 'warn', 'Chờ bạn']].map((x) => `<div class="term" style="${x[1] === 'warn' ? 'border-color:var(--warn)' : ''}"><div class="row" style="margin-bottom:8px;font-family:var(--font)"><b>${x[0]}</b><span class="tag ${x[1]}">${x[2]}</span></div><div class="l"><span class="g">●</span> Bash(npm test -- --run)\n<span class="d">  ⎿ ✔ 214 passed</span>\n${x[1] === 'warn' ? '<span class="y">? Tạo MR luôn hay chờ review?  [Y/n]</span>' : '<span class="g">●</span> Đang đọc kết quả…'}</div></div>`).join('')}</div></div>`, { nav: 'term', srv: 0 }) };
+
+SCREENS.token = { g: 'Màn chính', t: 'Token AI', d: 'Tiêu thụ token theo tài khoản, mô hình và ngày. Chỉ dùng một màu chủ đạo; vàng chỉ cho ngày hôm nay/cảnh báo.', f: () => win(`
+  <div class="page"><div class="kpis">${[['Hôm nay', '41,8M', '↑ 12%', 'up'], ['7 ngày', '212M', '↑ 8%', 'up'], ['Hạn mức Codex', '100%', 'Còn 0 ngày', 'dn'], ['Tài khoản', '3', 'Agent03 · Technology · Codex', '']].map((k) => `<div class="card kpi"><small>${k[0]}</small><b>${k[1]}</b><span class="${k[3]}">${k[2]}</span></div>`).join('')}</div>
+    <div class="grid g21" style="flex:1;min-height:0"><div class="card"><h3>Token theo ngày <span>14 ngày gần nhất</span></h3><div class="chart">${[30, 44, 38, 52, 61, 48, 55, 70, 64, 58, 73, 80, 66, 92].map((h, i) => `<i class="${i === 13 ? 'ac' : i > 9 ? 'hi' : ''}" style="height:${h}%"></i>`).join('')}</div><div class="axis">${Array.from({ length: 14 }, (_, i) => `<span>${i + 1}/11</span>`).join('')}</div></div>
+    <div class="card"><h3>Theo tài khoản</h3><div style="display:grid;gap:16px">${[['Agent03', 40, ''], ['Technology', 100, 'b'], ['Codex · hqsoft.agent03', 100, 'b']].map((a) => `<div><div class="row"><b class="grow">${a[0]}</b><span class="mut">${a[1]}%</span></div><div class="bar" style="margin-top:8px"><i class="${a[2]}" style="width:${a[1]}%"></i></div></div>`).join('')}</div></div></div></div>`, { nav: 'tok' }) };
+
+SCREENS.notes = { g: 'Màn chính', t: 'Ghi chú', d: 'Danh sách ghi chú bên trái, soạn thảo markdown bên phải; gắn với phiên/máy chủ.', f: () => win(`
+  <div class="page"><div class="notes"><div class="nlist"><div class="row"><div class="input grow" style="min-width:0">${ic('search')}Tìm ghi chú</div><button class="btn primary sm">${ic('plus', 14)}</button></div>${[['Quy trình release 1.1.x', 'FES-Support · hôm nay'], ['Checklist crew devkit', 'SV2-Agent03 · hôm qua'], ['Lỗi SSH dev-ubuntu-02', 'Máy chủ · 10/11']].map((n, i) => `<div class="nitem ${i === 0 ? 'on' : ''}"><b>${n[0]}</b><small>${n[1]}</small></div>`).join('')}</div>
+    <div class="card editor"><div class="row" style="margin-bottom:16px"><span class="tag pri">Markdown</span><span class="mut">Đã lưu 22:31</span><span class="sp"></span><button class="btn sm">Xem</button><button class="btn sm">Sửa</button></div><h2>Quy trình release 1.1.x</h2><p>Tag phải trỏ đúng commit đã nâng version. Kiểm tra <code>package.json</code> và <code>desktop/tauri.conf.json</code> trước khi push tag.</p><ul style="padding-left:16px"><li>Nâng version ở 7 file</li><li>Đẩy nhánh, rồi đẩy tag <code>v1.1.18</code></li><li>Theo dõi workflow, chạy lại job lỗi nếu là flake</li></ul></div></div></div>`, { nav: 'note' }) };
+
+const opsTabs = (on) => `<div class="row"><div class="seg" style="margin:0">${['Tiến độ', 'Báo cáo', 'Chuyên sâu', 'Cài đặt'].map((t, i) => `<button class="${i === on ? 'on' : ''}">${t}</button>`).join('')}</div><span class="sp"></span><span class="mut">Cập nhật 3 giây trước</span><button class="btn sm">${ic('refresh', 14)}Làm mới</button></div>`;
+SCREENS.ops1 = { g: 'Vận hành', t: 'Vận hành · Tiến độ', d: 'Các crew đang chạy: tiến độ theo task, thợ nào đang làm gì, ai đang chờ hoặc lỗi. Dùng thanh tiến độ và nhãn trạng thái thay vì nhiều màu.', f: () => win(`
+  <div class="page">${opsTabs(0)}<div class="grid g2" style="flex:1;min-height:0">${[['FES-Support', '20261112-esales-bo-fidelity', [['W1', 'ok', 'Đang chạy', 64], ['W2', 'bad', 'Lỗi test', 40], ['W3', 'ok', 'Xong', 100]]], ['SV2-Agent03', '20261109-sv2-r7-robustness', [['W1', 'ok', 'Xong', 100], ['W2', 'w', 'Chờ lượt', 0], ['H1', 'ok', 'Đang chạy', 72]]]].map((c) => `<div class="card"><h3>${c[0]} <span>${c[1]}</span></h3><table class="tbl"><tbody>${c[2].map((w) => `<tr><td><b>${w[0]}</b></td><td><span class="tag ${w[1] === 'w' ? 'warn' : w[1]}">${w[2]}</span></td><td style="width:45%"><div class="bar"><i class="${w[1] === 'bad' ? 'b' : w[1] === 'w' ? 'w' : ''}" style="width:${w[3]}%"></i></div></td><td class="mut">${w[3]}%</td></tr>`).join('')}</tbody></table></div>`).join('')}</div></div>`, { nav: 'ops' }) };
+
+SCREENS.ops2 = { g: 'Vận hành', t: 'Vận hành · Báo cáo', d: 'Báo cáo theo ngày/tuần: số task xong, thời gian, token, số lần sửa lại. Dòng thời gian thay vì bảng dày chữ.', f: () => win(`
+  <div class="page">${opsTabs(1)}<div class="kpis">${[['Task xong', '14', '↑ 3', 'up'], ['Thời gian TB', '42 phút', '↓ 6 phút', 'up'], ['Sửa lại', '9', '↑ 2', 'dn'], ['Token', '212M', '↑ 8%', 'dn']].map((k) => `<div class="card kpi"><small>${k[0]}</small><b>${k[1]}</b><span class="${k[3]}">${k[2]}</span></div>`).join('')}</div>
+    <div class="card" style="flex:1;min-height:0"><h3>Dòng thời gian <span>Hôm nay</span></h3><div class="timeline">${[['ok', '22:31', 'W3 · FES-Support', 'Commit 2a7f259 — sửa định dạng số'], ['bad', '22:12', 'W2 · FES-Support', 'Test Picker đỏ (2 lỗi) — vòng sửa 1'], ['ok', '21:48', 'W1 · SV2-Agent03', 'Xong DI helper, 2.191 test đạt'], ['w', '21:15', 'H1 · SV2-Agent03', 'Chờ PostgreSQL — timeout kết nối']].map((t) => `<div class="tl"><i class="${t[0]}"></i><div><b>${t[2]}</b><div class="mut">${t[3]}</div></div><span class="mut">${t[1]}</span></div>`).join('')}</div></div></div>`, { nav: 'ops' }) };
+
+SCREENS.ops3 = { g: 'Vận hành', t: 'Vận hành · Chuyên sâu', d: 'Kiểm tra sâu một track: vòng chạy, tệp bằng chứng, commit, thay đổi. Cột trái chọn track, cột phải xem chi tiết.', f: () => win(`
+  <div class="page">${opsTabs(2)}<div class="grid g12" style="flex:1;min-height:0"><div class="card"><h3>Track</h3><div class="nlist">${['W1 · fidelity', 'W2 · fidelity', 'W3 · fidelity', 'H1 · robustness'].map((t, i) => `<div class="nitem ${i === 2 ? 'on' : ''}"><b>${t}</b><small>${i === 2 ? 'Xong · 3 vòng' : 'Đang chạy'}</small></div>`).join('')}</div></div>
+    <div class="card"><h3>W3 · eSales BO function picker <span>Codex · gpt-6.1 · high</span></h3><table class="tbl"><thead><tr><th>Vòng</th><th>Bắt đầu</th><th>Thời gian</th><th>Thoát</th><th>Token</th></tr></thead><tbody>${[[1, '19:08', '31 phút', 0, '227k'], [2, '20:02', '14 phút', 1, '153k'], [3, '21:15', '9 phút', 0, '88k']].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><span class="tag ${r[3] ? 'bad' : 'ok'}">${r[3]}</span></td><td>${r[4]}</td></tr>`).join('')}</tbody></table>
+    <h3 style="margin-top:24px">Tệp thay đổi <span>8 tệp</span></h3><div class="row"><span class="tag">src/Picker.razor</span><span class="tag">Picker.cs</span><span class="tag">en.json</span><span class="tag">vi.json</span></div></div></div></div>`, { nav: 'ops' }) };
+
+const sRow = (t, s, on) => `<div class="srow"><div><b>${t}</b><small>${s}</small></div><span class="sw ${on ? 'on' : ''}"></span></div>`;
+SCREENS.set = { g: 'Cài đặt & hộp thoại', t: 'Cài đặt', d: 'Cài đặt chia nhóm bên trái (Giao diện, Thông báo, Máy chủ, Phiên, Sao lưu, Tiện ích, Lệnh mẫu, Kết nối, Khác). Thú cưng mặc định TẮT cho người cài mới.', f: () => win(`
+  <div class="page"><div class="set"><div class="setnav">${['Giao diện', 'Thông báo', 'Máy chủ', 'Tự trông crew', 'Sao lưu', 'Tiện ích', 'Lệnh mẫu', 'Kết nối', 'Khác'].map((t, i) => `<a class="${i === 0 ? 'on' : ''}">${t}</a>`).join('')}</div>
+    <div class="card" style="overflow:hidden"><h3>Giao diện</h3>${sRow('Thú cưng', 'Hiện thú cưng và sân chơi (tắt giúp máy nhẹ hơn)', false)}${sRow('Ngôn ngữ', 'Tiếng Việt', true)}${sRow('Giảm chuyển động', 'Tắt hiệu ứng động không cần thiết', true)}
+    <h3 style="margin-top:24px">Chủ đề</h3><div class="themes">${[['Sáng', '#fff'], ['Tối', '#141A2B'], ['Theo hệ thống', 'linear-gradient(90deg,#fff 50%,#141A2B 50%)'], ['Tương phản cao', '#000']].map((t, i) => `<div class="theme ${i === 0 ? 'on' : ''}"><i style="background:${t[1]};border:1px solid var(--line)"></i>${t[0]}</div>`).join('')}</div></div></div></div>`, { nav: 'over', over: '' }) };
+
+SCREENS.dialogs = { g: 'Cài đặt & hộp thoại', t: 'Hộp thoại', d: 'Phiên mới, Thêm máy chủ, Cảnh báo, Dừng phiên. Cùng một khuôn: tiêu đề, trường 40px, hành động chính bên phải; nút nguy hiểm duy nhất màu đỏ.', f: () => `<div class="dlgs">
+  <div class="box"><div class="dlg"><h2>Phiên mới</h2><div class="fld">Tên phiên<div>FES-Support-2</div></div><div class="fld">Máy chủ<div>dev-ubuntu-02 · root@10.10.62.170</div></div><div class="fld">Thư mục<div>/data/thanhlg/xspire-workspaces</div></div><div class="fld">Công cụ AI<div>Claude Code</div></div><div class="acts"><button class="btn">Huỷ</button><button class="btn primary">Tạo phiên</button></div></div></div>
+  <div class="box"><div class="dlg"><h2>Thêm máy chủ</h2><div class="fld">Tên hiển thị<div>dev-ubuntu-04</div></div><div class="fld">Địa chỉ SSH<div>thanhlg@10.10.62.121</div></div><div class="fld">Xác thực<div>Khoá SSH · id_ed25519</div></div><p class="hint">Mật khẩu và khoá được lưu mã hoá trong két của máy này.</p><div class="acts"><button class="btn">Huỷ</button><button class="btn primary">Kết nối thử</button></div></div></div>
+  <div class="box"><div class="dlg"><h2>Cảnh báo <span class="tag bad">9</span></h2>${[['bad', 'dev-ubuntu-02 mất kết nối', '5 phút trước'], ['warn', 'Display-Program đang chờ bạn', '12 phút trước'], ['ok', 'W3 · FES-Support đã xong', '25 phút trước']].map((a) => `<div class="tl"><i class="${a[0] === 'warn' ? 'w' : a[0]}"></i><div><b>${a[1]}</b></div><span class="mut">${a[2]}</span></div>`).join('')}<div class="acts"><button class="btn">Đánh dấu đã đọc</button><button class="btn primary">Đóng</button></div></div></div>
+  <div class="box"><div class="dlg"><h2>Dừng phiên "GPS-Integrity"?</h2><p class="t4">Phiên tmux sẽ bị đóng, nội dung đang chạy sẽ mất. Thao tác này không hoàn tác được.</p><div class="acts"><button class="btn">Giữ lại</button><button class="btn danger">Dừng phiên</button></div></div></div></div>` };
+
+SCREENS.login = { g: 'Cài đặt & hộp thoại', t: 'Đăng nhập', d: 'Màn đăng nhập tách đôi: bên trái là thương hiệu, bên phải là biểu mẫu tối giản.', f: () => `<div class="win" style="grid-template-rows:1fr"><div class="login"><div class="art"><div class="logo" style="color:#fff"><i style="background:#fff;color:#2E3A9E">▍_</i>TERMNEST</div><div><h1>Mọi phiên AI của bạn, một chỗ.</h1><p>Theo dõi Claude, Codex và crew trên mọi máy chủ mà không phải mở từng terminal.</p></div><span class="mut" style="color:#fffb">by JIAQING</span><i class="orb"></i></div>
+  <div class="form"><div class="dlg"><h2>Đăng nhập</h2><div class="fld">Mật khẩu<div>••••••••••</div></div><button class="btn primary" style="justify-content:center">Vào TERMNEST</button><p class="hint">Chỉ dùng trên mạng nội bộ hoặc qua máy chủ đã xác thực.</p></div></div></div></div>` };
+
+SCREENS.mobile = { g: 'Cài đặt & hộp thoại', t: 'Điện thoại 390px', d: 'Bản 390px: thanh tab dưới thay thanh trên; sidebar thành danh sách; terminal có hàng phím tắt cuộn ngang. Cần chụp kiểm cả 1280px và 390px trước khi phát hành.', f: () => `<div class="phones">
+  <div class="phone"><div class="ph"><div class="row"><div class="logo"><i>▍_</i>TERMNEST</div><span class="sp"></span><span class="ib" style="width:36px;height:36px">${ic('bell')}<span class="bd">9</span></span></div><div class="row"><span class="pill"><span class="dot ok"></span>Agent03 <b>40%</b></span><span class="pill"><span class="dot bad"></span>Codex <b>100%</b></span></div></div>
+    <div class="pb"><div class="hero" style="padding:16px;min-height:0"><div><h1 style="font-size:20px">Chào buổi tối</h1><p style="margin:4px 0 8px">11 phiên · 2 đang chạy</p></div></div><div class="chips"><span class="chip partial">1 máy chủ mất kết nối</span></div>${[['🐼', 'FES-Support', 'ok', 'Đang chạy'], ['🐻', 'SV2-Agent03', 'ok', 'Đang chạy'], ['🦊', 'Display-Program', 'warn', 'Chờ bạn']].map((s) => `<div class="card scard" style="padding:12px"><div class="hd"><div class="av">${s[0]}</div><div><b>${s[1]}</b><small>dev-ubuntu-02</small></div><span class="tag ${s[2]}" style="margin-left:auto">${s[3]}</span></div></div>`).join('')}</div>
+    <div class="tabbar"><a class="on">${ic('home')}Tổng quan</a><a>${ic('term')}Terminal</a><a>${ic('chart')}Token</a><a>${ic('note')}Ghi chú</a><a>${ic('ops')}Vận hành</a></div></div>
+  <div class="phone"><div class="ph"><div class="row"><b>FES-Support</b><span class="tag ok">Đang chạy</span><span class="sp"></span><span class="ib" style="width:36px;height:36px">${ic('info')}</span></div><div class="wchips"><span class="wchip"><span class="dot ok"></span>W1</span><span class="wchip"><span class="dot ok"></span>W2</span><span class="wchip"><span class="dot ok"></span>W3</span></div></div>
+    <div class="pb" style="padding:0;grid-template-rows:1fr auto"><div class="term" style="border-radius:0;font-size:11px"><div class="l"><span class="g">●</span> Bash(grep -n "crew_resolve_executor" …)\n<span class="d">  ⎿ 2:519-  EXECUTOR_REQUESTED</span>\n<span class="g">●</span> Hai repo cần sửa là xspire-crew\n  và hqsoft.abp.docs.</div><span class="jump">↓ Mới nhất</span></div><div class="keys" style="padding:8px">${['Esc', 'Tab', 'Ctrl', '↑', '↓', 'Ngắt'].map((k) => `<button class="btn sm">${k}</button>`).join('')}</div></div>
+    <div class="tabbar"><a>${ic('home')}Tổng quan</a><a class="on">${ic('term')}Terminal</a><a>${ic('chart')}Token</a><a>${ic('note')}Ghi chú</a><a>${ic('ops')}Vận hành</a></div></div></div>` };
+
+SCREENS.ds = { g: 'Hệ thống thiết kế', t: 'Hệ thống thiết kế', d: 'Rút từ 5 ảnh tham khảo: nhịp 4/8px, mỗi kiểu chữ một mục đích, ít màu hơn (trung tính + 1 màu chủ đạo + màu ngữ nghĩa), thẻ bo tròn nổi nhẹ, banner gradient dịu cho vùng chào.', f: () => `<div class="ds">
+  <div class="card"><h3>1 · Khoảng cách — nhịp 8px</h3><div class="space">${[4, 8, 12, 16, 24, 32, 48].map((n) => `<div style="width:${n + 24}px;height:${n}px">${n}</div>`).join('')}</div></div>
+  <div class="card"><h3>2 · Chữ — mỗi kiểu một mục đích</h3><div style="display:grid;gap:8px"><div class="t1">Tiêu đề trang 28/800</div><div class="t2">Tiêu đề thẻ 18/700</div><div class="t3">Nhãn & giá trị 14/600</div><div class="t4">Nội dung phụ 13/400 · màu ink-2</div><div class="t5">Nhãn nhóm 11 · hoa · giãn chữ</div><div style="font:12.5px var(--mono)">Terminal 12.5 mono</div></div></div>
+  <div class="card"><h3>3 · Màu — ít màu, nhiều rõ ràng</h3><div class="swatches">${[['Chủ đạo', '--primary'], ['Nền chủ đạo', '--primary-soft'], ['Thành công', '--ok'], ['Cảnh báo', '--warn'], ['Lỗi', '--bad'], ['Terminal', '--term']].map((c) => `<div class="sw1"><i style="background:var(${c[1]})"></i><div><b>${c[0]}</b><span>${c[1]}</span></div></div>`).join('')}</div><p class="t4" style="margin-top:12px">Màu ngữ nghĩa chỉ dùng cho trạng thái (đang chạy · chờ · lỗi). Không dùng màu trang trí.</p></div>
+  <div class="cmp"><div class="bad"><h5><span class="x">✕</span><b>Hiện tại</b></h5><div class="t4">Nhiều màu nhấn cùng lúc, thú cưng chuyển động liên tục, chip kết nối xanh dù có máy chủ mất kết nối, pane thợ chỉ có log thô.</div></div><div class="good"><h5><span class="v">✓</span><b>Đề xuất</b></h5><div class="t4">Một màu chủ đạo, chip kết nối vàng khi thiếu máy, chuyển động chỉ khi cần (và tắt được), pane thợ hiện lệnh/tệp/lời thật của Codex.</div></div></div></div>` };
+
+/* ───────── Khung xem ───────── */
+const ORDER = ['ds', 'login', 'over', 'focus', 'crew', 'wall', 'token', 'notes', 'ops1', 'ops2', 'ops3', 'set', 'dialogs', 'mobile'];
+let cur = (location.hash || '#over').slice(1); if (!SCREENS[cur]) cur = 'over';
+function render() {
+  const groups = {}; ORDER.forEach((k) => (groups[SCREENS[k].g] ||= []).push(k));
+  const theme = document.documentElement.dataset.theme === 'dark';
+  document.getElementById('vnav').innerHTML = `<h1>TERMNEST</h1><p>Mockup giao diện mới · ${ORDER.length} màn</p>` +
+    Object.entries(groups).map(([g, ks]) => `<h5>${g}</h5>` + ks.map((k) => `<a class="${k === cur ? 'on' : ''}" data-k="${k}">${SCREENS[k].t}</a>`).join('')).join('') +
+    `<div class="tt"><button class="${theme ? '' : 'on'}" data-th="light">Sáng</button><button class="${theme ? 'on' : ''}" data-th="dark">Tối</button></div>`;
+  const s = SCREENS[cur];
+  document.getElementById('stage').innerHTML = `<div class="cap"><div><h2>${s.t}</h2><p>${s.d}</p></div></div>${s.f()}`;
+  document.title = 'TERMNEST · ' + s.t;
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-k]'); if (a) { cur = a.dataset.k; location.hash = cur; render(); return; }
+  const t = e.target.closest('[data-th]'); if (t) { document.documentElement.dataset.theme = t.dataset.th; render(); }
+});
+render();
+</script>
+</body>
+</html>
