@@ -168,8 +168,19 @@
     markZoom();
   }
 
+  // Playground: slim row of small pets with status dots (persisted in tw-yard-compact).
+  function wireYard() {
+    var d = root.document, b = d.getElementById('yard-fold'), sec = d.getElementById('playground'); if (!b || !sec) return;
+    function apply(on) {
+      sec.classList.toggle('compact', on); b.setAttribute('aria-pressed', String(on));
+      var k = on ? 'ux2.yard_expand' : 'ux2.yard_compact'; b.setAttribute('data-i18n', k); b.textContent = t(k);
+    }
+    apply(store('tw-yard-compact') === '1');
+    b.addEventListener('click', function () { var on = !sec.classList.contains('compact'); store('tw-yard-compact', on ? '1' : ''); apply(on); });
+  }
+
   function boot() {
-    [buildDock, buildHero, wireZoom].forEach(function (f) { try { f(); } catch (e) { if (root.console) root.console.error('[ux2]', e); } });
+    [buildDock, buildHero, wireZoom, wireYard].forEach(function (f) { try { f(); } catch (e) { if (root.console) root.console.error('[ux2]', e); } });
   }
   return { HUES: HUES, MODES: MODES, hash: hash, hue: hue, initials: initials, monoHtml: monoHtml, monoNode: monoNode, petsOn: petsOn,
     projectOf: projectOf, toolOf: toolOf, groupSessions: groupSessions, getMode: getMode, setMode: setMode, getPins: getPins, togglePin: togglePin,

@@ -2590,5 +2590,8 @@
   "notes2.everyday": "Mỗi ngày",
   "notes2.add_slot": "＋ Thêm khung giờ",
   "notes2.only_open": "Chỉ nhắc khi còn việc chưa xong",
-  "notes2.only_open_sub": "Bỏ qua nếu mọi ghi chú đã hết mục “- [ ]”."
+  "notes2.only_open_sub": "Bỏ qua nếu mọi ghi chú đã hết mục “- [ ]”.",
+  "app.disk_short": "Đĩa",
+  "ux2.yard_compact": "Thu gọn",
+  "ux2.yard_expand": "Mở rộng"
 }

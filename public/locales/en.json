@@ -2607,5 +2607,8 @@
   "notes2.everyday": "Every day",
   "notes2.add_slot": "＋ Add time slot",
   "notes2.only_open": "Only remind when tasks remain",
-  "notes2.only_open_sub": "Skipped if no note has an unchecked “- [ ]” item."
+  "notes2.only_open_sub": "Skipped if no note has an unchecked “- [ ]” item.",
+  "app.disk_short": "Disk",
+  "ux2.yard_compact": "Collapse",
+  "ux2.yard_expand": "Expand"
 }

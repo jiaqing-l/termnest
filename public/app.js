@@ -889,11 +889,18 @@
       var sys = v.sys, p = problems(v), card = el('article', 'fc' + (p.length ? ' hot' : '') + (v.on ? '' : ' off')), head = el('div', 'fc-h'), title = el('div', 't');
       var details = el('button', 'fc-details'); details.type = 'button'; details.setAttribute('aria-label', i18n('app.chi_tiet', [v.name])); details.onclick = function () { openDetail(v.id); };
       title.append(el('b', '', v.name), el('small', '', v.rebooting ? i18n('app.dang_khoi_dong_lai') : !v.on ? i18n('app.mat_ket_noi_4', [(v.offSince ? span(Math.max(0, (Date.now() - v.offSince) / 1000)) : i18n('app.tu_luc_chua_xac_dinh'))]) : sys ? [sys.os, sys.cores != null ? i18n('app.loi', [sys.cores]) : '', sys.uptimeSec != null ? i18n('app.chay', [span(sys.uptimeSec)]) : ''].filter(function (part) { return part; }).join(' · ') : i18n('app.dang_cho_so_lieu_he')));
-      details.append(title); head.append(details, el('span', 'pill ' + (p.length ? 'bad' : 'run'), v.rebooting ? i18n('app.dang_khoi_dong_lai') : p[0] || i18n('app.on_dinh'))); card.append(head);
+      details.append(title); var fcIc = el('span', 'fc-ic'); fcIc.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="11" rx="2"/><path d="M8 20h8M12 16v4"/></svg>'; head.append(fcIc, details, el('span', 'pill ' + (p.length ? 'bad' : 'run'), v.rebooting ? i18n('app.dang_khoi_dong_lai') : p[0] || i18n('app.on_dinh'))); card.append(head);
       {
         var rs = el('div', 'rings'), disk = sys && (sys.disks || []).filter(function (d) { return d.mount === '/'; })[0];
         rs.append(ring(v, 'cpu', 'CPU', sys && sys.cores != null ? i18n('app.loi', [sys.cores]) : ''), ring(v, 'ram', 'RAM', sys ? compactNumber(sys.ramUsedGb) + '/' + compactNumber(sys.ramTotalGb) + 'G' : ''), ring(v, 'disk', 'Disk', disk ? compactNumber(disk.usedGb) + '/' + compactNumber(disk.totalGb) + 'G' : ''));
         card.append(rs);
+        var bars = el('div', 'fc-bars');
+        [['cpu', 'CPU'], ['ram', 'RAM'], ['disk', i18n('app.disk_short')]].forEach(function (k) {
+          var val = v[k[0]], pctv = Number.isFinite(val) ? Math.max(0, Math.min(100, val)) : null, row = el('div', 'fb'), bar = el('div', 'bar'), fill = el('i');
+          fill.style.setProperty('--v', pctv == null ? 0 : pctv); if (pctv != null && pctv >= 90) fill.className = 'b'; else if (pctv != null && pctv >= 75) fill.className = 'w';
+          bar.append(fill); row.append(el('span', '', k[1]), bar, el('b', '', pctv == null ? '—' : Math.round(pctv) + '%')); bars.append(row);
+        });
+        card.append(bars);
         if (sys) {
           var rows = el('div', 'fc-rows'); rows.append(resourceRow(i18n('app.tai_1_phut'), sys.load1 / sys.cores * 100, HP.cpu[1], number(sys.load1) + ' / ' + sys.cores), resourceRow('Swap', sys.swapTotalGb ? sys.swapUsedGb / sys.swapTotalGb * 100 : 0, HP.ram[1], number(sys.swapUsedGb) + ' / ' + number(sys.swapTotalGb) + ' GB'));
           var net = el('div', 'fr'), graph = el('div'); graph.innerHTML = sparkSVG((sys.net || []).filter(Number.isFinite), '#2f80ed'); net.append(el('span', '', i18n('app.mang')), graph, el('b', '', '↓' + number(sys.downMBs) + ' ↑' + number(sys.upMBs) + ' MB/s')); rows.append(net);
@@ -1127,7 +1134,7 @@
     return api('PUT', '/api/prefs', patch).then(function (data) { prefs = data; renderCommands(); renderTemplates(); renderFleet(); renderBell(); return data; });
   }
   function renderTemplates() {
-    var box = $('templates'); box.textContent = ''; $('templates-block').hidden = !prefs.templates.length; $('recent-block').hidden = !prefs.recentDirs.length;
+    var box = $('templates') || el('span'); box.textContent = ''; $('recent-block').hidden = !prefs.recentDirs.length;
     prefs.templates.forEach(function (t, index) {
       var row = el('span', 'template'), use = el('button', 'btn', t.name), remove = el('button', 'btn', '×'); use.type = remove.type = 'button'; remove.setAttribute('aria-label', i18n('app.xoa_mau', [t.name]));
       use.onclick = function () { $('n-name').value = t.name; $('n-dir').value = t.dir; $('n-run').value = t.run; };
@@ -1373,7 +1380,7 @@
   $('dt-see').onclick = function () { $('dlg-detail').close(); setScope(detailId); setView('over'); };
   document.querySelectorAll('#dt-range button').forEach(function (b) { b.onclick = function () { loadHistory(Number(b.dataset.r.replace('h', ''))); }; });
   $('dlg-detail').addEventListener('close', function () { historyRequest++; });
-  $('n-save').onclick = function () {
+  if ($('n-save')) $('n-save').onclick = function () {
     var t = { name: $('n-name').value.trim(), dir: $('n-dir').value, run: $('n-run').value };
     if (!/^[A-Za-z0-9_-]{1,32}$/.test(t.name)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong'); return; }
     var templates = prefs.templates.filter(function (x) { return x.name !== t.name; }); templates.push(t);
