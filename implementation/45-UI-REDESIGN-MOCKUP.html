@@ -125,6 +125,18 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .snip{background:var(--term);color:var(--term-ink);border-radius:var(--r-s);padding:8px 12px;font:12px/1.5 var(--mono);height:64px;overflow:hidden;white-space:pre}
 .ctx{display:grid;gap:4px;font-size:12px;color:var(--ink-2)}
 .ctx div{display:flex;justify-content:space-between}
+.stabs{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);margin:-4px 0 0;padding-bottom:0}
+.stabs a{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:12px 12px 0 0;font-weight:600;font-size:13px;color:var(--ink-2);border:1px solid transparent;border-bottom:0;margin-bottom:-1px;white-space:nowrap}
+.stabs a.on{background:var(--surface);color:var(--primary);border-color:var(--line);box-shadow:0 -2px 0 var(--primary) inset}
+.stabs a em{font-style:normal;background:var(--primary-soft);color:var(--primary);border-radius:9px;padding:0 6px;font-size:11px;font-weight:700}
+.stabs a i{display:inline-grid;color:var(--ink-3)}
+.stabs a.add{padding:8px 12px;color:var(--ink-3)}
+.tile{display:flex;flex-direction:column;gap:8px;padding:12px;box-shadow:none;min-width:0}
+.tile .hd{white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.tile .hd small{flex:none;font-weight:500;color:var(--ink-3);font-size:11px;margin-left:auto;white-space:nowrap}
+.tile .snip{height:52px;font-size:11px;padding:8px}
+.tile.wait{border-color:var(--warn)}
+.tile.off{opacity:.7}
 /* terminal */
 .thead{display:flex;align-items:center;gap:12px;min-width:0}
 .thead h2{font-size:18px;letter-spacing:-.01em}
@@ -248,6 +260,7 @@ const I = {
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   out:'<path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/>',
   home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>', term:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9l3 3-3 3M13 15h4"/>',
+  grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
   chart:'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>', note:'<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
   ops:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', srv:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
@@ -266,7 +279,7 @@ const lockup = (h = 28, on) => `<img src="${on ? LOGO.onColor : (document.docume
 
 /* ───────── Dữ liệu mẫu (lấy từ màn thật) ───────── */
 const SERVERS = [
-  ['laptop','Máy này','MacBook-Air-cua-H…','ok',3],['srv','dev-ubuntu-02','root@10.10.62.170','ok',1],
+  ['grid','Tất cả máy chủ','4 máy chủ','ok',6],['laptop','Máy này','MacBook-Air-cua-H…','ok',3],['srv','dev-ubuntu-02','root@10.10.62.170','ok',1],
   ['srv','dev-ubuntu-03','thanhlg@10.10.62.107','ok',2],['srv','dev-ubuntu-02','thanhlg · mất kết nối','bad',0]
 ];
 const WAIT = [['🦊','Display-Program','Máy này'],['🐸','PG-App','Máy này'],['🦊','Smart-Visibility-v2','Máy này'],['🐰','Move-Data','dev-ubuntu-02']];
@@ -296,6 +309,8 @@ function nav(on) {
 }
 const win = (inner, opt = {}) => `<div class="win">${topbar()}<div class="body">${side(opt.srv ?? 0)}<main class="main">${nav(opt.nav)}${inner}</main></div>${opt.over || ''}</div>`;
 
+const OPEN = [['🐻', 'SV2-Agent03'], ['🐼', 'FES-Support'], ['🦊', 'Display-Program']];
+const tabsBar = (on) => `<div class="stabs"><a class="${on === 'all' ? 'on' : ''}">${ic('grid', 16)}Tất cả <em>11</em></a>${OPEN.map((t) => `<a class="${on === t[1] ? 'on' : ''}"><span>${t[0]}</span>${t[1]}<i>${ic('x', 12)}</i></a>`).join('')}<a class="add">${ic('plus', 14)}</a><span class="sp"></span><span class="mut">↩ Tab đã đóng (2)</span></div>`;
 /* ───────── Các màn ───────── */
 const SCREENS = {};
 const card = (s) => `<div class="card scard"><div class="hd"><div class="av">${s[0]}</div><div><b>${s[1]}</b><small>${s[2]}</small></div><span class="tag ${s[3]}" style="margin-left:auto">${s[4]}</span></div>
@@ -311,7 +326,7 @@ SCREENS.over = { g: 'Màn chính', t: 'Tổng quan', d: 'Trang đầu: tình tr�
       ['🦊', 'Display-Program', 'Máy này · Claude', 'warn', 'Chờ bạn', '› Bạn muốn tôi tạo MR luôn\n  hay chờ review?', '71%', 'w']].map(card).join('')}</div></div>`, { nav: 'over' }) };
 
 SCREENS.focus = { g: 'Terminal', t: 'Terminal · một phiên', d: 'Terminal chiếm gần hết chiều ngang. Tiêu đề phiên có trạng thái và chip thợ; thanh phím bên dưới chia nhóm; panel chi tiết (ngữ cảnh, token, thư mục) mở được từ nút (i).', f: () => { window.__cur = 'FES-Support'; const r = win(`
-  <div class="page"><div class="thead"><div class="av">🐼</div><h2>FES-Support</h2><span class="tag ok">Đang chạy</span><div class="wchips"><span class="wchip"><span class="dot ok"></span>W1</span><span class="wchip"><span class="dot ok"></span>W2</span><span class="wchip"><span class="dot ok"></span>W3</span></div><span class="sp"></span><span class="ib">${ic('bell')}</span><span class="ib">${ic('info')}</span><span class="ib">${ic('more')}</span></div>
+  <div class="page">${tabsBar('FES-Support')}<div class="thead"><div class="av">🐼</div><h2>FES-Support</h2><span class="tag ok">Đang chạy</span><div class="wchips"><span class="wchip"><span class="dot ok"></span>W1</span><span class="wchip"><span class="dot ok"></span>W2</span><span class="wchip"><span class="dot ok"></span>W3</span></div><span class="sp"></span><span class="ib">${ic('bell')}</span><span class="ib">${ic('info')}</span><span class="ib">${ic('more')}</span></div>
     <div class="tbody" style="grid-template-columns:1fr 300px;grid-template-rows:1fr auto">
       <div class="term"><span class="tb">57/9882</span><div class="l"><span class="d"># DONE/FAILED and the correction ledger; reconciliation must not invent a failed run.</span>
 <span class="d">  … +27 lines (ctrl+o to expand)</span>
@@ -333,11 +348,11 @@ SCREENS.focus = { g: 'Terminal', t: 'Terminal · một phiên', d: 'Terminal chi
         <div><h4>Thư mục</h4><div class="kv"><span>cwd</span><b>/data/thanhlg/xspire</b><span>Nhánh</span><b>thanhLG</b><span>Máy</span><b>dev-ubuntu-02</b></div></div>
         <div><h4>Crew</h4><div class="row"><span class="tag ok">3 thợ</span><span class="tag">3 task</span></div></div></div>
       <div class="dock" style="grid-column:1/-1"><button class="btn">${ic('clip', 14)}Gửi file</button><button class="btn">${ic('file', 14)}Mở file</button><button class="btn">${ic('stop', 14)}Ngắt</button><button class="btn">Esc</button><button class="btn">Phím ▾</button><button class="btn">⚡ Lệnh mẫu ▾</button><span class="sp"></span><button class="btn">Chọn chữ</button><button class="btn">Sao chép</button><button class="btn">A−</button><button class="btn">A+</button><button class="btn">${ic('exp', 14)}</button></div>
-    </div></div>`, { nav: 'term', srv: 1 }); window.__cur = ''; return r; } };
+    </div></div>`, { nav: 'term', srv: 2 }); window.__cur = ''; return r; } };
 
 const wp = (n, st, lines) => `<div class="wp"><div class="h"><b>${n}</b><span class="k">Codex</span><span style="overflow:hidden;text-overflow:ellipsis">eSales BO function picker</span><span class="s">${st}</span></div><div class="f">${lines.map((l) => `<div class="${l[0]}">${l[1]}</div>`).join('')}</div></div>`;
 SCREENS.crew = { g: 'Terminal', t: 'Terminal · Crew (điều phối + thợ)', d: 'Đây là chỗ sửa lớn nhất: mỗi thợ hiện luồng hoạt động THỰC SỰ của Codex (lệnh đang chạy ✔/✖, file đang sửa ✎, lời nó nói ›) thay vì đuôi log thô. Thợ xong tự gọn lại, thanh kéo chia chiều cao.', f: () => win(`
-  <div class="page"><div class="thead"><div class="av">🐼</div><h2>FES-Support</h2><span class="tag ok">Đang chạy</span><span class="tag pri">Crew · 3 thợ</span><span class="sp"></span><button class="btn sm">${ic('bell', 14)}Nhắc điều phối</button><button class="btn sm">Hiện cả thợ đã xong</button><button class="btn sm">Ẩn các thợ</button></div>
+  <div class="page">${tabsBar('FES-Support')}<div class="thead"><div class="av">🐼</div><h2>FES-Support</h2><span class="tag ok">Đang chạy</span><span class="tag pri">Crew · 3 thợ</span><span class="sp"></span><button class="btn sm">${ic('bell', 14)}Nhắc điều phối</button><button class="btn sm">Hiện cả thợ đã xong</button><button class="btn sm">Ẩn các thợ</button></div>
     <div class="tbody" style="grid-template-rows:1.1fr 1fr"><div class="term"><div class="l"><span class="g">●</span> Bash(python3 -c "import json;d=json.load(open('.xspire-layout.json'))…")
 <span class="d">  ⎿ {'hqsoft.abp.docs': 'docs/hqsoft.abp.docs', 'xspire-crew': 'tooling/xspire-crew'}</span>
 <span class="g">●</span> Hai repo cần sửa là xspire-crew và hqsoft.abp.docs; tôi đang kiểm tra trạng thái cả hai.
@@ -345,11 +360,22 @@ SCREENS.crew = { g: 'Terminal', t: 'Terminal · Crew (điều phối + thợ)', 
 <span class="d">  ⎿ == tooling/xspire-crew: main | dirty=0 | default=origin/main</span></div><span class="jump">↓ Mới nhất</span></div>
       <div class="grid g3" style="min-height:0">${wp('W1', '● Đang chạy', [['ex', '$ git status --porcelain  <span class="ok">✔ 0.2s</span>'], ['ed', '✎ crew/_lib.sh, crew/crew-dispatch.sh'], ['ex', '$ bash tests/test_dispatch.sh  <span class="ok">✔ 12.4s</span>'], ['sy', '› Đã thêm reconcile khi worker được nhận.'], ['ex', '$ shellcheck crew-dispatch.sh  …']])}
       ${wp('W2', '● Đang chạy', [['ex', '$ dotnet build -c Release  <span class="ok">✔ 38.1s</span>'], ['ed', '✎ Picker/FunctionPicker.razor'], ['ex', '$ dotnet test --filter Picker  <span class="no">✖ exit 1 9.8s</span>'], ['sy', '› 2 test đỏ, đang xem lại selector.']])}
-      ${wp('W3', '✔ Xong', [['ed', '✎ W3/STATUS.md, W3/BLOCKED.md'], ['ex', '$ git commit -m "format số"  <span class="ok">✔ 0.4s</span>'], ['sy', '› Đã commit 2a7f259 sửa định dạng số.'], ['sy', '› Chưa DONE: verifier bị dừng do tiến trình con.']])}</div></div></div>`, { nav: 'term', srv: 1 }) };
+      ${wp('W3', '✔ Xong', [['ed', '✎ W3/STATUS.md, W3/BLOCKED.md'], ['ex', '$ git commit -m "format số"  <span class="ok">✔ 0.4s</span>'], ['sy', '› Đã commit 2a7f259 sửa định dạng số.'], ['sy', '› Chưa DONE: verifier bị dừng do tiến trình con.']])}</div></div></div>`, { nav: 'term', srv: 2 }) };
 
-SCREENS.wall = { g: 'Terminal', t: 'Terminal · lưới nhiều phiên', d: 'Xem 4 phiên một lúc (chế độ lưới 1/2/4). Mỗi ô có viền trạng thái; ô đang chờ bạn có viền vàng và nút trả lời nhanh.', f: () => win(`
-  <div class="page"><div class="thead"><h2>Lưới phiên</h2><span class="tag">4 phiên</span><span class="sp"></span><div class="seg" style="margin:0"><button>1</button><button>2</button><button class="on">4</button></div></div>
-    <div class="tbody grid g2" style="grid-template-rows:1fr 1fr">${[['🐼 FES-Support', 'ok', 'Đang chạy'], ['🐻 SV2-Agent03', 'ok', 'Đang chạy'], ['🦊 Display-Program', 'warn', 'Chờ bạn'], ['🐸 PG-App', 'warn', 'Chờ bạn']].map((x) => `<div class="term" style="${x[1] === 'warn' ? 'border-color:var(--warn)' : ''}"><div class="row" style="margin-bottom:8px;font-family:var(--font)"><b>${x[0]}</b><span class="tag ${x[1]}">${x[2]}</span></div><div class="l"><span class="g">●</span> Bash(npm test -- --run)\n<span class="d">  ⎿ ✔ 214 passed</span>\n${x[1] === 'warn' ? '<span class="y">? Tạo MR luôn hay chờ review?  [Y/n]</span>' : '<span class="g">●</span> Đang đọc kết quả…'}</div></div>`).join('')}</div></div>`, { nav: 'term', srv: 0 }) };
+SCREENS.wall = { g: 'Terminal', t: 'Terminal · Tất cả phiên', d: 'Tab "Tất cả": xem MỌI phiên cùng lúc (11 phiên, 4 máy chủ) dạng lưới, mỗi ô có trạng thái, đoạn terminal trực tiếp và thanh ngữ cảnh. Bấm một ô để mở thành tab riêng. Ô chờ bạn có viền vàng; phiên nghỉ mờ đi. Lọc theo máy chủ ở thanh bên trái.', f: () => win(`
+  <div class="page">${tabsBar('all')}<div class="thead"><h2>Tất cả phiên</h2><span class="tag">11 phiên · 4 máy chủ</span><span class="f-chip on">Tất cả</span><span class="f-chip">Chờ bạn 4</span><span class="f-chip">Đang chạy 2</span><span class="f-chip">Đang nghỉ 5</span><span class="sp"></span><div class="seg" style="margin:0"><button class="on">${ic('grid', 14)}Lưới</button><button>Danh sách</button></div></div>
+    <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));overflow:hidden;align-content:start">${[
+      ['🐼', 'FES-Support', 'ok', 'dev-ubuntu-02', '● Bash(grep -n "crew_resolve…")\n● Hai repo cần sửa…', 57, ''],
+      ['🐻', 'SV2-Agent03', 'ok', 'dev-ubuntu-03', '$ dotnet test  ✔ 41s\n✎ Sv2Ingest/Detector.cs', 33, ''],
+      ['🦊', 'Display-Program', 'warn', 'Máy này', '? Tạo MR luôn hay chờ review?\n  [Y/n]', 71, 'wait'],
+      ['🐸', 'PG-App', 'warn', 'Máy này', '? Chạy migration trên DB cá nhân?', 48, 'wait'],
+      ['🦊', 'Smart-Visibility-v2', 'warn', 'Máy này', '? Ghi đè file cấu hình?  [y/N]', 62, 'wait'],
+      ['🐰', 'Move-Data', 'warn', 'dev-ubuntu-02', '? Tiếp tục với bước 3?', 39, 'wait'],
+      ['🐼', 'Move-Data-03', 'warn', 'dev-ubuntu-03', '● Đã xong bước 2, chờ xác nhận', 27, 'wait'],
+      ['🐸', 'Smart-Visibility-v2', 'ok', 'dev-ubuntu-03', '$ python train.py  …', 44, ''],
+      ['🐼', 'AAV-Support', 'bad', 'dev-ubuntu-02', '✖ ssh: connection reset', 12, ''],
+      ['😴', 'GPS-Integrity', '', 'Máy này', 'Đang nghỉ · 2 giờ trước', 8, 'off'],
+      ['🐸', 'Xspire-Support', '', 'dev-ubuntu-02', 'Đang nghỉ · hôm qua', 5, 'off']].map((x) => `<div class="card tile ${x[6]}"><div class="hd"><span>${x[0]}</span>${x[1]}<small>${x[3]}</small></div><div class="snip">${x[4]}</div><div class="row"><span class="tag ${x[2]}">${x[2] === 'ok' ? 'Đang chạy' : x[2] === 'warn' ? 'Chờ bạn' : x[2] === 'bad' ? 'Lỗi' : 'Nghỉ'}</span><div class="bar grow"><i class="${x[2] === 'warn' ? 'w' : x[2] === 'bad' ? 'b' : ''}" style="width:${x[5]}%"></i></div><span class="mut">${x[5]}%</span></div></div>`).join('')}</div></div>`, { nav: 'term', srv: 0 }) };
 
 SCREENS.token = { g: 'Màn chính', t: 'Token AI', d: 'Tiêu thụ token theo tài khoản, mô hình và ngày. Chỉ dùng một màu chủ đạo; vàng chỉ cho ngày hôm nay/cảnh báo.', f: () => win(`
   <div class="page"><div class="kpis">${[['Hôm nay', '41,8M', '↑ 12%', 'up'], ['7 ngày', '212M', '↑ 8%', 'up'], ['Hạn mức Codex', '100%', 'Còn 0 ngày', 'dn'], ['Tài khoản', '3', 'Agent03 · Technology · Codex', '']].map((k) => `<div class="card kpi"><small>${k[0]}</small><b>${k[1]}</b><span class="${k[3]}">${k[2]}</span></div>`).join('')}</div>
@@ -403,7 +429,7 @@ SCREENS.ds = { g: 'Hệ thống thiết kế', t: 'Hệ thống thiết kế', d
   <div class="cmp"><div class="bad"><h5><span class="x">✕</span><b>Hiện tại</b></h5><div class="t4">Nhiều màu nhấn cùng lúc, thú cưng chuyển động liên tục, chip kết nối xanh dù có máy chủ mất kết nối, pane thợ chỉ có log thô.</div></div><div class="good"><h5><span class="v">✓</span><b>Đề xuất</b></h5><div class="t4">Một màu chủ đạo, chip kết nối vàng khi thiếu máy, chuyển động chỉ khi cần (và tắt được), pane thợ hiện lệnh/tệp/lời thật của Codex.</div></div></div></div>` };
 
 /* ───────── Khung xem ───────── */
-const ORDER = ['ds', 'login', 'over', 'focus', 'crew', 'wall', 'token', 'notes', 'ops1', 'ops2', 'ops3', 'set', 'dialogs', 'mobile'];
+const ORDER = ['ds', 'login', 'over', 'wall', 'focus', 'crew', 'token', 'notes', 'ops1', 'ops2', 'ops3', 'set', 'dialogs', 'mobile'];
 let cur = (location.hash || '#over').slice(1); if (!SCREENS[cur]) cur = 'over';
 var render = function () {
   const groups = {}; ORDER.forEach((k) => (groups[SCREENS[k].g] ||= []).push(k));
