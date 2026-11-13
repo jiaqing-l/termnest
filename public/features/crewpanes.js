@@ -318,6 +318,7 @@
   }
   function sessionItems(id, name) {
     var items = [[i18n('app.thu_cung'), clickIn('#detail > button.btn')], [i18n('move.button'), clickIn('#detail .mv-detail button')], [i18n('history.xoa_lich_su_cuon'), clearScroll(id, name)]];
+    if (document.documentElement.classList.contains('pets-off')) items = items.slice(1);   // no pets: nothing to change
     if (TW.handoffMenu) items.push([i18n('ux2.act_handoff'), function () { var a = document.querySelector('#cp-bar [data-more]'); if (a) TW.handoffMenu(a, id, name); }]);
     return items;
   }
