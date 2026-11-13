@@ -370,6 +370,19 @@ select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 1
 .dowb.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .ntf{position:fixed;top:76px;right:20px;width:340px;z-index:90;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.28);padding:14px 16px;display:grid;gap:8px}
 .editor .ti{height:40px;border:1px solid transparent;border-radius:8px;padding:0 8px}.editor .ti:focus{border-color:var(--brand-line);background:var(--surface-2)}
+
+.sv{position:relative}
+.sv.fpo{grid-template-columns:minmax(0,1fr) var(--fpw,520px)}
+.fpanel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.fpanel.full{position:absolute;inset:0;z-index:30;box-shadow:var(--sh)}
+.fph{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.fpb{padding:12px;display:grid;gap:10px;align-content:start;overflow:auto;min-height:0}
+.files a .rowact{display:none;gap:6px;margin-left:8px}.files a:hover .rowact{display:inline-flex}.files a .rowact i{font-style:normal;padding:2px 4px;border-radius:6px}.files a .rowact i:hover{background:var(--line)}
+.mdv{line-height:1.6}.mdv h1{font-size:1.5em;margin:.2em 0 .5em}.mdv h2{font-size:1.2em;margin:1em 0 .4em}.mdv li{margin-left:1.2em}.mdv code{background:var(--surface-2);border:1px solid var(--line);padding:0 4px;border-radius:4px;font:.9em var(--mono)}.mdv .tk{margin:2px 0}.mdv .trow{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;padding:6px 8px;border-bottom:1px solid var(--line)}.mdv .trow:first-of-type{font-weight:700;background:var(--surface-2)}
+.htmlv{width:100%;height:520px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.imgv{border:1px solid var(--line);border-radius:12px;overflow:auto;background:repeating-conic-gradient(var(--surface-2) 0 25%,var(--surface) 0 50%) 0 0/16px 16px;max-height:560px}.imgv img{display:block}.imgv.fit img{width:100%;height:auto}
+.txtv{background:var(--term);color:var(--term-ink);padding:14px;border-radius:12px;overflow:auto;font-family:var(--mono);margin:0}
+@media (max-width:860px){.sv.fpo{grid-template-columns:minmax(0,1fr)}.fpanel{position:absolute;inset:0;z-index:30}}
 /* mobile */
 .tabbar{display:none}
 @media (max-width:860px){
@@ -467,7 +480,7 @@ const ALERTS = [['bad', 'dev-ubuntu-02 (thanhlg) mất kết nối', '5 phút tr
 
 /* ───────── Trạng thái ───────── */
 const ST8 = { view: 'over', open: ['sv2', 'fes'], tab: 'all', host: 'all', q: '', filter: 'all', det: false, showW: true, doneW: true, selW: null, menu: false, dlg: null, setTab: 'look', opsTab: 0,
-  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', noteTab: 'notes', delArm: false, missed: 2, notif: null, nset: { bell: true, os: true, sound: false, quiet: true, qFrom: '22:00', qTo: '07:00', onlyOpen: true, catchup: true, slots: [{ id: 1, time: '09:00', msg: 'Vào xem ghi chú và việc hôm nay', days: [1, 2, 3, 4, 5], on: true }, { id: 2, time: '13:30', msg: 'Còn việc nào chưa xong không?', days: [1, 2, 3, 4, 5], on: true }, { id: 3, time: '17:30', msg: 'Chốt ghi chú cuối ngày', days: [1, 2, 3, 4, 5, 6], on: true }] }, yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
+  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', fp: { open: false, w: 520, path: [], file: '', full: false, fs: 13, q: '', fit: true, img: 0, menu: false }, noteTab: 'notes', delArm: false, missed: 2, notif: null, nset: { bell: true, os: true, sound: false, quiet: true, qFrom: '22:00', qTo: '07:00', onlyOpen: true, catchup: true, slots: [{ id: 1, time: '09:00', msg: 'Vào xem ghi chú và việc hôm nay', days: [1, 2, 3, 4, 5], on: true }, { id: 2, time: '13:30', msg: 'Còn việc nào chưa xong không?', days: [1, 2, 3, 4, 5], on: true }, { id: 3, time: '17:30', msg: 'Chốt ghi chú cuối ngày', days: [1, 2, 3, 4, 5, 6], on: true }] }, yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
 const state = ST8;
 const hostName = (id) => (HOSTS.find((h) => h.id === id) || {}).name || id;
 const sess = (id) => S.find((s) => s.id === id);
@@ -495,7 +508,7 @@ function wallTile(s) {
   const lines = PAD.slice(s.id.length % 4).concat(s.lines);
   return `<div class="wt ${s.st === 'wait' || s.st === 'err' ? 'wait' : ''} ${s.st === 'idle' ? 'idle' : ''}"><div class="wth" data-act="open" data-id="${s.id}" title="Mở thành tab riêng"><span class="dot ${s.st === 'run' ? 'ok' : s.st === 'wait' ? 'warn' : s.st === 'err' ? 'bad' : ''}"></span><b>${esc(s.n)}</b><span class="hn">${hostName(s.h)}</span><span class="sp"></span><span class="st ${cls}">${lab}</span><span class="ex">↗</span></div>
     <div class="wtb"><div>${lines.join('\n')}\n\n<span class="d">${'─'.repeat(60)}</span>\n<span class="b">❯</span> \n<span class="d">${'─'.repeat(60)}</span>\n<span class="d">  ⏵⏵ auto mode on (shift+tab to cycle) · ← ${s.crew ? s.workers.length : 1} agent</span></div></div>
-    <form class="wti" data-sid="${s.id}"><button type="button" class="wb" data-act="dlg" data-id="send" title="Gửi file">${ic('clip', 16)}</button><button type="button" class="wb" data-act="dlg" data-id="files" title="Mở file">${ic('file', 16)}</button><input placeholder="Trả lời…" autocomplete="off"><button class="send">Gửi</button></form></div>`;
+    <form class="wti" data-sid="${s.id}"><button type="button" class="wb" data-act="dlg" data-id="send" title="Gửi file">${ic('clip', 16)}</button><button type="button" class="wb" data-act="fpopen" data-id="${s.id}" title="Mở file">${ic('file', 16)}</button><input placeholder="Trả lời…" autocomplete="off"><button class="send">Gửi</button></form></div>`;
 }
 function wallHtml() {
   const l = filtered();
@@ -634,27 +647,27 @@ function sessionHtml(s) {
   const others = state.open.filter((x) => x !== s.id).map(sess).filter(Boolean).concat(S.filter((x) => x.id !== s.id && !state.open.includes(x.id)));
   const panes = n === 1 ? termPane(s, true) : `<div class="splits l${n}">${termPane(s, true)}${others.slice(0, n - 1).map((o) => termPane(o, false)).join('')}</div>`;
   const lay = (k) => `<button class="btn sm ${state.layout === k ? 'on' : ''}" data-act="layout" data-id="${k}" title="Chia màn ${k}">⊞ ${k}</button>`;
-  return `<div class="sv ${state.det ? 'det' : ''}"><div class="sv-main">
+  return `<div class="sv ${state.fp.open ? 'fpo' : state.det ? 'det' : ''}" style="${state.fp.open ? '--fpw:' + state.fp.w + 'px' : ''}"><div class="sv-main">
     ${state.offline ? '<div class="banner">Mất kết nối tới web. Việc trên máy chủ vẫn chạy. Đang kết nối lại…</div>' : ''}
     <div class="thead"><div class="av" data-act="dlg" data-id="pet" style="cursor:pointer" title="Đổi thú cưng">${av(s)}</div><h2>${esc(s.n)}</h2><span class="tag ${cls}">${lab}</span><span class="mut">${hostName(s.h)} · ${s.tool}</span>${s.crew ? s.workers.map((w) => `<button class="wchip ${state.selW === w.n ? 'on' : ''}" data-act="selw" data-id="${w.n}"><span class="dot ${w.st === 'run' ? 'ok' : w.st === 'fail' ? 'bad' : w.st === 'wait' ? 'warn' : ''}"></span>${w.n}</button>`).join('') : ''}<span class="sp"></span>
-      ${s.crew ? `<button class="btn sm" data-act="nudge">${ic('bell', 14)}Nhắc điều phối</button><button class="btn sm ${state.doneW ? 'on' : ''}" data-act="doneW">Hiện thợ đã xong</button><button class="btn sm" data-act="showW">${state.showW ? 'Ẩn các thợ' : 'Hiện các thợ'}</button><button class="btn sm" data-act="dlg" data-id="crewlog">Nhật ký Crew</button>` : ''}
-      <button class="ib" data-act="bellS" title="Báo khi phiên này chờ bạn" style="${state.bellS[s.id] ? 'background:var(--brand-soft);color:var(--brand)' : ''}">${ic('bell')}</button>
+      ${s.crew ? `<span style="position:relative"><button class="btn sm ${state.menu === 'crew' ? 'on' : ''}" data-act="menu" data-id="crew">Crew ▾</button>${state.menu === 'crew' ? `<div class="menu" style="right:0;left:auto;top:40px;bottom:auto;min-width:230px"><a data-act="nudge">Nhắc điều phối</a><a data-act="doneW">${state.doneW ? '✓ ' : ''}Hiện cả thợ đã xong</a><a data-act="showW">${state.showW ? 'Ẩn các thợ' : 'Hiện các thợ'}</a><a data-act="dlg" data-id="crewlog">Nhật ký Crew</a></div>` : ''}</span>` : ''}
       <button class="ib" data-act="det" title="Chi tiết phiên: ngữ cảnh, token, crew" style="${state.det ? 'background:var(--brand-soft);color:var(--brand)' : ''}">${ic('info')}</button>
-      <span style="position:relative"><button class="ib" data-act="more" title="Thêm">${ic('more')}</button>${state.more ? `<div class="menu" style="right:0;left:auto;top:48px;bottom:auto"><a data-act="dlg" data-id="rename">Đổi tên phiên</a><a data-act="dlg" data-id="pet">Thú cưng của phiên</a><a data-act="dlg" data-id="move">Chuyển sang máy khác</a><a data-act="dlg" data-id="hist">Lịch sử phiên</a><a data-act="toast" data-id="Đã tạo bản chuyển giao (handoff) cho phiên tiếp theo">Chuyển giao (handoff)</a><a data-act="kill" data-id="${s.id}" style="color:var(--accent)">Dừng phiên</a></div>` : ''}</span></div>
+      <span style="position:relative"><button class="ib" data-act="more" title="Thêm">${ic('more')}</button>${state.more ? `<div class="menu" style="right:0;left:auto;top:48px;bottom:auto;min-width:250px"><a data-act="bellS" data-id="${s.id}">${state.bellS[s.id] ? '✓ ' : ''}Báo khi phiên này chờ bạn</a><a data-act="dlg" data-id="rename">Đổi tên phiên</a><a data-act="dlg" data-id="pet">Thú cưng của phiên</a><a data-act="dlg" data-id="move">Chuyển sang máy khác</a><a data-act="dlg" data-id="hist">Lịch sử phiên</a><a data-act="toast" data-id="Đã tạo bản chuyển giao (handoff) cho phiên tiếp theo">Chuyển giao (handoff)</a><a data-act="kill" data-id="${s.id}" style="color:var(--bad)">Dừng phiên</a></div>` : ''}</span></div>
     ${panes}
     ${state.kb ? `<div class="kbd">${['Esc', 'Tab', 'Ctrl', 'Alt', '↑', '↓', '←', '→', '|', '/', '~', '-'].map((k) => `<button class="btn sm" data-act="key" data-id="${k}">${k}</button>`).join('')}</div>` : ''}
-    <div class="dock"><button class="btn sm" data-act="dlg" data-id="send">${ic('clip', 14)}Gửi file</button><button class="btn sm" data-act="dlg" data-id="files">${ic('file', 14)}Mở file</button><button class="btn sm" data-act="ctrlc">${ic('stop', 14)}Ngắt</button><button class="btn sm" data-act="key" data-id="Esc">Esc</button>
-      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="keys">Phím ▾</button>${state.menu === 'keys' ? `<div class="menu" style="min-width:160px">${KEYS.map((k) => `<a data-act="key" data-id="${k}">${k}</a>`).join('')}</div>` : ''}</span>
-      <button class="btn sm ${state.kb ? 'on' : ''}" data-act="kb" title="Bật/tắt bàn phím trên màn hình">⌨ Bàn phím</button><button class="btn sm" data-act="newline" title="Xuống dòng trong ô soạn mà không gửi (Shift+Enter)">⏎ Dòng mới</button>
-      ${lay(1)}${lay(2)}${lay(4)}
+    <div class="dock"><button class="btn sm" data-act="dlg" data-id="send">${ic('clip', 14)}Gửi file</button><button class="btn sm ${state.fp.open ? 'on' : ''}" data-act="fp">${ic('file', 14)}Mở file</button>
+      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="keys">Phím ▾</button>${state.menu === 'keys' ? `<div class="menu" style="min-width:210px">${['Ctrl+C', 'Esc', 'Tab', '↑', '↓', 'Enter', 'Ctrl+D', 'Ctrl+L'].map((k) => `<a data-act="key" data-id="${k}">${k === 'Ctrl+C' ? 'Ctrl+C (ngắt)' : k}</a>`).join('')}<a data-act="kb" style="border-top:1px solid var(--line);margin-top:4px">${state.kb ? '✓ ' : ''}⌨ Bàn phím trên màn hình</a></div>` : ''}</span>
       <span style="position:relative"><button class="btn sm" data-act="menu" data-id="cmd">⚡ Lệnh mẫu ▾</button>${state.menu === 'cmd' ? `<div class="menu">${CMDS.map((m) => `<a data-act="cmd" data-id="${esc(m)}">${esc(m)}</a>`).join('')}<a data-act="dlg" data-id="set" style="color:var(--brand)">+ Quản lý lệnh mẫu…</a></div>` : ''}</span>
-      <span class="sp"></span><button class="btn sm ${state.sel ? 'accent' : ''}" data-act="sel" title="Kéo chuột để chọn chữ, sao chép bằng ⌘C">Chọn chữ</button><button class="btn sm" data-act="toast" data-id="Đã sao chép đoạn chữ đang chọn">Sao chép</button><button class="btn sm" data-act="fs" data-id="-1">A−</button><button class="btn sm" data-act="fs" data-id="1">A+</button><button class="btn sm" data-act="fsreset" title="Đặt lại cỡ chữ">⟲</button><button class="btn sm" data-act="dlg" data-id="guide" title="Hướng dẫn">?</button><button class="btn sm" data-act="fsmode" title="Toàn màn hình">${ic('exp', 14)}</button></div>
+      <span class="sp"></span>
+      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="layout" title="Chia màn">⊞ ${state.layout} ▾</button>${state.menu === 'layout' ? `<div class="menu" style="right:0;left:auto;min-width:150px">${[1, 2, 4].map((k) => `<a data-act="layout" data-id="${k}">${state.layout === k ? '✓ ' : ''}${k} màn</a>`).join('')}</div>` : ''}</span>
+      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="font" title="Cỡ chữ">Aa ▾</button>${state.menu === 'font' ? `<div class="menu" style="right:0;left:auto;min-width:150px"><a data-act="fs" data-id="-1">A− Nhỏ hơn</a><a data-act="fs" data-id="1">A+ To hơn</a><a data-act="fsreset">⟲ Đặt lại (${state.fs}px)</a></div>` : ''}</span>
+      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="dmore" title="Thêm">⋯</button>${state.menu === 'dmore' ? `<div class="menu" style="right:0;left:auto;min-width:230px"><a data-act="sel">${state.sel ? '✓ ' : ''}Chọn chữ</a><a data-act="toast" data-id="Đã sao chép đoạn chữ đang chọn">Sao chép</a><a data-act="newline">⏎ Dòng mới (Shift+Enter)</a><a data-act="dlg" data-id="guide">? Hướng dẫn</a><a data-act="fsmode">${ic('exp', 14)} Toàn màn hình</a></div>` : ''}</span></div>
     ${s.crew && state.showW ? workerHtml(s) : ''}</div>
-    ${state.det ? `<aside class="detail"><div class="row"><div class="ring" style="--p:${s.ctx}"><i>${s.ctx}%</i></div><div><h4>Ngữ cảnh phiên</h4><b style="font-size:16px">${Math.round(s.ctx * 10)}k / 1M</b><div class="mut">Chính xác · từ log phiên</div></div></div>
+    ${state.det && !state.fp.open ? `<aside class="detail"><div class="row"><div class="ring" style="--p:${s.ctx}"><i>${s.ctx}%</i></div><div><h4>Ngữ cảnh phiên</h4><b style="font-size:16px">${Math.round(s.ctx * 10)}k / 1M</b><div class="mut">Chính xác · từ log phiên</div></div></div>
       <div><h4>Token hôm nay</h4><div class="kv"><span>Vào</span><b>1,2M</b><span>Ra</span><b>184k</b><span>Cache</span><b>41,8M</b></div></div>
       <div><h4>Phiên</h4><div class="kv"><span>Máy</span><b>${hostName(s.h)}</b><span>Công cụ</span><b>${s.tool}</b><span>Thư mục</span><b>/data/thanhlg/xspire</b><span>Nhánh</span><b>thanhLG</b></div></div>
       ${s.crew ? `<div><h4>Crew</h4><div class="row" style="flex-wrap:wrap"><span class="tag ok">${s.workers.length} thợ</span><span class="tag">3 task</span></div></div>` : ''}
-      <div class="row" style="flex-wrap:wrap"><button class="btn sm" data-act="dlg" data-id="hist">Lịch sử</button><button class="btn sm" data-act="dlg" data-id="move">Chuyển máy</button><button class="btn sm" data-act="toast" data-id="Đã tạo handoff">Handoff</button></div></aside>` : ''}</div>`;
+      <div class="row" style="flex-wrap:wrap"><button class="btn sm" data-act="dlg" data-id="hist">Lịch sử</button><button class="btn sm" data-act="dlg" data-id="move">Chuyển máy</button><button class="btn sm" data-act="toast" data-id="Đã tạo handoff">Handoff</button></div></aside>` : ''}${state.fp.open ? filePanelHtml(s) : ''}</div>`;
 }
 const PETS = ['🐼', '🦊', '🐸', '🐰', '🐻', '🐙', '🐱', '🐶', '🦉', '🐧', '🦄', '🐯'];
 const FOLD = ['xspire-workspaces', 'tools', 'modules', 'docs', 'scripts', '_crew', 'hqsoft.xspire', 'termnest'];
@@ -861,6 +874,42 @@ function yardTick() {
   if (state.play) { state.ballX = Math.random() * 80 + 8; const b = document.getElementById('ball'); if (b) b.style.left = state.ballX + '%'; if (Math.random() < .35) { state.score[Math.random() < .5 ? 0 : 1]++; const t = document.querySelector('.yard2 h3 .tag.ok'); if (t) t.textContent = '⚽ Xanh ' + state.score[0] + ' – ' + state.score[1] + ' Đỏ'; } }
 }
 
+
+const FS = {
+  '': [['d', 'docs'], ['d', 'public'], ['d', 'lib'], ['f', 'README.md', 'md', '3,2 KB'], ['f', 'bao-cao-tuan.html', 'html', '8,4 KB'], ['f', 'so-do-kien-truc.png', 'img', '212 KB'], ['f', 'anh-man-hinh.png', 'img', '184 KB'], ['f', 'package.json', 'txt', '1,1 KB'], ['f', 'server.js', 'txt', '48 KB']],
+  docs: [['f', '01-TRACKING.md', 'md', '5,6 KB'], ['f', '44-PERF-AUDIT.md', 'md', '12 KB'], ['f', '45-UI-REDESIGN-MOCKUP.html', 'html', '118 KB']],
+  public: [['f', 'app.js', 'txt', '210 KB'], ['f', 'app.css', 'txt', '96 KB']],
+  lib: [['f', 'remote.js', 'txt', '22 KB'], ['f', 'crew.js', 'txt', '9 KB']]
+};
+const IMGS = ['so-do-kien-truc.png', 'anh-man-hinh.png'];
+const svgImg = (i) => 'data:image/svg+xml;utf8,' + encodeURIComponent(i === 0
+  ? '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720"><rect width="1200" height="720" fill="#F3F4F8"/><g font-family="Inter,Arial" font-size="26" fill="#141833"><rect x="80" y="90" width="300" height="120" rx="18" fill="#20285a"/><text x="150" y="160" fill="#fff">TERMNEST UI</text><rect x="450" y="90" width="300" height="120" rx="18" fill="#fff" stroke="#D3D8E6"/><text x="520" y="160">Node server</text><rect x="820" y="90" width="300" height="120" rx="18" fill="#fff" stroke="#D3D8E6"/><text x="900" y="160">tmux / SSH</text><path d="M380 150H450M750 150H820" stroke="#d32027" stroke-width="4" stroke-dasharray="10 8"/><rect x="450" y="330" width="300" height="120" rx="18" fill="#fff" stroke="#D3D8E6"/><text x="520" y="400">_crew / log</text><path d="M600 210V330" stroke="#8790AB" stroke-width="4"/></g></svg>'
+  : '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720"><rect width="1200" height="720" fill="#181A1F"/><g font-family="monospace" font-size="24" fill="#D3D6DC"><text x="60" y="90" fill="#6BD0A4">● Bash(dotnet test --no-build)</text><text x="60" y="140" fill="#7B818E">  ⎿ 2.191 passed · 0 failed</text><text x="60" y="210" fill="#9AA5F4">› Đã sửa selector, chạy lại test.</text></g></svg>');
+const mdHtml = (t) => esc(t).split('\n').map((l) => { l = l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>'); if (/^# /.test(l)) return `<h1>${l.slice(2)}</h1>`; if (/^## /.test(l)) return `<h2>${l.slice(3)}</h2>`; if (/^### /.test(l)) return `<h3>${l.slice(4)}</h3>`; if (/^- \[x\] /.test(l)) return `<div class="tk"><input type="checkbox" checked disabled> ${l.slice(6)}</div>`; if (/^- \[ \] /.test(l)) return `<div class="tk"><input type="checkbox" disabled> ${l.slice(6)}</div>`; if (/^- /.test(l)) return `<li>${l.slice(2)}</li>`; if (/^\|/.test(l)) return /^\|[-| ]+\|$/.test(l) ? '' : `<div class="trow">${l.split('|').slice(1, -1).map((c) => `<span>${c.trim()}</span>`).join('')}</div>`; return l.trim() ? `<p>${l}</p>` : ''; }).join('');
+const MD = '# Báo cáo hiệu năng TERMNEST\n\n## Kết quả\n- Quét token: **938 → 432 MB** RAM đỉnh\n- Poll tmux (40 phiên): `984 → 102 ms`\n- Thêm `defer` cho 25 script\n\n## Việc còn lại\n- [x] Giảm vòng rAF thú cưng\n- [ ] Tách `app.js` / `app.css`\n- [ ] IntersectionObserver cho thú ngoài tầm nhìn\n\n## Bảng đo\n| Hạng mục | Trước | Sau |\n|---|---|---|\n| WebContent CPU | 97% | 14% |\n| node CPU | 48% | 2% |\n';
+const HTMLDOC = '<!doctype html><meta charset=utf-8><style>body{font:14px system-ui;margin:0;padding:24px;background:#fff;color:#141833}h1{margin:0 0 4px}.s{color:#8790AB;margin-bottom:16px}.k{display:flex;gap:12px;margin-bottom:16px}.k div{flex:1;padding:14px;border:1px solid #E4E7F0;border-radius:12px}.k b{font-size:26px;display:block}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #E4E7F0;text-align:left}.bar{height:10px;background:#E9EBF5;border-radius:5px}.bar i{display:block;height:100%;background:#20285a;border-radius:5px}</style><h1>Báo cáo tuần</h1><div class=s>Chạy trong khung cách ly</div><div class=k><div><b>14</b>Task xong</div><div><b>42p</b>Thời gian TB</div><div><b>9</b>Sửa lại</div></div><table><tr><th>Track</th><th>Tiến độ</th></tr><tr><td>W1</td><td><div class=bar><i style="width:64%"></i></div></td></tr><tr><td>W2</td><td><div class=bar><i style="width:40%"></i></div></td></tr><tr><td>W3</td><td><div class=bar><i style="width:100%"></i></div></td></tr></table>';
+function filePanelHtml(s) {
+  const f = state.fp, dir = f.path.join('/'), list = (FS[dir] || FS['']).filter((x) => !f.q || x[1].toLowerCase().includes(f.q.toLowerCase()));
+  const full = '/data/thanhlg/xspire-workspaces' + (dir ? '/' + dir : '') + (f.file ? '/' + f.file : '');
+  const ext = f.file ? ((Object.values(FS).flat().find((x) => x[1] === f.file) || [])[2] || 'txt') : '';
+  const tb = `<div class="fph"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.file ? esc(f.file) : 'Xem tệp'}</b><button class="btn sm" data-act="fpw" title="Đổi chiều rộng bản xem trước">⇔</button><button class="btn sm" data-act="fpfs" data-id="-1" title="Chữ nhỏ hơn">A−</button><button class="btn sm" data-act="fpfs" data-id="1" title="Chữ to hơn">A+</button><button class="btn sm" data-act="fpfull" title="${f.full ? 'Thu về khung bên' : 'Mở rộng toàn cửa sổ'}">${ic('exp', 14)}</button><button class="btn sm" data-act="fpx" title="Đóng">${ic('x', 14)}</button></div>`;
+  let body = '';
+  if (!f.file) {
+    body = `<div class="fpb"><label class="input" style="height:38px">${ic('search')}<input id="fpq" placeholder="Tìm tệp theo tên…" value="${esc(f.q)}"></label>
+      <div class="row" style="flex-wrap:wrap;gap:6px"><span class="hint grow">Thư mục của phiên · /data/thanhlg/xspire-workspaces${dir ? '/' + dir : ''}</span>${f.path.length ? '<button class="btn sm" data-act="fpup">⤴ Lên một cấp</button>' : ''}<span style="position:relative"><button class="btn sm" data-act="fpmenu">Thêm ▾</button>${f.menu ? '<div class="menu" style="right:0;left:auto;top:36px;bottom:auto;min-width:190px"><a data-act="toast" data-id="Đã mở hộp Thư mục mới">Thư mục mới</a><a data-act="toast" data-id="Đã mở hộp Tệp mới">Tệp mới</a><a data-act="toast" data-id="Thùng rác trống · tự dọn theo Cài đặt → Sao lưu">Thùng rác</a><a data-act="toast" data-id="File tạm: bao-cao-tuan.pdf (1)">File tạm</a></div>' : ''}</span></div>
+      <div class="files">${list.map((x) => x[0] === 'd' ? `<a data-act="fpcd" data-id="${x[1]}">📁 <span class="grow">${x[1]}</span></a>` : `<a data-act="fpfile" data-id="${x[1]}">${{ md: '📝', html: '🌐', img: '🖼️', txt: '📄' }[x[2]]} <span class="grow">${x[1]}</span><span class="mut">${x[3]}</span><span class="rowact"><i data-act="toast" data-id="Đã mở hộp Đổi tên" title="Đổi tên">✎</i><i data-act="toast" data-id="Đã chuyển “${x[1]}” vào thùng rác. (Hoàn tác)" title="Chuyển vào thùng rác">🗑</i></span></a>`).join('') || '<div class="mut">Thư mục này không có tệp xem được.</div>'}</div></div>`;
+  } else {
+    const bar = `<div class="row fpbar" style="flex-wrap:wrap;gap:6px"><button class="btn sm" data-act="fpback">← Danh sách</button><span class="sp"></span><button class="btn sm" data-act="fpcopy" title="Sao chép đường dẫn">⎘ Đường dẫn</button><button class="btn sm" data-act="toast" data-id="Đã tải xuống ${esc(f.file)}">⬇ Tải xuống</button><button class="btn sm" data-act="fpreload" title="Tải lại">↻</button><button class="btn sm brand" data-act="fpins">Chèn đường dẫn vào chat</button></div>`;
+    let view = '';
+    if (ext === 'md') view = `<div class="mdv" style="font-size:${f.fs}px">${mdHtml(MD)}</div>`;
+    else if (ext === 'html') view = `<div class="hint" style="margin-bottom:6px">Bản HTML chạy trong khung cách ly. Ảnh, CSS và script (.js) nằm trong thư mục của tệp.</div><iframe class="htmlv" sandbox srcdoc="${HTMLDOC.replace(/"/g, '&quot;')}"></iframe>`;
+    else if (ext === 'img') { const i = Math.max(0, IMGS.indexOf(f.file)); view = `<div class="row" style="gap:6px;margin-bottom:8px"><button class="btn sm" data-act="fpimg" data-id="-1" title="Ảnh trước (←)">←</button><span class="mut grow" style="text-align:center">${i + 1} / ${IMGS.length}</span><button class="btn sm" data-act="fpimg" data-id="1" title="Ảnh kế (→)">→</button><button class="btn sm ${f.fit ? '' : 'on'}" data-act="fpfit" title="Chuyển giữa vừa khung và 100%">${f.fit ? 'Kích thước thật' : 'Vừa khung'}</button></div><div class="imgv ${f.fit ? 'fit' : ''}"><img src="${svgImg(i)}" alt="${esc(f.file)}"></div>`; }
+    else view = `<div class="hint" style="margin-bottom:6px">Bản xem trước văn bản tối đa 200.000 ký tự / 2.000 dòng. Tải xuống để xem toàn bộ.</div><pre class="txtv" style="font-size:${f.fs}px">${esc("'use strict';\nconst { Remote } = require('./remote');\n\n// " + f.file + "\nmodule.exports = { Remote };\n")}</pre>`;
+    body = `<div class="fpb">${bar}<div class="hint" style="word-break:break-all">${esc(full)}</div>${view}</div>`;
+  }
+  return `<aside class="fpanel ${f.full ? 'full' : ''}">${tb}${body}</aside>`;
+}
+
 function loginHtml() {
   return `<div class="login"><div class="art"><div>${lockup(56, true)}</div><div><h1>Mọi phiên AI của bạn, một chỗ.</h1><p>Theo dõi Claude, Codex và crew trên mọi máy chủ mà không phải mở từng terminal.</p></div><span></span><i class="orb"></i></div>
     <div class="form"><div class="box"><h2 style="font-size:24px">Đăng nhập</h2><label class="fld">Mật khẩu<input type="password" id="pw" value="demo-demo-demo"></label><button class="btn accent" data-act="login" style="justify-content:center">Vào TERMNEST</button><p class="hint">Chỉ dùng trên mạng nội bộ hoặc qua máy chủ đã xác thực.</p></div></div></div>`;
@@ -889,6 +938,7 @@ function render() {
     setTimeout(() => { s.lines.push('<span class="g">●</span> Đã nhận: ' + esc(v) + '. Đang xử lý…'); s.st = s.st === 'wait' ? 'run' : s.st; render(); }, 700); };
   if (state.focusTile) { const ti2 = document.querySelector('.wti[data-sid="' + state.focusTile + '"] input'); if (ti2) ti2.focus(); state.focusTile = null; }
   document.querySelectorAll('.wtb').forEach((w) => { w.scrollTop = w.scrollHeight; });
+  const fq = document.getElementById('fpq'); if (fq) { fq.oninput = () => { state.fp.q = fq.value; const p = fq.selectionStart; render(); const n = document.getElementById('fpq'); n.focus(); n.setSelectionRange(p, p); }; }
   const oq = document.getElementById('opsq'); if (oq) { oq.oninput = () => { state.opsQ = oq.value; const p = oq.selectionStart; render(); const n = document.getElementById('opsq'); n.focus(); n.setSelectionRange(p, p); }; }
   const nt = document.getElementById('nt'), nb = document.getElementById('nb');
   if (nt) { const n = NOTES.find((x) => x.id === state.noteId); nt.oninput = () => { n.t = nt.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; nb.oninput = () => { n.b = nb.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; }
@@ -900,7 +950,7 @@ function toast(t) { state.toast = t; render(); clearTimeout(toast.t); toast.t = 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act, id = el.dataset.id;
-  if (a !== 'menu' && a !== 'more') { state.menu = false; state.more = false; }
+  if (a !== 'menu' && a !== 'more') { state.menu = false; state.more = false; if (a !== 'fpmenu') state.fp.menu = false; }
   if (a === 'scrim') { if (e.target === el) { state.dlg = null; render(); } return; }
   if (a === 'close') { e.stopPropagation(); if (state.open.includes(id)) state.closed.push(id); state.open = state.open.filter((x) => x !== id); if (state.tab === id) state.tab = 'all'; state.dlg = null; render(); return; }
   if (a === 'view') { state.view = id; state.drawer = false; }
@@ -1004,6 +1054,22 @@ document.addEventListener('click', (e) => {
   else if (a === 'slotday') { const [si, di] = id.split(':'), x = state.nset.slots.find((y) => String(y.id) === si), d3 = Number(di); if (x) x.days = x.days.includes(d3) ? x.days.filter((q) => q !== d3) : x.days.concat(d3).sort(); }
   else if (a === 'slotdays') { const [si, k] = id.split(':'), x = state.nset.slots.find((y) => String(y.id) === si); if (x) x.days = k === 'wk' ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 6, 7]; }
   else if (a === 'appok') { state.dlg = null; toast('Đã nối vào cuối file'); return; }
+  else if (a === 'fp') { state.fp.open = !state.fp.open; if (state.fp.open) state.det = false; }
+  else if (a === 'fpopen') { if (!state.open.includes(id)) state.open.push(id); state.tab = id; state.last = id; state.view = 'term'; state.fp.open = true; state.det = false; }
+  else if (a === 'fpx') { state.fp.open = false; state.fp.full = false; }
+  else if (a === 'fpcd') { state.fp.path.push(id); state.fp.q = ''; }
+  else if (a === 'fpup') state.fp.path.pop();
+  else if (a === 'fpfile') { state.fp.file = id; state.fp.img = 0; }
+  else if (a === 'fpback') state.fp.file = '';
+  else if (a === 'fpfull') state.fp.full = !state.fp.full;
+  else if (a === 'fpw') state.fp.w = state.fp.w >= 760 ? 380 : state.fp.w + 190;
+  else if (a === 'fpfs') state.fp.fs = Math.max(10, Math.min(22, state.fp.fs + Number(id)));
+  else if (a === 'fpfit') state.fp.fit = !state.fp.fit;
+  else if (a === 'fpimg') { const i = (IMGS.indexOf(state.fp.file) + Number(id) + IMGS.length) % IMGS.length; state.fp.file = IMGS[i]; }
+  else if (a === 'fpmenu') state.fp.menu = !state.fp.menu;
+  else if (a === 'fpreload') { toast('Đã tải lại'); return; }
+  else if (a === 'fpcopy') { toast('Đã sao chép đường dẫn đầy đủ'); return; }
+  else if (a === 'fpins') { const sv = sess(state.tab); if (sv) sv.lines.push('<span class="b">›</span> /data/thanhlg/xspire-workspaces/' + (state.fp.path.length ? state.fp.path.join('/') + '/' : '') + state.fp.file); toast('Đã gõ đường dẫn vào phiên. Nhấn Enter ở đó để gửi.'); return; }
   else if (a === 'toast') { toast(id); return; }
   else if (a === 'logout') state.login = true;
   else if (a === 'login') state.login = false;
@@ -1016,7 +1082,7 @@ setInterval(() => {
     s.feed ||= JSON.parse(JSON.stringify(FEED[s.id] || {}));
     s.workers.filter((w) => w.st === 'run').forEach((w) => { (s.feed[w.n] ||= []).push(POOL[Math.floor(Math.random() * POOL.length)]); if (s.feed[w.n].length > 30) s.feed[w.n].shift(); w.pr = Math.min(99, w.pr + 2); });
   });
-  if (state.view === 'term' && sess(state.tab) && sess(state.tab).crew && !state.dlg && document.activeElement.id !== 'tinput') render();
+  if (state.view === 'term' && sess(state.tab) && sess(state.tab).crew && !state.dlg && !state.fp.open && !state.menu && !state.more && document.activeElement.id !== 'tinput') render();
 }, 2500);
 document.addEventListener('submit', (e) => {
   const df = e.target.closest('.deepf'); if (df) { e.preventDefault(); const v = df.querySelector('input').value.trim(); if (v) deepAsk(v); return; }
@@ -1052,6 +1118,7 @@ addEventListener('resize', render);
   if (h === 'login') state.login = true;
   if (h === 'night') state.hourOverride = 23;
   if (h === 'nopet') state.pets = false;
+  if (h.startsWith('file-')) { state.view = 'term'; state.tab = 'fes'; state.open = ['fes']; state.fp.open = true; const k = h.slice(5); if (k === 'md') state.fp.file = 'README.md'; if (k === 'html') state.fp.file = 'bao-cao-tuan.html'; if (k === 'img') state.fp.file = 'so-do-kien-truc.png'; }
   if (h === 'mini') { state.mini = true; state.pets = false; }
   if (h === 'night') { state.hourOverride = 23; }
   if (h === 'fs') { state.view = 'term'; state.tab = 'all'; state.fsMode = true; }

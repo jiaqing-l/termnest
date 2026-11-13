@@ -40,3 +40,13 @@ Giữ bố cục danh sách | soạn thảo, bổ sung đúng các tính năng t
 - MỚI: "Lịch nhắc kiểm tra ghi chú": nhiều khung giờ chung (vd 09:00, 13:30, 17:30), mỗi khung có nội dung thông báo, ngày trong tuần (T2–CN, Ngày làm việc, Mỗi ngày), bật/tắt, xóa; "Chỉ nhắc khi còn việc chưa xong".
 - Cách báo: chuông trong TERMNEST, thông báo hệ điều hành, âm thanh, giờ yên lặng; gom nhắc bị lỡ khi mở lại app. Nút "Xem thử thông báo" hiện thẻ thông báo mẫu có Mở ghi chú / Hoãn 1 giờ.
 Bản thật cần thêm lưu cấu hình lịch nhắc chung (server hoặc localStorage) và bộ hẹn giờ chạy theo khung.
+
+## Xem tệp: khung bên phải, không phải popup (13/11)
+Thực tế (public/file-viewer.js) mở tệp ở khung bên phải của phiên. Mockup đã đổi theo: nút "Mở file" mở khung bên (kéo hẹp lại phần terminal):
+- Danh sách thư mục của phiên: tìm theo tên, lên một cấp, Thêm ▾ (thư mục mới, tệp mới, thùng rác, file tạm), đổi tên / chuyển thùng rác khi rê chuột.
+- Xem .md (đã dựng, có checkbox, bảng), .html (khung cách ly), ảnh (trước/sau, vừa khung ↔ 100%), văn bản/mã.
+- Thanh công cụ: đổi chiều rộng, chữ nhỏ/to, mở rộng toàn cửa sổ, đóng; Đường dẫn, Tải xuống, Tải lại, Chèn đường dẫn vào chat.
+
+## Giảm nút bấm ở màn phiên
+Tiêu đề: chỉ còn Crew ▾ (nhắc điều phối, hiện thợ xong, ẩn thợ, nhật ký), ⓘ, ⋯ (báo khi chờ, đổi tên, thú cưng, chuyển máy, lịch sử, handoff, dừng).
+Thanh dưới: Gửi file, Mở file, Phím ▾ (Ctrl+C, Esc, Tab, mũi tên, bàn phím trên màn hình), Lệnh mẫu ▾ | Chia màn ▾, Aa ▾, ⋯ (chọn chữ, sao chép, dòng mới, hướng dẫn, toàn màn hình). Đã bỏ nút Ngắt và Esc riêng.
