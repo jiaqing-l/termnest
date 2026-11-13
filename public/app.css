@@ -1889,3 +1889,14 @@ html.pets-off .pet-edit,html.pets-off .nt-petbtn,html.pets-off .nt-bubble{displa
 #v-over .grid>.card .card-head .mono,#v-over .grid>.card .card-head .ava{width:34px;height:34px;border-radius:10px;font-size:13px}
 #v-over .grid{gap:12px}
 #v-over{gap:12px}
+
+/* The monogram avatar class (.mono) was also hitting the "user@host" label of a server heading and squeezing it into a 22px box. */
+.srv-head .mono,html .srv-head .mono{display:inline;width:auto;height:auto;min-width:0;border:0;border-radius:0;background:none;padding:0;color:var(--fg-3);font:500 12px var(--mono);letter-spacing:0;text-transform:none}
+.srv-head{margin-top:4px}
+/* Cards: one line footer, the terminal preview takes the spare height, tidy "new session" tile */
+#v-over .grid>.card .mini{flex:1 1 auto;height:auto;min-height:70px}
+#v-over .grid>.card .card-foot{flex-wrap:nowrap;justify-content:space-between;gap:10px}
+#v-over .grid>.card .card-foot .foot-t{flex:none}
+#v-over .grid>.card .card-foot .foot-p{flex:1 1 auto;min-width:0;text-align:right;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#v-over .grid>.card:hover{transform:none}
+#v-over .grid>.card.add{height:72px;font:600 14px var(--sans);color:var(--fg-3)}
