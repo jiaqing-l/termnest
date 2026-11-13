@@ -181,8 +181,17 @@
     b.addEventListener('click', function () { var on = !sec.classList.contains('compact'); store('tw-yard-compact', on ? '1' : ''); apply(on); });
   }
 
+  // Delete / Backspace outside a text field must do nothing: the desktop WebView treats it as "Back" and returned to the launch screen
+  // ("Opening the app…"), dropping the user out of the app.
+  function guardBackKey() {
+    root.document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+      var t = e.target, tag = t && t.tagName, editable = t && (t.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+      if (!editable) e.preventDefault();
+    }, true);
+  }
   function boot() {
-    [buildDock, buildHero, wireZoom, wireYard].forEach(function (f) { try { f(); } catch (e) { if (root.console) root.console.error('[ux2]', e); } });
+    [guardBackKey, buildDock, buildHero, wireZoom, wireYard].forEach(function (f) { try { f(); } catch (e) { if (root.console) root.console.error('[ux2]', e); } });
   }
   return { HUES: HUES, MODES: MODES, hash: hash, hue: hue, initials: initials, monoHtml: monoHtml, monoNode: monoNode, petsOn: petsOn,
     projectOf: projectOf, toolOf: toolOf, groupSessions: groupSessions, getMode: getMode, setMode: setMode, getPins: getPins, togglePin: togglePin,
