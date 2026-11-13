@@ -309,6 +309,31 @@ select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 1
 .h4{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px;font-weight:700}
 .mini .grpbar{display:none}
 .term .jump.show{display:block}
+
+.yard2 .field{position:relative;height:200px;border-radius:16px;overflow:hidden;background:linear-gradient(#BFD9F6,#E6F1FC 62%)}
+.yard2 .field.night{background:linear-gradient(#10152f,#242d63 62%)}
+.yard2 .grass{position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(#9AD686,#7DBE6A)}
+.yard2 .field.night .grass{background:linear-gradient(#2F6045,#24503A)}
+.yard2 .sky{position:absolute;right:28px;top:12px;font-size:34px}
+.yard2 .cl{position:absolute;font-size:30px;opacity:.7}.yard2 .c1{left:18%;top:14px}.yard2 .c2{left:58%;top:34px;font-size:24px}
+.yard2 .field.night .cl{opacity:.25}
+.yp{position:absolute;bottom:14%;transition:left 2.4s linear;text-align:center;cursor:pointer;--f:1;z-index:2}
+.yp .e{display:block;font-size:38px;line-height:1.1;transform:scaleX(var(--f));filter:drop-shadow(0 3px 2px #0003)}
+.yp.run .e{animation:hop 1s ease-in-out infinite}
+.yp.wait .e{animation:knock .7s ease-in-out infinite}
+.yp.idle .e{opacity:.85}
+@keyframes hop{50%{transform:translateY(-6px) scaleX(var(--f))}}
+@keyframes knock{50%{transform:translateX(3px) scaleX(var(--f))}}
+@media (prefers-reduced-motion:reduce){.yp .e{animation:none!important}.yp{transition:none}}
+.yp .nm{font-size:11px;font-weight:700;background:#ffffffcc;color:#20285a;border-radius:7px;padding:0 6px;white-space:nowrap}
+.yp .bg{position:absolute;top:-6px;right:-6px;font-size:16px}
+.yp.hm{cursor:crosshair}.field.hamcur{cursor:crosshair}
+.ball{position:absolute;bottom:16%;font-size:24px;transition:left 2.4s linear;z-index:3}
+.bub{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);min-width:200px;max-width:260px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12.5px;box-shadow:var(--sh);text-align:left;z-index:20;white-space:normal}
+.bub.ouch{min-width:0;white-space:nowrap;font-weight:800}
+.yardmini{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.yardmini .mp{position:relative;font-size:26px;cursor:pointer;padding:4px 8px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.yardmini .mp i{position:absolute;right:2px;bottom:2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--surface)}
 /* mobile */
 .tabbar{display:none}
 @media (max-width:860px){
@@ -406,7 +431,7 @@ const ALERTS = [['bad', 'dev-ubuntu-02 (thanhlg) mất kết nối', '5 phút tr
 
 /* ───────── Trạng thái ───────── */
 const ST8 = { view: 'over', open: ['sv2', 'fes'], tab: 'all', host: 'all', q: '', filter: 'all', det: false, showW: true, doneW: true, selW: null, menu: false, dlg: null, setTab: 'look', opsTab: 0,
-  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', cmd: 'claude' }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
+  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', cmd: 'claude' }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
 const state = ST8;
 const hostName = (id) => (HOSTS.find((h) => h.id === id) || {}).name || id;
 const sess = (id) => S.find((s) => s.id === id);
@@ -511,10 +536,10 @@ function overHtml() {
     const m = (n, v, t) => `<div class="m"><span>${n}</span><div class="meter"><i class="${over(v, t) ? 'w' : ''}" style="width:${v || 0}%;${over(v, t) ? 'background:var(--accent)' : ''}"></i></div><b>${v == null ? '–' : v + '%'}</b></div>`;
     return `<div class="card fcard ${bad ? 'over' : ''}" data-act="dlg" data-id="mach:${h.id}"><div class="row"><div class="av">${ic(h.icon)}<span class="dot ${h.ok ? 'ok' : 'bad'}"></span></div><div class="grow"><b>${h.name}</b><div class="mut">${h.sub}</div></div>${h.ok ? (bad ? '<span class="tag bad">Vượt ngưỡng</span>' : '<span class="tag ok">Ổn</span>') : '<span class="tag bad">Mất kết nối</span>'}</div>${m('CPU', h.cpu, state.th.cpu)}${m('RAM', h.ram, state.th.ram)}${m('Đĩa', h.disk, state.th.disk)}</div>`; }).join('');
   return `<div class="page"><div class="hero"><i class="orb"></i><i class="orb b"></i><div style="position:relative"><h1>Chào buổi tối, Thanh</h1><p>Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt. · ${S.length} phiên · ${run} đang chạy · ${wait} cần bạn.</p>
-    <div class="row"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial" data-act="host" data-id="u02t" style="cursor:pointer"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${ic('users', 14)}6 thợ đang chạy</span></div></div>
+    <div class="row"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial" data-act="host" data-id="u02t" style="cursor:pointer"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${ic('users', 14)}6 thợ đang chạy</span><span class="chip">${HOSTS.some((h) => h.ok && h.cpu >= state.th.cpu) ? '🌧️ Tải cao' : '☀️ Nhẹ nhàng'}</span></div></div>
     <div class="scene hide-m" style="position:relative"><div style="text-align:center"><div class="box">${ic('laptop', 26)}</div><div class="mut" style="color:#fffb;margin-top:6px">Máy bạn</div></div><div class="wire"><i></i><i></i><i></i></div><div style="text-align:center"><div class="box">${ic('srv', 26)}</div><div class="mut" style="color:#fffb;margin-top:6px">Trên máy chủ</div></div></div></div>
     <div class="fleet">${fleet}</div>
-    ${state.pets ? `<div class="card"><h3>Sân chơi <span>Thú cưng của các phiên đang chạy — bấm để mở phiên</span></h3><div class="yard">${S.filter((s) => s.st !== 'idle').map((s) => `<span data-act="open" data-id="${s.id}" title="${s.n}">${s.e}</span>`).join('')}</div></div>` : ''}
+    ${state.pets ? yardHtml() : ''}
     <div class="row" style="flex-wrap:wrap"><label class="input" style="width:380px;max-width:100%">${ic('search')}<input id="q" placeholder="Tìm phiên theo tên, thư mục, nội dung màn hình" value="${esc(state.q)}"></label>${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', wait)}${fc('run', 'Đang chạy', run)}${fc('idle', 'Đang nghỉ', idle)}</div>
     <div class="cards">${filtered().map(card).join('') || '<div class="card mut">Không có phiên nào khớp.</div>'}</div></div>`;
 }
@@ -732,6 +757,38 @@ function opsHtml() {
   return `<div class="page">${head}${body}</div>`;
 }
 
+
+const hourNow = () => new Date().getHours();
+const isNight = () => { const h = state.hourOverride != null ? state.hourOverride : hourNow(); return h < 6 || h >= 19; };
+function petSay(s) {
+  if (isNight() && s.st === 'idle') return 'khuya rồi, em ngủ nhé!';
+  return { run: 'đang chạy' + (s.crew ? ' · ' + s.workers.filter((w) => w.st === 'run').length + ' thợ đang làm' : '') + '.', wait: 'đang chờ bạn trả lời.', err: 'phiên kết thúc có lỗi, bấm em để mở!', idle: 'đang nghỉ, mọi thứ ổn.' }[s.st];
+}
+function yardHtml() {
+  const night = isNight(), list = S.slice(0, 14), more = Math.max(0, S.length - 14);
+  list.forEach((s, i) => { if (state.yp[s.id] == null) state.yp[s.id] = 6 + ((i * 53) % 84); });
+  const sleeping = (s) => night && s.st === 'idle';
+  const pets = list.map((s) => `<div class="yp ${s.st} ${sleeping(s) ? 'zz' : ''} ${state.hammer ? 'hm' : ''}" data-act="yardpet" data-id="${s.id}" style="left:${state.yp[s.id]}%"><span class="e">${s.e}</span>${s.st === 'wait' ? '<span class="bg">❗</span>' : s.st === 'err' ? '<span class="bg">💢</span>' : sleeping(s) ? '<span class="bg">💤</span>' : ''}<span class="nm">${esc(s.n.length > 12 ? s.n.slice(0, 11) + '…' : s.n)}</span>
+    ${state.bubble === s.id ? `<div class="bub" data-act="none"><b>${esc(s.n)}</b> ${petSay(s)}<div class="row" style="margin-top:6px;gap:6px"><button class="btn sm" data-act="open" data-id="${s.id}">Mở phiên</button><button class="btn sm" data-act="feed" data-id="${s.id}">🍖 Cho ăn</button></div>${state.feedMsg === s.id ? '<div class="hint">Ngon quá, cảm ơn sếp!</div>' : ''}</div>` : ''}${state.ouch === s.id ? `<div class="bub ouch">BỐP! ${['Á đau!', 'Sếp ơi tha em!', 'Gõ nhẹ thôi sếp!', 'Choáng quá… thấy sao bay 💫'][state.ouchN % 4]}</div>` : ''}</div>`).join('');
+  const compact = !state.yardOpen;
+  return `<div class="card yard2"><h3><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--ink)">Sân chơi <span class="tag pri">🐾 ${S.length} bạn đang ở sân</span>${state.play ? `<span class="tag ok">⚽ Xanh ${state.score[0]} – ${state.score[1]} Đỏ</span>` : ''}${night ? '<span class="tag">🌙 ' + (S.filter((s) => s.st !== 'idle').length ? 'khuya rồi, ' + S.filter((s) => s.st !== 'idle').length + ' bạn vẫn đang thức làm việc' : 'các bạn đang ngủ') + '</span>' : ''}</span>
+    <span class="row" style="gap:6px"><button class="btn sm ${state.play ? 'on' : ''}" data-act="play" title="Cho các bạn thú đá bóng ngay (cũng tự đá ngẫu nhiên)">${state.play ? '⏹ Dừng trận' : '⚽ Đá bóng'}</button><button class="btn sm ${state.hammer ? 'on' : ''}" data-act="hammer" title="Cầm búa gõ đầu các bạn thú (chỉ cho vui, không ảnh hưởng phiên)">🔨 ${state.hammer ? 'Cất búa' : 'Búa'}</button><button class="btn sm" data-act="yardopen" title="Thu gọn sân chơi để thấy nhiều phiên hơn">${compact ? 'Mở rộng' : 'Thu gọn'}</button></span></h3>
+    ${compact ? `<div class="yardmini">${list.map((s) => `<span class="mp" data-act="open" data-id="${s.id}" title="${esc(s.n)} — ${petSay(s)}">${s.e}<i class="dot ${s.st === 'run' ? 'ok' : s.st === 'wait' ? 'warn' : s.st === 'err' ? 'bad' : ''}"></i></span>`).join('')}${more ? `<span class="mut">Còn ${more} phiên nữa</span>` : ''}</div>`
+    : `<div class="field ${night ? 'night' : 'day'} ${state.hammer ? 'hamcur' : ''}" id="field"><span class="sky">${night ? '🌙' : '☀️'}</span><span class="cl c1">☁️</span><span class="cl c2">☁️</span><div class="grass"></div>${state.play ? `<span class="ball" id="ball" style="left:${state.ballX}%">⚽</span>` : ''}${pets}</div>${state.hammer ? '<div class="hint" style="margin-top:6px">Đang cầm búa: bấm vào một bạn thú để gõ. Cất búa để thôi.</div>' : ''}`}</div>`;
+}
+function yardTick() {
+  if (document.hidden || state.view !== 'over' || !state.pets || !state.yardOpen || state.login || state.dlg) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const night = isNight();
+  document.querySelectorAll('.yp').forEach((el) => {
+    const s = sess(el.dataset.id); if (!s || (night && s.st === 'idle')) return;
+    if (state.play) { state.yp[s.id] = Math.max(4, Math.min(92, state.ballX + (s.id.charCodeAt(0) % 2 ? -8 : 8))); }
+    else if (s.st === 'run' || (s.st === 'wait' && Math.random() < .5) || Math.random() < .25) { const x = Math.max(4, Math.min(92, state.yp[s.id] + (Math.random() * 30 - 15))); el.style.setProperty('--f', x < state.yp[s.id] ? -1 : 1); state.yp[s.id] = x; }
+    el.style.left = state.yp[s.id] + '%';
+  });
+  if (state.play) { state.ballX = Math.random() * 80 + 8; const b = document.getElementById('ball'); if (b) b.style.left = state.ballX + '%'; if (Math.random() < .35) { state.score[Math.random() < .5 ? 0 : 1]++; const t = document.querySelector('.yard2 h3 .tag.ok'); if (t) t.textContent = '⚽ Xanh ' + state.score[0] + ' – ' + state.score[1] + ' Đỏ'; } }
+}
+
 function loginHtml() {
   return `<div class="login"><div class="art"><div>${lockup(56, true)}</div><div><h1>Mọi phiên AI của bạn, một chỗ.</h1><p>Theo dõi Claude, Codex và crew trên mọi máy chủ mà không phải mở từng terminal.</p></div><span></span><i class="orb"></i></div>
     <div class="form"><div class="box"><h2 style="font-size:24px">Đăng nhập</h2><label class="fld">Mật khẩu<input type="password" id="pw" value="demo-demo-demo"></label><button class="btn accent" data-act="login" style="justify-content:center">Vào TERMNEST</button><p class="hint">Chỉ dùng trên mạng nội bộ hoặc qua máy chủ đã xác thực.</p></div></div></div>`;
@@ -848,6 +905,12 @@ document.addEventListener('click', (e) => {
   else if (a === 'quickq') { state.opsTab = 0; state.opsQ = ''; toast(id === 'wait' ? 'Đang chờ anh: ' + S.filter((s) => s.st === 'wait').map((s) => s.n).join(', ') : 'Team đang chạy: ' + TEAMS.map((t) => t.leader).join(', ')); return; }
   else if (a === 'rep') state.rep = Number(id);
   else if (a === 'deepq') { state.opsTab = 2; deepAsk(id); return; }
+  else if (a === 'none') { return; }
+  else if (a === 'yardpet') { if (state.hammer) { state.ouch = id; state.ouchN++; render(); setTimeout(() => { state.ouch = null; render(); }, 1400); return; } state.bubble = state.bubble === id ? null : id; state.feedMsg = null; }
+  else if (a === 'feed') { e.stopPropagation(); state.feedMsg = id; render(); setTimeout(() => { state.feedMsg = null; render(); }, 1800); return; }
+  else if (a === 'play') state.play = !state.play;
+  else if (a === 'hammer') { state.hammer = !state.hammer; state.bubble = null; }
+  else if (a === 'yardopen') state.yardOpen = !state.yardOpen;
   else if (a === 'toast') { toast(id); return; }
   else if (a === 'logout') state.login = true;
   else if (a === 'login') state.login = false;
@@ -878,6 +941,7 @@ function deepAsk(t) {
   state.deep.push({ r: 'u', t: esc(t) }); render();
   setTimeout(() => { state.deep.push({ r: 'a', t: 'Track W2 đỏ vì 2 test Picker dùng selector cũ (<code>crew/W2/verify.log:41</code>, vòng 2). Cần: sửa selector trong <code>FunctionPicker.razor</code> rồi chạy lại verify. Leader FES-Support đang xử lý.' }); render(); }, 900);
 }
+setInterval(yardTick, 2600);
 addEventListener('resize', render);
 /* mở thẳng một màn bằng hash (để chụp kiểm): #over #all #fes #tok #note #ops #set #new #alerts #login */
 (function init() {
@@ -889,6 +953,7 @@ addEventListener('resize', render);
   if (sess(h)) { state.view = 'term'; state.tab = h; state.det = true; }
   if (['set', 'new', 'alerts'].includes(h)) state.dlg = h;
   if (h === 'login') state.login = true;
+  if (h === 'night') { state.hourOverride = 23; }
   if (h === 'fs') { state.view = 'term'; state.tab = 'all'; state.fsMode = true; }
   render();
 })();

@@ -20,3 +20,14 @@ Bản thật cần thêm thuộc tính "dự án" (từ thư mục/repo) để n
 
 ## Chưa làm / còn mở
 Dữ liệu mockup là mẫu. Chưa đưa vào app thật (chờ DEV duyệt). Commit chưa đẩy lên GitHub; tag v1.1.18 vẫn trỏ nhầm.
+
+## Sân chơi thú cưng
+Thực tế (public/pet-yard.js): một khu sân theo ngày/đêm, mỗi phiên một thú đi lại, bấm thú ra bong bóng trạng thái (Mở phiên, 🍖 Cho ăn), có ⚽ Đá bóng (2 đội, tỉ số), 🔨 Búa, đuổi bắt, nhảy, câu cá, chia thức ăn; tối thì thú rảnh ngủ, thú đang làm vẫn thức; tối đa 14 thú ("Còn N phiên nữa"); thời tiết ở banner (☀️/🌧️/⛈️ theo tải).
+Mockup bản cũ chỉ là hàng emoji tĩnh nên "kỳ"; bản mới vẽ lại sân có trời/cỏ/mây, thú đi lại, bong bóng, đá bóng, búa, ngày/đêm.
+
+Đề xuất:
+1. Có nút Thu gọn: thành một hàng thú nhỏ có chấm trạng thái (không chiếm 200px chiều cao, thấy nhiều phiên hơn).
+2. Thú phải mang thông tin: ❗ chờ bạn, 💢 lỗi, 💤 nghỉ; bấm là mở phiên.
+3. Mặc định thu gọn trên màn nhỏ/điện thoại; tắt hẳn (đã mặc định tắt cho người cài mới).
+4. Hiệu năng: chỉ chuyển động khi tab hiện và đang ở Tổng quan, tôn trọng prefers-reduced-motion, giới hạn 14 thú.
+5. Đá bóng/búa/câu cá giữ làm trứng phục sinh, không là tính năng chính.
