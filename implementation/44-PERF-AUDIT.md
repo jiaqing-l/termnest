@@ -59,3 +59,20 @@ Thay đổi:
 6. Hoạt ảnh: `prefers-reduced-motion` đã tắt `*` từ trước. Thêm: tắt mọi animation của thú khi `pets-off`/`pets-still`; thú không chạy/chờ (ngủ) không còn chớp mắt vô hạn; class `html.tab-hidden` (đặt khi `document.hidden`) tạm dừng mọi animation. (Tab/view không hiển thị là `display:none` nên đã không chạy.)
 
 Còn lại: quét nguội lần đầu vẫn đọc ~14 GB (~47 s, đỉnh 432 MB); dòng JSONL > 16 MB bị bỏ (hành vi cũ, giữ để tổng không đổi); chưa đo CPU WebContent sau khi bỏ animation; pet off-screen trong cùng view chưa dùng IntersectionObserver; hẹn giờ chung và tách `app.js`/`app.css` chưa làm.
+
+## Kết quả đợt 3 (13/11/2026): mở tab Crew chậm
+Nguyên nhân: mỗi pane worker gọi riêng `GET /api/features/crew/log` (mỗi lần chạy lại `data()` + 1 lệnh SSH `sh -c logScript`, timeout 15 s, mỗi 2,5 s). Với N worker, một kết nối SSH bị N kênh exec mỗi nhịp; OpenSSH chỉ cho ~10 kênh nên kênh `attach` của pane orchestrator phải xếp hàng sau chúng (pane trống vài giây) và log báo "Đang đọc log…" rồi lỗi khi chờ quá hạn.
+
+| Hạng mục (8 worker, 1 nhịp làm mới) | Trước | Sau |
+|---|---|---|
+| Lệnh SSH log / nhịp | 8 (+ tới 8 lần đọc crew data khi cache hết hạn) | **1** (+ 1 lần đọc crew data, dùng chung, cache 10 s) |
+| Yêu cầu HTTP / nhịp | 8 | **1** |
+| 3 trình duyệt/tab cùng hỏi | 24 lệnh | 1 (gộp in-flight + cache kết quả 1,5 s) |
+| Host lỗi | mỗi pane thử lại mỗi 2,5 s, xếp hàng sau host chậm | nghỉ 5→60 s (backoff luỹ thừa), trả log cũ `stale:true`; client không gửi chồng (1 yêu cầu bay mỗi Crew) |
+| Mở lại Crew | "Đang đọc log…" tới khi có phản hồi | hiện ngay văn bản cũ (cache RAM theo crew/task/track); khung chờ chỉ lần đầu |
+
+Đo cục bộ (sh trên máy này, 8 log 60 KB, trung bình 20 lần): 8 lệnh song song 58–115 ms, 1 lệnh gộp 188–272 ms. Cục bộ gộp không nhanh hơn (chạy tuần tự, không có độ trễ mạng); lợi ích là trên SSH: 1 kênh + 1 round trip thay vì 8 kênh, và không chiếm kênh của `attach`. Chưa đo trên SSH thật.
+
+Thay đổi: `POST /api/features/crew/logs` (`lib/features/crew.js`, `batchLogScript`/`parseBatch` trong `lib/crew.js`: cùng quy tắc an toàn như `logScript`, nonce ngẫu nhiên cho mỗi bản ghi, `readlink -f` đúng 1 lần cho file chọn); route cũ `GET /log` giữ nguyên (cũng được dedupe `data()`). Client (`crewpanes.js`): 1 POST/Crew/nhịp, bỏ qua khi tab ẩn, tải ngay khi mở. Thanh trạng thái tmux: `public/status-crop.js` nhận diện hàng đáy cùng màu nền (≤3 hàng, hai lần kiểm liên tiếp trùng khớp, không chắc thì không làm gì), pane xin thêm đúng số hàng và host cắt (không đổi phiên tmux); bật/tắt ở Cài đặt → Giao diện (`tw-hide-tmux-status`, mặc định bật). Kiểm bằng xterm thật trong Chrome headless: 1 hàng xanh → 1, 2 hàng → 2, hàng trên chỉ xanh một phần → vẫn 2.
+Test mới: `crew-logs-batch.test.js` (6), `status-crop.test.js` (3).
+Còn lại: đường `attach` còn 1 round trip `set-option window-size` lần đầu mỗi phiên (có thể gộp vào cùng lệnh, đang bị `terminal-attach.test.js` khoá cấu trúc); chưa chạy e2e UI thật với tmux `status 2` qua server tạm; chưa đo trên SSH thật.

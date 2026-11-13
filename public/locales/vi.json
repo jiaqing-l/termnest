@@ -1291,6 +1291,7 @@
   "move2.retry": "Thử lại sau khi clone",
   "move2.restored": "Đã khôi phục {0} server. {1} phiên của máy cũ đã sẵn sàng ở Tổng quan → Khôi phục; {2} phiên chờ clone repo (xem Cài đặt → Sao lưu).",
   "settings.ime": "Sửa lỗi bộ gõ tiếng Việt trong terminal (Unikey, IBus, Bamboo)",
+  "settings.hide_tmux_status": "Ẩn thanh trạng thái tmux",
   "settings.ime_auto": "Tự động",
   "settings.ime_on": "Luôn bật",
   "settings.ime_off": "Tắt",

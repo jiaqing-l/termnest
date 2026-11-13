@@ -637,7 +637,7 @@
       e.preventDefault(); e.stopPropagation();
       applyScroll(lines(e), e.clientX, e.clientY);
     }, { capture: true, passive: false });
-    if (window.TouchScroll) window.TouchScroll.attach(p.host, { slop: 8, cell: function () { return p.host.clientHeight / p.term.rows; }, onLines: function (l, x, y) { if (p.cur) applyScroll(l, x, y); } });
+    if (window.TouchScroll) window.TouchScroll.attach(p.host, { slop: 8, cell: function () { return p.host.clientHeight / Math.max(1, p.term.rows - (p.crop || 0)); }, onLines: function (l, x, y) { if (p.cur) applyScroll(l, x, y); } });
     function toPosition(y) {
       var st = p.scroll; if (!st || st.history <= 0) return;
       var rect = p.bar.getBoundingClientRect(), size = p.thumb.offsetHeight;
@@ -688,6 +688,7 @@
     p.term.onData(p.ime.onData); p.term.onBinary(send);
     p.term.onResize(function (size) {
       if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows }));
+      cropCheck(p);
       // A full-screen app (Claude, Codex) redraws only the lines it believes it drew, so a resize that lands after it has printed
       // leaves old wrapped text mixed into the new. Once the size has settled, ask it to repaint (Ctrl+L).
       clearTimeout(p.repaint);
@@ -712,7 +713,28 @@
     });
     if (panes.length) cur = panes[focusedPane].cur;
   }
-  function fitPane(p) { if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) { try { p.fit.fit(); } catch (e) { /* hidden */ } } }
+  function fitPane(p) {
+    if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) {
+      try {
+        // tmux status rows hidden (see cropCheck): ask for that many extra rows; the host clips them.
+        var d = p.crop ? p.fit.proposeDimensions() : null;
+        if (d && d.cols > 0 && d.rows > 0) { if (d.cols !== p.term.cols || d.rows + p.crop !== p.term.rows) p.term.resize(d.cols, d.rows + p.crop); } else p.fit.fit();
+      } catch (e) { /* hidden */ }
+    }
+  }
+  // Settings → "Ẩn thanh trạng thái tmux" (tw-hide-tmux-status, default on). The tmux session itself is never changed.
+  function hideTmuxStatus() { try { return localStorage.getItem('tw-hide-tmux-status') !== '0'; } catch (e) { return true; } }
+  // After output (throttled) and on resize: count the status rows at the bottom; only act when two checks in a row agree.
+  function cropCheck(p) {
+    if (p.cropTimer) return;
+    p.cropTimer = setTimeout(function () {
+      p.cropTimer = 0; if (!p.term || view !== 'focus') return;
+      var n = !hideTmuxStatus() || plainPane(p) || !window.StatusCrop ? 0 : window.StatusCrop.detect(p.term);
+      if (n === (p.crop || 0)) { p.cropSeen = n; return; }
+      if (n === p.cropSeen || n === 0 && !hideTmuxStatus()) { p.cropSeen = n; p.crop = n; fitPane(p); return; }
+      p.cropSeen = n; cropCheck(p);
+    }, 400);
+  }
   function sizeTerm() { if (!wallOn) panes.forEach(fitPane); }
   function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
@@ -749,7 +771,7 @@
       sock.send(JSON.stringify({ t: 'resize', cols: p.term.cols, rows: p.term.rows })); nudgeBlank(p, sock); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
-    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
+    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); cropCheck(p); };
     function retry() { clearTimeout(p.retry); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, 2000); }
     sock.onclose = function (e) {
       if (p.ws !== sock) return; p.ws = null; p.key = '';
@@ -1212,6 +1234,7 @@
   function renderSettings() {
     renderStylePicker();
     var ime = $('set-ime'); if (ime) { try { ime.value = localStorage.getItem('tw-ime') || 'auto'; } catch (e) { ime.value = 'auto'; } ime.onchange = function () { try { localStorage.setItem('tw-ime', ime.value === 'auto' ? '' : ime.value); } catch (e) { /* optional */ } $('set-note').textContent = i18n('settings.ime_reopen'); }; }
+    var hs = $('set-hide-tmux'); if (hs) { hs.checked = hideTmuxStatus(); hs.onchange = function () { try { localStorage.setItem('tw-hide-tmux-status', hs.checked ? '1' : '0'); } catch (e) { /* optional */ } panes.forEach(function (q) { q.cropSeen = -1; cropCheck(q); }); }; }
     renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-backup-every').value = String(prefs.backupMinutes || 60);

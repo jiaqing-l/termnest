@@ -1308,6 +1308,7 @@
   "move2.retry": "Try again after cloning",
   "move2.restored": "Restored {0} servers. {1} sessions of the old computer are ready in Overview → Restore; {2} wait for their repository (see Settings → Backup).",
   "settings.ime": "Fix Vietnamese typing in the terminal (Unikey, IBus, Bamboo)",
+  "settings.hide_tmux_status": "Hide the tmux status bar",
   "settings.ime_auto": "Automatic",
   "settings.ime_on": "Always on",
   "settings.ime_off": "Off",

@@ -196,10 +196,22 @@
   function wlogPane(c, nm) {
     var t = c.trackMap[nm] || {}, p = el('section', 'cp-wlog'); p.dataset.w = nm; p.dataset.crew = c.id;
     var h = el('div', 'cp-wh'); h.append(el('i', 'cp-dot'), el('b', '', nm), (function () { var kb = el('span', 'cp-kind ' + ((c.kinds || {})[nm] || 'none'), kindLabel(c, nm)); var src = (c.kindSrc || {})[nm]; kb.title = src ? i18n('cp.src_kind_' + src) : i18n('cp.src_kind_none'); return kb; })(), el('span', 'cp-wt', t.title || ''), el('span', 'cp-st', ''));
-    p.append(h, el('pre', 'cp-wl', i18n('cp.log_reading')), el('div', 'cp-wf')); return p;
+    var mem = logMem[memKey(c, t)], first = el('pre', 'cp-wl', mem ? (mem.feed || stripAnsi(mem.text).split('\n').slice(-200).join('\n')) : i18n('cp.log_reading')); if (!mem) first.dataset.skel = '1';
+    p.append(h, first, el('div', 'cp-wf')); return p;
   }
   function stripAnsi(x) { return String(x || '').replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, '').replace(/\r/g, ''); }
+  // Last known text of every worker pane (per crew/task/track): a re-opened Crew shows it at once instead of "reading…".
+  var logMem = {}, logFlight = {}, logRetry = {};
+  function memKey(c, t) { return c.id + '|' + t.task + '/' + t.track; }
+  function paintLog(p, c, nm, st, r) {
+    var pre = p.querySelector('.cp-wl'), near = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40, lines = r.feed || stripAnsi(r.text).split('\n').slice(-200).join('\n');
+    delete pre.dataset.err; delete pre.dataset.skel;
+    if (pre.textContent !== lines) { pre.textContent = lines || (st.k === 'run' ? i18n('cp.log_wait_running') : i18n('cp.log_none')); if (near) pre.scrollTop = pre.scrollHeight; }
+  }
+  // ONE request per crew and tick (not one per worker): the server reads every track log with a single command on the host.
   function refreshLogs() {
+    if (document.hidden) return;
+    var byCrew = {};
     document.querySelectorAll('#split .cp-wlog').forEach(function (p) {
       var c = crews.filter(function (x) { return x.id === p.dataset.crew; })[0]; if (!c) return; var nm = p.dataset.w, t = c.trackMap[nm]; if (!t) return;
       var st = paneState(c, nm), dot = p.querySelector('.cp-dot'); dot.className = 'cp-dot ' + (st.k === 'run' || st.k === 'done' ? 'ok' : st.k === 'failed' ? 'bad' : st.k === 'wait' ? 'wait' : ''); p.querySelector('.cp-st').textContent = LABEL[st.k] || '';
@@ -207,11 +219,23 @@
       // The end of a worker's pane says how it ended: a green line when done, red when failed, grey while it waits its turn.
       var wf = p.querySelector('.cp-wf'), mark = st.k === 'done' ? ['done', '✔ ' + LABEL.done] : st.k === 'failed' ? ['failed', '✖ ' + LABEL.failed] : st.k === 'queued' ? ['queued', '… ' + LABEL.queued] : null;
       wf.className = 'cp-wf' + (mark ? ' ' + mark[0] : ''); wf.textContent = mark ? mark[1] : '';
-      var q = 'server=' + encodeURIComponent(c.server) + '&session=' + encodeURIComponent(c.name) + '&task=' + encodeURIComponent(t.task) + '&track=' + encodeURIComponent(t.track);
-      TW.api('GET', '/api/features/crew/log?' + q).then(function (r) {
-        var pre = p.querySelector('.cp-wl'), near = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40, lines = r.feed || stripAnsi(r.text).split('\n').slice(-200).join('\n');
-        if (pre.textContent !== lines) { pre.textContent = lines || (st.k === 'run' ? i18n('cp.log_wait_running') : i18n('cp.log_none')); if (near) pre.scrollTop = pre.scrollHeight; }
-      }).catch(function () { var pre = p.querySelector('.cp-wl'); if (!pre.dataset.err) { pre.dataset.err = '1'; pre.textContent = i18n('cp.log_error'); } });
+      var mem = logMem[memKey(c, t)]; if (mem) paintLog(p, c, nm, st, mem);
+      (byCrew[c.id] = byCrew[c.id] || { c: c, items: [] }).items.push({ p: p, nm: nm, t: t, st: st });
+    });
+    Object.keys(byCrew).forEach(function (id) {
+      var g = byCrew[id], c = g.c; if (logFlight[id] || Date.now() < (logRetry[id] || 0)) return; // a slow host is never queued behind itself
+      logFlight[id] = true;
+      TW.api('POST', '/api/features/crew/logs', { server: c.server, session: c.name, tracks: g.items.map(function (i) { return { task: i.t.task, track: i.t.track }; }) }).then(function (r) {
+        logFlight[id] = false; logRetry[id] = r.stale ? Date.now() + 5000 : 0;
+        g.items.forEach(function (i) {
+          var rec = (r.logs || {})[i.t.task + '/' + i.t.track];
+          if (rec && !rec.error) { logMem[memKey(c, i.t)] = rec; if (i.p.isConnected) paintLog(i.p, c, i.nm, i.st, rec); }
+          else if (i.p.isConnected && !logMem[memKey(c, i.t)]) { var pre = i.p.querySelector('.cp-wl'); if (!pre.dataset.err) { pre.dataset.err = '1'; pre.textContent = i18n('cp.log_error'); } }
+        });
+      }).catch(function () {
+        logFlight[id] = false; logRetry[id] = Date.now() + 5000;
+        g.items.forEach(function (i) { if (!logMem[memKey(c, i.t)] && i.p.isConnected) { var pre = i.p.querySelector('.cp-wl'); if (!pre.dataset.err) { pre.dataset.err = '1'; pre.textContent = i18n('cp.log_error'); } } });
+      });
     });
   }
   // The orchestrator's share of the height is the person's to set: drag the thin bar between it and the workers (double-click resets).

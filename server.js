@@ -104,6 +104,7 @@ const STATIC = {
   '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
   '/terminal-keys.js': [path.join(PUB, 'terminal-keys.js'), 'text/javascript; charset=utf-8'],
   '/mouse-filter.js': [path.join(PUB, 'mouse-filter.js'), 'text/javascript; charset=utf-8'],
+  '/status-crop.js': [path.join(PUB, 'status-crop.js'), 'text/javascript; charset=utf-8'],
   '/touch-scroll.js': [path.join(PUB, 'touch-scroll.js'), 'text/javascript; charset=utf-8'],
   '/tab-hide.js': [path.join(PUB, 'tab-hide.js'), 'text/javascript; charset=utf-8'],
   '/ui-zoom.js': [path.join(PUB, 'ui-zoom.js'), 'text/javascript; charset=utf-8'],
