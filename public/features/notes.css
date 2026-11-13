@@ -58,3 +58,18 @@
 .nt-pane:not([hidden]) .nt-text{flex:1 1 auto;min-height:280px;resize:vertical}
 .nt-side{align-self:start;position:sticky;top:0}
 @media(max-width:900px){.nt-wrap{min-height:0}.nt-side{position:static}}
+
+/* Check-in slots + settings tab (notes2) */
+.nt-open{display:inline-block;margin-top:2px;border-radius:999px;padding:0 8px;font:700 10.5px var(--mono);background:var(--wait-soft);color:var(--wait)}
+.nt-act .nt-open{margin:0 8px 0 0}
+.nt-card{background:var(--surface);border-radius:14px;box-shadow:0 0 0 1px var(--line);padding:12px 14px;display:grid;gap:10px;min-width:0}
+.nt-card h4{margin:0;font-size:14px;color:var(--fg)}
+.nt-setpane{display:grid;gap:14px;align-content:start}
+.nt-slot{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px;background:var(--surface-2);min-width:0}.nt-slot.off{opacity:.6}
+.nt-slot-top,.nt-slot-add,.nt-days{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.nt-slot-time{width:110px;flex:none}.nt-slot-msg{flex:1;min-width:140px}
+.nt-dow,.nt-chipb{border:1px solid var(--line);background:var(--surface);color:var(--fg-2);border-radius:999px;padding:3px 10px;font:700 12px var(--sans);cursor:pointer}
+.nt-dow{min-width:34px}
+.nt-dow[aria-pressed="true"],.nt-chipb[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+.nt-danger{color:var(--bad,#c0392b)}
+.nt-setpane .nt-setrow small{display:block}

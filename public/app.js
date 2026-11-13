@@ -116,6 +116,7 @@
       all.onclick = function () { var f = document.querySelector('#f button[data-f="wait"]'); if (f) f.click(); var g = $('grid') || document.querySelector('#v-over .grid'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
       box.append(all);
     }
+    if (window.TWUX2) window.TWUX2.heroStats({ sessions: visTabs().length, run: r, wait: w, crew: window.TW && window.TW.crewWorkerCount ? window.TW.crewWorkerCount() : 0 });
     $('shelf').innerHTML = scoped().flatMap(function (v) { return (v.houseSessions || v.sessions).map(function (s) { return { v: v, s: s }; }); }).slice(0, 5).map(function (x) { return pet(petFor(x.v, x.s), x.s.state); }).join('');
   }
   // Without pets (or in the narrow sidebar) a session shows the first letters of its name instead of an empty tile.
@@ -149,17 +150,41 @@
     row('all', i18n('app.tat_ca_may_chu'), i18n('app.so_may_chu', [servers.length]), total, false, 'all');
     servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
-    [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
-      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s) && !inCrewWorker(x.v, x.s); }); if (!list.length) return;
-      box.append(el('div', 'group', g[1]));
-      list.forEach(function (x) {
+    // Session groups: "Nhóm phiên" picks how the list is ordered (default "Ưu tiên": pinned, waiting for you, running crews, running, resting).
+    // Without public/features/ux2.js the old three state groups are used.
+    var UX = window.TWUX2, pins = UX ? UX.getPins() : [], mode = UX ? UX.getMode() : 'stat';
+    if (UX) {
+      var bar = el('div', 'grpbar'), gs = el('select'); gs.id = 'grpsel'; gs.setAttribute('aria-label', i18n('ux2.grp_label'));
+      UX.MODES.forEach(function (m) { var o = el('option', '', i18n('ux2.g_' + m)); o.value = m; gs.append(o); }); gs.value = mode;
+      gs.onchange = function () { UX.setMode(gs.value); renderSide(); };
+      bar.append(el('span', '', i18n('ux2.grp_label')), gs); box.append(bar);
+    }
+    var rows = vis().filter(function (x) { return matches(x.s) && !inCrewWorker(x.v, x.s); }).map(function (x) {
+      var inc = inCrew(x.v, x.s);
+      return { x: x, key: tabKey(x), name: x.s.name, state: x.s.state, crew: inc, host: x.v.name, path: x.s.path, cmd: x.s.cmd, tool: x.s.aiTool };
+    });
+    var groups = UX ? UX.groupSessions(rows, mode, pins) : ['wait', 'run', 'idle'].map(function (st) {
+      return { id: st, text: i18n(st === 'wait' ? 'app.cho_ban' : st === 'run' ? 'app.dang_chay' : 'app.dang_nghi'), items: rows.filter(function (r) { return r.state === st; }) };
+    }).filter(function (g) { return g.items.length; });
+    groups.forEach(function (g) {
+      var head = el('div', 'group grp-h'); head.append(el('span', '', g.text || i18n(g.key)), el('span', 'cnt', String(g.items.length))); box.append(head);
+      g.items.forEach(function (r) {
+        var x = r.x;
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
+        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state);
+        a.append(UX ? UX.monoNode(x.s.name) : el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
         b.title = x.s.name + ' · ' + x.v.name;
         var t = el('span', 'txt'); var crewNote = window.TW && window.TW.crewNote ? window.TW.crewNote(x.v.id, x.s.name) : '', baseSub = scope === 'all' ? x.v.name : subOf(x.s);
         t.append(el('span', 'n', x.s.name), el('span', 's', crewNote ? baseSub + ' · ' + crewNote : baseSub));
-        b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
+        b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); };
+        if (UX) {   // ★ keeps a session at the top; a span, not a nested button
+          var on = pins.indexOf(r.key) >= 0, star = el('span', 'pinb' + (on ? ' on' : ''), '★'); star.setAttribute('role', 'button'); star.tabIndex = 0;
+          star.title = i18n(on ? 'ux2.unpin' : 'ux2.pin'); star.setAttribute('aria-label', star.title); star.setAttribute('aria-pressed', String(on));
+          var flip = function (ev) { ev.preventDefault(); ev.stopPropagation(); UX.togglePin(r.key); renderSide(); };
+          star.onclick = flip; star.onkeydown = function (ev) { if (ev.key === 'Enter' || ev.key === ' ') flip(ev); }; b.append(star);
+        }
+        box.append(b);
       });
     });
   }
@@ -182,7 +207,7 @@
   function sessionCard(v, s) {
     var c = el('div', 'card' + (s.state === 'wait' ? ' wait' : '')); c.style.setProperty('--c', color(s));
     c.setAttribute('aria-label', i18n('app.mo_phien', [s.name]));
-    var h = el('div', 'card-head'); h.append(petSlot(v, s));
+    var h = el('div', 'card-head'); h.append(petSlot(v, s), monoAv(s.name));
     var t = el('div', 't'), sub = el('span', 's', subOf(s)); t.append(el('span', 'n', s.name), sub); h.append(t, el('span', 'pill ' + s.state, LABEL[s.state]));
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
     var f = el('div', 'card-foot'); f.append(ref.foot, ref.path);
@@ -242,6 +267,8 @@
     catch (e) { /* decoration is optional */ }
   }
   function petEvent(id, name, type) { try { if (window.PetScene) window.PetScene.event(id, name, type); } catch (e) { /* optional */ } }
+  // Pets off: a monogram on a hue taken from the name (ux2.css shows it only when html.pets-off).
+  function monoAv(name) { return window.TWUX2 ? window.TWUX2.monoNode(name) : document.createDocumentFragment(); }
   function petSlot(v, s) {
     var n = el('div', 'pet-slot'); n.dataset.key = v.id + '/' + s.name + '/' + s.created; return n;
   }
@@ -380,7 +407,7 @@
     visTabs().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name);
+      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); if (window.TWUX2) b.prepend(window.TWUX2.monoNode(x.s.name)); b.append(x.s.name);
       if (tabHide) {
         var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', i18n('app.dong_tab', [x.s.name])); close.title = i18n('app.dong_tab_phien_van_chay');
         close.onclick = function (e) { e.stopPropagation(); closeTab(x); }; b.append(close);
@@ -411,7 +438,7 @@
     var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
     if (nextSignature === detailSignature) return;
     detailSignature = nextSignature; box.textContent = ''; if (!x) return;
-    var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s));
+    var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s), monoAv(x.s.name));
     w.append(el('b', '', x.s.name), el('span', 'pill ' + x.s.state, LABEL[x.s.state]));
     var a = el('div'); a.append(el('h3', '', i18n('app.thong_tin')));
     var dl = el('dl', 'kv');
@@ -631,7 +658,7 @@
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
     p.node = el('div', 'pane'); p.node.classList.toggle('active', index === focusedPane); p.picker = el('select'); p.picker.setAttribute('aria-label', i18n('app.phien_o', [(index + 1)]));
     p.host = el('div', 'terminal'); p.node.append(p.picker, p.host); $('split').append(p.node); panes.push(p);
-    p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
+    p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: (typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark') ? '#121418' : '#181A1F', foreground: '#D3D6DC', cursor: '#9AA5F4', selectionBackground: '#3A4068' } });
     p.fit = new window.FitAddon.FitAddon(); p.term.loadAddon(p.fit); p.term.open(p.host);
     applySoftKeyboard(p);
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
@@ -776,7 +803,7 @@
     if (window.TW && window.TW.openCrewFor && window.TW.openCrewFor(id, name)) return;
     if (/\bcrew[TL]\b/.test($('split').className) && !inCrew({ id: id }, { name: name })) { focusedPane = 0; setSplit(1); }
     if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
-  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
+  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', left: '\x1b[D', right: '\x1b[C', enter: '\r', ctrld: '\x04', ctrll: '\x0c', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   $('key-more-btn').onclick = function (e) { e.stopPropagation(); popToggle(this, $('key-more')); };
   $('key-more').addEventListener('click', function () { this.hidden = true; $('key-more-btn').setAttribute('aria-expanded', 'false'); });
@@ -1115,18 +1142,24 @@
     document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; });
     document.querySelectorAll('.term-tools .key-more-btn').forEach(function (x) { x.setAttribute('aria-expanded', 'false'); });
     menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
-    cmdOpen = menu.id === 'cmd-pop' && open;
+    cmdOpen = menu.id === 'cmd-pop' && open; layOpen = menu.id === 'lay-pop' && open;
   }
-  var cmdOpen = false;
-  document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.key-more-wrap')) { cmdOpen = false; document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); } });
+  var cmdOpen = false, layOpen = false;
+  document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.key-more-wrap')) { cmdOpen = false; layOpen = false; document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); } });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); });
   function renderCommands() {
     var box = $('command-list'); box.textContent = '';
-    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), '⊞ ' + n); b.title = i18n('app.o', [n]); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
+    // "Chia màn ▾": 1 / 2 / 4 panes in one menu (it stays open across redraws like the commands menu until a click elsewhere).
+    var lw = el('span', 'key-more-wrap'), lb = el('button', 'btn key-more-btn', '⊞ ' + (wallOn ? '' : paneCount + ' ') + '▾'), lm = el('span', 'key-more pop menu');
+    lm.id = 'lay-pop'; lb.type = 'button'; lb.title = i18n('ux2.split'); lb.setAttribute('aria-label', i18n('ux2.split')); lb.setAttribute('aria-expanded', String(layOpen)); lm.hidden = !layOpen;
+    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), (!wallOn && paneCount === n ? '✓ ' : '') + i18n('ux2.n_screens', [n])); b.title = i18n('app.o', [n]); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; lm.append(b); });
+    lm.addEventListener('click', function () { layOpen = false; lm.hidden = true; lb.setAttribute('aria-expanded', 'false'); });
+    lb.onclick = function (e) { e.stopPropagation(); popToggle(lb, lm); };
+    lw.append(lb, lm);
     // Saved commands live in one "Lệnh mẫu ▾" menu instead of a row of chips.
     var wrap = el('span', 'key-more-wrap'), mb = el('button', 'btn key-more-btn', '⚡ ' + i18n('term.commands') + ' ▾'), menu = el('span', 'key-more pop');
     // Redrawn on every poll: the menu stays open across redraws until a click elsewhere closes it.
-    menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap);
+    menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap, lw);
     menu.addEventListener('click', function () { cmdOpen = false; menu.hidden = true; mb.setAttribute('aria-expanded', 'false'); });
     mb.onclick = function (e) { e.stopPropagation(); popToggle(mb, menu); };
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.title = c; b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; menu.append(b); });

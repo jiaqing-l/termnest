@@ -4,7 +4,7 @@
 (function () {
   var TW = window.TW; if (!TW) return;
   var el = TW.el, PET = window.PetArt;
-  var demoMode = false, crews = [], registry = [], derived = [], tracks = {}, cur = null, menuOpen = false, layoutMode = 'T', boxes = [], QUIET = 45;
+  var demoMode = false, crews = [], registry = [], derived = [], tracks = {}, cur = null, menuOpen = '', layoutMode = 'T', boxes = [], QUIET = 45;
   var KINDS = ['owl', 'cat', 'fox', 'bunny', 'frog'], COLORS = ['#7c6cf0', '#0fa58a', '#2f80ed', '#e08a00', '#d85aa0'];
   var LABEL = { run: i18n('cp.state_run'), wait: i18n('cp.state_wait'), idle: i18n('cp.state_idle'), done: i18n('cp.state_done'), quiet: i18n('cp.state_quiet'), queued: i18n('cp.state_queued'), failed: i18n('cp.state_failed'), gone: i18n('cp.state_gone'), off: i18n('cp.state_off') };
   function app() { return TW.app(); }
@@ -141,6 +141,7 @@
     var ks = w.map(function (n) { return paneState(c, n).k; }), need = ks.filter(function (k) { return k === 'wait' || k === 'quiet' || k === 'gone' || k === 'failed'; }).length, run = ks.filter(function (k) { return k === 'run'; }).length;
     return w.length + i18n('cp.n_workers') + (need ? ' · ' + need + i18n('cp.n_need') : run ? ' · ' + run + i18n('cp.n_running') : '');
   };
+  TW.crewWorkerCount = function () { return crews.reduce(function (n, c) { return n + liveWorkers(c).length; }, 0); };
   TW.crewWorker = function (id, name) { var c = crewOf(id, name); return !!c && name !== c.name; };
   // More workers than panes: panes go to the ones that need a look (waiting, quiet, running); the rest stay as chips.
   var MAXPANES = 6, pins = {}, hidden = loadHidden(), LEADKEY = 'tw-crew-lead', HIDEKEY = 'tw-crew-hide';
@@ -149,7 +150,9 @@
   function leadShare() { try { var v = parseFloat(localStorage.getItem(LEADKEY)); return v >= 0.25 && v <= 0.85 ? v : 0; } catch (e) { return 0; } }
   function prio(c, n) { var k = paneState(c, n).k; return k === 'wait' || k === 'quiet' || k === 'gone' || k === 'failed' ? 3 : k === 'run' ? 2 : k === 'idle' || k === 'queued' ? 1 : 0; }
   // Every worker of the Crew stays in the grid, finished or not (only the person hides them, with the button in the bar).
-  function visibleBase(c) { return liveWorkers(c).slice().sort(); }
+  // "Hiện cả thợ đã xong" (Crew options menu, remembered): on by default, so nothing changes until the person turns it off.
+  function showDone() { try { return localStorage.getItem('tw-crew-done') !== '0'; } catch (e) { return true; } }
+  function visibleBase(c) { return liveWorkers(c).slice().sort().filter(function (n) { return showDone() || paneState(c, n).k !== 'done'; }); }
   function pickShown(c) {
     var w = visibleBase(c);
     if (w.length <= MAXPANES) return w;
@@ -255,32 +258,63 @@
   function seg(items, value, on) {
     var s = el('div', 'seg'); items.forEach(function (it) { var b = el('button', '', it[1]); b.type = 'button'; b.setAttribute('aria-pressed', String(value === it[0])); b.onclick = function () { on(it[0]); }; s.append(b); }); return s;
   }
-  // An ordinary session gets the same slim bar as a Crew: name, state, where it runs, then ⓘ (details on demand) and ⋯ (pet / detach / stop).
+  // ----- session bar: icon buttons with a quick tooltip (data-tip); everything else sits in two menus -----
+  var ICONS = {
+    users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14c2.6.1 4.5 1.9 4.5 5"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
+  };
+  function ib(icon, tip, on, fn, tag) {
+    var b = el('button', 'btn ib icon-btn' + (on ? ' tgl' : '')); b.type = 'button'; b.innerHTML = '<svg class="i" viewBox="0 0 24 24">' + ICONS[icon] + '</svg>';
+    b.dataset.tip = tip; b.setAttribute('aria-label', tip); if (on != null) b.setAttribute('aria-pressed', String(!!on)); if (tag) b.dataset[tag] = '1'; b.onclick = fn; return b;
+  }
+  // A button with its dropdown: items are [label, run, danger] or null for a divider.
+  function dropdown(id, btn, items) {
+    var w = el('span', 'mw'); w.append(btn);
+    if (menuOpen === id) {
+      var m = el('div', 'menu'); m.setAttribute('role', 'menu');
+      items.forEach(function (it) {
+        if (!it) { m.append(el('div', 'menu-sep')); return; }
+        var a = el('a', it[2] ? 'dg' : '', it[0]); a.tabIndex = 0; a.setAttribute('role', 'menuitem');
+        var go = function () { menuOpen = ''; drawBar(); it[1](); }; a.onclick = go; a.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; m.append(a);
+      });
+      w.append(m);
+    }
+    return w;
+  }
+  function toggleMenu(id) { return function (e) { if (e) e.stopPropagation(); menuOpen = menuOpen === id ? '' : id; drawBar(); }; }
+  document.addEventListener('click', function (e) { if (menuOpen && !(e.target.closest && e.target.closest('#cp-bar .mw'))) { menuOpen = ''; drawBar(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && menuOpen) { menuOpen = ''; drawBar(); } });
+  // The session's own actions live in other panels (detail, move, handoff); the menu reaches them in one click.
+  function clickIn(q) { return function () { var t = document.querySelector(q); if (t && !t.disabled) t.click(); else app().say(i18n('cp.no_session_detail'), false, 2500); }; }
+  function clearScroll(id, name) {
+    return function () { if (!window.confirm(i18n('history.xoa_lich_su_cuon') + '?')) return; TW.api('POST', '/api/features/history/clear', { server: id, session: name }).then(function () { app().say(i18n('history.da_xoa_lich_su_cuon'), true, 3000); }).catch(function (e) { app().say(e.message, false, 4000); }); };
+  }
+  function sessionItems(id, name) {
+    var items = [[i18n('app.thu_cung'), clickIn('#detail > button.btn')], [i18n('move.button'), clickIn('#detail .mv-detail button')], [i18n('history.xoa_lich_su_cuon'), clearScroll(id, name)]];
+    if (TW.handoffMenu) items.push([i18n('ux2.act_handoff'), function () { var a = document.querySelector('#cp-bar [data-more]'); if (a) TW.handoffMenu(a, id, name); }]);
+    return items;
+  }
+  function avatar(name) { return window.TWUX2 ? window.TWUX2.monoNode(name) : document.createDocumentFragment(); }
+  // An ordinary session gets the same slim bar as a Crew: name, state, where it runs, then ⓘ (details on demand) and ⋯ (pet, move, handoff, stop).
   function drawPlainBar(host) {
     var app0 = document.getElementById('app'), a = app(), x = a.current && a.view && a.view() === 'focus' ? a.current() : null, split = document.getElementById('split');
     var v = x && x.v ? (a.servers() || []).filter(function (q) { return q.id === x.v.id; })[0] : null, s0 = v && v.sessions ? v.sessions.filter(function (q) { return q.name === x.s.name; })[0] : null;
     if (!s0 || a.compact() || split.hidden || split.className !== 'one') { host.hidden = true; host.textContent = ''; delete host.dataset.html; app0.classList.remove('slim', 'cp-detail'); return; }
     var b = el('div'), nm = el('div', 'cp-nm');
-    nm.append(el('b', '', s0.name), pill(s0.state === 'wait' ? 'wait' : s0.state === 'run' ? 'run' : '', s0.state === 'wait' ? i18n('app.cho_ban') : s0.state === 'run' ? i18n('app.dang_chay') : i18n('app.dang_nghi')));
+    nm.append(avatar(s0.name), el('b', '', s0.name), pill(s0.state === 'wait' ? 'wait' : s0.state === 'run' ? 'run' : '', s0.state === 'wait' ? i18n('app.cho_ban') : s0.state === 'run' ? i18n('app.dang_chay') : i18n('app.dang_nghi')));
     var where = el('div', 'cp-task', v.name + (s0.path ? ' · ' + s0.path : '')); where.title = where.textContent;
-    var det = el('button', 'btn icon-btn', 'ⓘ'); det.type = 'button'; det.title = i18n('cp.detail_session'); det.setAttribute('aria-label', det.title); det.onclick = function () { app0.classList.toggle('cp-detail'); };
-    var more = el('button', 'btn icon-btn', '⋯'); more.type = 'button'; more.title = i18n('cp.more'); more.setAttribute('aria-label', more.title); more.onclick = function () { menuOpen = !menuOpen; drawBar(); };
-    b.append(nm, where, det, more);
-    if (menuOpen) {
-      var m = el('div', 'cp-menu'); m.setAttribute('role', 'menu');
-      var click = function (q) { return function () { var t = document.querySelector(q); if (t) t.click(); else app().say(i18n('cp.no_session_detail'), false, 2500); }; };
-      [[i18n('app.doi_thu_cung'), click('#detail > button.btn')], [i18n('app.roi_van_chay'), click('#detail .detail-actions .btn:not(.danger)')], [i18n('app.dung'), click('#detail .detail-actions .btn.danger'), true]].forEach(function (it) {
-        var i2 = el('button', it[2] ? 'dg' : '', it[0]); i2.type = 'button'; i2.onclick = function () { menuOpen = false; drawBar(); it[1](); }; m.append(i2);
-      });
-      b.append(m);
-    }
+    var det = ib('info', i18n('cp.detail_session'), app0.classList.contains('cp-detail'), function () { app0.classList.toggle('cp-detail'); drawBar(); });
+    var items = sessionItems(v.id, s0.name); items.push(null, [i18n('app.roi_van_chay'), clickIn('#detail .detail-actions .btn:not(.danger)')], [i18n('app.dung'), clickIn('#detail .detail-actions .btn.danger'), true]);
+    b.append(nm, where, det, dropdown('more', ib('more', i18n('cp.more'), null, toggleMenu('more'), 'more'), items));
     host.hidden = false; app0.classList.add('slim');
     if (b.innerHTML !== host.dataset.html) { host.dataset.html = b.innerHTML; host.replaceChildren.apply(host, Array.prototype.slice.call(b.childNodes)); }
   }
   function drawBar() {
     var host = barNode(), c = currentCrew(); if (!c) { drawPlainBar(host); return; } document.getElementById('app').classList.remove('slim'); host.hidden = false; // forget the markup too, or the same bar is never drawn again after leaving the Crew
     var b = el('div'); // built aside, swapped in only when the markup changed (keeps clicks and focus stable)
-    var sm = summary(c), nm = el('div', 'cp-nm'), pt = el('span', 'pt'); pt.innerHTML = petSvg(0, sm.k); nm.append(pt, el('b', '', c.name), pill(sm.cls, sm.label));
+    var sm = summary(c), nm = el('div', 'cp-nm'), pt = el('span', 'pt'); pt.innerHTML = petSvg(0, sm.k); nm.append(pt, avatar(c.name), el('b', '', c.name), pill(sm.cls, sm.label));
     var steps = el('div', 'cp-steps'), t = ((tracks[c.id] || {}).tracks) || [];
     if (!t.length) steps.append(el('span', 'cp-src', liveWorkers(c).length ? '' : i18n('cp.bar_hint')));
     t.forEach(function (x) {
@@ -291,28 +325,20 @@
     });
     b.textContent = ''; b.append(nm, steps);
     if (liveWorkers(c).length > MAXPANES) { var hid = el('span', 'cp-hid', cur.shown.length + '/' + liveWorkers(c).length); hid.title = i18n('cp.showing') + cur.shown.length + i18n('cp.panes_tip'); b.append(hid); }
-    // The action used most is one click away; only rare ones (stop, layout) sit in the ⋯ menu.
-    var nd = el('button', 'btn icon-btn'); nd.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg>'; nd.type = 'button'; nd.title = i18n('cp.nudge'); nd.setAttribute('aria-label', i18n('cp.nudge')); nd.onclick = function () { nudge(c); };
-    var tg = el('button', 'btn icon-btn'); tg.type = 'button';
-    var off = !!hidden[c.id];
-    tg.innerHTML = '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 13h18"' + (off ? ' stroke-dasharray="2 2"' : '') + '/></svg>';
-    tg.title = off ? i18n('cp.tg_show') : i18n('cp.tg_hide'); tg.setAttribute('aria-label', tg.title); tg.setAttribute('aria-pressed', String(off));
-    tg.onclick = function () { setHidden(c.id, !hidden[c.id]); openCrew(c, c.name); };
-    var det = el('button', 'btn icon-btn', 'ⓘ'); det.type = 'button'; det.title = i18n('cp.detail'); det.setAttribute('aria-label', i18n('cp.detail')); det.onclick = function () { document.getElementById('app').classList.toggle('cp-detail'); };
-    var more = el('button', 'btn icon-btn', '⋯'); more.type = 'button'; more.title = i18n('cp.more'); more.setAttribute('aria-label', i18n('cp.more')); more.onclick = function () { menuOpen = !menuOpen; drawBar(); };
-    b.append(nd, tg, det, more);
-    if (menuOpen) {
-      var m = el('div', 'cp-menu'); m.setAttribute('role', 'menu');
-      // The session's own actions (detach / stop) are the ones of the detail panel; the menu reaches them in one click.
-      var sessBtn = function (danger) { return function () { var b = document.querySelector('#detail .detail-actions .btn' + (danger ? '.danger' : ':not(.danger)')); if (b) b.click(); else app().say(i18n('cp.no_session_detail'), false, 2500); }; };
-      var items = c.derived ? [] : [[layoutMode === '1' ? i18n('cp.view_crew') : i18n('cp.view_one'), function () { layoutMode = layoutMode === '1' ? 'T' : '1'; openCrew(c, cur.focus); }]];
-      items.push([i18n('app.roi_van_chay'), sessBtn(false)]);
-      if (c.derived) items.push([i18n('cp.stop_leader'), sessBtn(true), true]);
-      if (demoMode) items.push(['Giả lập thợ treo (demo)', function () { hang(c); }]);
-      if (!c.derived) items.push([i18n('cp.stop_crew'), function () { stopCrew(c); }, true]);
-      items.forEach(function (it) { var i2 = el('button', it[2] ? 'dg' : '', it[0]); i2.type = 'button'; i2.onclick = function () { menuOpen = false; drawBar(); it[1](); }; m.append(i2); });
-      b.append(m);
-    }
+    // Crew buttons: 👥 shows or hides the workers (its own quick button), the sliders menu holds the rare crew options.
+    var off = !!hidden[c.id], app0 = document.getElementById('app');
+    var tg = ib('users', off ? i18n('cp.tg_show') : i18n('cp.tg_hide'), !off, function () { setHidden(c.id, !hidden[c.id]); openCrew(c, c.name); });
+    var opts = dropdown('crew', ib('sliders', i18n('ux2.crew_opts'), menuOpen === 'crew', toggleMenu('crew')), [
+      [i18n('cp.nudge'), function () { nudge(c); }],
+      [(showDone() ? '✓ ' : '') + i18n('ux2.show_done'), function () { try { localStorage.setItem('tw-crew-done', showDone() ? '0' : '1'); } catch (e) { /* optional */ } openCrew(c, cur.focus); }]]);
+    var det = ib('info', i18n('cp.detail'), app0.classList.contains('cp-detail'), function () { app0.classList.toggle('cp-detail'); drawBar(); });
+    // The session's own actions (detach / stop) are the ones of the detail panel; the menu reaches them in one click.
+    var items = sessionItems(c.server, c.name); items.push(null);
+    if (!c.derived) items.push([layoutMode === '1' ? i18n('cp.view_crew') : i18n('cp.view_one'), function () { layoutMode = layoutMode === '1' ? 'T' : '1'; openCrew(c, cur.focus); }]);
+    items.push([i18n('app.roi_van_chay'), clickIn('#detail .detail-actions .btn:not(.danger)')]);
+    if (demoMode) items.push(['Giả lập thợ treo (demo)', function () { hang(c); }]);
+    if (c.derived) items.push([i18n('cp.stop_leader'), clickIn('#detail .detail-actions .btn.danger'), true]); else items.push([i18n('cp.stop_crew'), function () { stopCrew(c); }, true]);
+    b.append(tg, opts, det, dropdown('more', ib('more', i18n('cp.more'), null, toggleMenu('more'), 'more'), items));
     if (b.innerHTML !== host.dataset.html) { host.dataset.html = b.innerHTML; host.replaceChildren.apply(host, Array.prototype.slice.call(b.childNodes)); }
     var sl = document.getElementById('cp-slots');
     if (app().compact()) { if (!sl) { sl = el('div', 'cp-slots'); sl.id = 'cp-slots'; host.after(sl); } sl.textContent = ''; members(c).forEach(function (n, i) { var x = el('button', 'tab', i ? n.replace(c.name + '-', '') : i18n('cp.orch')); x.type = 'button'; x.onclick = function () { openCrew(c, n); }; sl.append(x); }); }

@@ -14,8 +14,8 @@ test('clean keeps valid data and drops oversized, malformed or orphaned entries'
   assert.equal(doc.notes.length, 2); assert.equal(doc.notes[0].title.length, 120); assert.equal(doc.notes[0].pet, 'dog'); assert.equal(doc.notes[1].pet, '');
   assert.deepEqual(doc.reminders.map((r) => r.id), ['r1', 'r4']);
   assert.equal(doc.reminders[0].daily, true); assert.equal(doc.reminders[0].link, 'note'); assert.equal(doc.reminders[1].on, false); assert.equal(doc.reminders[1].snoozeUntil, 5);
-  assert.deepEqual(doc.settings, { bell: false, os: true, sound: true, quiet: true, snooze: '10 phút', current: '' });
-  assert.deepEqual(notes.clean(null), { notes: [], reminders: [], settings: { bell: true, os: true, sound: false, quiet: true, snooze: '10 phút', current: '' } });
+  assert.deepEqual(doc.settings, { bell: false, os: true, sound: true, quiet: true, snooze: '10 phút', current: '', slotsOnlyOpen: false });
+  assert.deepEqual(notes.clean(null), { notes: [], reminders: [], settings: { bell: true, os: true, sound: false, quiet: true, snooze: '10 phút', current: '', slotsOnlyOpen: false }, slots: [] });
 });
 
 test('append adds to an existing .md/.txt inside the session directory and nothing else', async () => {

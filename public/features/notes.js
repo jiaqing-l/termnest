@@ -5,7 +5,7 @@
   var TW = window.TW, NC = window.NotesCore, PA = window.PetArt;
   if (!TW || !NC) return;
   var el = TW.el;
-  var state = { notes: [], reminders: [], settings: { bell: true, os: true, sound: false, quiet: true, snooze: i18n('notes.10_phut'), current: '' } };
+  var state = { notes: [], reminders: [], slots: [], settings: { bell: true, os: true, sound: false, quiet: true, slotsOnlyOpen: false, snooze: i18n('notes.10_phut'), current: '' } };
   var tab = 'edit', loaded = false, saveTimer = null, missed = [], ui = {}, appendOpen = false;
   var QUIET = ['22:00', '07:00'];
   var SAY = { dog: i18n('notes.gau_minh_canh_ghi_chu'), cat: i18n('notes.meo_ghi_nhanh_thoi_nao'), pig: i18n('notes.ut_it_nho_luu_nha'), cow: i18n('notes.moo_viec_hom_nay_dau'), duck: i18n('notes.cac_cac_xong_viec_nao'), wolf: i18n('notes.awoo_khong_bo_sot_viec'), capy: i18n('notes.cu_tu_tu_ban_lam'), fox: i18n('notes.minh_nho_het_giup_ban'), bunny: i18n('notes.nhay_nhay_ghi_chu_xong'), owl: i18n('notes.khuya_roi_nho_luu_nhe'), penguin: i18n('notes.lanh_qua_ghi_nhanh_roi'), frog: i18n('notes.op_op_viec_ke_tiep'), dora: i18n('notes.de_minh_lay_bao_boi'), nobi: i18n('notes.hom_nay_lam_xong_som'), xuka: i18n('notes.ban_nho_nghi_ngoi_mot'), chaien: i18n('notes.lam_cho_xong_di_dung'), xeko: i18n('notes.xem_to_ghi_chu_dep'), tom: i18n('notes.meo_viec_nay_minh_bat'), jerry: i18n('notes.chit_chit_da_luu_roi'), shin: i18n('notes.oi_phai_lam_ca_viec') };
@@ -30,7 +30,7 @@
   }
   function load() {
     return api('GET', '/data').then(function (doc) {
-      state = doc; loaded = true;
+      state = doc; loaded = true; if (!Array.isArray(state.slots)) state.slots = [];
       if (!state.notes.length) newNote(true);
       if (!state.settings.current) state.settings.current = state.notes[0].id;
       draw();
@@ -117,7 +117,66 @@
       NC.markFired(d.rem, d.at, now); changed = true;
       if (d.late) missed.push({ rem: d.rem, at: d.at }); else ring(d.rem, d.at, false);
     });
+    var q = { on: state.settings.quiet, from: QUIET[0], to: QUIET[1] };
+    NC.dueSlots(state.slots, now, { notes: state.notes, onlyOpen: state.settings.slotsOnlyOpen, quiet: q }).forEach(function (d) {
+      d.slot.lastFired = d.at.getTime(); changed = true;
+      if (d.skip) return;
+      if (d.late) missed.push({ rem: { time: d.slot.time, title: d.slot.msg || i18n('notes2.slot_default_msg') }, at: d.at }); else ringSlot(d.slot, d.open, d.silent);
+    });
     if (changed) { save(); draw(); }
+  }
+  function openNotes() { tab = 'edit'; TW.app().setView('notes'); draw(); }
+  function ringSlot(slot, open, silent, noSnooze) {
+    var id = 'slot-' + slot.id, title = '⏰ ' + slot.time + ' · ' + (slot.msg || i18n('notes2.slot_default_msg')), detail = i18n('notes2.slot_card', [open]);
+    if (state.settings.bell) {
+      var actions = [{ label: i18n('notes.mo'), primary: true, onClick: function () { TW.banner.hide(id); openNotes(); } }];
+      if (!noSnooze) actions.push({ label: i18n('notes.hoan', [i18n('notes.1_gio')]), onClick: function () { TW.banner.hide(id); setTimeout(function () { ringSlot(slot, NC.openTotal(state.notes), false, true); }, 3600000); } });
+      actions.push({ label: i18n('notes2.done'), onClick: function () { TW.banner.hide(id); } });
+      TW.banner.show({ id: id, level: 'warn', title: title, detail: detail, actions: actions });
+    }
+    if (state.settings.os && window.Notification && Notification.permission === 'granted') {
+      try { var nt = new Notification(title, { body: detail }); nt.onclick = function () { try { window.focus(); } catch (e) { /* optional */ } openNotes(); }; } catch (e) { /* optional */ }
+    }
+    if (state.settings.sound && !silent) beep();
+  }
+  function drawSlots() {
+    var h = ui.slotsHost; if (!h) return; h.textContent = '';
+    var card = el('div', 'nt-card'), s = state.settings;
+    card.append(el('h4', '', i18n('notes2.slots_title')), el('p', 'nt-lim', i18n('notes2.slots_sub')));
+    if (!state.slots.length) card.append(el('div', 'nt-empty', i18n('notes2.slots_empty')));
+    state.slots.slice().sort(function (a, b) { return a.time.localeCompare(b.time); }).forEach(function (x) {
+      var row = el('div', 'nt-slot' + (x.on ? '' : ' off')), top = el('div', 'nt-slot-top');
+      var tm = field('input', 'nt-slot-time', { type: 'time', 'aria-label': i18n('notes.gio_nhac') }); tm.value = x.time;
+      tm.onchange = function () { if (NC.TIME.test(tm.value)) { x.time = tm.value; x.lastFired = 0; x.createdAt = Date.now(); save(); draw(); } else tm.value = x.time; };
+      var msg = field('input', 'nt-slot-msg', { 'aria-label': i18n('notes2.slot_msg'), maxlength: '200', placeholder: i18n('notes2.slot_default_msg') }); msg.value = x.msg;
+      msg.oninput = function () { x.msg = msg.value; save(); };
+      var del = el('button', 'btn nt-danger', '🗑'); del.type = 'button'; del.title = i18n('notes2.slot_delete'); del.onclick = function () { state.slots.splice(state.slots.indexOf(x), 1); save(); draw(); };
+      top.append(tm, msg, sw(x.on, function (v) { x.on = v; if (v) { x.lastFired = Date.now(); } save(); draw(); }, i18n('notes.bat_tat_nhac')), del);
+      var days = el('div', 'nt-days'); days.append(el('span', 'nt-lim', i18n('notes2.repeat_on')));
+      [1, 2, 3, 4, 5, 6, 7].forEach(function (d) {
+        var b = el('button', 'nt-dow', d === 7 ? i18n('notes2.dow_sun') : i18n('notes2.dow_' + d)); b.type = 'button'; b.setAttribute('aria-pressed', String(x.days.indexOf(d) >= 0));
+        b.onclick = function () { x.days = NC.toggleDay(x.days, d); save(); draw(); }; days.append(b);
+      });
+      var kind = NC.daysText(x.days);
+      [['work', 'notes2.workdays', NC.WORKDAYS], ['all', 'notes2.everyday', NC.ALLDAYS]].forEach(function (p) {
+        var b = el('button', 'nt-chipb', i18n(p[1])); b.type = 'button'; b.setAttribute('aria-pressed', String(kind === p[0])); b.onclick = function () { x.days = p[2].slice(); save(); draw(); }; days.append(b);
+      });
+      row.append(top, days); card.append(row);
+    });
+    var add = el('div', 'nt-slot-add'), t = field('input', 'nt-slot-time', { type: 'time', 'aria-label': i18n('notes.gio_nhac') }); t.value = '15:00';
+    var ab = el('button', 'btn primary', i18n('notes2.add_slot')); ab.type = 'button';
+    ab.onclick = function () {
+      if (!NC.TIME.test(t.value)) { say(i18n('notes.gio_chua_dung_dang_15'), false, 3000); return; }
+      state.slots.push({ id: uid('s'), time: t.value, msg: i18n('notes2.slot_default_msg'), days: NC.WORKDAYS.slice(), on: true, createdAt: Date.now(), lastFired: 0 });
+      if (state.settings.os && window.Notification && Notification.permission === 'default') { try { Notification.requestPermission(); } catch (e) { /* optional */ } }
+      save(); draw();
+    };
+    var prev = el('button', 'btn', i18n('notes.xem_thu_thong_bao')); prev.type = 'button';
+    prev.onclick = function () { ringSlot({ id: 'test', time: hhmm(new Date()), msg: i18n('notes2.slot_default_msg') }, NC.openTotal(state.notes), false, true); };
+    add.append(t, ab, prev); card.append(add);
+    var only = el('label', 'nt-setrow'), lab = el('span', ''); lab.append(el('b', '', i18n('notes2.only_open')), el('small', 'nt-lim', i18n('notes2.only_open_sub')));
+    only.append(lab, sw(!!s.slotsOnlyOpen, function (v) { s.slotsOnlyOpen = v; save(); draw(); }, i18n('notes2.only_open')));
+    card.append(only); h.append(card);
   }
 
   // ---------- drawing ----------
@@ -131,6 +190,7 @@
     state.notes.forEach(function (n) {
       var b = el('button', 'nt-item'); b.type = 'button'; b.setAttribute('aria-pressed', String(n.id === note().id));
       var pv = el('span', 'nt-pv'); pv.innerHTML = petSvg(petOf(n)); var t = el('span', 'nt-it'); t.append(el('b', '', n.title || i18n('notes.khong_ten')), el('small', '', n.session ? n.session.replace('|', ' / ') : i18n('notes.ghi_chu_chung')));
+      var open = NC.openTasks(n.text); if (open) t.append(el('span', 'nt-open', i18n('notes2.open_tasks', [open])));
       b.append(pv, t); b.onclick = function () { save(true); state.settings.current = n.id; draw(); }; ui.list.append(b);
     });
   }
@@ -143,6 +203,8 @@
     ui.paneEdit.hidden = tab !== 'edit'; ui.paneRem.hidden = tab !== 'rem';
     ui.tabs.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === tab)); });
     ui.appendBox.hidden = !appendOpen;
+    var oc = NC.openTasks(n.text); ui.openTag.textContent = i18n('notes2.open_tasks', [oc]); ui.openTag.hidden = !oc;
+    ui.paneSet.hidden = tab !== 'set';
   }
   function drawReminders() {
     var n = note(), l = ui.rlist; l.textContent = ''; var items = remsOf(n), now = new Date();
@@ -164,7 +226,7 @@
     var sn = el('label', 'nt-setrow'); sn.append(el('span', '', i18n('notes.hoan_nhanh'))); var sel = el('select'); [i18n('notes.10_phut'), i18n('notes.1_gio'), i18n('notes.sang_mai_08_00')].forEach(function (o) { sel.append(el('option', '', o)); }); sel.value = s.snooze;
     sel.onchange = function () { s.snooze = sel.value; save(); }; sn.append(sel); ui.settingsHost.append(sn);
   }
-  function draw() { if (!ui.box || !loaded) return; drawList(); drawEditor(); drawReminders(); }
+  function draw() { if (!ui.box || !loaded) return; drawList(); drawEditor(); drawReminders(); drawSlots(); }
 
   // ---------- mount ----------
   function mount(box) {
@@ -183,7 +245,7 @@
     ui.title.oninput = function () { var n = note(); n.title = ui.title.value; n.updatedAt = Date.now(); drawList(); save(); };
     ui.say = el('div', 'nt-bubble');
     var tabs = el('div', 'nt-tabs'); tabs.setAttribute('role', 'tablist'); ui.tabs = [];
-    [['edit', i18n('notes.ghi_chu_4')], ['rem', i18n('notes.nhac_viec')]].forEach(function (p) {
+    [['edit', i18n('notes.ghi_chu_4')], ['rem', i18n('notes.nhac_viec')], ['set', i18n('notes2.tab_settings')]].forEach(function (p) {
       var b = el('button', '', p[1]); b.type = 'button'; b.dataset.t = p[0]; b.setAttribute('role', 'tab'); b.onclick = function () { tab = p[0]; draw(); };
       if (p[0] === 'rem') { ui.rcount = el('span', 'nt-cnt', '0'); b.append(ui.rcount); } ui.tabs.push(b); tabs.append(b);
     });
@@ -199,7 +261,8 @@
     md.onclick = function () { exportNote('md'); }; tx.onclick = function () { exportNote('txt'); }; ap.onclick = function () { appendOpen = !appendOpen; draw(); };
     ui.sess = el('select', 'nt-sess'); ui.sess.setAttribute('aria-label', i18n('notes.phien_lien_quan'));
     ui.sess.onchange = function () { var n = note(); n.session = ui.sess.value; save(); drawList(); };
-    act.append(md, tx, ap, el('span', 'nt-hint', i18n('notes.tu_luu_khong_dung_ai')));
+    ui.openTag = el('span', 'nt-open'); ui.openTag.hidden = true;
+    act.append(md, tx, ap, ui.openTag, el('span', 'nt-hint', i18n('notes.tu_luu_khong_dung_ai')));
     ui.appendBox = el('div', 'nt-append'); ui.appendBox.hidden = true;
     ui.apath = field('input', 'nt-apath', { placeholder: i18n('notes.duong_dan_file_co_san'), 'aria-label': i18n('notes.file_can_noi') });
     var go = el('button', 'btn primary', i18n('notes.noi_vao_cuoi_file')); go.type = 'button'; go.onclick = doAppend;
@@ -217,13 +280,17 @@
     var addBtn = el('button', 'btn primary nt-go', i18n('notes.them_nhac')); addBtn.type = 'button'; addBtn.onclick = addReminder; opts.append(dl, ui.rlink, addBtn);
     add2.append(ui.rtitle, timeRow, opts);
     var lh = el('div', 'nt-rh'); ui.rcountLine = el('span', 'nt-chip', ''); lh.append(el('b', '', i18n('notes.nhac_cua_ghi_chu_nay')), ui.rcountLine); ui.rlist = el('div', 'nt-rlist');
-    var det = el('details', 'nt-set'); det.append(el('summary', '', i18n('notes.cai_dat_thong_bao'))); ui.settingsHost = el('div'); det.append(ui.settingsHost, el('p', 'nt-lim', i18n('notes.nhac_viec_chi_keu_khi')));
+    ui.settingsHost = el('div');
     var foot = el('div', 'nt-rfoot'), test = el('button', 'btn', i18n('notes.xem_thu_thong_bao')); test.type = 'button';
     test.onclick = function () { ring({ id: 'test', noteId: note().id, time: hhmm(new Date()), title: i18n('notes.thong_bao_thu'), link: 'note' }, new Date(), false); };
     ui.missed = el('span', 'nt-missed'); ui.missed.hidden = true; ui.missedText = el('span'); var ok = el('button', 'btn', i18n('notes.da_xem')); ok.type = 'button'; ok.onclick = function () { missed = []; draw(); }; ui.missed.append(ui.missedText, ok);
-    foot.append(test, ui.missed);
-    ui.paneRem.append(add2, lh, ui.rlist, det, foot);
-    ed.append(nh, ui.say, tabs, ui.paneEdit, ui.paneRem); wrap.append(side, ed); box.append(wrap);
+    foot.append(ui.missed);
+    ui.paneRem.append(add2, lh, ui.rlist, foot);
+    // settings pane: check-in slots + notification channels
+    ui.paneSet = el('div', 'nt-pane nt-setpane'); ui.paneSet.hidden = true; ui.slotsHost = el('div', 'nt-slots');
+    var chan = el('div', 'nt-card'); chan.append(el('h4', '', i18n('notes.cai_dat_thong_bao')), ui.settingsHost, el('p', 'nt-lim', i18n('notes.nhac_viec_chi_keu_khi')), test);
+    ui.paneSet.append(ui.slotsHost, chan);
+    ed.append(nh, ui.say, tabs, ui.paneEdit, ui.paneRem, ui.paneSet); wrap.append(side, ed); box.append(wrap);
   }
   var view = TW.addView({ id: 'notes', label: i18n('notes.ghi_chu_3'), mount: mount, onShow: function () { if (!loaded) load(); else draw(); } });
   if (view) { load(); setInterval(tick, 15000); }

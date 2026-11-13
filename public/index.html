@@ -9,8 +9,11 @@
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/svg+xml" href="/termnest-icon.svg">
 <link rel="stylesheet" href="/vendor/xterm.css">
+<script>(function(){var z=80;try{var v=parseInt(localStorage.getItem('tw-zoom'),10);if([70,80,90,100].indexOf(v)>-1)z=v}catch(e){}
+function ap(n){document.documentElement.style.setProperty('--ui-z',String(n/100))}
+ap(z);window.TW_setZoom=function(n){n=parseInt(n,10);if([70,80,90,100].indexOf(n)<0)n=80;try{localStorage.setItem('tw-zoom',String(n))}catch(e){}ap(n);return n}})();</script>
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css">
+<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css"><link rel="stylesheet" href="/features/ux2.css">
 </head>
 <body>
 <div id="stage"><div id="app">
@@ -222,7 +225,7 @@
   <nav class="set-nav" role="tablist"><button type="button" class="set-tab" role="tab" data-tab="look" data-i18n="settings.tab_look"></button><button type="button" class="set-tab" role="tab" data-tab="alerts" data-i18n="settings.tab_alerts"></button><button type="button" class="set-tab" role="tab" data-tab="servers" data-i18n="settings.tab_servers"></button><button type="button" class="set-tab" role="tab" data-tab="sessions" data-i18n="settings.tab_sessions"></button><button type="button" class="set-tab" role="tab" data-tab="backup" data-i18n="settings.tab_backup"></button><button type="button" class="set-tab" role="tab" data-tab="plugins" data-i18n="pl.tieu_de"></button><button type="button" class="set-tab" role="tab" data-tab="commands" data-i18n="settings.tab_commands"></button><button type="button" class="set-tab" role="tab" data-tab="connect" data-i18n="settings.tab_connect"></button><button type="button" class="set-tab" role="tab" data-tab="more" data-i18n="settings.tab_more"></button></nav>
   <div class="set-panes">
   <section class="set-pane" data-pane="look">
-    <div class="set-group"><label class="sw"><span data-i18n="settings.pets_label"></span><input id="pets-enabled" type="checkbox" checked></label><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label></div>
+    <div class="set-group"><div class="sw"><span data-i18n="ux2.cho_giao_dien"></span><div class="subseg" id="set-zoom" role="group"><button type="button" data-z="70">70%</button><button type="button" data-z="80">80%</button><button type="button" data-z="90">90%</button><button type="button" data-z="100">100%</button></div></div><label class="sw"><span data-i18n="settings.pets_label"></span><input id="pets-enabled" type="checkbox" checked></label><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label></div>
     <h4 data-i18n="look.theme"></h4>
     <div class="set-free"><p class="hint" data-i18n="look.theme_hint"></p><div id="set-theme" class="style-grid" role="radiogroup"></div></div>
     <h4 data-i18n="settings.style_label"></h4>
@@ -308,6 +311,7 @@
 <script defer src="/touch-scroll.js"></script>
 <script defer src="/view-controls.js"></script>
 <script defer src="/fx.js"></script>
+<script defer src="/features/ux2.js"></script>
 <script defer src="/app.js"></script>
 <script defer src="/look.js"></script>
 </body>
