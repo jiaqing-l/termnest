@@ -11,8 +11,9 @@
   --accent:#d32027; --accent-ink:#fff; --accent-soft:#FCE8E9;
   --bg:#F3F4F8; --surface:#fff; --surface-2:#F7F8FB; --line:#E4E7F0; --line-2:#D3D8E6;
   --ink:#141833; --ink-2:#4B5272; --ink-3:#8790AB;
-  --ok:#1E9E6A; --ok-soft:#E3F6EE; --warn:#C98512; --warn-soft:#FDF2DA; --bad:#d32027; --bad-soft:#FCE8E9;
-  --term:#0C1030; --term-2:#141A44; --term-ink:#DCE0F5; --term-dim:#7F89B3; --term-line:#252C5E;
+  --ok:#1E9E6A; --ok-soft:#E3F6EE; --warn:#C98512; --warn-soft:#FDF2DA; --bad:#C0443F; --bad-soft:#FCE8E9;
+  --term:#181A1F; --term-2:#20232A; --term-ink:#D3D6DC; --term-dim:#7B818E; --term-line:#2C3039;
+  --wt:#1D2025; --wt-2:#14161A; --wt-3:#292D35; --wt-in:#111317; --on-dark:#9AA5F4; --on-dark-ink:#0F1220; --chip-dark:#ffffff12; --dim2:#9097A6;
   --hero:linear-gradient(115deg,#20285a 0%,#2D3880 55%,#4650B0 100%);
   --sh:0 1px 2px rgba(20,24,51,.05),0 6px 20px rgba(20,24,51,.06);
   --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:24px;
@@ -21,12 +22,13 @@
   --term-size:13.5px;
 }
 :root[data-theme=dark]{
+  --on-dark:#9AA5F4;
   --brand:#8E9AF5; --brand-2:#A5AFFA; --brand-ink:#0B0E24; --brand-soft:#1F2552; --brand-line:#3A4285;
   --accent:#F0555B; --accent-soft:#3A1B1E;
   --bg:#0A0D22; --surface:#111634; --surface-2:#0E1230; --line:#222A58; --line-2:#2F3870;
   --ink:#EEF0FB; --ink-2:#AAB2D6; --ink-3:#6F79A3;
   --ok:#3CC58C; --ok-soft:#12342B; --warn:#E6AE3A; --warn-soft:#3A2D10; --bad:#F0555B; --bad-soft:#3A1B1E;
-  --term:#070920; --term-2:#0C1030; --term-line:#1E2552;
+  --term:#121418; --term-2:#181B20; --term-line:#262A32; --wt:#171A1F; --wt-2:#0F1114; --wt-3:#22262D; --wt-in:#0C0E11;
   --hero:linear-gradient(115deg,#1B2260 0%,#262F84 55%,#3A45B5 100%);
   --sh:0 1px 2px rgba(0,0,0,.35),0 6px 20px rgba(0,0,0,.35);
 }
@@ -59,8 +61,10 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .btn:hover{background:var(--surface-2)}
 .btn.brand{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .btn.brand:hover{background:var(--brand-2)}
-.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.accent:hover{filter:brightness(1.08)}
+.btn.accent{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.accent:hover{background:var(--brand-2);border-color:var(--brand-2)}
+.btn.danger{background:var(--bad-soft);border-color:#E3B1AE;color:var(--bad)}
+.btn.danger:hover{background:#F8D9D7}
 .btn.sm{height:34px;padding:0 12px;font-size:13px;border-radius:var(--r-s)}
 .btn.on{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand)}
 .body{display:grid;grid-template-columns:304px minmax(0,1fr);min-height:0}
@@ -104,7 +108,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .hero{border-radius:var(--r-xl);background:var(--hero);padding:28px;color:#fff;position:relative;overflow:hidden;flex:none}
 .hero h1{font-size:28px;letter-spacing:-.02em}
 .hero p{opacity:.85;margin:4px 0 16px}
-.hero .orb{position:absolute;right:-40px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d32027cc,#d3202700 70%)}
+.hero .orb{position:absolute;right:-40px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d3202766,#d3202700 70%)}
 .hero .orb.b{right:140px;top:50px;width:120px;height:120px;background:radial-gradient(circle,#ffffff30,#ffffff00 70%)}
 .hero .chip{background:#ffffff1c;border-color:#ffffff30;color:#fff}
 .hero .chip.partial{background:#fff;color:var(--warn)}
@@ -136,11 +140,11 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .term{background:var(--term);border:1px solid var(--term-line);border-radius:var(--r-l);color:var(--term-ink);font:var(--term-size)/1.6 var(--mono);overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:0}
 .term .out{flex:1;min-height:0;overflow:auto;padding:16px;white-space:pre-wrap;word-break:break-word}
 .term .tb{position:absolute;right:14px;top:12px;font-size:11px;color:var(--term-dim);background:var(--term-2);padding:2px 8px;border-radius:6px;pointer-events:none}
-.term .jump{position:absolute;right:16px;bottom:64px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:999px;font:600 12.5px var(--font);box-shadow:0 6px 16px #0006}
+.term .jump{position:absolute;right:16px;bottom:64px;background:var(--on-dark);color:var(--on-dark-ink);padding:8px 16px;border-radius:999px;font:600 12.5px var(--font);box-shadow:0 6px 16px #0006}
 .term .in{display:flex;gap:8px;align-items:center;padding:10px 16px;border-top:1px solid var(--term-line);background:var(--term-2)}
-.term .in b{color:var(--accent);font-weight:700}
+.term .in b{color:var(--on-dark);font-weight:700}
 .term .in input{flex:1;background:transparent;border:0;outline:0;color:var(--term-ink);font:inherit}
-.term .g{color:#5AD1A0}.term .y{color:#E6C26A}.term .r{color:#FF7A80}.term .d{color:var(--term-dim)}.term .b{color:#9AA6FF}
+.term .g{color:#6BD0A4}.term .y{color:#DDBB6B}.term .r{color:#F08A86}.term .d{color:var(--term-dim)}.term .b{color:#9AA5F4}
 .dock{display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:relative}
 .menu{position:absolute;bottom:44px;left:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--sh);padding:6px;z-index:20;min-width:260px}
 .menu a{display:block;padding:8px 12px;border-radius:var(--r-s);cursor:pointer;font-size:13px}
@@ -151,7 +155,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .wp.fail{border-color:var(--accent)}
 .wp .h{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--term-2);color:var(--term-ink);font-size:12.5px;border-bottom:1px solid var(--term-line);white-space:nowrap;overflow:hidden}
 .wp .h b{font-weight:700}
-.wp .h .k{background:#1D3B33;color:#5AD1A0;border-radius:6px;padding:0 8px;font-weight:600;flex:none}
+.wp .h .k{background:#21332C;color:#6BD0A4;border-radius:6px;padding:0 8px;font-weight:600;flex:none}
 .wp .h .s{margin-left:auto;color:var(--term-dim);flex:none}
 .wp .f{padding:10px 12px;font:12.5px/1.55 var(--mono);color:var(--term-ink);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;flex:1}
 .wp .f div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -253,7 +257,7 @@ html{zoom:var(--z)}
 .yard{display:flex;gap:18px;align-items:flex-end;min-height:64px;overflow:hidden;padding:8px 4px}
 .yard span{font-size:34px;cursor:pointer;transition:transform .2s}.yard span:hover{transform:translateY(-8px) rotate(-6deg)}
 .tmux{background:#2e9b4f;color:#06210f;font:12px var(--mono);padding:2px 14px;display:flex;justify-content:space-between;flex:none}
-.upfab{position:absolute;left:16px;bottom:96px;width:38px;height:38px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;box-shadow:0 6px 16px #0006;cursor:pointer}
+.upfab{position:absolute;left:16px;bottom:96px;width:38px;height:38px;border-radius:50%;background:var(--on-dark);color:var(--on-dark-ink);display:grid;place-items:center;box-shadow:0 6px 16px #0006;cursor:pointer}
 .banner{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:var(--r-m);padding:8px 14px;font-weight:600;font-size:13px}
 .splits{display:grid;gap:12px;flex:1;min-height:0}
 .splits.l2{grid-template-columns:1fr 1fr}.splits.l4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
@@ -264,31 +268,31 @@ html{zoom:var(--z)}
 .drop{border:2px dashed var(--line-2);border-radius:var(--r-l);padding:32px;text-align:center;color:var(--ink-2)}
 .rng{width:100%;accent-color:var(--brand)}
 .plain{padding:12px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface-2);font:12.5px/1.6 var(--mono);white-space:pre-wrap}
-.fsm .top,.fsm .side,.fsm .nav,.fsm .stabs,.fsm .tabbar{display:none}.fsm .body{grid-template-columns:1fr}.fsm.app{grid-template-rows:0 minmax(0,1fr)}
-.fsx{position:fixed;top:12px;right:12px;z-index:60}
+.fsm .top,.fsm .side,.fsm .nav,.fsm .stabs,.fsm .tabbar{display:none}.fsm .body{grid-template-columns:1fr}.fsm.app{grid-template-rows:minmax(0,1fr)}.fsm .page{padding:8px}.fsm .wfoot{display:none}
+.fsx{position:fixed;bottom:16px;right:16px;z-index:60;box-shadow:var(--sh)}
 select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 10px;background:var(--surface);color:var(--ink)}
 .fld select{width:100%}
 @media (max-width:860px){:root{--z:1}.body.mini{grid-template-columns:minmax(0,1fr)}.hero{flex-direction:column;align-items:flex-start}.scene{display:none}.splits.l2,.splits.l4{grid-template-columns:1fr}}
 
 .wallpane{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;background:var(--term);border:1px solid var(--term-line);border-radius:var(--r-l) var(--r-l) 0 0;padding:14px;margin-top:-1px}
 .wrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.wchipf{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--term-line);background:#ffffff0d;color:#e6e9fb;font-weight:700;font-size:13px;display:inline-flex;gap:8px;align-items:center;white-space:nowrap}
-.wchipf.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.dot.idl{background:#8a93c8}
+.wchipf{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--term-line);background:var(--chip-dark);color:#E4E6EB;font-weight:700;font-size:13px;display:inline-flex;gap:8px;align-items:center;white-space:nowrap}
+.wchipf.on{background:var(--on-dark);border-color:var(--on-dark);color:var(--on-dark-ink)}
+.dot.idl{background:#8A90A0}
 .wgrid{display:grid;gap:14px;overflow:auto;flex:1;min-height:0;grid-auto-rows:minmax(360px,1fr);align-content:start}
-.wt{background:#12163a;border:1px solid var(--term-line);border-top:3px solid #4a5399;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.wt.wait{border-top-color:#e0a82e}.wt.idle{opacity:.7}
-.wth{display:flex;align-items:center;gap:8px;padding:8px 12px;color:#e6e9fb;cursor:pointer;font:600 13.5px var(--mono);white-space:nowrap;overflow:hidden}
-.wth .hn{color:#8e97cc;font-weight:500;overflow:hidden;text-overflow:ellipsis}
-.wth .st{font:700 12px var(--font);color:#e0a82e}.wth .st.ok{color:#5AD1A0}.wth .st.bad{color:#ff7a80}
-.wth .ex{color:#9fa8d8}
+.wt{background:var(--wt);border:1px solid var(--term-line);border-top:3px solid #4B505C;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.wt.wait{border-top-color:#D9A441}.wt.idle{opacity:.7}
+.wth{display:flex;align-items:center;gap:8px;padding:8px 12px;color:#E4E6EB;cursor:pointer;font:600 13.5px var(--mono);white-space:nowrap;overflow:hidden}
+.wth .hn{color:var(--dim2);font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.wth .st{font:700 12px var(--font);color:#D9A441}.wth .st.ok{color:#5AD1A0}.wth .st.bad{color:#ff7a80}
+.wth .ex{color:var(--dim2)}
 .wtb{flex:1;min-height:0;overflow:hidden;padding:4px 14px;font:var(--term-size)/1.55 var(--mono);color:var(--term-ink);white-space:pre-wrap;display:flex;flex-direction:column;justify-content:flex-end;word-break:break-word}
-.wtb .g{color:#5AD1A0}.wtb .y{color:#E6C26A}.wtb .r{color:#FF7A80}.wtb .d{color:var(--term-dim)}.wtb .b{color:#9AA6FF}
-.wti{display:flex;gap:8px;padding:10px;border-top:1px solid var(--term-line);background:#0e1232}
-.wti .wb{width:40px;height:40px;border-radius:12px;background:#1b2150;color:#cdd3f7;display:grid;place-items:center;flex:none}
-.wti input{flex:1;min-width:0;height:40px;border-radius:12px;border:1px solid var(--term-line);background:#0a0e28;color:#eef0fb;padding:0 14px;outline:0}
-.wti input:focus{border-color:var(--accent)}
-.wti .send{height:40px;padding:0 22px;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;flex:none}
+.wtb .g{color:#6BD0A4}.wtb .y{color:#DDBB6B}.wtb .r{color:#F08A86}.wtb .d{color:var(--term-dim)}.wtb .b{color:#9AA5F4}
+.wti{display:flex;gap:8px;padding:10px;border-top:1px solid var(--term-line);background:var(--wt-2)}
+.wti .wb{width:40px;height:40px;border-radius:12px;background:var(--wt-3);color:#CFD3DB;display:grid;place-items:center;flex:none}
+.wti input{flex:1;min-width:0;height:40px;border-radius:12px;border:1px solid var(--term-line);background:var(--wt-in);color:#EEF0F4;padding:0 14px;outline:0}
+.wti input:focus{border-color:var(--on-dark)}
+.wti .send{height:40px;padding:0 22px;border-radius:12px;background:var(--on-dark);color:var(--on-dark-ink);font-weight:800;flex:none}
 .wfoot{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--line);border-radius:0 0 var(--r-l) var(--r-l);flex-wrap:wrap}
 .wfoot .av{width:34px;height:34px}
 .sv{grid-template-rows:minmax(0,1fr)}
@@ -424,8 +428,8 @@ function wallHtml() {
   const fc = (k, t, n, c) => `<button class="wchipf ${state.filter === k ? 'on' : ''} ${c || ''}" data-act="filter" data-id="${k}">${c ? '<span class="dot ' + c + '"></span>' : ''}${t} ${n}</button>`;
   const cb = (v, t) => `<button class="wchipf ${state.cols === v ? 'on' : ''}" data-act="cols" data-id="${v}">${t}</button>`;
   const cur = sess(state.last) || sess('fes');
-  return `<div class="wallpane"><div class="wrow">${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', S.filter((s) => ['wait', 'err'].includes(s.st)).length, 'warn')}${fc('run', 'Đang chạy', S.filter((s) => s.st === 'run').length, 'ok')}${fc('idle', 'Đang nghỉ', S.filter((s) => s.st === 'idle').length, 'idl')}<span class="sp"></span><span class="mut" style="color:#9fa8d8">Số cột</span>${cb('auto', 'Tự động')}${cb('2', '2')}${cb('3', '3')}${cb('4', '4')}<button class="wchipf" data-act="fs" data-id="-1">A−</button><button class="wchipf" data-act="fs" data-id="1">A+</button><button class="wchipf" data-act="fsmode" title="Toàn màn hình">${ic('exp', 14)}</button></div>
-    <div class="wgrid" style="grid-template-columns:${colsFor()}">${l.map(wallTile).join('') || '<div class="mut" style="color:#9fa8d8">Không có phiên nào khớp.</div>'}</div></div>
+  return `<div class="wallpane"><div class="wrow">${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', S.filter((s) => ['wait', 'err'].includes(s.st)).length, 'warn')}${fc('run', 'Đang chạy', S.filter((s) => s.st === 'run').length, 'ok')}${fc('idle', 'Đang nghỉ', S.filter((s) => s.st === 'idle').length, 'idl')}<span class="sp"></span><span class="mut" style="color:var(--dim2)">Số cột</span>${cb('auto', 'Tự động')}${cb('2', '2')}${cb('3', '3')}${cb('4', '4')}<button class="wchipf" data-act="fs" data-id="-1">A−</button><button class="wchipf" data-act="fs" data-id="1">A+</button><button class="wchipf" data-act="fsmode" title="Toàn màn hình">${ic('exp', 14)}</button></div>
+    <div class="wgrid" style="grid-template-columns:${colsFor()}">${l.map(wallTile).join('') || '<div class="mut" style="color:var(--dim2)">Không có phiên nào khớp.</div>'}</div></div>
     <div class="wfoot"><div class="av">${av(cur)}</div><b>${esc(cur.n)}</b><span class="tag ${ST[cur.st][1]}">${ST[cur.st][0]}</span>${cur.crew ? cur.workers.map((w) => `<span class="wchip"><span class="dot ${w.st === 'run' ? 'ok' : w.st === 'fail' ? 'bad' : w.st === 'wait' ? 'warn' : ''}"></span>${w.n}</span>`).join('') : ''}<span class="sp"></span><span class="mut">0/${cur.lines.length}</span><button class="ib" data-act="bellS" style="width:36px;height:36px">${ic('bell')}</button><button class="ib" data-act="open" data-id="${cur.id}" style="width:36px;height:36px" title="Mở phiên">${ic('exp')}</button><button class="ib" data-act="open" data-id="${cur.id}" style="width:36px;height:36px">${ic('info')}</button><button class="ib" data-act="open" data-id="${cur.id}" style="width:36px;height:36px">${ic('more')}</button></div>`;
 }
 function workerHtml(s) {
@@ -569,7 +573,7 @@ function dlgHtml() {
   if (d === 'host') body = `<div class="dlg"><h2>Thêm máy chủ ${X}</h2><label class="fld">Tên hiển thị<input value="dev-ubuntu-04"></label><div class="row"><label class="fld grow">Địa chỉ máy chủ<input value="10.10.62.121" placeholder="vd: 192.0.2.10"></label><label class="fld" style="width:100px">Cổng<input value="22"></label></div><label class="fld">Người dùng<input value="thanhlg" placeholder="vd: root"></label>
     <label class="fld">Cách đăng nhập<select id="hauth"><option>Khoá SSH</option><option>Mật khẩu</option></select></label><label class="fld">File khoá SSH riêng tư<input value="~/.ssh/id_ed25519"></label><label class="fld">Mật khẩu của khoá (nếu có)<input type="password"></label><p class="hint">Mật khẩu và khoá được lưu mã hoá trong két của máy này.</p><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="addhost">Thêm</button></div></div>`;
   if (d === 'alerts') body = `<div class="dlg"><h2>Cảnh báo <span class="tag bad">${state.alertsRead ? 0 : ALERTS.length}</span>${X}</h2><p class="hint">Bỏ số đỏ trên chuông. Cảnh báo mới hoặc tái diễn vẫn hiện lại.</p><div class="timeline">${ALERTS.map((a) => `<div class="tl"><i class="${a[0] === 'warn' ? 'w' : a[0]}"></i><div><b>${a[1]}</b></div><span class="mut">${a[2]}</span></div>`).join('')}</div><div class="acts"><button class="btn" data-act="readall">✓ Đánh dấu đã đọc tất cả</button><button class="btn brand" data-act="dlgx">Đóng</button></div></div>`;
-  if (d.startsWith('kill:')) { const s = sess(d.slice(5)); body = `<div class="dlg"><h2>Dừng phiên "${s ? s.n : ''}"?</h2><p style="color:var(--ink-2)">Việc đang chạy sẽ dừng. Muốn giữ lại thì chọn Rời (đóng tab, phiên vẫn chạy).</p><div class="acts"><button class="btn" data-act="dlgx">Giữ lại</button><button class="btn" data-act="close" data-id="${d.slice(5)}">Rời</button><button class="btn accent" data-act="killok" data-id="${d.slice(5)}">Dừng phiên</button></div></div>`; }
+  if (d.startsWith('kill:')) { const s = sess(d.slice(5)); body = `<div class="dlg"><h2>Dừng phiên "${s ? s.n : ''}"?</h2><p style="color:var(--ink-2)">Việc đang chạy sẽ dừng. Muốn giữ lại thì chọn Rời (đóng tab, phiên vẫn chạy).</p><div class="acts"><button class="btn" data-act="dlgx">Giữ lại</button><button class="btn" data-act="close" data-id="${d.slice(5)}">Rời</button><button class="btn danger" data-act="killok" data-id="${d.slice(5)}">Dừng phiên</button></div></div>`; }
   if (d.startsWith('mach:')) {
     const h = HOSTS.find((x) => x.id === d.slice(5)), r = state.rangeM, bars = Array.from({ length: 24 }, (_, i) => 20 + ((i * 29 + (r === '1h' ? 3 : r === '6h' ? 9 : 17)) % 65));
     body = `<div class="dlg wide"><h2>${h.name} <span class="mut" style="font-weight:500">${h.sub}</span>${X}</h2>
@@ -577,10 +581,10 @@ function dlgHtml() {
       <div class="grid2"><div class="card"><h3>Tình trạng hệ thống <span>CPU theo thời gian</span></h3><div class="chart" style="height:150px">${bars.map((b, i) => `<i class="${i > 20 ? 'hi' : ''}" style="height:${b}%"></i>`).join('')}</div></div>
       <div class="card"><h3>Ổ đĩa</h3><div style="display:grid;gap:12px">${[['/', h.disk || 44], ['/data', 62], ['/home', 31]].map((x) => `<div><div class="row"><b class="grow">${x[0]}</b><b>${x[1]}%</b></div><div class="bar" style="margin-top:6px"><i class="${x[1] > 80 ? 'b' : ''}" style="width:${x[1]}%"></i></div></div>`).join('')}</div></div></div>
       <div class="card"><h3>Tiến trình nặng nhất</h3><table class="tbl"><thead><tr><th>Tiến trình</th><th>CPU</th><th>RAM</th></tr></thead><tbody>${[['dotnet test', '41%', '1,2 GB'], ['claude', '12%', '640 MB'], ['codex', '9%', '510 MB'], ['node', '4%', '240 MB']].map((p) => `<tr><td>${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td></tr>`).join('')}</tbody></table></div>
-      <div class="acts" style="justify-content:space-between;flex-wrap:wrap"><span><button class="btn" data-act="hostsess" data-id="${h.id}">Xem phiên của máy này</button></span><span class="row"><button class="btn" data-act="dlg" data-id="rm:${h.id}">Gỡ khỏi danh sách</button><button class="btn accent" data-act="dlg" data-id="reboot:${h.id}">Khởi động lại máy chủ</button></span></div></div>`;
+      <div class="acts" style="justify-content:space-between;flex-wrap:wrap"><span><button class="btn" data-act="hostsess" data-id="${h.id}">Xem phiên của máy này</button></span><span class="row"><button class="btn" data-act="dlg" data-id="rm:${h.id}">Gỡ khỏi danh sách</button><button class="btn danger" data-act="dlg" data-id="reboot:${h.id}">Khởi động lại máy chủ</button></span></div></div>`;
   }
-  if (d.startsWith('reboot:')) { const h = HOSTS.find((x) => x.id === d.slice(7)); body = `<div class="dlg"><h2>Khởi động lại máy chủ ${X}</h2><p style="color:var(--ink-2)">Việc đang chạy sẽ dừng. Nhập chính xác tên máy chủ <b>${h.name}</b> để xác nhận.</p><input class="fld" id="rbn" data-name="${h.name}" placeholder="${h.name}" style="height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 12px;background:var(--surface);color:var(--ink)"><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" id="rbok" data-act="rebootok" disabled style="opacity:.45">Khởi động lại</button></div></div>`; }
-  if (d.startsWith('rm:')) { const h = HOSTS.find((x) => x.id === d.slice(3)); body = `<div class="dlg"><h2>Gỡ "${h.name}"? ${X}</h2><p style="color:var(--ink-2)">Chỉ gỡ khỏi danh sách. Việc trên máy chủ vẫn chạy.</p><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" data-act="rmok" data-id="${h.id}">Gỡ</button></div></div>`; }
+  if (d.startsWith('reboot:')) { const h = HOSTS.find((x) => x.id === d.slice(7)); body = `<div class="dlg"><h2>Khởi động lại máy chủ ${X}</h2><p style="color:var(--ink-2)">Việc đang chạy sẽ dừng. Nhập chính xác tên máy chủ <b>${h.name}</b> để xác nhận.</p><input class="fld" id="rbn" data-name="${h.name}" placeholder="${h.name}" style="height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 12px;background:var(--surface);color:var(--ink)"><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn danger" id="rbok" data-act="rebootok" disabled style="opacity:.45">Khởi động lại</button></div></div>`; }
+  if (d.startsWith('rm:')) { const h = HOSTS.find((x) => x.id === d.slice(3)); body = `<div class="dlg"><h2>Gỡ "${h.name}"? ${X}</h2><p style="color:var(--ink-2)">Chỉ gỡ khỏi danh sách. Việc trên máy chủ vẫn chạy.</p><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn danger" data-act="rmok" data-id="${h.id}">Gỡ</button></div></div>`; }
   if (d === 'rename') body = `<div class="dlg"><h2>Đổi tên phiên ${X}</h2><label class="fld">Tên mới<input id="rn" value="${esc(cur ? cur.n : '')}"></label><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="renameok">Lưu</button></div></div>`;
   if (d === 'pet') body = `<div class="dlg"><h2>Thú cưng của phiên ${X}</h2><label class="fld">Tên thú cưng<input value="${esc(cur ? cur.n : '')}"></label><div class="fld">Chọn thú<div class="pgrid">${PETS.map((p) => `<span class="${cur && cur.e === p ? 'on' : ''}" data-act="setpet" data-id="${p}">${p}</span>`).join('')}</div></div><label class="fld">Mũ theo mùa<select><option>Không mũ</option><option>Hoa xuân</option><option>Mũ hè</option><option>Bí ngô</option><option>Mũ đông</option></select></label><div class="acts"><button class="btn brand" data-act="dlgx">Xong</button></div></div>`;
   if (d === 'move') body = `<div class="dlg"><h2>Chuyển sang máy khác ${X}</h2><p style="color:var(--ink-2)">Phiên "${cur ? esc(cur.n) : ''}" sẽ được dựng lại trên máy đích cùng thư mục và ngữ cảnh.</p><label class="fld">Máy đích<select id="mvh">${HOSTS.filter((h) => h.ok && (!cur || h.id !== cur.h)).map((h) => `<option value="${h.id}">${h.name} · ${h.sub}</option>`).join('')}</select></label><label class="row hint"><input type="checkbox" checked> Giữ phiên cũ chạy song song</label><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="moveok">Chuyển</button></div></div>`;
@@ -742,6 +746,7 @@ addEventListener('resize', render);
   if (sess(h)) { state.view = 'term'; state.tab = h; state.det = true; }
   if (['set', 'new', 'alerts'].includes(h)) state.dlg = h;
   if (h === 'login') state.login = true;
+  if (h === 'fs') { state.view = 'term'; state.tab = 'all'; state.fsMode = true; }
   render();
 })();
 </script>
