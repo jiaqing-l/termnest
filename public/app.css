@@ -1868,3 +1868,15 @@ html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split>.
 
 /* Pets off: nothing about pets is offered. The "Đổi thú cưng" button, the note's pet button and the pet chooser rows stay hidden. */
 html.pets-off .pet-edit,html.pets-off .nt-petbtn,html.pets-off .nt-bubble{display:none!important}
+
+/* ===== Overview session cards: never squeezed into a ~180px column (names, status and path were all truncated) ===== */
+.grid,[data-density="compact"] .grid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.card-head{flex-wrap:wrap}
+.card-head .t{flex:1 1 130px}
+.card-head .n{white-space:normal;overflow-wrap:anywhere;font-size:14px}
+.card-head .pill{margin-left:auto}
+.card-foot{flex-wrap:wrap;gap:2px 12px}
+.card-foot .foot-p{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;direction:rtl;text-align:left}
+#v-over .grid>.card.add{align-self:start;min-height:0;height:96px;flex-direction:row;gap:12px}
+#v-over .grid>.card.add svg{width:36px;height:36px}
+.srv-h .btn,.srv-h .pill{flex:none}
