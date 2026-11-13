@@ -1484,9 +1484,11 @@ html.tab-hidden *,html.tab-hidden *::before,html.tab-hidden *::after{animation-p
 /* ===== UI redesign (navy / neutral) — overrides of the earlier look; names kept ===== */
 :root{--ui-z:1}
 @media (max-width:859.98px){:root{--ui-z:1!important}}
-html{zoom:var(--ui-z,1)}
-html,body{height:calc(100vh / var(--ui-z,1))}
-@supports (height:100dvh){html,body{height:calc(100dvh / var(--ui-z,1))}}
+/* Interface scale: CSS zoom on <body> (WebKit ignores it on <html>). If the engine still ignores it, index.html sets html.z-tf and the app is scaled with a transform instead. */
+html,body{height:100%}
+body{zoom:var(--ui-z,1);height:calc(100vh / var(--ui-z,1))}
+@supports (height:100dvh){body{height:calc(100dvh / var(--ui-z,1))}}
+html.z-tf body{zoom:1;transform:scale(var(--ui-z,1));transform-origin:0 0;width:calc(100% / var(--ui-z,1));height:calc(100vh / var(--ui-z,1))}
 body{font:400 14px/1.45 var(--sans);-webkit-font-smoothing:antialiased;letter-spacing:0}
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 h1,h2,h3,.group{font-family:var(--sans)}
@@ -1838,3 +1840,16 @@ html dialog::-webkit-scrollbar{width:8px}html dialog::-webkit-scrollbar-thumb{ba
 .wall .w-grid{flex:1 1 auto;min-height:0;grid-auto-rows:minmax(calc(14 * 1.45 * var(--w-font,11.5px) + 110px),1fr);align-content:stretch}
 .wall .w-tile{min-height:0}
 .wall .w-body{flex:1 1 auto;height:auto;min-height:calc(14 * 1.45 * var(--w-font,11.5px) + 18px);display:flex;flex-direction:column;justify-content:flex-end}
+
+/* ===== Overview hero cleanup (mockup): greeting, one line, connection chip only; stats tiles carry the numbers ===== */
+html body .hero #pet-weather,html body .hero .hero-wx{display:none!important}
+.hero .chips .chip:not(.conn){display:none}
+.hero .chips .hero-reply{display:inline-flex}
+.hero .scene .shelf>*{display:none!important}
+.hero .scene .shelf::before{content:'';display:block;width:28px;height:22px;border:2px solid #fff;border-radius:6px;box-shadow:inset 0 -9px 0 -7px #fff,inset 0 -2px 0 -0px transparent}
+.hero .scene .wire i{display:none}
+.hero .scene:empty{display:none}
+.hero .scene .sn{min-width:96px}
+.fc-h{flex-wrap:wrap}
+.fc-h .t{flex:1 1 150px}
+.fc-h b{overflow-wrap:normal;word-break:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
