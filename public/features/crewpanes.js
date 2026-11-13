@@ -218,6 +218,7 @@
   function applyLead(n) {
     var sp = document.getElementById('split'), r = leadShare();
     if (!r || !n) sp.style.removeProperty('--lead'); else sp.style.setProperty('--lead', (r / (1 - r) * (n > 3 ? 2 : 1)).toFixed(3) + 'fr');
+    var tw = sp.parentElement; if (tw) { if (!r || !n) tw.style.removeProperty('--lead-row'); else tw.style.setProperty('--lead-row', Math.round(r * 100) + '%'); }   // the crew grid keeps the orchestrator row in this variable
   }
   function gut() {
     var sp = document.getElementById('split'), g = document.getElementById('cp-gut');
@@ -227,7 +228,7 @@
       g.ondblclick = function () { try { localStorage.removeItem(LEADKEY); } catch (e) { /* optional */ } applyLead(cur && cur.shown.length); requestAnimationFrame(placeGut); };
       g.onpointerdown = function (e) {
         e.preventDefault(); g.setPointerCapture(e.pointerId); g.classList.add('drag');
-        var r0 = sp.getBoundingClientRect();
+        var r0 = (sp.parentElement || sp).getBoundingClientRect();
         function mv(ev) { var r = Math.min(0.85, Math.max(0.25, (ev.clientY - r0.top) / r0.height)); try { localStorage.setItem(LEADKEY, String(r)); } catch (x) { /* optional */ } applyLead(cur && cur.shown.length); placeGut(); }
         g.addEventListener('pointermove', mv); g.addEventListener('pointerup', function () { g.classList.remove('drag'); g.removeEventListener('pointermove', mv); }, { once: true });
       };

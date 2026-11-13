@@ -1774,18 +1774,18 @@ html .pane.active{border-color:var(--brand-line)}
 html .pane:focus-within{outline:0}
 .xterm:focus,.pane :focus{outline:0}
 /* Crew layout: orchestrator card, dock, then the worker row (mockup). #split dissolves into the term-wrap grid. */
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)){display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-template-rows:auto minmax(46vh,1fr) auto;grid-auto-rows:clamp(130px,17vh,210px);gap:12px;overflow:auto}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split{display:contents}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) .cp-bar{grid-column:1/-1;grid-row:1}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split>.pane.crew-lead{grid-column:1/-1;grid-row:2;border:1px solid var(--term-line);border-radius:var(--r-l)}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) .term-tools{grid-column:1/-1;grid-row:3}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split>.pane:not(.crew-lead){grid-row:4;border:1px solid var(--term-line);border-radius:var(--r-m);min-width:0;overflow:hidden}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split>.pane.cx-pick{outline:0;border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)){display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));grid-template-rows:auto minmax(46vh,1fr) auto;grid-auto-rows:clamp(130px,17vh,210px);gap:12px;overflow:auto}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split{display:contents}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) .cp-bar{grid-column:1/-1;grid-row:1}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split>.pane.crew-lead{grid-column:1/-1;grid-row:2;border:1px solid var(--term-line);border-radius:var(--r-l)}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) .term-tools{grid-column:1/-1;grid-row:3}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split>.pane:not(.crew-lead){grid-row:4;border:1px solid var(--term-line);border-radius:var(--r-m);min-width:0;overflow:hidden}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split>.pane.cx-pick{outline:0;border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft)}
 html .pop{max-width:calc(100vw - 24px)}
-html #app.crew-mode .term-wrap:has(#split.crewT.n1){grid-template-columns:minmax(0,1fr)}
-html #app.crew-mode .term-wrap:has(#split.crewT.n2){grid-template-columns:repeat(2,minmax(0,1fr))}
-html #app.crew-mode .term-wrap:has(#split.crewT.n3),html #app.crew-mode .term-wrap:has(#split.crewT.n5),html #app.crew-mode .term-wrap:has(#split.crewT.n6){grid-template-columns:repeat(3,minmax(0,1fr))}
-html #app.crew-mode .term-wrap:has(#split.crewT.n4){grid-template-columns:repeat(4,minmax(0,1fr))}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT.n1){grid-template-columns:minmax(0,1fr)}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT.n2){grid-template-columns:repeat(2,minmax(0,1fr))}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT.n3),html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT.n5),html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT.n6){grid-template-columns:repeat(3,minmax(0,1fr))}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT.n4){grid-template-columns:repeat(4,minmax(0,1fr))}
 .pane{background:var(--term)}
 /* selects: flat, one-pixel border, own chevron (no thick native control) */
 html select,html .grpbar select,html dialog select,html .f select{appearance:none;-webkit-appearance:none;background-color:var(--surface);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%238790AB' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m1 1.5 5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;border:1px solid var(--line-strong);border-radius:var(--r-m);min-height:38px;color:var(--fg)}
@@ -1856,10 +1856,12 @@ html body .hero #pet-weather,html body .hero .hero-wx{display:none!important}
 .fc-h b{overflow-wrap:normal;word-break:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ===== Crew view scrolls vertically when the window is short (orchestrator stays tall, workers below) ===== */
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)){min-height:0;height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;grid-template-rows:auto minmax(40vh,1fr) auto;scrollbar-gutter:stable}
-html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split>.pane:not(.crew-lead){min-height:130px}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)){min-height:0;height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;grid-template-rows:auto var(--lead-row,minmax(40vh,1fr)) auto;scrollbar-gutter:stable;position:relative}
+html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split>.pane:not(.crew-lead){min-height:130px}
 .focus-body,#v-focus{min-height:0}
 
 /* The number inside the white "chờ bạn" chip was white on white. */
 #v-over .hero .chip.alert b,.hero .chip.alert b,.chip.alert b{color:#8a5a00!important}
 #v-over .hero .chip b{color:inherit}
+
+#app.wall-on .cp-bar,#app.wall-on #cp-gut{display:none!important}
