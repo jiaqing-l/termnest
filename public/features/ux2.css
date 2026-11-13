@@ -25,3 +25,6 @@ html.pets-off .sess .ava .av-mono{width:100%;height:100%;border-radius:inherit}
 /* Hero stats keep clicking affordance */
 .hstats .hs.need{cursor:pointer}
 #app.wall-on .key-more-wrap:has(#lay-pop){display:none}
+
+.term-tools [data-tip]:hover::after{top:auto!important;bottom:calc(100% + 8px);right:0}
+.term-tools .menu{max-width:calc(100vw - 24px)}

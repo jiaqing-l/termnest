@@ -86,7 +86,9 @@
     var wrap = el('span', 'key-more-wrap'), btn = el('button', 'btn key-more-btn', label), menu = el('span', 'key-more pop menu');
     btn.type = 'button'; btn.id = id + '-btn'; btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-haspopup', 'menu'); if (tip) { btn.setAttribute('aria-label', tip); btn.dataset.tip = tip; }
     menu.id = id; menu.hidden = true;
-    btn.onclick = function (e) { e.stopPropagation(); var open = menu.hidden; closePops(); menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+    btn.onclick = function (e) { e.stopPropagation(); var open = menu.hidden; closePops(); menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+      // Keep the menu inside the window: the right-hand dock buttons (Aa, ⋯) open towards the left.
+      if (open) { menu.style.left = ''; menu.style.right = ''; var rc = menu.getBoundingClientRect(), ww = root.innerWidth || 0; if (rc.right > ww - 8) { menu.style.left = 'auto'; menu.style.right = '0'; } } };
     menu.addEventListener('click', function () { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
     wrap.append(btn, menu); return { wrap: wrap, menu: menu, btn: btn };
   }
