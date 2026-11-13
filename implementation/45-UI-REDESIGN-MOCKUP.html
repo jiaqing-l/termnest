@@ -431,7 +431,7 @@ const ALERTS = [['bad', 'dev-ubuntu-02 (thanhlg) mất kết nối', '5 phút tr
 
 /* ───────── Trạng thái ───────── */
 const ST8 = { view: 'over', open: ['sv2', 'fes'], tab: 'all', host: 'all', q: '', filter: 'all', det: false, showW: true, doneW: true, selW: null, menu: false, dlg: null, setTab: 'look', opsTab: 0,
-  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', cmd: 'claude' }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
+  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
 const state = ST8;
 const hostName = (id) => (HOSTS.find((h) => h.id === id) || {}).name || id;
 const sess = (id) => S.find((s) => s.id === id);
@@ -596,7 +596,6 @@ function dlgHtml() {
     <label class="fld grow">Máy chủ<select id="nh">${HOSTS.filter((h) => h.ok).map((h) => `<option value="${h.id}" ${state.nf.host === h.id ? 'selected' : ''}>${h.name} · ${h.sub}</option>`).join('')}</select></label></div>
     <label class="fld">Thư mục <span class="hint" style="font-weight:400">(để trống dùng thư mục mặc định)</span><div class="row"><input id="ndir" style="flex:1" value="${esc(state.nf.dir)}"><button class="btn" data-act="dlg" data-id="dir">Chọn thư mục</button></div></label>
     <div class="row" style="flex-wrap:wrap"><span class="hint">Thư mục gần đây:</span>${['/data/thanhlg/xspire-workspaces', '/data/thanhlg/tools/termnest', '~/Documents'].map((x) => `<span class="chip" style="height:28px" data-act="setdir" data-id="${x}">${x}</span>`).join('')}</div>
-    <label class="fld">Lệnh mở đầu<input id="ncmd" value="${esc(state.nf.cmd)}" placeholder="vd: claude"></label>
     <label class="row hint"><input type="checkbox" id="nsave"> Lưu làm mẫu</label>
     <div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" data-act="create">Tạo phiên</button></div></div>`;
   if (d === 'dir') body = `<div class="dlg"><h2>Chọn thư mục ${X}</h2><div class="crumb">${['/'].concat(state.dirPath).map((p, i) => `<a data-act="dircd" data-id="${i}" style="cursor:pointer;color:var(--brand);font-weight:600">${p === '/' ? '/' : p}</a>`).join(' › ')}</div><div class="row" style="flex-wrap:wrap"><span class="hint">Ổ đĩa:</span><span class="chip" style="height:28px">/</span><span class="chip" style="height:28px">/data</span><span class="chip" style="height:28px">~</span></div>
@@ -821,7 +820,7 @@ function render() {
   const nt = document.getElementById('nt'), nb = document.getElementById('nb');
   if (nt) { const n = NOTES.find((x) => x.id === state.noteId); nt.oninput = () => { n.t = nt.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; nb.oninput = () => { n.b = nb.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; }
 }
-function saveNf() { const g = (i) => document.getElementById(i); if (g('nn')) state.nf = { name: g('nn').value, host: g('nh').value, dir: g('ndir').value, cmd: g('ncmd').value }; }
+function saveNf() { const g = (i) => document.getElementById(i); if (g('nn')) state.nf = { name: g('nn').value, host: g('nh').value, dir: g('ndir').value }; }
 function toast(t) { state.toast = t; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { state.toast = ''; render(); }, 1800); }
 
 /* ───────── Tương tác ───────── */
@@ -855,7 +854,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'nudge') { sess(state.tab).lines.push('<span class="b">›</span> (Termnest) Nhắc điều phối: kiểm tra các thợ đã xong.'); toast('Đã gửi nhắc vào phiên điều phối'); return; }
   else if (a === 'kill') state.dlg = 'kill:' + id;
   else if (a === 'killok') { const i = S.findIndex((s) => s.id === id); if (i >= 0) S.splice(i, 1); state.open = state.open.filter((x) => x !== id); state.tab = 'all'; state.dlg = null; }
-  else if (a === 'create') { saveNf(); const nm = state.nf.name || 'Phien-moi', h = state.nf.host, tl = state.nf.cmd; const s = { id: 'n' + Date.now(), e: state.newPet, n: nm, h, tool: /codex/i.test(tl) ? 'Codex' : 'Claude', st: 'run', ctx: 2, lines: ['<span class="d">Đã tạo phiên mới trên ' + hostName(h) + '</span>', '<span class="g">●</span> Sẵn sàng. Bạn muốn làm gì?'] }; S.unshift(s); state.open.push(s.id); state.tab = s.id; state.view = 'term'; state.dlg = null; }
+  else if (a === 'create') { saveNf(); const nm = state.nf.name || 'Phien-moi', h = state.nf.host; const s = { id: 'n' + Date.now(), e: state.newPet, n: nm, h, tool: 'Terminal', st: 'run', ctx: 2, lines: ['<span class="d">Đã tạo phiên terminal mới trên ' + hostName(h) + '</span>', '<span class="g">$</span> '] }; S.unshift(s); state.open.push(s.id); state.tab = s.id; state.view = 'term'; state.dlg = null; }
   else if (a === 'addhost') { HOSTS.push({ id: 'u04', icon: 'srv', name: 'dev-ubuntu-04', sub: 'thanhlg@10.10.62.121', ok: true }); state.dlg = null; toast('Đã thêm máy chủ dev-ubuntu-04'); return; }
   else if (a === 'settab') state.setTab = id;
   else if (a === 'pets') state.pets = !state.pets;
