@@ -622,7 +622,7 @@ function tabsHtml() {
 }
 function termPane(s, main) {
   return `<div class="term"><span class="tb">${s.lines.length}/9894</span><div class="out" ${main ? 'id="out"' : ''}>${(main ? PAD.concat([''], PAD, [''], s.lines) : s.lines).join('\n')}</div>
-    ${main ? `<span class="jump" data-act="bottom">↓ Mới nhất</span><span class="upfab" data-act="dlg" data-id="send" title="Gửi file vào phiên">${ic('clip', 16)}</span>` : ''}
+    ${main ? `<span class="jump" data-act="bottom">↓ Mới nhất</span>` : ''}
     <div class="tmux"><span>[${esc(s.n.slice(0, 8))}0:[tmux]*</span><span>"* ${esc(s.n)}" 00:07 13-Nov-26</span></div>
     ${main ? `<form class="in" id="tin"><b>❯</b><input id="tinput" autocomplete="off" placeholder="${state.sel ? 'Chế độ chọn chữ: kéo chuột để chọn, ⌘C để sao chép' : 'Gõ lệnh hoặc trả lời rồi Enter… (Shift+Enter xuống dòng)'}"></form>` : ''}</div>`;
 }
@@ -1052,9 +1052,6 @@ addEventListener('resize', render);
   if (h === 'login') state.login = true;
   if (h === 'night') state.hourOverride = 23;
   if (h === 'nopet') state.pets = false;
-  if (h === 'note') { state.view = 'note'; }
-  if (h === 'notes-set') { state.view = 'note'; state.noteTab = 'settings'; }
-  if (h === 'notes-rem') { state.view = 'note'; state.noteTab = 'remind'; }
   if (h === 'mini') { state.mini = true; state.pets = false; }
   if (h === 'night') { state.hourOverride = 23; }
   if (h === 'fs') { state.view = 'term'; state.tab = 'all'; state.fsMode = true; }
