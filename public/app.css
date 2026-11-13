@@ -1858,3 +1858,7 @@ html body .hero #pet-weather,html body .hero .hero-wx{display:none!important}
 html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)){min-height:0;height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;grid-template-rows:auto minmax(40vh,1fr) auto;scrollbar-gutter:stable}
 html #app.crew-mode .term-wrap:has(#split.crewT:not(.n0)) #split>.pane:not(.crew-lead){min-height:130px}
 .focus-body,#v-focus{min-height:0}
+
+/* The number inside the white "chờ bạn" chip was white on white. */
+#v-over .hero .chip.alert b,.hero .chip.alert b,.chip.alert b{color:#8a5a00!important}
+#v-over .hero .chip b{color:inherit}
