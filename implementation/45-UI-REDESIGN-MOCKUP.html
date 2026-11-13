@@ -269,6 +269,31 @@ html{zoom:var(--z)}
 select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 10px;background:var(--surface);color:var(--ink)}
 .fld select{width:100%}
 @media (max-width:860px){:root{--z:1}.body.mini{grid-template-columns:minmax(0,1fr)}.hero{flex-direction:column;align-items:flex-start}.scene{display:none}.splits.l2,.splits.l4{grid-template-columns:1fr}}
+
+.wallpane{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;background:var(--term);border:1px solid var(--term-line);border-radius:var(--r-l) var(--r-l) 0 0;padding:14px;margin-top:-1px}
+.wrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.wchipf{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--term-line);background:#ffffff0d;color:#e6e9fb;font-weight:700;font-size:13px;display:inline-flex;gap:8px;align-items:center;white-space:nowrap}
+.wchipf.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.dot.idl{background:#8a93c8}
+.wgrid{display:grid;gap:14px;overflow:auto;flex:1;min-height:0;grid-auto-rows:minmax(360px,1fr);align-content:start}
+.wt{background:#12163a;border:1px solid var(--term-line);border-top:3px solid #4a5399;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.wt.wait{border-top-color:#e0a82e}.wt.idle{opacity:.7}
+.wth{display:flex;align-items:center;gap:8px;padding:8px 12px;color:#e6e9fb;cursor:pointer;font:600 13.5px var(--mono);white-space:nowrap;overflow:hidden}
+.wth .hn{color:#8e97cc;font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.wth .st{font:700 12px var(--font);color:#e0a82e}.wth .st.ok{color:#5AD1A0}.wth .st.bad{color:#ff7a80}
+.wth .ex{color:#9fa8d8}
+.wtb{flex:1;min-height:0;overflow:hidden;padding:4px 14px;font:var(--term-size)/1.55 var(--mono);color:var(--term-ink);white-space:pre-wrap;display:flex;flex-direction:column;justify-content:flex-end;word-break:break-word}
+.wtb .g{color:#5AD1A0}.wtb .y{color:#E6C26A}.wtb .r{color:#FF7A80}.wtb .d{color:var(--term-dim)}.wtb .b{color:#9AA6FF}
+.wti{display:flex;gap:8px;padding:10px;border-top:1px solid var(--term-line);background:#0e1232}
+.wti .wb{width:40px;height:40px;border-radius:12px;background:#1b2150;color:#cdd3f7;display:grid;place-items:center;flex:none}
+.wti input{flex:1;min-width:0;height:40px;border-radius:12px;border:1px solid var(--term-line);background:#0a0e28;color:#eef0fb;padding:0 14px;outline:0}
+.wti input:focus{border-color:var(--accent)}
+.wti .send{height:40px;padding:0 22px;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;flex:none}
+.wfoot{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--line);border-radius:0 0 var(--r-l) var(--r-l);flex-wrap:wrap}
+.wfoot .av{width:34px;height:34px}
+.sv{grid-template-rows:minmax(0,1fr)}
+.sv-main>.term,.sv-main>.splits{flex:1 1 auto;min-height:220px}
+.workers{height:clamp(200px,32vh,330px)}
 /* mobile */
 .tabbar{display:none}
 @media (max-width:860px){
@@ -366,7 +391,7 @@ const ALERTS = [['bad', 'dev-ubuntu-02 (thanhlg) mất kết nối', '5 phút tr
 
 /* ───────── Trạng thái ───────── */
 const ST8 = { view: 'over', open: ['sv2', 'fes'], tab: 'all', host: 'all', q: '', filter: 'all', det: false, showW: true, doneW: true, selW: null, menu: false, dlg: null, setTab: 'look', opsTab: 0,
-  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', cmd: 'claude' }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
+  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', cmd: 'claude' }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
 const state = ST8;
 const hostName = (id) => (HOSTS.find((h) => h.id === id) || {}).name || id;
 const sess = (id) => S.find((s) => s.id === id);
@@ -385,11 +410,23 @@ function card(s) {
 function filtered() {
   return S.filter((s) => (state.host === 'all' || s.h === state.host) && (state.filter === 'all' || (state.filter === 'wait' ? ['wait', 'err'].includes(s.st) : s.st === state.filter)) && (!state.q || (s.n + ' ' + hostName(s.h)).toLowerCase().includes(state.q.toLowerCase())));
 }
+const PAD = ['<span class="d">  ⎿ 1 skill available</span>', '', '<span class="g">●</span> Tôi tải skill crew để bắt đầu task mới cho màn bàn giao', '', '<span class="g">●</span> Skill(xspire-devkit:xspire-crew)', '<span class="d">  ⎿ Successfully loaded skill</span>', '', '<span class="g">●</span> Preflight chặn: nhiều repo trong phạm vi build .NET', '', '<span class="d">  Ran 2 shell commands</span>', '', '<span class="g">●</span> Các thay đổi chưa commit là .DS_Store, appsettings, tracking 09.', '', '<span class="d">✻ Crunched for 41s · done 3:33 PM</span>', '', '<span class="d">✻ recap: Đang trả lời Sales về 4 yêu cầu; đã có ước tính.</span>'];
+const colsFor = () => (state.cols === 'auto' ? 'repeat(auto-fill,minmax(420px,1fr))' : `repeat(${state.cols},minmax(0,1fr))`);
+function wallTile(s) {
+  const [lab, cls] = ST[s.st];
+  const lines = PAD.slice(s.id.length % 4).concat(s.lines);
+  return `<div class="wt ${s.st === 'wait' || s.st === 'err' ? 'wait' : ''} ${s.st === 'idle' ? 'idle' : ''}"><div class="wth" data-act="open" data-id="${s.id}" title="Mở thành tab riêng"><span class="dot ${s.st === 'run' ? 'ok' : s.st === 'wait' ? 'warn' : s.st === 'err' ? 'bad' : ''}"></span><b>${esc(s.n)}</b><span class="hn">${hostName(s.h)}</span><span class="sp"></span><span class="st ${cls}">${lab}</span><span class="ex">↗</span></div>
+    <div class="wtb"><div>${lines.join('\n')}\n\n<span class="d">${'─'.repeat(60)}</span>\n<span class="b">❯</span> \n<span class="d">${'─'.repeat(60)}</span>\n<span class="d">  ⏵⏵ auto mode on (shift+tab to cycle) · ← ${s.crew ? s.workers.length : 1} agent</span></div></div>
+    <form class="wti" data-sid="${s.id}"><button type="button" class="wb" data-act="dlg" data-id="send" title="Gửi file">${ic('clip', 16)}</button><button type="button" class="wb" data-act="dlg" data-id="files" title="Mở file">${ic('file', 16)}</button><input placeholder="Trả lời…" autocomplete="off"><button class="send">Gửi</button></form></div>`;
+}
 function wallHtml() {
   const l = filtered();
-  const fc = (k, t, n) => `<button class="chip ${state.filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${t} ${n}</button>`;
-  return `<div class="row" style="flex-wrap:wrap"><h2 style="font-size:19px">Tất cả phiên</h2><span class="tag">${l.length} phiên</span>${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', S.filter((s) => ['wait', 'err'].includes(s.st)).length)}${fc('run', 'Đang chạy', S.filter((s) => s.st === 'run').length)}${fc('idle', 'Đang nghỉ', S.filter((s) => s.st === 'idle').length)}</div>
-    <div class="wall">${l.map((s) => `<div class="card tile ${s.st === 'wait' ? 'wait' : s.st === 'idle' ? 'idle' : ''}" data-act="open" data-id="${s.id}"><div class="hd"><span>${av(s)}</span>${s.n}<small>${hostName(s.h)}</small></div><div class="snip">${s.lines.slice(-3).map((x) => x.replace(/<[^>]+>/g, '')).join('\n')}</div><div class="row"><span class="tag ${ST[s.st][1]}">${ST[s.st][0]}</span><div class="bar grow"><i class="${s.ctx > 70 ? 'w' : ''}" style="width:${s.ctx}%"></i></div><span class="mut">${s.ctx}%</span></div></div>`).join('')}</div>`;
+  const fc = (k, t, n, c) => `<button class="wchipf ${state.filter === k ? 'on' : ''} ${c || ''}" data-act="filter" data-id="${k}">${c ? '<span class="dot ' + c + '"></span>' : ''}${t} ${n}</button>`;
+  const cb = (v, t) => `<button class="wchipf ${state.cols === v ? 'on' : ''}" data-act="cols" data-id="${v}">${t}</button>`;
+  const cur = sess(state.last) || sess('fes');
+  return `<div class="wallpane"><div class="wrow">${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', S.filter((s) => ['wait', 'err'].includes(s.st)).length, 'warn')}${fc('run', 'Đang chạy', S.filter((s) => s.st === 'run').length, 'ok')}${fc('idle', 'Đang nghỉ', S.filter((s) => s.st === 'idle').length, 'idl')}<span class="sp"></span><span class="mut" style="color:#9fa8d8">Số cột</span>${cb('auto', 'Tự động')}${cb('2', '2')}${cb('3', '3')}${cb('4', '4')}<button class="wchipf" data-act="fs" data-id="-1">A−</button><button class="wchipf" data-act="fs" data-id="1">A+</button><button class="wchipf" data-act="fsmode" title="Toàn màn hình">${ic('exp', 14)}</button></div>
+    <div class="wgrid" style="grid-template-columns:${colsFor()}">${l.map(wallTile).join('') || '<div class="mut" style="color:#9fa8d8">Không có phiên nào khớp.</div>'}</div></div>
+    <div class="wfoot"><div class="av">${av(cur)}</div><b>${esc(cur.n)}</b><span class="tag ${ST[cur.st][1]}">${ST[cur.st][0]}</span>${cur.crew ? cur.workers.map((w) => `<span class="wchip"><span class="dot ${w.st === 'run' ? 'ok' : w.st === 'fail' ? 'bad' : w.st === 'wait' ? 'warn' : ''}"></span>${w.n}</span>`).join('') : ''}<span class="sp"></span><span class="mut">0/${cur.lines.length}</span><button class="ib" data-act="bellS" style="width:36px;height:36px">${ic('bell')}</button><button class="ib" data-act="open" data-id="${cur.id}" style="width:36px;height:36px" title="Mở phiên">${ic('exp')}</button><button class="ib" data-act="open" data-id="${cur.id}" style="width:36px;height:36px">${ic('info')}</button><button class="ib" data-act="open" data-id="${cur.id}" style="width:36px;height:36px">${ic('more')}</button></div>`;
 }
 function workerHtml(s) {
   const vis = s.workers.filter((w) => state.doneW || w.st !== 'done');
@@ -596,6 +633,8 @@ function render() {
   const ti = document.getElementById('tinput'); if (ti) { ti.value = tv; if (keepT || state.focusIn) ti.focus(); }
   const f = document.getElementById('tin'); if (f) f.onsubmit = (e) => { e.preventDefault(); const v = ti.value.trim(); if (!v) return; const s = sess(state.tab); s.lines.push('<span class="b">›</span> ' + esc(v)); ti.value = ''; render();
     setTimeout(() => { s.lines.push('<span class="g">●</span> Đã nhận: ' + esc(v) + '. Đang xử lý…'); s.st = s.st === 'wait' ? 'run' : s.st; render(); }, 700); };
+  if (state.focusTile) { const ti2 = document.querySelector('.wti[data-sid="' + state.focusTile + '"] input'); if (ti2) ti2.focus(); state.focusTile = null; }
+  document.querySelectorAll('.wtb').forEach((w) => { w.scrollTop = w.scrollHeight; });
   const nt = document.getElementById('nt'), nb = document.getElementById('nb');
   if (nt) { const n = NOTES.find((x) => x.id === state.noteId); nt.oninput = () => { n.t = nt.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; nb.oninput = () => { n.b = nb.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; }
 }
@@ -610,8 +649,8 @@ document.addEventListener('click', (e) => {
   if (a === 'scrim') { if (e.target === el) { state.dlg = null; render(); } return; }
   if (a === 'close') { e.stopPropagation(); if (state.open.includes(id)) state.closed.push(id); state.open = state.open.filter((x) => x !== id); if (state.tab === id) state.tab = 'all'; state.dlg = null; render(); return; }
   if (a === 'view') { state.view = id; state.drawer = false; }
-  else if (a === 'open') { if (!state.open.includes(id)) state.open.push(id); state.tab = id; state.view = 'term'; state.drawer = false; state.selW = null; }
-  else if (a === 'tab') { state.tab = id; state.selW = null; }
+  else if (a === 'open') { if (!state.open.includes(id)) state.open.push(id); state.tab = id; state.last = id; state.view = 'term'; state.drawer = false; state.selW = null; }
+  else if (a === 'tab') { state.tab = id; if (id !== 'all') state.last = id; state.selW = null; }
   else if (a === 'host') { state.host = id; state.drawer = false; }
   else if (a === 'filter') state.filter = id;
   else if (a === 'theme') { state.theme = state.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = state.theme; }
@@ -643,6 +682,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'note') state.noteId = Number(id);
   else if (a === 'newnote') { const n = { id: Date.now(), t: 'Ghi chú mới', s: 'Vừa xong', b: '' }; NOTES.unshift(n); state.noteId = n.id; }
   else if (a === 'mini') state.mini = !state.mini;
+  else if (a === 'cols') state.cols = id === 'auto' ? 'auto' : Number(id);
   else if (a === 'reopen') { const id2 = state.closed.pop(); if (id2 && sess(id2)) { state.open.push(id2); state.tab = id2; } }
   else if (a === 'bellS') { const s = state.tab; state.bellS[s] = !state.bellS[s]; toast(state.bellS[s] ? 'Sẽ báo khi phiên này chờ bạn' : 'Đã tắt báo cho phiên này'); return; }
   else if (a === 'layout') state.layout = Number(id);
@@ -685,6 +725,12 @@ setInterval(() => {
   });
   if (state.view === 'term' && sess(state.tab) && sess(state.tab).crew && !state.dlg && document.activeElement.id !== 'tinput') render();
 }, 2500);
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('.wti'); if (!f) return; e.preventDefault();
+  const i = f.querySelector('input'), v = i.value.trim(); if (!v) return; const s = sess(f.dataset.sid);
+  s.lines.push('<span class="b">›</span> ' + esc(v)); if (s.st === 'wait') s.st = 'run'; state.focusTile = s.id; render();
+  setTimeout(() => { s.lines.push('<span class="g">●</span> Đã nhận: ' + esc(v) + '. Đang xử lý…'); render(); }, 800);
+});
 addEventListener('resize', render);
 /* mở thẳng một màn bằng hash (để chụp kiểm): #over #all #fes #tok #note #ops #set #new #alerts #login */
 (function init() {
