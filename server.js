@@ -1039,7 +1039,7 @@ function attach(ws, r, name, url) {
     // Close the late channel at once, or every quick switch leaks one (OpenSSH allows 10 per connection; then new tabs stay black).
     if (ws.readyState !== ws.OPEN) { try { stream.close(); } catch { /* already closed */ } return; }
     // Build the session folder's file-name index while the user reads, so a bare file name opens at once.
-    require('./lib/file-viewer').prewarm(r, name);
+    setTimeout(() => { if (ws.readyState === ws.OPEN) require('./lib/file-viewer').prewarm(r, name); }, 8000);   // later: it must not compete with the terminal for the SSH channel and the host CPU while a session opens
     openTerms.add(ws);
     ws.alive = true;
     ws.on('pong', () => { ws.alive = true; });
