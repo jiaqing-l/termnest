@@ -10,10 +10,9 @@
 <link rel="icon" type="image/svg+xml" href="/termnest-icon.svg">
 <link rel="stylesheet" href="/vendor/xterm.css">
 <script>(function(){var z=100;try{var v=parseInt(localStorage.getItem('tw-zoom'),10);if([70,80,90,100].indexOf(v)>-1)z=v}catch(e){}
-function ap(n){var r=document.documentElement;r.style.setProperty('--ui-z',String(n/100));r.classList.remove('z-tf');
- // Some WebViews ignore CSS zoom: measure a probe and fall back to a transform.
- var go=function(){if(!document.body||n===100)return;var p=document.createElement('div');p.style.cssText='position:absolute;visibility:hidden;width:100px;height:1px';document.body.appendChild(p);var w=p.getBoundingClientRect().width;p.remove();if(Math.abs(w-100*n/100)>2&&Math.abs(w-100)<=2)r.classList.add('z-tf')};
- if(document.body)go();else document.addEventListener('DOMContentLoaded',go)}
+function ap(n){var r=document.documentElement;r.style.setProperty('--ui-z',String(n/100));
+ // CSS zoom is ignored by some WebViews (the packaged app), so any scale other than 100% uses a transform on <body>, which every engine honours.
+ r.classList.toggle('z-tf',n!==100)}
 ap(z);window.TW_setZoom=function(n){n=parseInt(n,10);if([70,80,90,100].indexOf(n)<0)n=100;try{localStorage.setItem('tw-zoom',String(n))}catch(e){}ap(n);return n}})();</script>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css"><link rel="stylesheet" href="/features/ux2.css">

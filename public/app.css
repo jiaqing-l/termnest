@@ -1488,7 +1488,8 @@ html.tab-hidden *,html.tab-hidden *::before,html.tab-hidden *::after{animation-p
 html,body{height:100%}
 body{zoom:var(--ui-z,1);height:calc(100vh / var(--ui-z,1))}
 @supports (height:100dvh){body{height:calc(100dvh / var(--ui-z,1))}}
-html.z-tf body{zoom:1;transform:scale(var(--ui-z,1));transform-origin:0 0;width:calc(100% / var(--ui-z,1));height:calc(100vh / var(--ui-z,1))}
+html.z-tf{overflow:hidden}
+html.z-tf body{zoom:1;transform:scale(var(--ui-z,1));transform-origin:0 0;width:calc(100vw / var(--ui-z,1));height:calc(100vh / var(--ui-z,1))}
 body{font:400 14px/1.45 var(--sans);-webkit-font-smoothing:antialiased;letter-spacing:0}
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 h1,h2,h3,.group{font-family:var(--sans)}
