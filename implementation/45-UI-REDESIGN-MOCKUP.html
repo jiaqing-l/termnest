@@ -239,8 +239,14 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 html{zoom:var(--z)}
 .app{height:calc(100vh / var(--z))}
 .body.mini{grid-template-columns:80px minmax(0,1fr)}
-.mini .txt,.mini .cnt,.mini .side h6,.mini .health{display:none}
-.mini .item{justify-content:center}
+.mini .txt,.mini .cnt,.mini .health,.mini .pinb{display:none}
+.mini .side h6{display:block;height:1px;background:var(--line);margin:12px 14px;font-size:0;overflow:hidden;padding:0}
+.mini .side h6 span{display:none}
+.mini .side-scroll{padding:8px 10px}
+.mini .sidehead{justify-content:center;padding:12px 0 0}
+.mini .item{justify-content:center;padding:6px 0;margin-bottom:2px}
+.mini .item .av{width:44px;height:44px;border-radius:14px}
+.mini .item[data-id=host][data-act=dlg]{margin:10px 6px 0;padding:10px 0}
 .sidehead{display:flex;align-items:center;padding:12px 16px 0}
 .fleet{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
 .fcard{cursor:pointer;display:grid;gap:10px}
@@ -337,6 +343,25 @@ select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 1
 .mono{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;font:800 10px var(--font);letter-spacing:.02em;background:hsl(var(--h) 70% 93%);color:hsl(var(--h) 50% 32%);border:1px solid hsl(var(--h) 60% 85%)}
 .av .mono{width:100%;height:100%;border-radius:11px;font-size:13px;border:0}
 :root[data-theme=dark] .mono{background:hsl(var(--h) 35% 22%);color:hsl(var(--h) 80% 82%);border-color:hsl(var(--h) 35% 30%)}
+
+.hero{background:radial-gradient(900px 260px at 0% 0%,#ffffff1c,#ffffff00 60%),radial-gradient(600px 240px at 100% 100%,#5560d055,#5560d000 70%),linear-gradient(135deg,#1a2150 0%,#20285a 55%,#2a3480 100%);display:grid;grid-template-columns:minmax(0,1.3fr) auto auto;gap:28px;align-items:center;padding:26px 28px;border:1px solid #ffffff14}
+.hero:before{content:'';position:absolute;inset:0;background-image:radial-gradient(#ffffff14 1px,transparent 1.4px);background-size:20px 20px;mask-image:linear-gradient(90deg,transparent,#000 70%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 70%);pointer-events:none}
+.hero .hl,.hero .hstats,.hero .scene{position:relative}
+.hero h1{font-size:26px}
+.hstats{display:flex;gap:12px}
+.hs{min-width:92px;padding:12px 16px;border-radius:14px;background:#ffffff14;border:1px solid #ffffff22;backdrop-filter:blur(4px);display:grid;gap:2px}
+.hs b{font-size:28px;line-height:1.1;letter-spacing:-.02em}
+.hs span{font-size:12px;opacity:.8}
+.hs.need{background:#d3202733;border-color:#ff8b8f66}
+.hs.need b{color:#ffd2d4}
+.scene{display:flex;align-items:center;gap:10px;margin:0}
+.scene .sn{display:grid;justify-items:center;gap:6px;font-size:12px;color:#ffffffcc}
+.scene .box{width:56px;height:56px;border-radius:16px;background:#ffffff1a;border:1px solid #ffffff33;display:grid;place-items:center;color:#fff}
+.scene .link{position:relative;width:70px;height:2px;background:repeating-linear-gradient(90deg,#ffffff66 0 6px,transparent 6px 12px);margin-bottom:22px}
+.scene .link i{position:absolute;top:-3px;left:0;width:8px;height:8px;border-radius:50%;background:#ff8b8f;animation:ld 2.2s linear infinite}
+@keyframes ld{to{left:calc(100% - 8px)}}
+@media (prefers-reduced-motion:reduce){.scene .link i{animation:none;left:50%}}
+@media (max-width:1180px){.hero{grid-template-columns:minmax(0,1fr)}.hstats{flex-wrap:wrap}.scene{display:none}}
 /* mobile */
 .tabbar{display:none}
 @media (max-width:860px){
@@ -540,9 +565,10 @@ function overHtml() {
   const fleet = HOSTS.map((h) => { const bad = h.ok && (over(h.cpu, state.th.cpu) || over(h.ram, state.th.ram) || over(h.disk, state.th.disk));
     const m = (n, v, t) => `<div class="m"><span>${n}</span><div class="meter"><i class="${over(v, t) ? 'w' : ''}" style="width:${v || 0}%;${over(v, t) ? 'background:var(--accent)' : ''}"></i></div><b>${v == null ? '–' : v + '%'}</b></div>`;
     return `<div class="card fcard ${bad ? 'over' : ''}" data-act="dlg" data-id="mach:${h.id}"><div class="row"><div class="av">${ic(h.icon)}<span class="dot ${h.ok ? 'ok' : 'bad'}"></span></div><div class="grow"><b>${h.name}</b><div class="mut">${h.sub}</div></div>${h.ok ? (bad ? '<span class="tag bad">Vượt ngưỡng</span>' : '<span class="tag ok">Ổn</span>') : '<span class="tag bad">Mất kết nối</span>'}</div>${m('CPU', h.cpu, state.th.cpu)}${m('RAM', h.ram, state.th.ram)}${m('Đĩa', h.disk, state.th.disk)}</div>`; }).join('');
-  return `<div class="page"><div class="hero"><i class="orb"></i><i class="orb b"></i><div style="position:relative"><h1>Chào buổi tối, Thanh</h1><p>Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt. · ${S.length} phiên · ${run} đang chạy · ${wait} cần bạn.</p>
-    <div class="row"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial" data-act="host" data-id="u02t" style="cursor:pointer"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${ic('users', 14)}6 thợ đang chạy</span><span class="chip">${HOSTS.some((h) => h.ok && h.cpu >= state.th.cpu) ? '🌧️ Tải cao' : '☀️ Nhẹ nhàng'}</span></div></div>
-    <div class="scene hide-m" style="position:relative"><div style="text-align:center"><div class="box">${ic('laptop', 26)}</div><div class="mut" style="color:#fffb;margin-top:6px">Máy bạn</div></div><div class="wire"><i></i><i></i><i></i></div><div style="text-align:center"><div class="box">${ic('srv', 26)}</div><div class="mut" style="color:#fffb;margin-top:6px">Trên máy chủ</div></div></div></div>
+  return `<div class="page"><div class="hero"><div class="hl"><h1>Chào buổi tối, Thanh</h1><p>Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt.</p>
+    <div class="row"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial" data-act="host" data-id="u02t" style="cursor:pointer"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${HOSTS.some((h) => h.ok && h.cpu >= state.th.cpu) ? '🌧️ Tải cao' : '☀️ Nhẹ nhàng'}</span></div></div>
+    <div class="hstats"><div class="hs"><b>${S.length}</b><span>phiên</span></div><div class="hs"><b>${run}</b><span>đang chạy</span></div><div class="hs need" data-act="filter" data-id="wait" style="cursor:pointer"><b>${wait}</b><span>cần bạn</span></div><div class="hs"><b>6</b><span>thợ crew</span></div></div>
+    <div class="scene hide-m"><div class="sn"><div class="box">${ic('laptop', 24)}</div><span>Máy bạn</span></div><div class="link"><i></i></div><div class="sn"><div class="box">${ic('srv', 24)}</div><span>Trên máy chủ</span></div></div></div>
     <div class="fleet">${fleet}</div>
     ${state.pets ? yardHtml() : ''}
     <div class="row" style="flex-wrap:wrap"><label class="input" style="width:380px;max-width:100%">${ic('search')}<input id="q" placeholder="Tìm phiên theo tên, thư mục, nội dung màn hình" value="${esc(state.q)}"></label>${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', wait)}${fc('run', 'Đang chạy', run)}${fc('idle', 'Đang nghỉ', idle)}</div>
@@ -955,8 +981,10 @@ addEventListener('resize', render);
   if (sess(h)) { state.view = 'term'; state.tab = h; state.det = true; }
   if (['set', 'new', 'alerts'].includes(h)) state.dlg = h;
   if (h === 'login') state.login = true;
+  if (h === 'night') state.hourOverride = 23;
+  if (h === 'nopet') state.pets = false;
+  if (h === 'mini') { state.mini = true; state.pets = false; }
   if (h === 'night') { state.hourOverride = 23; }
-  if (h === 'nopet') { state.pets = false; }
   if (h === 'fs') { state.view = 'term'; state.tab = 'all'; state.fsMode = true; }
   render();
 })();
