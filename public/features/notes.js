@@ -247,7 +247,8 @@
     var tabs = el('div', 'nt-tabs'); tabs.setAttribute('role', 'tablist'); ui.tabs = [];
     [['edit', i18n('notes.ghi_chu_4')], ['rem', i18n('notes.nhac_viec')], ['set', i18n('notes2.tab_settings')]].forEach(function (p) {
       var b = el('button', '', p[1]); b.type = 'button'; b.dataset.t = p[0]; b.setAttribute('role', 'tab'); b.onclick = function () { tab = p[0]; draw(); };
-      if (p[0] === 'rem') { ui.rcount = el('span', 'nt-cnt', '0'); b.append(ui.rcount); } ui.tabs.push(b); tabs.append(b);
+      if (p[0] === 'rem') { ui.rcount = el('span', 'nt-cnt', '0'); return; }   // the per-note 'Nhắc việc' tab is gone: reminders come from the general schedule in the settings tab (existing reminders still fire)
+      ui.tabs.push(b); tabs.append(b);
     });
     // edit pane
     ui.paneEdit = el('div', 'nt-pane'); var tpl = el('div', 'nt-tpl');
