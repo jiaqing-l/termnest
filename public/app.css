@@ -1865,3 +1865,6 @@ html #app.crew-mode:not(.wall-on) .term-wrap:has(#split.crewT:not(.n0)) #split>.
 #v-over .hero .chip b{color:inherit}
 
 #app.wall-on .cp-bar,#app.wall-on #cp-gut{display:none!important}
+
+/* Pets off: nothing about pets is offered. The "Đổi thú cưng" button, the note's pet button and the pet chooser rows stay hidden. */
+html.pets-off .pet-edit,html.pets-off .nt-petbtn,html.pets-off .nt-bubble{display:none!important}

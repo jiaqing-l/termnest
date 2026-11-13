@@ -447,7 +447,7 @@
     a.append(dl);
     var acts = el('div', 'detail-actions'), d = el('button', 'btn', i18n('app.roi_van_chay')), k = el('button', 'btn danger', i18n('app.dung'));
     d.onclick = detach; k.onclick = killDlg; acts.append(d, k); box.append(w, a);
-    var edit = el('button', 'btn', i18n('app.doi_thu_cung')); edit.onclick = function () { editPet(x); }; box.append(edit);
+    var edit = el('button', 'btn pet-edit', i18n('app.doi_thu_cung')); edit.onclick = function () { editPet(x); }; box.append(edit);
     box.append(acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
   }
   function renderBar() {
