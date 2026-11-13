@@ -1880,3 +1880,12 @@ html.pets-off .pet-edit,html.pets-off .nt-petbtn,html.pets-off .nt-bubble{displa
 #v-over .grid>.card.add{align-self:start;min-height:0;height:96px;flex-direction:row;gap:12px}
 #v-over .grid>.card.add svg{width:36px;height:36px}
 .srv-h .btn,.srv-h .pill{flex:none}
+
+/* Tighter card padding (the 16px padding plus inner paddings made the cards look padded and empty) */
+#v-over .grid>.card,.grid>.card{padding:10px 12px;gap:8px}
+#v-over .grid>.card .card-head{padding:0;gap:10px}
+#v-over .grid>.card .mini{padding:7px 10px}
+#v-over .grid>.card .card-foot{padding:0}
+#v-over .grid>.card .card-head .mono,#v-over .grid>.card .card-head .ava{width:34px;height:34px;border-radius:10px;font-size:13px}
+#v-over .grid{gap:12px}
+#v-over{gap:12px}
