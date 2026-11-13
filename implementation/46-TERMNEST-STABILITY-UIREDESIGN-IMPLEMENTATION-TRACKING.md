@@ -1,6 +1,6 @@
 # TERMNEST: ổn định, hiệu năng, giao diện mới — tracking
 
-Cập nhật: 2026-11-13 10:04 (giờ máy).
+Cập nhật: 2026-11-13 11:06 (giờ máy).
 
 | # | Việc | Trạng thái | Bằng chứng |
 |---|---|---|---|
@@ -13,3 +13,5 @@ Cập nhật: 2026-11-13 10:04 (giờ máy).
 
 Chưa chạy lại toàn bộ bộ test sau các thay đổi 1–3 (chỉ test liên quan).
 | 7 | Áp dụng thiết kế mới vào app thật (bản thử .gz) | Đang chạy: 3 subagent sonnet song song | A = skin CSS (app.css, features/*.css, index.html); B = cấu trúc UI (app.js, ux2.js/css); C = Ghi chú + lịch nhắc (notes.js/css, notes-core.js). Chuỗi ngôn ngữ ghi vào implementation/i18n-ux2-b.json, i18n-ux2-c.json, lead gộp vào locales. Sau đó: chạy test, đóng gói, cài, báo sha256 |
+| 7a | Redesign vào app thật (3 agent + QA parity) | Đã cài nhiều bản thử (.gz); còn lệch nhỏ: Ghi chú tab, Token/Vận hành chỉ đổi màu | cỡ giao diện đã sửa nguyên nhân CSP (ui-zoom.js); bỏ tab Nhắc việc; menu dock trong cửa sổ |
+| 8 | Tối ưu mở phiên Crew + ẩn thanh trạng thái tmux 2 dòng | Đang chạy: subagent sonnet | batch log thợ 1 request/crew, cache, ẩn status tmux phía client (không đổi tmux); kết quả sẽ ghi vào 44-PERF-AUDIT.md |
