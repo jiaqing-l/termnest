@@ -109,8 +109,8 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .hero .chip{background:#ffffff1c;border-color:#ffffff30;color:#fff}
 .hero .chip.partial{background:#fff;color:var(--warn)}
 .hero .row{flex-wrap:wrap;position:relative;gap:8px}
-.cards{align-items:start;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
-.scard .mut{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.scard{cursor:pointer;display:flex;flex-direction:column;gap:12px;transition:transform .12s,box-shadow .12s}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.scard{cursor:pointer;display:flex;flex-direction:column;gap:12px;transition:transform .12s,box-shadow .12s}
 .scard:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(20,24,51,.12)}
 .scard.wait{border-color:var(--warn)}
 .scard.idle{opacity:.75}
@@ -230,6 +230,45 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .login .art .orb{position:absolute;right:-80px;bottom:-80px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#d32027cc,#d3202700 70%)}
 .login .form{display:grid;place-items:center;padding:24px}
 .login .form .box{width:min(380px,100%);display:grid;gap:16px}
+
+:root{--z:.8}
+html{zoom:var(--z)}
+.app{height:calc(100vh / var(--z))}
+.body.mini{grid-template-columns:80px minmax(0,1fr)}
+.mini .txt,.mini .cnt,.mini .side h6,.mini .health{display:none}
+.mini .item{justify-content:center}
+.sidehead{display:flex;align-items:center;padding:12px 16px 0}
+.fleet{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.fcard{cursor:pointer;display:grid;gap:10px}
+.fcard:hover{border-color:var(--brand-line)}
+.fcard.over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.fcard .m{display:grid;grid-template-columns:44px 1fr 40px;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:24px}
+.scene{display:flex;align-items:center;gap:14px;margin-right:24px}
+.scene .box{width:60px;height:60px;border-radius:18px;background:#ffffff22;border:1px solid #ffffff40;display:grid;place-items:center;color:#fff}
+.scene .wire{display:flex;gap:6px}.scene .wire i{width:8px;height:8px;border-radius:50%;background:#fff;opacity:.35;animation:wi 1.4s infinite}
+.scene .wire i:nth-child(2){animation-delay:.2s}.scene .wire i:nth-child(3){animation-delay:.4s}
+@keyframes wi{50%{opacity:1;background:#ff6b70}}
+@media (prefers-reduced-motion:reduce){.scene .wire i{animation:none}}
+.yard{display:flex;gap:18px;align-items:flex-end;min-height:64px;overflow:hidden;padding:8px 4px}
+.yard span{font-size:34px;cursor:pointer;transition:transform .2s}.yard span:hover{transform:translateY(-8px) rotate(-6deg)}
+.tmux{background:#2e9b4f;color:#06210f;font:12px var(--mono);padding:2px 14px;display:flex;justify-content:space-between;flex:none}
+.upfab{position:absolute;left:16px;bottom:96px;width:38px;height:38px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;box-shadow:0 6px 16px #0006;cursor:pointer}
+.banner{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:var(--r-m);padding:8px 14px;font-weight:600;font-size:13px}
+.splits{display:grid;gap:12px;flex:1;min-height:0}
+.splits.l2{grid-template-columns:1fr 1fr}.splits.l4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.kbd{display:flex;gap:8px;flex-wrap:wrap;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m)}
+.pgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.pgrid span{font-size:28px;text-align:center;padding:8px;border:2px solid var(--line);border-radius:var(--r-m);cursor:pointer}.pgrid span.on{border-color:var(--brand);background:var(--brand-soft)}
+.files{display:grid;gap:4px;align-content:start}.files a{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:var(--r-s);cursor:pointer}.files a:hover,.files a.on{background:var(--brand-soft)}
+.crumb{display:flex;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.drop{border:2px dashed var(--line-2);border-radius:var(--r-l);padding:32px;text-align:center;color:var(--ink-2)}
+.rng{width:100%;accent-color:var(--brand)}
+.plain{padding:12px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface-2);font:12.5px/1.6 var(--mono);white-space:pre-wrap}
+.fsm .top,.fsm .side,.fsm .nav,.fsm .stabs,.fsm .tabbar{display:none}.fsm .body{grid-template-columns:1fr}.fsm.app{grid-template-rows:0 minmax(0,1fr)}
+.fsx{position:fixed;top:12px;right:12px;z-index:60}
+select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 10px;background:var(--surface);color:var(--ink)}
+.fld select{width:100%}
+@media (max-width:860px){:root{--z:1}.body.mini{grid-template-columns:minmax(0,1fr)}.hero{flex-direction:column;align-items:flex-start}.scene{display:none}.splits.l2,.splits.l4{grid-template-columns:1fr}}
 /* mobile */
 .tabbar{display:none}
 @media (max-width:860px){
@@ -249,7 +288,6 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
   .workers{height:auto;grid-template-columns:1fr}.wp{height:150px}
   .btn{height:40px;padding:0 14px}
   .login{grid-template-columns:1fr}.login .art{display:none}
-  .row .input{flex:1 1 100%!important;width:100%!important}.cards,.wall{grid-template-columns:minmax(0,1fr)}
   .hero{padding:20px}.hero h1{font-size:22px}
 }
 </style>
@@ -271,7 +309,7 @@ const I = {
   search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', srv:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
   laptop:'<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 20h20"/>', clip:'<path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>',
   stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>', exp:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
-  x:'<path d="M6 6l12 12M18 6L6 18"/>', grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+  more:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>', grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
   file:'<path d="M6 3h9l4 4v14H6zM14 3v5h5"/>', refresh:'<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>', menu:'<path d="M4 7h16M4 12h16M4 17h16"/>', users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-4 3-6 6.5-6s6 2 6.5 6M16 5a3.5 3.5 0 0 1 0 7M18 14c2 .7 3.2 2.7 3.5 6"/>',
   zap:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'
 };
@@ -280,10 +318,10 @@ const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt
 
 /* ───────── Dữ liệu mẫu ───────── */
 const HOSTS = [
-  { id: 'local', icon: 'laptop', name: 'Máy này', sub: 'MacBook-Air-cua-H…', ok: true },
-  { id: 'u02r', icon: 'srv', name: 'dev-ubuntu-02', sub: 'root@10.10.62.170', ok: true },
-  { id: 'u03', icon: 'srv', name: 'dev-ubuntu-03', sub: 'thanhlg@10.10.62.107', ok: true },
-  { id: 'u02t', icon: 'srv', name: 'dev-ubuntu-02', sub: 'thanhlg · mất kết nối', ok: false }
+  { id: 'local', icon: 'laptop', name: 'Máy này', sub: 'MacBook-Air-cua-H…', ok: true, cpu: 38, ram: 71, disk: 44 },
+  { id: 'u02r', icon: 'srv', name: 'dev-ubuntu-02', sub: 'root@10.10.62.170', ok: true, cpu: 52, ram: 64, disk: 91 },
+  { id: 'u03', icon: 'srv', name: 'dev-ubuntu-03', sub: 'thanhlg@10.10.62.107', ok: true, cpu: 93, ram: 58, disk: 47 },
+  { id: 'u02t', icon: 'srv', name: 'dev-ubuntu-02', sub: 'thanhlg · mất kết nối', ok: false, cpu: null, ram: null, disk: null }
 ];
 const T = (arr) => arr.join('\n');
 const S = [
@@ -328,37 +366,13 @@ const ALERTS = [['bad', 'dev-ubuntu-02 (thanhlg) mất kết nối', '5 phút tr
 
 /* ───────── Trạng thái ───────── */
 const ST8 = { view: 'over', open: ['sv2', 'fes'], tab: 'all', host: 'all', q: '', filter: 'all', det: false, showW: true, doneW: true, selW: null, menu: false, dlg: null, setTab: 'look', opsTab: 0,
-  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r' };
+  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', cmd: 'claude' }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
 const state = ST8;
 const hostName = (id) => (HOSTS.find((h) => h.id === id) || {}).name || id;
 const sess = (id) => S.find((s) => s.id === id);
 const av = (s) => (state.pets ? s.e : '▣');
 
 /* ───────── Render ───────── */
-function sideHtml() {
-  const f = (s) => state.host === 'all' || s.h === state.host;
-  const grp = (title, st) => {
-    const l = S.filter((s) => f(s) && st.includes(s.st)); if (!l.length) return '';
-    return `<h6><span>${title}</span><span>${l.length}</span></h6>` + l.map((s) => `<div class="item ${state.tab === s.id && state.view === 'term' ? 'on' : ''}" data-act="open" data-id="${s.id}"><div class="av">${av(s)}<span class="dot ${s.st === 'run' ? 'ok' : s.st === 'wait' ? 'warn' : s.st === 'err' ? 'bad' : ''}"></span></div><div class="txt"><b>${s.n}</b><small>${hostName(s.h)}${s.crew ? ' · ' + s.workers.length + ' thợ' : ''}</small></div></div>`).join('');
-  };
-  const cnt = (id) => S.filter((s) => s.h === id && s.st !== 'idle').length;
-  return `<div class="side-scroll"><h6><span>Máy chủ</span></h6>
-    <div class="item ${state.host === 'all' ? 'on' : ''}" data-act="host" data-id="all"><div class="av">${ic('grid')}<span class="dot ok"></span></div><div class="txt"><b>Tất cả máy chủ</b><small>${HOSTS.length} máy chủ</small></div><span class="cnt soft">${S.filter((s) => s.st !== 'idle').length}</span></div>
-    ${HOSTS.map((h) => `<div class="item ${state.host === h.id ? 'on' : ''}" data-act="host" data-id="${h.id}"><div class="av">${ic(h.icon)}<span class="dot ${h.ok ? 'ok' : 'bad'}"></span></div><div class="txt"><b>${h.name}</b><small>${h.sub}</small></div>${cnt(h.id) ? `<span class="cnt soft">${cnt(h.id)}</span>` : ''}</div>`).join('')}
-    <div class="item" data-act="dlg" data-id="host" style="border:1px dashed var(--line-2);justify-content:center;margin-top:8px;color:var(--ink-2);font-weight:600">${ic('plus', 16)} Thêm máy chủ</div>
-    ${grp('Chờ bạn', ['wait', 'err'])}${grp('Đang chạy', ['run'])}${grp('Đang nghỉ', ['idle'])}</div>
-    <div class="health"><div class="row"><span style="width:36px">CPU</span><div class="grow meter"><i style="width:38%"></i></div><b>38%</b></div><div class="row"><span style="width:36px">RAM</span><div class="grow meter"><i class="w" style="width:71%"></i></div><b>71%</b></div><div class="row"><span style="width:36px">Đĩa</span><div class="grow meter"><i style="width:44%"></i></div><b>44%</b></div></div>`;
-}
-function topHtml() {
-  return `<header class="top"><button class="ib" data-act="drawer" style="display:none" id="burger">${ic('menu')}</button><span data-act="view" data-id="over">${lockup(38)}</span>
-    <div class="quota"><span class="pill"><span class="dot ok"></span>Agent03 <b>40%</b></span><span class="pill"><span class="dot bad"></span>Technology <b>100%</b></span><span class="pill"><span class="dot bad"></span>Codex · hqsoft.agent03 <b>100%</b></span></div>
-    <div class="sp"></div>
-    <button class="ib" data-act="dlg" data-id="alerts" title="Cảnh báo">${ic('bell')}<span class="bd">${ALERTS.length}</span></button>
-    <button class="ib" data-act="dlg" data-id="set" title="Cài đặt">${ic('sliders')}</button>
-    <button class="ib" data-act="theme" title="Sáng / tối">${ic(state.theme === 'dark' ? 'sun' : 'moon')}</button>
-    <button class="btn accent" data-act="dlg" data-id="new">${ic('plus')}<span class="hide-m">Phiên mới</span></button>
-    <button class="ib hide-m" data-act="logout" title="Đăng xuất">${ic('out')}</button></header>`;
-}
 const NAV = [['over', 'Tổng quan', 'home'], ['term', 'Terminal', 'term'], ['tok', 'Token AI', 'chart'], ['note', 'Ghi chú', 'note'], ['ops', 'Vận hành', 'ops']];
 const navHtml = () => `<div class="nav"><div class="seg">${NAV.map((n) => `<button class="${state.view === n[0] ? 'on' : ''}" data-act="view" data-id="${n[0]}">${n[1]}${n[0] === 'ops' ? '<em>2</em>' : ''}</button>`).join('')}</div></div>`;
 
@@ -370,17 +384,6 @@ function card(s) {
 }
 function filtered() {
   return S.filter((s) => (state.host === 'all' || s.h === state.host) && (state.filter === 'all' || (state.filter === 'wait' ? ['wait', 'err'].includes(s.st) : s.st === state.filter)) && (!state.q || (s.n + ' ' + hostName(s.h)).toLowerCase().includes(state.q.toLowerCase())));
-}
-function overHtml() {
-  const run = S.filter((s) => s.st === 'run').length, wait = S.filter((s) => s.st === 'wait' || s.st === 'err').length, idle = S.filter((s) => s.st === 'idle').length;
-  const fc = (k, t, n) => `<button class="chip ${state.filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${t} ${n}</button>`;
-  return `<div class="page"><div class="hero"><i class="orb"></i><i class="orb b"></i><h1>Chào buổi tối, Thanh</h1><p>${S.length} phiên trên 4 máy chủ · ${run} đang chạy · ${wait} cần bạn.</p>
-    <div class="row"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial" data-act="host" data-id="u02t" style="cursor:pointer"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${ic('users', 14)}6 thợ đang chạy</span></div></div>
-    <div class="row" style="flex-wrap:wrap"><label class="input" style="width:320px;max-width:100%">${ic('search')}<input id="q" placeholder="Tìm phiên theo tên, thư mục…" value="${esc(state.q)}"></label>${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', wait)}${fc('run', 'Đang chạy', run)}${fc('idle', 'Đang nghỉ', idle)}</div>
-    <div class="cards">${filtered().map(card).join('') || '<div class="card mut">Không có phiên nào khớp.</div>'}</div></div>`;
-}
-function tabsHtml() {
-  return `<div class="stabs"><a class="${state.tab === 'all' ? 'on' : ''}" data-act="tab" data-id="all">${ic('grid', 16)}Tất cả <em>${S.length}</em></a>${state.open.map((id) => { const s = sess(id); return s ? `<a class="${state.tab === id ? 'on' : ''}" data-act="tab" data-id="${id}"><span>${av(s)}</span>${s.n}<i data-act="close" data-id="${id}" title="Đóng tab (phiên vẫn chạy)">${ic('x', 12)}</i></a>` : ''; }).join('')}</div>`;
 }
 function wallHtml() {
   const l = filtered();
@@ -397,33 +400,9 @@ function workerHtml(s) {
       <div class="f">${feed.map((e) => `<div class="${e[0]}">${esc(e[1])}${e[2] != null ? ` <span class="${e[0] === 'no' ? 'no' : 'ok'}">${e[0] === 'no' ? '' : '✔ '}${e[2]}s</span>` : ''}</div>`).join('') || '<div class="sy">… chờ đầu ra đầu tiên</div>'}</div></div>`;
   }).join('')}</div>`;
 }
-function sessionHtml(s) {
-  const [lab, cls] = ST[s.st];
-  const MENU = ['/xspire-crew status', '/xspire-crew resume', '/xspire-bugfix', 'git status', 'dotnet test --no-build'];
-  return `<div class="sv ${state.det ? 'det' : ''}"><div class="sv-main">
-    <div class="thead"><div class="av">${av(s)}</div><h2>${s.n}</h2><span class="tag ${cls}">${lab}</span>${s.crew ? s.workers.map((w) => `<button class="wchip ${state.selW === w.n ? 'on' : ''}" data-act="selw" data-id="${w.n}"><span class="dot ${w.st === 'run' ? 'ok' : w.st === 'fail' ? 'bad' : w.st === 'wait' ? 'warn' : ''}"></span>${w.n}</button>`).join('') : ''}<span class="sp"></span>
-      ${s.crew ? `<button class="btn sm" data-act="nudge">${ic('bell', 14)}Nhắc điều phối</button><button class="btn sm ${state.doneW ? 'on' : ''}" data-act="doneW">Hiện thợ đã xong</button><button class="btn sm" data-act="showW">${state.showW ? 'Ẩn các thợ' : 'Hiện các thợ'}</button>` : ''}
-      <button class="ib" data-act="det" title="Chi tiết phiên" style="${state.det ? 'background:var(--brand-soft);color:var(--brand)' : ''}">${ic('info')}</button><button class="ib" data-act="kill" data-id="${s.id}" title="Dừng phiên">${ic('trash')}</button></div>
-    <div class="term"><span class="tb">${s.lines.length}/9894</span><div class="out" id="out">${s.lines.join('\n')}</div><span class="jump" data-act="bottom">↓ Mới nhất</span>
-      <form class="in" id="tin"><b>❯</b><input id="tinput" autocomplete="off" placeholder="Gõ lệnh hoặc trả lời rồi Enter…"></form></div>
-    <div class="dock"><button class="btn sm" data-act="toast" data-id="Gửi file: chọn file từ máy để đưa lên phiên">${ic('clip', 14)}Gửi file</button><button class="btn sm" data-act="toast" data-id="Mở file: duyệt thư mục của phiên">${ic('file', 14)}Mở file</button><button class="btn sm" data-act="ctrlc">${ic('stop', 14)}Ngắt</button><button class="btn sm" data-act="esc">Esc</button><button class="btn sm" data-act="menu">⚡ Lệnh mẫu ▾</button>
-      ${state.menu ? `<div class="menu">${MENU.map((m) => `<a data-act="cmd" data-id="${esc(m)}">${esc(m)}</a>`).join('')}</div>` : ''}<span class="sp"></span><button class="btn sm" data-act="fs" data-id="-1">A−</button><button class="btn sm" data-act="fs" data-id="1">A+</button><button class="btn sm" data-act="toast" data-id="Đã sao chép nội dung đang chọn">Sao chép</button></div>
-    ${s.crew && state.showW ? workerHtml(s) : ''}</div>
-    ${state.det ? `<aside class="detail"><div class="row"><div class="ring" style="--p:${s.ctx}"><i>${s.ctx}%</i></div><div><h4>Ngữ cảnh phiên</h4><b style="font-size:16px">${Math.round(s.ctx * 10)}k / 1M</b><div class="mut">Chính xác · từ log phiên</div></div></div>
-      <div><h4>Token hôm nay</h4><div class="kv"><span>Vào</span><b>1,2M</b><span>Ra</span><b>184k</b><span>Cache</span><b>41,8M</b></div></div>
-      <div><h4>Phiên</h4><div class="kv"><span>Máy</span><b>${hostName(s.h)}</b><span>Công cụ</span><b>${s.tool}</b><span>Thư mục</span><b>/data/thanhlg/xspire</b><span>Nhánh</span><b>thanhLG</b></div></div>
-      ${s.crew ? `<div><h4>Crew</h4><div class="row" style="flex-wrap:wrap"><span class="tag ok">${s.workers.length} thợ</span><span class="tag">3 task</span></div></div>` : ''}</aside>` : ''}</div>`;
-}
 function termHtml() {
   const body = state.tab === 'all' ? wallHtml() : (sess(state.tab) ? sessionHtml(sess(state.tab)) : wallHtml());
   return `<div class="page fill">${tabsHtml()}${body}</div>`;
-}
-function tokHtml() {
-  const n = state.range, data = Array.from({ length: n }, (_, i) => 30 + ((i * 37 + 11) % 60) + (i === n - 1 ? 8 : 0));
-  return `<div class="page"><div class="row"><h2 style="font-size:19px">Token AI</h2><span class="sp"></span><div class="subseg">${[7, 14, 30].map((r) => `<button class="${state.range === r ? 'on' : ''}" data-act="range" data-id="${r}">${r} ngày</button>`).join('')}</div></div>
-    <div class="kpis">${[['Hôm nay', '41,8M', '↑ 12%', 'up'], [state.range + ' ngày', Math.round(state.range * 15.1) + 'M', '↑ 8%', 'up'], ['Hạn mức Codex', '100%', 'Hết hạn mức', 'dn'], ['Tài khoản', '3', 'Agent03 · Technology · Codex', '']].map((k) => `<div class="card kpi"><small>${k[0]}</small><b>${k[1]}</b><span class="${k[3]}">${k[2]}</span></div>`).join('')}</div>
-    <div class="grid2"><div class="card"><h3>Token theo ngày <span>${n} ngày gần nhất</span></h3><div class="chart">${data.map((h, i) => `<i class="${i === n - 1 ? 'ac' : i > n - 5 ? 'hi' : ''}" style="height:${h}%" title="${h * 0.9 | 0}M"></i>`).join('')}</div><div class="axis">${data.map((_, i) => `<span>${n <= 14 ? i + 1 : i % 3 === 0 ? i + 1 : ''}</span>`).join('')}</div></div>
-    <div class="card"><h3>Theo tài khoản</h3><div style="display:grid;gap:18px">${[['Agent03', 40, ''], ['Technology', 100, 'b'], ['Codex · hqsoft.agent03', 100, 'b']].map((a) => `<div><div class="row"><b class="grow">${a[0]}</b><span class="mut">${a[1]}%</span></div><div class="bar" style="margin-top:8px"><i class="${a[2]}" style="width:${a[1]}%"></i></div></div>`).join('')}</div></div></div></div>`;
 }
 function noteHtml() {
   const n = NOTES.find((x) => x.id === state.noteId);
@@ -443,29 +422,158 @@ function opsHtml() {
 }
 const SW = {};
 const sRow = (t, s, on, k) => { if (SW[k] === undefined) SW[k] = on; return `<div class="srow"><div><b>${t}</b><small>${s}</small></div><span class="sw ${SW[k] ? 'on' : ''}" data-act="sw" data-id="${k}"></span></div>`; };
+function sideHtml() {
+  const f = (s) => state.host === 'all' || s.h === state.host;
+  const grp = (title, st) => {
+    const l = S.filter((s) => f(s) && st.includes(s.st)); if (!l.length) return '';
+    return `<h6><span>${title}</span><span>${l.length}</span></h6>` + l.map((s) => `<div class="item ${state.tab === s.id && state.view === 'term' ? 'on' : ''}" data-act="open" data-id="${s.id}" title="${s.n}"><div class="av">${av(s)}<span class="dot ${s.st === 'run' ? 'ok' : s.st === 'wait' ? 'warn' : s.st === 'err' ? 'bad' : ''}"></span></div><div class="txt"><b>${s.n}</b><small>${hostName(s.h)}${s.crew ? ' · ' + s.workers.length + ' thợ' : ''}</small></div></div>`).join('');
+  };
+  const cnt = (id) => S.filter((s) => s.h === id && s.st !== 'idle').length;
+  return `<div class="sidehead"><button class="ib" data-act="mini" title="Thu gọn / mở rộng danh sách">${ic('menu')}</button></div><div class="side-scroll"><h6><span>Máy chủ</span></h6>
+    <div class="item ${state.host === 'all' ? 'on' : ''}" data-act="host" data-id="all" title="Tất cả máy chủ"><div class="av">${ic('grid')}<span class="dot ok"></span></div><div class="txt"><b>Tất cả máy chủ</b><small>${HOSTS.length} máy chủ</small></div><span class="cnt soft">${S.filter((s) => s.st !== 'idle').length}</span></div>
+    ${HOSTS.map((h) => `<div class="item ${state.host === h.id ? 'on' : ''}" data-act="host" data-id="${h.id}" title="${h.name}"><div class="av">${ic(h.icon)}<span class="dot ${h.ok ? 'ok' : 'bad'}"></span></div><div class="txt"><b>${h.name}</b><small>${h.sub}</small></div>${cnt(h.id) ? `<span class="cnt soft">${cnt(h.id)}</span>` : ''}</div>`).join('')}
+    <div class="item" data-act="dlg" data-id="host" style="border:1px dashed var(--line-2);justify-content:center;margin-top:8px;color:var(--ink-2);font-weight:600">${ic('plus', 16)}<span class="txt" style="flex:none">Thêm máy chủ</span></div>
+    ${grp('Chờ bạn', ['wait', 'err'])}${grp('Đang chạy', ['run'])}${grp('Đang nghỉ', ['idle'])}</div>
+    <div class="health"><div class="row"><span style="width:36px">CPU</span><div class="grow meter"><i style="width:38%"></i></div><b>38%</b></div><div class="row"><span style="width:36px">RAM</span><div class="grow meter"><i class="w" style="width:71%"></i></div><b>71%</b></div><div class="row"><span style="width:36px">Đĩa</span><div class="grow meter"><i style="width:44%"></i></div><b>44%</b></div></div>`;
+}
+function topHtml() {
+  const unread = state.alertsRead ? 0 : ALERTS.length;
+  return `<header class="top"><button class="ib" data-act="drawer" style="display:none" id="burger">${ic('menu')}</button><span data-act="view" data-id="over">${lockup(38)}</span>
+    <div class="quota"><span class="pill" data-act="view" data-id="tok" style="cursor:pointer"><span class="dot ok"></span>Agent03 <b>40%</b></span><span class="pill" data-act="view" data-id="tok" style="cursor:pointer"><span class="dot bad"></span>Technology <b>100%</b></span><span class="pill" data-act="view" data-id="tok" style="cursor:pointer"><span class="dot bad"></span>Codex · hqsoft.agent03 <b>100%</b></span></div>
+    <div class="sp"></div>
+    <button class="ib" data-act="dlg" data-id="alerts" title="Cảnh báo">${ic('bell')}${unread ? `<span class="bd">${unread}</span>` : ''}</button>
+    <button class="ib" data-act="dlg" data-id="set" title="Cài đặt">${ic('sliders')}</button>
+    <button class="ib" data-act="theme" title="Đổi giao diện sáng tối">${ic(state.theme === 'dark' ? 'sun' : 'moon')}</button>
+    <button class="btn accent" data-act="dlg" data-id="new">${ic('plus')}<span class="hide-m">Phiên mới</span></button>
+    <button class="ib hide-m" data-act="logout" title="Đăng xuất">${ic('out')}</button></header>`;
+}
+function overHtml() {
+  const run = S.filter((s) => s.st === 'run').length, wait = S.filter((s) => s.st === 'wait' || s.st === 'err').length, idle = S.filter((s) => s.st === 'idle').length;
+  const fc = (k, t, n) => `<button class="chip ${state.filter === k ? 'on' : ''}" data-act="filter" data-id="${k}">${t} ${n}</button>`;
+  const over = (v, t) => v != null && v >= t;
+  const fleet = HOSTS.map((h) => { const bad = h.ok && (over(h.cpu, state.th.cpu) || over(h.ram, state.th.ram) || over(h.disk, state.th.disk));
+    const m = (n, v, t) => `<div class="m"><span>${n}</span><div class="meter"><i class="${over(v, t) ? 'w' : ''}" style="width:${v || 0}%;${over(v, t) ? 'background:var(--accent)' : ''}"></i></div><b>${v == null ? '–' : v + '%'}</b></div>`;
+    return `<div class="card fcard ${bad ? 'over' : ''}" data-act="dlg" data-id="mach:${h.id}"><div class="row"><div class="av">${ic(h.icon)}<span class="dot ${h.ok ? 'ok' : 'bad'}"></span></div><div class="grow"><b>${h.name}</b><div class="mut">${h.sub}</div></div>${h.ok ? (bad ? '<span class="tag bad">Vượt ngưỡng</span>' : '<span class="tag ok">Ổn</span>') : '<span class="tag bad">Mất kết nối</span>'}</div>${m('CPU', h.cpu, state.th.cpu)}${m('RAM', h.ram, state.th.ram)}${m('Đĩa', h.disk, state.th.disk)}</div>`; }).join('');
+  return `<div class="page"><div class="hero"><i class="orb"></i><i class="orb b"></i><div style="position:relative"><h1>Chào buổi tối, Thanh</h1><p>Tắt máy vẫn chạy. Chỉ dừng khi máy chủ tắt. · ${S.length} phiên · ${run} đang chạy · ${wait} cần bạn.</p>
+    <div class="row"><span class="chip"><span class="dot ok"></span>3 máy chủ trực tuyến</span><span class="chip partial" data-act="host" data-id="u02t" style="cursor:pointer"><span class="dot warn"></span>1 máy chủ mất kết nối</span><span class="chip">${ic('users', 14)}6 thợ đang chạy</span></div></div>
+    <div class="scene hide-m" style="position:relative"><div style="text-align:center"><div class="box">${ic('laptop', 26)}</div><div class="mut" style="color:#fffb;margin-top:6px">Máy bạn</div></div><div class="wire"><i></i><i></i><i></i></div><div style="text-align:center"><div class="box">${ic('srv', 26)}</div><div class="mut" style="color:#fffb;margin-top:6px">Trên máy chủ</div></div></div></div>
+    <div class="fleet">${fleet}</div>
+    ${state.pets ? `<div class="card"><h3>Sân chơi <span>Thú cưng của các phiên đang chạy — bấm để mở phiên</span></h3><div class="yard">${S.filter((s) => s.st !== 'idle').map((s) => `<span data-act="open" data-id="${s.id}" title="${s.n}">${s.e}</span>`).join('')}</div></div>` : ''}
+    <div class="row" style="flex-wrap:wrap"><label class="input" style="width:380px;max-width:100%">${ic('search')}<input id="q" placeholder="Tìm phiên theo tên, thư mục, nội dung màn hình" value="${esc(state.q)}"></label>${fc('all', 'Tất cả', S.length)}${fc('wait', 'Chờ bạn', wait)}${fc('run', 'Đang chạy', run)}${fc('idle', 'Đang nghỉ', idle)}</div>
+    <div class="cards">${filtered().map(card).join('') || '<div class="card mut">Không có phiên nào khớp.</div>'}</div></div>`;
+}
+function tabsHtml() {
+  return `<div class="stabs"><a class="${state.tab === 'all' ? 'on' : ''}" data-act="tab" data-id="all">${ic('grid', 16)}Tất cả <em>${S.length}</em></a>${state.open.map((id) => { const s = sess(id); return s ? `<a class="${state.tab === id ? 'on' : ''}" data-act="tab" data-id="${id}"><span>${av(s)}</span>${s.n}<i data-act="close" data-id="${id}" title="Đóng tab (phiên vẫn chạy)">${ic('x', 12)}</i></a>` : ''; }).join('')}<span class="sp"></span>${state.closed.length ? `<a data-act="reopen" style="color:var(--brand)">↩ Tab đã đóng (${state.closed.length})</a>` : ''}</div>`;
+}
+function termPane(s, main) {
+  return `<div class="term"><span class="tb">${s.lines.length}/9894</span><div class="out" ${main ? 'id="out"' : ''}>${s.lines.join('\n')}</div>
+    ${main ? `<span class="jump" data-act="bottom">↓ Mới nhất</span><span class="upfab" data-act="dlg" data-id="send" title="Gửi file vào phiên">${ic('clip', 16)}</span>` : ''}
+    <div class="tmux"><span>[${esc(s.n.slice(0, 8))}0:[tmux]*</span><span>"* ${esc(s.n)}" 00:07 13-Nov-26</span></div>
+    ${main ? `<form class="in" id="tin"><b>❯</b><input id="tinput" autocomplete="off" placeholder="${state.sel ? 'Chế độ chọn chữ: kéo chuột để chọn, ⌘C để sao chép' : 'Gõ lệnh hoặc trả lời rồi Enter… (Shift+Enter xuống dòng)'}"></form>` : ''}</div>`;
+}
+function sessionHtml(s) {
+  const [lab, cls] = ST[s.st];
+  const CMDS = ['/xspire-crew status', '/xspire-crew resume', '/xspire-bugfix', 'git status', 'dotnet test --no-build'];
+  const KEYS = ['Ctrl+C', 'Ctrl+D', 'Ctrl+L', 'Tab', '↑', '↓', 'Enter'];
+  const n = state.layout;
+  const others = state.open.filter((x) => x !== s.id).map(sess).filter(Boolean).concat(S.filter((x) => x.id !== s.id && !state.open.includes(x.id)));
+  const panes = n === 1 ? termPane(s, true) : `<div class="splits l${n}">${termPane(s, true)}${others.slice(0, n - 1).map((o) => termPane(o, false)).join('')}</div>`;
+  const lay = (k) => `<button class="btn sm ${state.layout === k ? 'on' : ''}" data-act="layout" data-id="${k}" title="Chia màn ${k}">⊞ ${k}</button>`;
+  return `<div class="sv ${state.det ? 'det' : ''}"><div class="sv-main">
+    ${state.offline ? '<div class="banner">Mất kết nối tới web. Việc trên máy chủ vẫn chạy. Đang kết nối lại…</div>' : ''}
+    <div class="thead"><div class="av" data-act="dlg" data-id="pet" style="cursor:pointer" title="Đổi thú cưng">${av(s)}</div><h2>${esc(s.n)}</h2><span class="tag ${cls}">${lab}</span><span class="mut">${hostName(s.h)} · ${s.tool}</span>${s.crew ? s.workers.map((w) => `<button class="wchip ${state.selW === w.n ? 'on' : ''}" data-act="selw" data-id="${w.n}"><span class="dot ${w.st === 'run' ? 'ok' : w.st === 'fail' ? 'bad' : w.st === 'wait' ? 'warn' : ''}"></span>${w.n}</button>`).join('') : ''}<span class="sp"></span>
+      ${s.crew ? `<button class="btn sm" data-act="nudge">${ic('bell', 14)}Nhắc điều phối</button><button class="btn sm ${state.doneW ? 'on' : ''}" data-act="doneW">Hiện thợ đã xong</button><button class="btn sm" data-act="showW">${state.showW ? 'Ẩn các thợ' : 'Hiện các thợ'}</button><button class="btn sm" data-act="dlg" data-id="crewlog">Nhật ký Crew</button>` : ''}
+      <button class="ib" data-act="bellS" title="Báo khi phiên này chờ bạn" style="${state.bellS[s.id] ? 'background:var(--brand-soft);color:var(--brand)' : ''}">${ic('bell')}</button>
+      <button class="ib" data-act="det" title="Chi tiết phiên: ngữ cảnh, token, crew" style="${state.det ? 'background:var(--brand-soft);color:var(--brand)' : ''}">${ic('info')}</button>
+      <span style="position:relative"><button class="ib" data-act="more" title="Thêm">${ic('more')}</button>${state.more ? `<div class="menu" style="right:0;left:auto;top:48px;bottom:auto"><a data-act="dlg" data-id="rename">Đổi tên phiên</a><a data-act="dlg" data-id="pet">Thú cưng của phiên</a><a data-act="dlg" data-id="move">Chuyển sang máy khác</a><a data-act="dlg" data-id="hist">Lịch sử phiên</a><a data-act="toast" data-id="Đã tạo bản chuyển giao (handoff) cho phiên tiếp theo">Chuyển giao (handoff)</a><a data-act="kill" data-id="${s.id}" style="color:var(--accent)">Dừng phiên</a></div>` : ''}</span></div>
+    ${panes}
+    ${state.kb ? `<div class="kbd">${['Esc', 'Tab', 'Ctrl', 'Alt', '↑', '↓', '←', '→', '|', '/', '~', '-'].map((k) => `<button class="btn sm" data-act="key" data-id="${k}">${k}</button>`).join('')}</div>` : ''}
+    <div class="dock"><button class="btn sm" data-act="dlg" data-id="send">${ic('clip', 14)}Gửi file</button><button class="btn sm" data-act="dlg" data-id="files">${ic('file', 14)}Mở file</button><button class="btn sm" data-act="ctrlc">${ic('stop', 14)}Ngắt</button><button class="btn sm" data-act="key" data-id="Esc">Esc</button>
+      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="keys">Phím ▾</button>${state.menu === 'keys' ? `<div class="menu" style="min-width:160px">${KEYS.map((k) => `<a data-act="key" data-id="${k}">${k}</a>`).join('')}</div>` : ''}</span>
+      <button class="btn sm ${state.kb ? 'on' : ''}" data-act="kb" title="Bật/tắt bàn phím trên màn hình">⌨ Bàn phím</button><button class="btn sm" data-act="newline" title="Xuống dòng trong ô soạn mà không gửi (Shift+Enter)">⏎ Dòng mới</button>
+      ${lay(1)}${lay(2)}${lay(4)}
+      <span style="position:relative"><button class="btn sm" data-act="menu" data-id="cmd">⚡ Lệnh mẫu ▾</button>${state.menu === 'cmd' ? `<div class="menu">${CMDS.map((m) => `<a data-act="cmd" data-id="${esc(m)}">${esc(m)}</a>`).join('')}<a data-act="dlg" data-id="set" style="color:var(--brand)">+ Quản lý lệnh mẫu…</a></div>` : ''}</span>
+      <span class="sp"></span><button class="btn sm ${state.sel ? 'accent' : ''}" data-act="sel" title="Kéo chuột để chọn chữ, sao chép bằng ⌘C">Chọn chữ</button><button class="btn sm" data-act="toast" data-id="Đã sao chép đoạn chữ đang chọn">Sao chép</button><button class="btn sm" data-act="fs" data-id="-1">A−</button><button class="btn sm" data-act="fs" data-id="1">A+</button><button class="btn sm" data-act="fsreset" title="Đặt lại cỡ chữ">⟲</button><button class="btn sm" data-act="dlg" data-id="guide" title="Hướng dẫn">?</button><button class="btn sm" data-act="fsmode" title="Toàn màn hình">${ic('exp', 14)}</button></div>
+    ${s.crew && state.showW ? workerHtml(s) : ''}</div>
+    ${state.det ? `<aside class="detail"><div class="row"><div class="ring" style="--p:${s.ctx}"><i>${s.ctx}%</i></div><div><h4>Ngữ cảnh phiên</h4><b style="font-size:16px">${Math.round(s.ctx * 10)}k / 1M</b><div class="mut">Chính xác · từ log phiên</div></div></div>
+      <div><h4>Token hôm nay</h4><div class="kv"><span>Vào</span><b>1,2M</b><span>Ra</span><b>184k</b><span>Cache</span><b>41,8M</b></div></div>
+      <div><h4>Phiên</h4><div class="kv"><span>Máy</span><b>${hostName(s.h)}</b><span>Công cụ</span><b>${s.tool}</b><span>Thư mục</span><b>/data/thanhlg/xspire</b><span>Nhánh</span><b>thanhLG</b></div></div>
+      ${s.crew ? `<div><h4>Crew</h4><div class="row" style="flex-wrap:wrap"><span class="tag ok">${s.workers.length} thợ</span><span class="tag">3 task</span></div></div>` : ''}
+      <div class="row" style="flex-wrap:wrap"><button class="btn sm" data-act="dlg" data-id="hist">Lịch sử</button><button class="btn sm" data-act="dlg" data-id="move">Chuyển máy</button><button class="btn sm" data-act="toast" data-id="Đã tạo handoff">Handoff</button></div></aside>` : ''}</div>`;
+}
+function tokHtml() {
+  const n = state.range, data = Array.from({ length: n }, (_, i) => 30 + ((i * 37 + 11) % 60) + (i === n - 1 ? 8 : 0));
+  const ACC = [['Agent03', 'Claude', [['5 giờ', 40, 'còn 2g 10p'], ['7 ngày', 62, 'đặt lại thứ Hai']]], ['Technology', 'Claude', [['5 giờ', 100, 'còn 3g 40p'], ['7 ngày', 88, 'đặt lại thứ Ba']]], ['hqsoft.agent03', 'Codex', [['5 giờ', 100, 'còn 1g 05p'], ['Tuần', 71, 'đặt lại thứ Sáu']]]];
+  return `<div class="page"><div class="row" style="flex-wrap:wrap"><h2 style="font-size:19px">Token AI</h2><span class="sp"></span><button class="btn sm" data-act="toast" data-id="Đã làm mới số liệu token">${ic('refresh', 14)}Làm mới</button><div class="subseg">${[7, 14, 30].map((r) => `<button class="${state.range === r ? 'on' : ''}" data-act="range" data-id="${r}">${r} ngày</button>`).join('')}</div></div>
+    <div class="cards">${ACC.map((a) => `<div class="card"><h3>${a[0]} <span class="tag ${a[2][0][1] >= 100 ? 'bad' : 'pri'}">${a[1]}</span></h3><div style="display:grid;gap:14px">${a[2].map((w) => `<div><div class="row"><b class="grow">${w[0]}</b><span class="mut">${w[2]}</span><b>${w[1]}%</b></div><div class="bar" style="margin-top:6px"><i class="${w[1] >= 100 ? 'b' : w[1] > 80 ? 'w' : ''}" style="width:${w[1]}%"></i></div></div>`).join('')}</div></div>`).join('')}</div>
+    <div class="kpis">${[['Hôm nay', '41,8M', '↑ 12%', 'up'], [state.range + ' ngày', Math.round(state.range * 15.1) + 'M', '↑ 8%', 'up'], ['Cache đọc', '38,2M', '91% tổng', ''], ['Chi phí ước tính', '$62', '↑ 5%', 'dn']].map((k) => `<div class="card kpi"><small>${k[0]}</small><b>${k[1]}</b><span class="${k[3]}">${k[2]}</span></div>`).join('')}</div>
+    <div class="grid2"><div class="card"><h3>Token theo ngày <span>${n} ngày gần nhất</span></h3><div class="chart">${data.map((h, i) => `<i class="${i === n - 1 ? 'ac' : i > n - 5 ? 'hi' : ''}" style="height:${h}%" title="${h * 0.9 | 0}M"></i>`).join('')}</div><div class="axis">${data.map((_, i) => `<span>${n <= 14 ? i + 1 : i % 3 === 0 ? i + 1 : ''}</span>`).join('')}</div></div>
+    <div class="card"><h3>Theo mô hình</h3><table class="tbl"><tbody>${[['Opus', '18,4M'], ['Sonnet', '9,1M'], ['gpt-6.1 (Codex)', '14,3M']].map((r) => `<tr><td>${r[0]}</td><td style="text-align:right"><b>${r[1]}</b></td></tr>`).join('')}</tbody></table></div></div></div>`;
+}
+const PETS = ['🐼', '🦊', '🐸', '🐰', '🐻', '🐙', '🐱', '🐶', '🦉', '🐧', '🦄', '🐯'];
+const FOLD = ['xspire-workspaces', 'tools', 'modules', 'docs', 'scripts', '_crew', 'hqsoft.xspire', 'termnest'];
 function dlgHtml() {
   const d = state.dlg; if (!d) return '';
+  const X = `<button class="ib" data-act="dlgx" title="Đóng">${ic('x')}</button>`;
   let body = '';
-  if (d === 'new') body = `<div class="dlg"><h2>Phiên mới <button class="ib" data-act="dlgx">${ic('x')}</button></h2><label class="fld">Tên phiên<input id="nn" value="Phien-moi-${S.length + 1}"></label>
-    <label class="fld">Máy chủ<select id="nh">${HOSTS.filter((h) => h.ok).map((h) => `<option value="${h.id}">${h.name} · ${h.sub}</option>`).join('')}</select></label><label class="fld">Thư mục<input value="/data/thanhlg/xspire-workspaces"></label>
-    <label class="fld">Công cụ AI<select id="nt2"><option>Claude Code</option><option>Codex</option><option>Shell</option></select></label><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" data-act="create">Tạo phiên</button></div></div>`;
-  if (d === 'host') body = `<div class="dlg"><h2>Thêm máy chủ <button class="ib" data-act="dlgx">${ic('x')}</button></h2><label class="fld">Tên hiển thị<input value="dev-ubuntu-04"></label><label class="fld">Địa chỉ SSH<input value="thanhlg@10.10.62.121"></label><label class="fld">Xác thực<select><option>Khoá SSH · id_ed25519</option><option>Mật khẩu</option></select></label><p class="hint">Mật khẩu và khoá được lưu mã hoá trong két của máy này.</p><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="addhost">Kết nối thử</button></div></div>`;
-  if (d === 'alerts') body = `<div class="dlg"><h2>Cảnh báo <span class="tag bad">${ALERTS.length}</span></h2><div class="timeline">${ALERTS.map((a) => `<div class="tl"><i class="${a[0] === 'warn' ? 'w' : a[0]}"></i><div><b>${a[1]}</b></div><span class="mut">${a[2]}</span></div>`).join('')}</div><div class="acts"><button class="btn" data-act="toast" data-id="Đã đánh dấu đã đọc">Đánh dấu đã đọc</button><button class="btn brand" data-act="dlgx">Đóng</button></div></div>`;
-  if (d.startsWith('kill:')) { const s = sess(d.slice(5)); body = `<div class="dlg"><h2>Dừng phiên "${s ? s.n : ''}"?</h2><p style="color:var(--ink-2)">Phiên tmux sẽ bị đóng, nội dung đang chạy sẽ mất. Thao tác này không hoàn tác được.</p><div class="acts"><button class="btn" data-act="dlgx">Giữ lại</button><button class="btn accent" data-act="killok" data-id="${d.slice(5)}">Dừng phiên</button></div></div>`; }
-  if (d === 'set') {
-    const nav = [['look', 'Giao diện'], ['alerts', 'Thông báo'], ['servers', 'Máy chủ'], ['crew', 'Tự trông crew'], ['backup', 'Sao lưu'], ['cmds', 'Lệnh mẫu'], ['more', 'Khác']];
-    let pane = '';
-    if (state.setTab === 'look') pane = `<div class="srow"><div><b>Thú cưng</b><small>Hiện thú cưng trên danh sách phiên (tắt giúp máy nhẹ hơn)</small></div><span class="sw ${state.pets ? 'on' : ''}" data-act="pets"></span></div>${sRow('Giảm chuyển động', 'Tắt hiệu ứng động không cần thiết', true, 'rm')}
-      <h4 style="margin:20px 0 10px">Chủ đề</h4><div class="themes">${[['light', 'Sáng', '#fff'], ['dark', 'Tối', '#111634'], ['auto', 'Theo hệ thống', 'linear-gradient(90deg,#fff 50%,#111634 50%)']].map((t) => `<div class="theme ${state.theme === t[0] || (t[0] === 'auto' && state.theme === 'auto') ? 'on' : ''}" data-act="settheme" data-id="${t[0]}"><i style="background:${t[2]}"></i>${t[1]}</div>`).join('')}</div>`;
-    if (state.setTab === 'alerts') pane = [['Thông báo khi phiên chờ bạn', 'Hiện thông báo hệ thống', true], ['Thông báo khi phiên xong', 'Bỏ qua phiên vừa mở dưới 60 giây', true], ['Âm báo', 'Phát tiếng khi có cảnh báo', false]].map((r, i) => sRow(r[0], r[1], r[2], 'al' + i)).join('');
-    if (state.setTab === 'servers') pane = HOSTS.map((h) => `<div class="srow"><div><b>${h.name}</b><small>${h.sub}</small></div><span class="tag ${h.ok ? 'ok' : 'bad'}">${h.ok ? 'Trực tuyến' : 'Mất kết nối'}</span></div>`).join('');
-    if (state.setTab === 'crew') pane = [['Tự trông crew', 'Tự nhắc điều phối khi thợ xong hoặc lỗi', true], ['Giữ thợ đã xong 48 giờ', 'Thợ xong vẫn hiện trong Crew', true]].map((r, i) => sRow(r[0], r[1], r[2], 'cr' + i)).join('');
-    if (state.setTab === 'backup') pane = `<div class="srow"><div><b>Sao lưu tự động</b><small>Lần gần nhất: 22:22 hôm nay · 12 bản</small></div><button class="btn sm" data-act="toast" data-id="Đã tạo bản sao lưu">Sao lưu ngay</button></div>`;
-    if (state.setTab === 'cmds') pane = ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'].map((c) => `<div class="srow"><b style="font-family:var(--mono)">${c}</b><span class="mut">Lệnh mẫu</span></div>`).join('');
-    if (state.setTab === 'more') pane = sRow('Ngôn ngữ tiếng Việt', 'Giao diện và thông báo', true, 'lang') + `<div class="srow"><div><b>Phiên bản</b><small>TERMNEST 1.1.18</small></div><span class="tag ok">Mới nhất</span></div>`;
-    body = `<div class="dlg wide"><h2>Cài đặt <button class="ib" data-act="dlgx">${ic('x')}</button></h2><div class="set"><div class="setnav">${nav.map((n) => `<a class="${state.setTab === n[0] ? 'on' : ''}" data-act="settab" data-id="${n[0]}">${n[1]}</a>`).join('')}</div><div style="min-height:340px">${pane}</div></div></div>`;
+  const cur = sess(state.tab);
+  if (d === 'new') body = `<div class="dlg"><h2>Phiên mới ${X}</h2>
+    <div class="fld">Chọn thú cưng<div class="pgrid">${PETS.map((p) => `<span class="${state.newPet === p ? 'on' : ''}" data-act="newpet" data-id="${p}">${p}</span>`).join('')}</div></div>
+    <label class="fld">Tên<input id="nn" value="${esc(state.nf.name)}" placeholder="vd: build-api"></label>
+    <div class="row"><label class="fld grow">Mẫu phiên<select id="ntpl"><option>— Không dùng mẫu —</option><option>Claude · Xspire</option><option>Codex · module</option><option>Shell trống</option></select></label>
+    <label class="fld grow">Máy chủ<select id="nh">${HOSTS.filter((h) => h.ok).map((h) => `<option value="${h.id}" ${state.nf.host === h.id ? 'selected' : ''}>${h.name} · ${h.sub}</option>`).join('')}</select></label></div>
+    <label class="fld">Thư mục <span class="hint" style="font-weight:400">(để trống dùng thư mục mặc định)</span><div class="row"><input id="ndir" style="flex:1" value="${esc(state.nf.dir)}"><button class="btn" data-act="dlg" data-id="dir">Chọn thư mục</button></div></label>
+    <div class="row" style="flex-wrap:wrap"><span class="hint">Thư mục gần đây:</span>${['/data/thanhlg/xspire-workspaces', '/data/thanhlg/tools/termnest', '~/Documents'].map((x) => `<span class="chip" style="height:28px" data-act="setdir" data-id="${x}">${x}</span>`).join('')}</div>
+    <label class="fld">Lệnh mở đầu<input id="ncmd" value="${esc(state.nf.cmd)}" placeholder="vd: claude"></label>
+    <label class="row hint"><input type="checkbox" id="nsave"> Lưu làm mẫu</label>
+    <div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" data-act="create">Tạo phiên</button></div></div>`;
+  if (d === 'dir') body = `<div class="dlg"><h2>Chọn thư mục ${X}</h2><div class="crumb">${['/'].concat(state.dirPath).map((p, i) => `<a data-act="dircd" data-id="${i}" style="cursor:pointer;color:var(--brand);font-weight:600">${p === '/' ? '/' : p}</a>`).join(' › ')}</div><div class="row" style="flex-wrap:wrap"><span class="hint">Ổ đĩa:</span><span class="chip" style="height:28px">/</span><span class="chip" style="height:28px">/data</span><span class="chip" style="height:28px">~</span></div>
+    <div class="files" style="max-height:260px;overflow:auto"><a data-act="dircd" data-id="${state.dirPath.length - 1}">⤴ ..</a>${FOLD.map((f) => `<a data-act="dirin" data-id="${f}">📁 ${f}</a>`).join('')}</div><div class="acts"><button class="btn" data-act="dlg" data-id="new">Huỷ</button><button class="btn brand" data-act="dirok">Chọn thư mục này</button></div></div>`;
+  if (d === 'host') body = `<div class="dlg"><h2>Thêm máy chủ ${X}</h2><label class="fld">Tên hiển thị<input value="dev-ubuntu-04"></label><div class="row"><label class="fld grow">Địa chỉ máy chủ<input value="10.10.62.121" placeholder="vd: 192.0.2.10"></label><label class="fld" style="width:100px">Cổng<input value="22"></label></div><label class="fld">Người dùng<input value="thanhlg" placeholder="vd: root"></label>
+    <label class="fld">Cách đăng nhập<select id="hauth"><option>Khoá SSH</option><option>Mật khẩu</option></select></label><label class="fld">File khoá SSH riêng tư<input value="~/.ssh/id_ed25519"></label><label class="fld">Mật khẩu của khoá (nếu có)<input type="password"></label><p class="hint">Mật khẩu và khoá được lưu mã hoá trong két của máy này.</p><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="addhost">Thêm</button></div></div>`;
+  if (d === 'alerts') body = `<div class="dlg"><h2>Cảnh báo <span class="tag bad">${state.alertsRead ? 0 : ALERTS.length}</span>${X}</h2><p class="hint">Bỏ số đỏ trên chuông. Cảnh báo mới hoặc tái diễn vẫn hiện lại.</p><div class="timeline">${ALERTS.map((a) => `<div class="tl"><i class="${a[0] === 'warn' ? 'w' : a[0]}"></i><div><b>${a[1]}</b></div><span class="mut">${a[2]}</span></div>`).join('')}</div><div class="acts"><button class="btn" data-act="readall">✓ Đánh dấu đã đọc tất cả</button><button class="btn brand" data-act="dlgx">Đóng</button></div></div>`;
+  if (d.startsWith('kill:')) { const s = sess(d.slice(5)); body = `<div class="dlg"><h2>Dừng phiên "${s ? s.n : ''}"?</h2><p style="color:var(--ink-2)">Việc đang chạy sẽ dừng. Muốn giữ lại thì chọn Rời (đóng tab, phiên vẫn chạy).</p><div class="acts"><button class="btn" data-act="dlgx">Giữ lại</button><button class="btn" data-act="close" data-id="${d.slice(5)}">Rời</button><button class="btn accent" data-act="killok" data-id="${d.slice(5)}">Dừng phiên</button></div></div>`; }
+  if (d.startsWith('mach:')) {
+    const h = HOSTS.find((x) => x.id === d.slice(5)), r = state.rangeM, bars = Array.from({ length: 24 }, (_, i) => 20 + ((i * 29 + (r === '1h' ? 3 : r === '6h' ? 9 : 17)) % 65));
+    body = `<div class="dlg wide"><h2>${h.name} <span class="mut" style="font-weight:500">${h.sub}</span>${X}</h2>
+      <div class="row" style="flex-wrap:wrap"><div class="subseg">${['1h', '6h', '24h'].map((x) => `<button class="${r === x ? 'on' : ''}" data-act="rangeM" data-id="${x}">${x === '1h' ? '1 giờ' : x === '6h' ? '6 giờ' : '24 giờ'}</button>`).join('')}</div><span class="sp"></span><span class="tag ${h.ok ? 'ok' : 'bad'}">${h.ok ? 'Trực tuyến' : 'Mất kết nối'}</span></div>
+      <div class="grid2"><div class="card"><h3>Tình trạng hệ thống <span>CPU theo thời gian</span></h3><div class="chart" style="height:150px">${bars.map((b, i) => `<i class="${i > 20 ? 'hi' : ''}" style="height:${b}%"></i>`).join('')}</div></div>
+      <div class="card"><h3>Ổ đĩa</h3><div style="display:grid;gap:12px">${[['/', h.disk || 44], ['/data', 62], ['/home', 31]].map((x) => `<div><div class="row"><b class="grow">${x[0]}</b><b>${x[1]}%</b></div><div class="bar" style="margin-top:6px"><i class="${x[1] > 80 ? 'b' : ''}" style="width:${x[1]}%"></i></div></div>`).join('')}</div></div></div>
+      <div class="card"><h3>Tiến trình nặng nhất</h3><table class="tbl"><thead><tr><th>Tiến trình</th><th>CPU</th><th>RAM</th></tr></thead><tbody>${[['dotnet test', '41%', '1,2 GB'], ['claude', '12%', '640 MB'], ['codex', '9%', '510 MB'], ['node', '4%', '240 MB']].map((p) => `<tr><td>${p[0]}</td><td>${p[1]}</td><td>${p[2]}</td></tr>`).join('')}</tbody></table></div>
+      <div class="acts" style="justify-content:space-between;flex-wrap:wrap"><span><button class="btn" data-act="hostsess" data-id="${h.id}">Xem phiên của máy này</button></span><span class="row"><button class="btn" data-act="dlg" data-id="rm:${h.id}">Gỡ khỏi danh sách</button><button class="btn accent" data-act="dlg" data-id="reboot:${h.id}">Khởi động lại máy chủ</button></span></div></div>`;
   }
+  if (d.startsWith('reboot:')) { const h = HOSTS.find((x) => x.id === d.slice(7)); body = `<div class="dlg"><h2>Khởi động lại máy chủ ${X}</h2><p style="color:var(--ink-2)">Việc đang chạy sẽ dừng. Nhập chính xác tên máy chủ <b>${h.name}</b> để xác nhận.</p><input class="fld" id="rbn" data-name="${h.name}" placeholder="${h.name}" style="height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 12px;background:var(--surface);color:var(--ink)"><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" id="rbok" data-act="rebootok" disabled style="opacity:.45">Khởi động lại</button></div></div>`; }
+  if (d.startsWith('rm:')) { const h = HOSTS.find((x) => x.id === d.slice(3)); body = `<div class="dlg"><h2>Gỡ "${h.name}"? ${X}</h2><p style="color:var(--ink-2)">Chỉ gỡ khỏi danh sách. Việc trên máy chủ vẫn chạy.</p><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn accent" data-act="rmok" data-id="${h.id}">Gỡ</button></div></div>`; }
+  if (d === 'rename') body = `<div class="dlg"><h2>Đổi tên phiên ${X}</h2><label class="fld">Tên mới<input id="rn" value="${esc(cur ? cur.n : '')}"></label><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="renameok">Lưu</button></div></div>`;
+  if (d === 'pet') body = `<div class="dlg"><h2>Thú cưng của phiên ${X}</h2><label class="fld">Tên thú cưng<input value="${esc(cur ? cur.n : '')}"></label><div class="fld">Chọn thú<div class="pgrid">${PETS.map((p) => `<span class="${cur && cur.e === p ? 'on' : ''}" data-act="setpet" data-id="${p}">${p}</span>`).join('')}</div></div><label class="fld">Mũ theo mùa<select><option>Không mũ</option><option>Hoa xuân</option><option>Mũ hè</option><option>Bí ngô</option><option>Mũ đông</option></select></label><div class="acts"><button class="btn brand" data-act="dlgx">Xong</button></div></div>`;
+  if (d === 'move') body = `<div class="dlg"><h2>Chuyển sang máy khác ${X}</h2><p style="color:var(--ink-2)">Phiên "${cur ? esc(cur.n) : ''}" sẽ được dựng lại trên máy đích cùng thư mục và ngữ cảnh.</p><label class="fld">Máy đích<select id="mvh">${HOSTS.filter((h) => h.ok && (!cur || h.id !== cur.h)).map((h) => `<option value="${h.id}">${h.name} · ${h.sub}</option>`).join('')}</select></label><label class="row hint"><input type="checkbox" checked> Giữ phiên cũ chạy song song</label><div class="acts"><button class="btn" data-act="dlgx">Huỷ</button><button class="btn brand" data-act="moveok">Chuyển</button></div></div>`;
+  if (d === 'hist') body = `<div class="dlg"><h2>Lịch sử phiên ${X}</h2><div class="timeline">${[['ok', '22:31', 'Hoàn tất bước 2'], ['w', '22:12', 'Chờ bạn trả lời'], ['ok', '21:48', 'Chạy test: 2.191 đạt'], ['', '21:05', 'Phiên được tạo trên ' + (cur ? hostName(cur.h) : '')]].map((t) => `<div class="tl"><i class="${t[0]}"></i><div><b>${t[2]}</b></div><span class="mut">${t[1]}</span></div>`).join('')}</div><div class="acts"><button class="btn brand" data-act="dlgx">Đóng</button></div></div>`;
+  if (d === 'files') body = `<div class="dlg wide"><h2>Mở file trong thư mục của phiên ${X}</h2><div class="set" style="grid-template-columns:280px 1fr"><div class="files">${['CLAUDE.md', 'README.md', 'package.json', 'server.js', 'lib/crew.js', 'public/app.js'].map((f) => `<a data-act="openfile" data-id="${f}" class="${state.file === f ? 'on' : ''}">📄 ${f}</a>`).join('')}</div><div class="plain" style="min-height:240px">${state.file ? '// ' + state.file + '\n\'use strict\';\nconst { Remote } = require(\'./remote\');\n…\n(xem trước chỉ đọc, 6.000 ký tự đầu)' : 'Chọn một file để xem.'}</div></div></div>`;
+  if (d === 'send') body = `<div class="dlg"><h2>Gửi file vào phiên ${X}</h2><div class="drop">Kéo thả file vào đây<br><span class="hint">hoặc</span><br><button class="btn brand" style="margin-top:8px" data-act="sendok">Chọn file…</button></div><p class="hint">File được tải lên thư mục của phiên; đường dẫn tự dán vào ô soạn.</p></div>`;
+  if (d === 'crewlog') body = `<div class="dlg wide"><h2>Nhật ký Crew ${X}</h2><div class="plain" style="max-height:340px;overflow:auto">2026-11-13T00:04:47 W3 Đã commit 2a7f259, sửa định dạng số\n2026-11-13T00:04:48 W3 tokens used 153,407\n2026-11-13T00:04:48 W3 Chưa DONE: verifier bị dừng do tiến trình con\n2026-11-13T00:07:10 W1 dotnet build ✔ 21.7s\n2026-11-13T00:07:31 W2 dotnet test ✖ exit 1</div></div>`;
+  if (d === 'guide') body = `<div class="dlg wide"><h2>Hướng dẫn nhanh ${X}</h2><div class="cards" style="grid-template-columns:repeat(2,1fr)">${[['Phiên chạy khi tắt máy', 'Phiên nằm trên máy chủ (tmux), tắt trình duyệt hay máy bạn vẫn chạy.'], ['Chờ bạn', 'Phiên hỏi mà chưa có trả lời được gom ở nhóm Chờ bạn.'], ['Crew', 'Điều phối giao việc cho các thợ; mỗi thợ hiện lệnh và file nó đang làm.'], ['Chia màn', 'Dùng ⊞ 1/2/4 để xem nhiều phiên cùng lúc.'], ['Gửi file', 'Kéo file vào terminal hoặc bấm Gửi file.'], ['Phím tắt', 'Shift+Enter xuống dòng, ⌘C sao chép khi đã Chọn chữ.']].map((g) => `<div class="card"><h3>${g[0]}</h3><p style="color:var(--ink-2)">${g[1]}</p></div>`).join('')}</div></div>`;
+  if (d === 'set') body = settingsHtml(X);
   return `<div class="scrim" data-act="scrim">${body}</div>`;
+}
+function settingsHtml(X) {
+  const nav = [['look', 'Giao diện'], ['alerts', 'Thông báo'], ['servers', 'Máy chủ'], ['crew', 'Tự trông crew'], ['backup', 'Sao lưu'], ['plug', 'Tiện ích'], ['cmds', 'Lệnh mẫu'], ['connect', 'Kết nối'], ['more', 'Khác']];
+  let pane = '';
+  const t = state.setTab;
+  if (t === 'look') pane = `<div class="srow"><div><b>Thú cưng</b><small>Hiện thú cưng và sân chơi (tắt giúp máy nhẹ hơn)</small></div><span class="sw ${state.pets ? 'on' : ''}" data-act="pets"></span></div>
+    <div class="srow"><div><b>Ngôn ngữ</b><small>Giao diện và thông báo</small></div><select><option>Tiếng Việt</option><option>English</option></select></div>
+    <div class="srow"><div><b>Cỡ giao diện</b><small>Thu nhỏ để thấy được nhiều hơn trên màn hình</small></div><div class="subseg">${[70, 80, 90, 100].map((z) => `<button class="${state.zoom === z ? 'on' : ''}" data-act="zoom" data-id="${z}">${z}%</button>`).join('')}</div></div>
+    <div class="srow"><div><b>Hiệu ứng</b><small>Lượng chuyển động trang trí</small></div><select><option>Ít</option><option selected>Vừa</option><option>Nhiều</option></select></div>${sRow('Giảm chuyển động', 'Tắt hiệu ứng động không cần thiết', true, 'rm')}
+    <h4 style="margin:20px 0 10px">Chủ đề</h4><div class="themes">${[['light', 'Sáng', '#fff'], ['dark', 'Tối', '#111634'], ['auto', 'Theo hệ thống', 'linear-gradient(90deg,#fff 50%,#111634 50%)']].map((x) => `<div class="theme ${state.theme === x[0] ? 'on' : ''}" data-act="settheme" data-id="${x[0]}"><i style="background:${x[2]}"></i>${x[1]}</div>`).join('')}</div>`;
+  if (t === 'alerts') pane = sRow('Báo trên trình duyệt khi có phiên chờ bạn', 'Hiện thông báo hệ thống', true, 'al0') + sRow('Tiếng meo khi bắt đầu chờ', 'Phát âm báo ngắn', false, 'al1') + sRow('Tự khôi phục phiên Máy này sau khi khởi động lại', 'Dựng lại phiên cục bộ', true, 'al2')
+    + `<h4 style="margin:20px 0 6px">Ngưỡng cảnh báo</h4><p class="hint">Vượt ngưỡng thì thẻ máy chủ viền đỏ và chuông báo.</p>${[['cpu', 'Ngưỡng CPU'], ['ram', 'Ngưỡng RAM'], ['disk', 'Ngưỡng Disk']].map((x) => `<div class="srow"><b>${x[1]}</b><div class="row" style="width:260px"><input class="rng" type="range" min="50" max="100" value="${state.th[x[0]]}" data-th="${x[0]}"><b id="th-${x[0]}" style="width:44px">${state.th[x[0]]}%</b></div></div>`).join('')}`;
+  if (t === 'servers') pane = HOSTS.map((h) => `<div class="srow"><div><b>${h.name}</b><small>${h.sub}</small></div><div class="row"><span class="tag ${h.ok ? 'ok' : 'bad'}">${h.ok ? 'Trực tuyến' : 'Mất kết nối'}</span><button class="btn sm" data-act="dlg" data-id="mach:${h.id}">Chi tiết</button></div></div>`).join('') + `<div style="margin-top:12px"><button class="btn brand" data-act="dlg" data-id="host">${ic('plus', 16)}Thêm máy chủ</button></div>`;
+  if (t === 'crew') pane = sRow('Tự trông crew', 'Tự nhắc điều phối khi thợ xong hoặc lỗi', true, 'cr0') + sRow('Giữ thợ đã xong 48 giờ', 'Thợ xong vẫn hiện trong Crew', true, 'cr1') + sRow('Thợ xong tự gọn sau 8 giây', 'Chip vẫn còn, pane rời lưới', true, 'cr2');
+  if (t === 'backup') pane = `<div class="srow"><div><b>Sao lưu tự động</b><small>Lần gần nhất: 22:22 hôm nay · 12 bản</small></div><button class="btn sm" data-act="toast" data-id="Đã tạo bản sao lưu">Sao lưu ngay</button></div><div class="srow"><div><b>Sao lưu két mật khẩu</b><small>Mã hoá, lưu trên máy này</small></div><button class="btn sm" data-act="toast" data-id="Đã xuất két">Xuất</button></div><div class="srow"><div><b>Khôi phục từ bản sao lưu</b><small>Chọn một bản trong danh sách</small></div><button class="btn sm" data-act="toast" data-id="Chọn bản sao lưu để khôi phục">Khôi phục</button></div>`;
+  if (t === 'plug') pane = [['Watchdog', 'Theo dõi phiên treo'], ['Handoff', 'Chuyển giao ngữ cảnh giữa phiên'], ['Drop', 'Kéo thả file vào terminal']].map((p, i) => sRow(p[0], p[1], true, 'pl' + i)).join('');
+  if (t === 'cmds') pane = state.cmds.map((c, i) => `<div class="srow"><b style="font-family:var(--mono)">${esc(c)}</b><button class="btn sm" data-act="cmddel" data-id="${i}">Xoá</button></div>`).join('') + `<div class="row" style="margin-top:12px"><input id="ncm" class="fld" placeholder="vd: git status" style="flex:1;height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 12px;background:var(--surface);color:var(--ink)"><button class="btn brand" data-act="cmdadd">Thêm</button></div>`;
+  if (t === 'connect') pane = `<div class="srow"><div><b>Liên kết điện thoại</b><small>Quét mã QR để mở TERMNEST trên điện thoại</small></div><button class="btn sm" data-act="toast" data-id="Đã hiện mã QR">Hiện mã QR</button></div><div class="srow"><div><b>Mã truy cập</b><small>termnest://…c3f9 · hết hạn sau 24 giờ</small></div><button class="btn sm" data-act="toast" data-id="Đã tạo mã mới">Tạo mã mới</button></div>`;
+  if (t === 'more') pane = `<div class="srow"><div><b>Mô phỏng mất kết nối web</b><small>Xem biểu ngữ "Đang kết nối lại…"</small></div><span class="sw ${state.offline ? 'on' : ''}" data-act="offline"></span></div><div class="srow"><div><b>Hướng dẫn</b><small>Các mẹo dùng nhanh</small></div><button class="btn sm" data-act="dlg" data-id="guide">Mở</button></div><div class="srow"><div><b>Phiên bản</b><small>TERMNEST 1.1.18</small></div><span class="tag ok">Mới nhất</span></div><div class="srow"><div><b>Thoát ứng dụng</b><small>Dừng máy chủ nội bộ; phiên trên máy chủ vẫn chạy</small></div><button class="btn sm" data-act="toast" data-id="Đã thoát ứng dụng (mô phỏng)">Thoát</button></div>`;
+  return `<div class="dlg wide"><h2>Cài đặt ${X}</h2><div class="set"><div class="setnav">${nav.map((n) => `<a class="${t === n[0] ? 'on' : ''}" data-act="settab" data-id="${n[0]}">${n[1]}</a>`).join('')}</div><div style="min-height:380px">${pane}</div></div></div>`;
 }
 function loginHtml() {
   return `<div class="login"><div class="art"><div>${lockup(56, true)}</div><div><h1>Mọi phiên AI của bạn, một chỗ.</h1><p>Theo dõi Claude, Codex và crew trên mọi máy chủ mà không phải mở từng terminal.</p></div><span></span><i class="orb"></i></div>
@@ -477,9 +585,11 @@ function render() {
   const tin = document.getElementById('tinput'), tv = tin ? tin.value : '', keepT = tin && document.activeElement === tin;
   let main = '';
   if (state.view === 'over') main = overHtml(); if (state.view === 'term') main = termHtml(); if (state.view === 'tok') main = tokHtml(); if (state.view === 'note') main = noteHtml(); if (state.view === 'ops') main = opsHtml();
-  root.innerHTML = state.login ? loginHtml() : `<div class="app">${topHtml()}<div class="body"><aside class="side ${state.drawer ? 'open' : ''}">${sideHtml()}</aside><main class="main">${navHtml()}${main}</main></div>
-    <nav class="tabbar">${NAV.map((n) => `<a class="${state.view === n[0] ? 'on' : ''}" data-act="view" data-id="${n[0]}">${ic(n[2])}${n[1]}</a>`).join('')}</nav></div>${dlgHtml()}${state.toast ? `<div class="toast">${esc(state.toast)}</div>` : ''}`;
-  document.documentElement.style.setProperty('--term-size', state.fs + 'px');
+  root.innerHTML = state.login ? loginHtml() : `<div class="app ${state.fsMode ? 'fsm' : ''}">${topHtml()}<div class="body ${state.mini ? 'mini' : ''}"><aside class="side ${state.drawer ? 'open' : ''}">${sideHtml()}</aside><main class="main">${navHtml()}${main}</main></div>
+    <nav class="tabbar">${NAV.map((n) => `<a class="${state.view === n[0] ? 'on' : ''}" data-act="view" data-id="${n[0]}">${ic(n[2])}${n[1]}</a>`).join('')}</nav></div>${dlgHtml()}${state.fsMode ? `<button class="btn fsx" data-act="fsmode">Thoát toàn màn hình</button>` : ''}${state.toast ? `<div class="toast">${esc(state.toast)}</div>` : ''}`;
+  document.documentElement.style.setProperty('--term-size', state.fs + 'px'); document.documentElement.style.setProperty('--z', innerWidth <= 860 ? 1 : state.zoom / 100);
+  const rb = document.getElementById('rbn'); if (rb) rb.oninput = () => { const ok = rb.value === rb.dataset.name, b = document.getElementById('rbok'); b.disabled = !ok; b.style.opacity = ok ? 1 : .45; };
+  document.querySelectorAll('[data-th]').forEach((r) => { r.oninput = () => { state.th[r.dataset.th] = Number(r.value); document.getElementById('th-' + r.dataset.th).textContent = r.value + '%'; }; r.onchange = render; });
   const burger = document.getElementById('burger'); if (burger) burger.style.display = innerWidth <= 860 ? 'grid' : 'none';
   const out = document.getElementById('out'); if (out) out.scrollTop = out.scrollHeight;
   const q = document.getElementById('q'); if (q) { q.oninput = () => { state.q = q.value; const p = q.selectionStart; render(); const n = document.getElementById('q'); n.focus(); n.setSelectionRange(p, p); }; if (keepQ) q.focus(); }
@@ -489,14 +599,16 @@ function render() {
   const nt = document.getElementById('nt'), nb = document.getElementById('nb');
   if (nt) { const n = NOTES.find((x) => x.id === state.noteId); nt.oninput = () => { n.t = nt.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; nb.oninput = () => { n.b = nb.value; document.getElementById('saved').textContent = 'Đã lưu ' + new Date().toTimeString().slice(0, 5); }; }
 }
+function saveNf() { const g = (i) => document.getElementById(i); if (g('nn')) state.nf = { name: g('nn').value, host: g('nh').value, dir: g('ndir').value, cmd: g('ncmd').value }; }
 function toast(t) { state.toast = t; render(); clearTimeout(toast.t); toast.t = setTimeout(() => { state.toast = ''; render(); }, 1800); }
 
 /* ───────── Tương tác ───────── */
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act, id = el.dataset.id;
+  if (a !== 'menu' && a !== 'more') { state.menu = false; state.more = false; }
   if (a === 'scrim') { if (e.target === el) { state.dlg = null; render(); } return; }
-  if (a === 'close') { e.stopPropagation(); state.open = state.open.filter((x) => x !== id); if (state.tab === id) state.tab = 'all'; render(); return; }
+  if (a === 'close') { e.stopPropagation(); if (state.open.includes(id)) state.closed.push(id); state.open = state.open.filter((x) => x !== id); if (state.tab === id) state.tab = 'all'; state.dlg = null; render(); return; }
   if (a === 'view') { state.view = id; state.drawer = false; }
   else if (a === 'open') { if (!state.open.includes(id)) state.open.push(id); state.tab = id; state.view = 'term'; state.drawer = false; state.selW = null; }
   else if (a === 'tab') { state.tab = id; state.selW = null; }
@@ -504,14 +616,15 @@ document.addEventListener('click', (e) => {
   else if (a === 'filter') state.filter = id;
   else if (a === 'theme') { state.theme = state.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = state.theme; }
   else if (a === 'settheme') { state.theme = id === 'auto' ? 'light' : id; document.documentElement.dataset.theme = state.theme; }
-  else if (a === 'dlg') { state.dlg = id; }
+  else if (a === 'dlg') { saveNf(); state.dlg = id; state.menu = false; if (id === 'files') state.file = ''; }
   else if (a === 'dlgx') state.dlg = null;
   else if (a === 'drawer') state.drawer = !state.drawer;
   else if (a === 'det') state.det = !state.det;
   else if (a === 'showW') state.showW = !state.showW;
   else if (a === 'doneW') state.doneW = !state.doneW;
   else if (a === 'selw') state.selW = state.selW === id ? null : id;
-  else if (a === 'menu') state.menu = !state.menu;
+  else if (a === 'menu') state.menu = state.menu === id ? false : id;
+  else if (a === 'more') state.more = !state.more;
   else if (a === 'cmd') { state.menu = false; state.focusIn = true; render(); const i = document.getElementById('tinput'); i.value = id; i.focus(); state.focusIn = false; return; }
   else if (a === 'ctrlc') { sess(state.tab).lines.push('<span class="r">^C</span>'); }
   else if (a === 'esc') { sess(state.tab).lines.push('<span class="d">[Esc]</span>'); }
@@ -520,7 +633,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'nudge') { sess(state.tab).lines.push('<span class="b">›</span> (Termnest) Nhắc điều phối: kiểm tra các thợ đã xong.'); toast('Đã gửi nhắc vào phiên điều phối'); return; }
   else if (a === 'kill') state.dlg = 'kill:' + id;
   else if (a === 'killok') { const i = S.findIndex((s) => s.id === id); if (i >= 0) S.splice(i, 1); state.open = state.open.filter((x) => x !== id); state.tab = 'all'; state.dlg = null; }
-  else if (a === 'create') { const nm = document.getElementById('nn').value || 'Phien-moi', h = document.getElementById('nh').value, tl = document.getElementById('nt2').value; const s = { id: 'n' + Date.now(), e: '🐙', n: nm, h, tool: tl === 'Codex' ? 'Codex' : 'Claude', st: 'run', ctx: 2, lines: ['<span class="d">Đã tạo phiên mới trên ' + hostName(h) + '</span>', '<span class="g">●</span> Sẵn sàng. Bạn muốn làm gì?'] }; S.unshift(s); state.open.push(s.id); state.tab = s.id; state.view = 'term'; state.dlg = null; }
+  else if (a === 'create') { saveNf(); const nm = state.nf.name || 'Phien-moi', h = state.nf.host, tl = state.nf.cmd; const s = { id: 'n' + Date.now(), e: state.newPet, n: nm, h, tool: /codex/i.test(tl) ? 'Codex' : 'Claude', st: 'run', ctx: 2, lines: ['<span class="d">Đã tạo phiên mới trên ' + hostName(h) + '</span>', '<span class="g">●</span> Sẵn sàng. Bạn muốn làm gì?'] }; S.unshift(s); state.open.push(s.id); state.tab = s.id; state.view = 'term'; state.dlg = null; }
   else if (a === 'addhost') { HOSTS.push({ id: 'u04', icon: 'srv', name: 'dev-ubuntu-04', sub: 'thanhlg@10.10.62.121', ok: true }); state.dlg = null; toast('Đã thêm máy chủ dev-ubuntu-04'); return; }
   else if (a === 'settab') state.setTab = id;
   else if (a === 'pets') state.pets = !state.pets;
@@ -529,6 +642,35 @@ document.addEventListener('click', (e) => {
   else if (a === 'range') state.range = Number(id);
   else if (a === 'note') state.noteId = Number(id);
   else if (a === 'newnote') { const n = { id: Date.now(), t: 'Ghi chú mới', s: 'Vừa xong', b: '' }; NOTES.unshift(n); state.noteId = n.id; }
+  else if (a === 'mini') state.mini = !state.mini;
+  else if (a === 'reopen') { const id2 = state.closed.pop(); if (id2 && sess(id2)) { state.open.push(id2); state.tab = id2; } }
+  else if (a === 'bellS') { const s = state.tab; state.bellS[s] = !state.bellS[s]; toast(state.bellS[s] ? 'Sẽ báo khi phiên này chờ bạn' : 'Đã tắt báo cho phiên này'); return; }
+  else if (a === 'layout') state.layout = Number(id);
+  else if (a === 'kb') state.kb = !state.kb;
+  else if (a === 'sel') state.sel = !state.sel;
+  else if (a === 'newline') { const i = document.getElementById('tinput'); if (i) i.value += ' ⏎ '; return; }
+  else if (a === 'key') { state.menu = false; sess(state.tab).lines.push('<span class="d">[' + id + ']</span>'); }
+  else if (a === 'fsreset') state.fs = 13.5;
+  else if (a === 'fsmode') state.fsMode = !state.fsMode;
+  else if (a === 'zoom') state.zoom = Number(id);
+  else if (a === 'offline') state.offline = !state.offline;
+  else if (a === 'readall') { state.alertsRead = true; }
+  else if (a === 'rangeM') state.rangeM = id;
+  else if (a === 'hostsess') { state.host = id; state.view = 'term'; state.tab = 'all'; state.dlg = null; }
+  else if (a === 'rebootok') { state.dlg = null; toast('Đã gửi lệnh khởi động lại (mô phỏng)'); return; }
+  else if (a === 'rmok') { const i = HOSTS.findIndex((h) => h.id === id); if (i >= 0) HOSTS.splice(i, 1); if (state.host === id) state.host = 'all'; state.dlg = null; }
+  else if (a === 'renameok') { sess(state.tab).n = document.getElementById('rn').value || sess(state.tab).n; state.dlg = null; }
+  else if (a === 'setpet') sess(state.tab).e = id;
+  else if (a === 'moveok') { const s = sess(state.tab), h = document.getElementById('mvh'); if (h) s.h = h.value; state.dlg = null; toast('Đã chuyển phiên sang ' + hostName(s.h)); return; }
+  else if (a === 'openfile') state.file = id;
+  else if (a === 'sendok') { sess(state.tab).lines.push('<span class="g">●</span> Đã nhận file: <b>bao-cao-tuan.pdf</b> → /data/thanhlg/uploads/'); state.dlg = null; }
+  else if (a === 'newpet') { saveNf(); state.newPet = id; }
+  else if (a === 'setdir') { saveNf(); state.nf.dir = id; }
+  else if (a === 'dirin') state.dirPath.push(id);
+  else if (a === 'dircd') state.dirPath = state.dirPath.slice(0, Number(id));
+  else if (a === 'dirok') { state.nf.dir = '/' + state.dirPath.join('/'); state.dlg = 'new'; }
+  else if (a === 'cmddel') state.cmds.splice(Number(id), 1);
+  else if (a === 'cmdadd') { const v = document.getElementById('ncm').value.trim(); if (v) state.cmds.push(v); }
   else if (a === 'toast') { toast(id); return; }
   else if (a === 'logout') state.login = true;
   else if (a === 'login') state.login = false;
