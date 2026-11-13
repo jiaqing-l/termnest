@@ -723,7 +723,8 @@
     }
   }
   // Settings → "Ẩn thanh trạng thái tmux" (tw-hide-tmux-status, default on). The tmux session itself is never changed.
-  function hideTmuxStatus() { try { return localStorage.getItem('tw-hide-tmux-status') !== '0'; } catch (e) { return true; } }
+  // Off by default: cropping rows shifts the terminal's click mapping (links were only clickable a few rows below the text).
+  function hideTmuxStatus() { try { return localStorage.getItem('tw-hide-tmux-status') === '1'; } catch (e) { return false; } }
   // After output (throttled) and on resize: count the status rows at the bottom; only act when two checks in a row agree.
   function cropCheck(p) {
     if (p.cropTimer) return;
