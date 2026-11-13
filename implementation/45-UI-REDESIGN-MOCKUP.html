@@ -362,6 +362,14 @@ select{height:42px;border:1px solid var(--line-2);border-radius:12px;padding:0 1
 @keyframes ld{to{left:calc(100% - 8px)}}
 @media (prefers-reduced-motion:reduce){.scene .link i{animation:none;left:50%}}
 @media (max-width:1180px){.hero{grid-template-columns:minmax(0,1fr)}.hstats{flex-wrap:wrap}.scene{display:none}}
+
+.notes3{display:grid;grid-template-columns:260px minmax(0,1fr) 320px;gap:16px;flex:1;min-height:0}
+@media (max-width:1250px){.notes3{grid-template-columns:240px minmax(0,1fr)}.notes3>.card:last-child{grid-column:1/-1}}
+.slot{padding:12px;border:1px solid var(--line);border-radius:var(--r-m);margin-bottom:10px;background:var(--surface-2)}
+.dowb{height:28px;min-width:34px;padding:0 6px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);font-size:12px;font-weight:700;color:var(--ink-2)}
+.dowb.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.ntf{position:fixed;top:76px;right:20px;width:340px;z-index:90;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.28);padding:14px 16px;display:grid;gap:8px}
+.editor .ti{height:40px;border:1px solid transparent;border-radius:8px;padding:0 8px}.editor .ti:focus{border-color:var(--brand-line);background:var(--surface-2)}
 /* mobile */
 .tabbar{display:none}
 @media (max-width:860px){
@@ -451,15 +459,15 @@ const FEED = {
 };
 const POOL = [['ex', '$ git diff --stat', 0.2], ['ed', '✎ src/Picker/Picker.cs'], ['ex', '$ dotnet build --no-restore', 21.7], ['sy', '› Đã sửa selector, chạy lại test.'], ['ex', '$ dotnet test --filter Picker', 9.4], ['ed', '✎ en.json, vi.json'], ['ex', '$ rg "FunctionPicker" -n', 0.1], ['sy', '› Cập nhật xong, đang kiểm tra lại.']];
 const NOTES = [
-  { id: 1, t: 'Quy trình release 1.1.x', s: 'FES-Support · hôm nay', b: 'Tag phải trỏ đúng commit đã nâng version.\n\n- Nâng version ở 7 file\n- Đẩy nhánh, rồi đẩy tag v1.1.18\n- Theo dõi workflow, chạy lại job lỗi nếu là flake' },
-  { id: 2, t: 'Checklist crew devkit', s: 'SV2-Agent03 · hôm qua', b: '- Orchestrator-register khi khởi chạy crew\n- Ghi danh sách track vào MANIFEST ở bước lập kế hoạch' },
-  { id: 3, t: 'Lỗi SSH dev-ubuntu-02', s: 'Máy chủ · 10/11', b: 'Kết nối bị reset khi nhiều lệnh chờ kênh. Đã vá trong 1.1.18.' }
+  { id: 1, t: 'Quy trình release 1.1.x', s: 'FES-Support · hôm nay', sess: 'FES-Support', rems: [{ id: 1, t: 'Xem lại pipeline release', time: '15:30', daily: false, act: 'note', on: true }, { id: 2, t: 'Kiểm tra tag v1.1.18', time: '09:00', daily: true, act: 'sess', on: true }], b: 'Tag phải trỏ đúng commit đã nâng version.\n\n- Nâng version ở 7 file\n- Đẩy nhánh, rồi đẩy tag v1.1.18\n- Theo dõi workflow, chạy lại job lỗi nếu là flake' },
+  { id: 2, t: 'Checklist crew devkit', s: 'SV2-Agent03 · hôm qua', sess: 'SV2-Agent03', rems: [{ id: 1, t: 'Gửi báo cáo tuần', time: '11:30', daily: false, act: 'info', on: false }], b: '- Orchestrator-register khi khởi chạy crew\n- Ghi danh sách track vào MANIFEST ở bước lập kế hoạch' },
+  { id: 3, t: 'Lỗi SSH dev-ubuntu-02', s: 'Máy chủ · 10/11', sess: '', rems: [], b: 'Kết nối bị reset khi nhiều lệnh chờ kênh. Đã vá trong 1.1.18.' }
 ];
 const ALERTS = [['bad', 'dev-ubuntu-02 (thanhlg) mất kết nối', '5 phút trước'], ['warn', 'Display-Program đang chờ bạn', '12 phút trước'], ['warn', 'PG-App đang chờ bạn', '18 phút trước'], ['ok', 'W3 · FES-Support đã xong', '25 phút trước'], ['bad', 'AAV-Support gặp lỗi SSH', '40 phút trước']];
 
 /* ───────── Trạng thái ───────── */
 const ST8 = { view: 'over', open: ['sv2', 'fes'], tab: 'all', host: 'all', q: '', filter: 'all', det: false, showW: true, doneW: true, selW: null, menu: false, dlg: null, setTab: 'look', opsTab: 0,
-  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
+  noteId: 1, range: 14, login: false, side: false, theme: 'light', pets: true, toast: '', nuh: 'all', dock: '', fs: 13.5, drawer: false, newHost: 'u02r', zoom: 80, mini: false, closed: [], more: false, layout: 1, kb: false, sel: false, fsMode: false, offline: false, bellS: {}, th: { cpu: 80, ram: 85, disk: 90 }, rangeM: '1h', noteTab: 'notes', delArm: false, missed: 2, notif: null, nset: { bell: true, os: true, sound: false, quiet: true, qFrom: '22:00', qTo: '07:00', onlyOpen: true, catchup: true, slots: [{ id: 1, time: '09:00', msg: 'Vào xem ghi chú và việc hôm nay', days: [1, 2, 3, 4, 5], on: true }, { id: 2, time: '13:30', msg: 'Còn việc nào chưa xong không?', days: [1, 2, 3, 4, 5], on: true }, { id: 3, time: '17:30', msg: 'Chốt ghi chú cuối ngày', days: [1, 2, 3, 4, 5, 6], on: true }] }, yardOpen: true, yp: {}, play: false, score: [0, 0], hammer: false, bubble: null, feedMsg: null, ouch: null, ouchN: 0, ballX: 50, group: 'prio', pins: ['fes'], tokView: 'day', tokAI: 'all', tokTab: 'day', tokRng: '7d', tokMore: false, tokHost: 'all', opsQ: '', deep: [], opsOn: true, opsInt: 30, rep: 0, cols: 'auto', last: 'fes', alertsRead: false, newPet: '🐙', nf: { name: 'Phien-moi', host: 'u02r', dir: '/data/thanhlg/xspire-workspaces', }, dirPath: ['data', 'thanhlg'], file: '', cmds: ['/xspire-crew status', '/xspire-bugfix', 'git status', 'dotnet test --no-build'] };
 const state = ST8;
 const hostName = (id) => (HOSTS.find((h) => h.id === id) || {}).name || id;
 const sess = (id) => S.find((s) => s.id === id);
@@ -511,10 +519,45 @@ function termHtml() {
   const body = state.tab === 'all' ? wallHtml() : (sess(state.tab) ? sessionHtml(sess(state.tab)) : wallHtml());
   return `<div class="page fill">${tabsHtml()}${body}</div>`;
 }
+
+const DOW = [[1, 'T2'], [2, 'T3'], [3, 'T4'], [4, 'T5'], [5, 'T6'], [6, 'T7'], [7, 'CN']];
+const unfinished = (b) => (String(b).match(/- \[ \]/g) || []).length;
 function noteHtml() {
-  const n = NOTES.find((x) => x.id === state.noteId);
-  return `<div class="page fill"><div class="notes"><div class="nlist"><button class="btn brand" data-act="newnote">${ic('plus', 16)}Ghi chú mới</button>${NOTES.map((x) => `<div class="nitem ${x.id === state.noteId ? 'on' : ''}" data-act="note" data-id="${x.id}"><b>${esc(x.t)}</b><small>${x.s}</small></div>`).join('')}</div>
-    <div class="card editor"><input class="ti" id="nt" value="${esc(n.t)}"><div class="row"><span class="tag pri">Markdown</span><span class="mut" id="saved">Tự lưu khi gõ</span></div><textarea id="nb">${esc(n.b)}</textarea></div></div></div>`;
+  const n = NOTES.find((x) => x.id === state.noteId) || NOTES[0];
+  const nt = (k, t, e) => `<button class="${state.noteTab === k ? 'on' : ''}" data-act="ntab" data-id="${k}">${t}${e ? `<em style="margin-left:6px">${e}</em>` : ''}</button>`;
+  const allRem = NOTES.flatMap((x) => x.rems.map((r) => Object.assign({ note: x }, r))).sort((a, b) => a.time.localeCompare(b.time));
+  const head = `<div class="row" style="flex-wrap:wrap"><div class="subseg">${nt('notes', '📝 Ghi chú')}${nt('remind', '⏰ Nhắc việc', allRem.filter((r) => r.on).length)}${nt('settings', '⚙ Cài đặt thông báo')}</div><span class="sp"></span>${state.missed ? `<span class="tag warn" data-act="ntab" data-id="remind" style="cursor:pointer;height:30px">⚠ ${state.missed} nhắc bị lỡ khi app tắt</span>` : ''}<button class="btn sm" data-act="ntest">🔔 Xem thử thông báo</button></div>`;
+  let body = '';
+  if (state.noteTab === 'notes') {
+    const left = `<div class="nlist"><button class="btn brand" data-act="newnote">${ic('plus', 16)}Ghi chú mới</button>${NOTES.map((x) => `<div class="nitem ${x.id === state.noteId ? 'on' : ''}" data-act="note" data-id="${x.id}"><b>${esc(x.t)}</b><small>${x.s}</small><div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap">${unfinished(x.b) ? `<span class="tag">${unfinished(x.b)} việc chưa xong</span>` : ''}${x.rems.some((r) => r.on) ? `<span class="tag pri">⏰ ${x.rems.filter((r) => r.on).length}</span>` : ''}${x.sess ? `<span class="tag">${esc(x.sess)}</span>` : ''}</div></div>`).join('')}</div>`;
+    const rem = `<div class="card" style="display:grid;gap:12px;align-content:start;overflow:auto"><h3 style="margin:0">Nhắc của ghi chú này</h3>
+      ${n.rems.length ? n.rems.map((r) => `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>${esc(r.t)}</b><div class="mut">${r.time}${r.daily ? ' · lặp mỗi ngày' : ''} · ${{ info: 'Chỉ thông báo', note: 'Mở ghi chú', sess: 'Mở phiên liên quan' }[r.act]}</div></div><span class="sw ${r.on ? 'on' : ''}" data-act="remtog" data-id="${r.id}" title="Bật tắt nhắc"></span><button class="ib" style="width:32px;height:32px" data-act="remdel" data-id="${r.id}" title="Xóa nhắc">${ic('x', 14)}</button></div>`).join('') : '<div class="mut">Chưa có nhắc nào. Chọn giờ ở dưới rồi bấm “Thêm nhắc”.</div>'}
+      <div style="display:grid;gap:8px"><input class="inp" id="rtext" placeholder="Nhắc tôi… (ví dụ: xem lại pipeline)"><div class="row" style="flex-wrap:wrap;gap:6px"><span class="mut">Lúc</span><input class="inp" type="time" id="rtime" value="15:30" style="width:110px"><button class="chip" style="height:30px" data-act="rplus" data-id="10">+10 phút</button><button class="chip" style="height:30px" data-act="rplus" data-id="30">+30 phút</button><button class="chip" style="height:30px" data-act="rplus" data-id="60">+1 giờ</button></div>
+      <label class="row hint"><input type="checkbox" id="rdaily"> Lặp mỗi ngày</label><label class="fld">Khi nhắc thì<select id="ract"><option value="info">Chỉ thông báo</option><option value="note">Mở ghi chú này</option><option value="sess">Mở phiên liên quan</option></select></label><button class="btn brand" data-act="remadd">＋ Thêm nhắc</button></div></div>`;
+    const ed = `<div class="card editor" style="min-height:0"><div class="row" style="flex-wrap:wrap"><input class="ti" id="nt" value="${esc(n.t)}" title="Tiêu đề ghi chú" style="flex:1;min-width:200px"><label class="row mut">Phiên liên quan&nbsp;<select id="nsess" data-act="nsess"><option value="">Không gắn phiên</option>${S.map((x) => `<option ${n.sess === x.n ? 'selected' : ''}>${esc(x.n)}</option>`).join('')}</select></label><button class="ib" style="width:36px;height:36px" data-act="dlg" data-id="pet" title="Đổi thú cưng của ghi chú này">${state.pets ? '🐾' : '★'}</button><button class="btn sm ${state.delArm ? 'danger' : ''}" data-act="notedel">${state.delArm ? 'Xóa thật?' : 'Xóa'}</button></div>
+      <div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn sm" data-act="ntpl" data-id="## Việc hôm nay\n- [ ] ">+ Việc hôm nay</button><button class="btn sm" data-act="ntpl" data-id="## Quyết định\n- ">+ Quyết định</button><button class="btn sm" data-act="ntpl" data-id="## Việc kế tiếp\n- ">+ Việc kế tiếp</button><button class="btn sm" data-act="ntime">⏱ Chèn giờ</button><span class="sp"></span><button class="btn sm" data-act="toast" data-id="Đã xuất ghi-chu.md">⬇ Xuất .md</button><button class="btn sm" data-act="toast" data-id="Đã xuất ghi-chu.txt">⬇ Xuất .txt</button><button class="btn sm" data-act="dlg" data-id="append">＋ Nối vào file…</button></div>
+      <textarea id="nb" placeholder="Nội dung ghi chú">${esc(n.b)}</textarea><div class="row"><span class="tag pri">Markdown</span><span class="mut" id="saved">Tự lưu · không dùng AI</span><span class="sp"></span><span class="tag ${unfinished(n.b) ? 'warn' : 'ok'}">${unfinished(n.b) ? unfinished(n.b) + ' việc chưa xong' : 'Xong hết việc'}</span></div></div>`;
+    body = `<div class="notes3">${left}${ed}${rem}</div>`;
+  }
+  if (state.noteTab === 'remind') {
+    body = `<div class="card" style="overflow:auto"><h3>Tất cả nhắc việc <span>${allRem.length} nhắc</span></h3>${state.missed ? `<div class="banner" style="margin-bottom:12px">⚠ ${state.missed} nhắc bị lỡ khi app tắt: xem lại pipeline (09:00), Gửi báo cáo tuần (11:30). <a data-act="missed" style="cursor:pointer;text-decoration:underline">Đánh dấu đã xem</a></div>` : ''}
+      <table class="tbl"><thead><tr><th>Giờ</th><th>Nhắc</th><th>Ghi chú</th><th>Khi nhắc thì</th><th></th></tr></thead><tbody>${allRem.map((r) => `<tr><td><b>${r.time}</b>${r.daily ? '<div class="mut">mỗi ngày</div>' : ''}</td><td>${esc(r.t)}</td><td class="pick" data-act="note" data-id="${r.note.id}" style="color:var(--brand)">${esc(r.note.t)}</td><td class="mut">${{ info: 'Chỉ thông báo', note: 'Mở ghi chú', sess: 'Mở phiên liên quan' }[r.act]}</td><td style="text-align:right"><span class="sw ${r.on ? 'on' : ''}" data-act="remtog2" data-id="${r.note.id}:${r.id}"></span></td></tr>`).join('')}</tbody></table>
+      <div class="row" style="margin-top:12px;gap:8px"><span class="mut">Hoãn nhanh:</span><button class="chip" data-act="toast" data-id="Đã hoãn 10 phút">10 phút</button><button class="chip" data-act="toast" data-id="Đã hoãn 1 giờ">1 giờ</button><button class="chip" data-act="toast" data-id="Đã hoãn tới sáng mai 08:00">Sáng mai 08:00</button></div></div>`;
+  }
+  if (state.noteTab === 'settings') {
+    const ns = state.nset;
+    const sw = (k, t, sub) => `<div class="srow"><div><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</div><span class="sw ${ns[k] ? 'on' : ''}" data-act="nsw" data-id="${k}"></span></div>`;
+    body = `<div class="grid2" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start">
+      <div class="card"><h3>Lịch nhắc kiểm tra ghi chú <span>Gửi thông báo theo nhiều khung giờ để bạn vào xem ghi chú</span></h3>
+        ${ns.slots.map((x) => `<div class="slot"><div class="row" style="flex-wrap:wrap;gap:10px"><input class="inp" type="time" value="${x.time}" data-act="slottime" data-id="${x.id}" style="width:110px"><input class="inp grow" value="${esc(x.msg)}" data-act="slotmsg" data-id="${x.id}" style="min-width:180px" title="Nội dung thông báo"><span class="sw ${x.on ? 'on' : ''}" data-act="slottog" data-id="${x.id}"></span><button class="ib" style="width:34px;height:34px" data-act="slotdel" data-id="${x.id}" title="Xóa khung giờ">${ic('x', 14)}</button></div>
+          <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><span class="mut">Lặp vào</span>${DOW.map((d) => `<button class="dowb ${x.days.includes(d[0]) ? 'on' : ''}" data-act="slotday" data-id="${x.id}:${d[0]}">${d[1]}</button>`).join('')}<button class="chip" style="height:26px;font-size:12px" data-act="slotdays" data-id="${x.id}:wk">Ngày làm việc</button><button class="chip" style="height:26px;font-size:12px" data-act="slotdays" data-id="${x.id}:all">Mỗi ngày</button></div></div>`).join('')}
+        <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px"><input class="inp" type="time" id="slt" value="15:00" style="width:110px"><button class="btn brand" data-act="slotadd">＋ Thêm khung giờ</button><span class="hint">Gợi ý: đầu ngày, sau bữa trưa, cuối ngày.</span></div>
+        <div class="srow" style="margin-top:12px"><div><b>Chỉ nhắc khi còn việc chưa xong</b><small>Bỏ qua nếu mọi ghi chú đã hết mục “- [ ]”.</small></div><span class="sw ${ns.onlyOpen ? 'on' : ''}" data-act="nsw" data-id="onlyOpen"></span></div></div>
+      <div style="display:grid;gap:16px;align-content:start"><div class="card"><h3>Cách báo</h3>${sw('bell', 'Chuông trong TERMNEST', 'khung cảnh báo phía trên')}${sw('os', 'Thông báo hệ điều hành', 'app desktop')}${sw('sound', 'Âm thanh nhẹ khi nhắc')}${sw('quiet', 'Giờ yên lặng ' + ns.qFrom + ' – ' + ns.qTo, 'không phát âm')}
+        <div class="row" style="margin-top:8px;gap:8px"><span class="mut">Từ</span><input class="inp" type="time" value="${ns.qFrom}" style="width:110px" data-act="qfrom"><span class="mut">đến</span><input class="inp" type="time" value="${ns.qTo}" style="width:110px" data-act="qto"></div></div>
+        <div class="card"><h3>Khi app tắt</h3><div class="hint">Nhắc việc chỉ kêu khi TERMNEST đang chạy. Nếu app tắt, nhắc bị lỡ sẽ hiện ở dòng “⚠ N nhắc bị lỡ khi app tắt” khi bạn mở lại.</div>${sw('catchup', 'Gom nhắc bị lỡ khi mở lại app')}</div></div></div>`;
+  }
+  return `<div class="page ${state.noteTab === 'notes' ? 'fill' : ''}">${head}${body}</div>`;
 }
 const SW = {};
 const sRow = (t, s, on, k) => { if (SW[k] === undefined) SW[k] = on; return `<div class="srow"><div><b>${t}</b><small>${s}</small></div><span class="sw ${SW[k] ? 'on' : ''}" data-act="sw" data-id="${k}"></span></div>`; };
@@ -658,6 +701,7 @@ function dlgHtml() {
   if (d.startsWith('track:')) { const [, lid, w] = d.split(':'); const t = TEAMS.find((x) => x.lid === lid), tr = t && t.tracks.find((x) => x[0] === w); body = `<div class="dlg wide"><h2>${w} · ${t ? t.task : ''} ${X}</h2><div class="row"><span class="tag ${TRS[tr[1]][1]}">${TRS[tr[1]][0]}</span><span class="mut">${tr[2]}</span></div>
     <div class="grid2" style="grid-template-columns:1fr 1fr"><div class="card"><h3>Đã làm gì</h3><div class="timeline">${[['ok', '21:48', 'Sửa Picker.cs, en.json, vi.json'], ['ok', '21:55', 'dotnet build ✔ 38s'], ['bad', '22:12', 'dotnet test ✖ 2 test']].map((e) => `<div class="tl"><i class="${e[0]}"></i><div>${e[2]}</div><span class="mut">${e[1]}</span></div>`).join('')}</div></div>
     <div class="card"><h3>Vòng chạy</h3><table class="tbl"><tbody>${[[1, '19:08', '31 phút', 0], [2, '20:02', '14 phút', 1]].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td><span class="tag ${r[3] ? 'bad' : 'ok'}">${r[3]}</span></td></tr>`).join('')}</tbody></table></div></div><div class="plain">$ dotnet test --filter Picker\n  Failed FunctionPickerTests.Selects_By_Code [2 ms]\n  Assert.Equal() Failure: expected "SO-001"</div><div class="acts"><button class="btn" data-act="open" data-id="${lid}">Mở phiên leader</button><button class="btn brand" data-act="dlgx">Đóng</button></div></div>`; }
+  if (d === 'append') body = `<div class="dlg"><h2>Nối vào file ${X}</h2><label class="fld">File cần nối<input class="inp" id="apf" placeholder="docs/Implementation/X/01-TRACKING.md" style="height:42px"></label><p class="hint">Chỉ nối vào file đã có (.md hoặc .txt) trong thư mục của phiên đã gắn; không ghi đè.</p><div class="acts"><button class="btn" data-act="dlgx">Hủy</button><button class="btn brand" data-act="appok">Nối vào cuối file</button></div></div>`;
   if (d === 'set') body = settingsHtml(X);
   return `<div class="scrim" data-act="scrim">${body}</div>`;
 }
@@ -828,7 +872,7 @@ function render() {
   let main = '';
   if (state.view === 'over') main = overHtml(); if (state.view === 'term') main = termHtml(); if (state.view === 'tok') main = tokHtml(); if (state.view === 'note') main = noteHtml(); if (state.view === 'ops') main = opsHtml();
   root.innerHTML = state.login ? loginHtml() : `<div class="app ${state.fsMode ? 'fsm' : ''}">${topHtml()}<div class="body ${state.mini ? 'mini' : ''}"><aside class="side ${state.drawer ? 'open' : ''}">${sideHtml()}</aside><main class="main">${navHtml()}${main}</main></div>
-    <nav class="tabbar">${NAV.map((n) => `<a class="${state.view === n[0] ? 'on' : ''}" data-act="view" data-id="${n[0]}">${ic(n[2])}${n[1]}</a>`).join('')}</nav></div>${dlgHtml()}${state.fsMode ? `<button class="btn fsx" data-act="fsmode">Thoát toàn màn hình</button>` : ''}${state.toast ? `<div class="toast">${esc(state.toast)}</div>` : ''}`;
+    <nav class="tabbar">${NAV.map((n) => `<a class="${state.view === n[0] ? 'on' : ''}" data-act="view" data-id="${n[0]}">${ic(n[2])}${n[1]}</a>`).join('')}</nav></div>${dlgHtml()}${state.notif ? `<div class="ntf"><div class="row"><b>🔔 ${esc(state.notif.t)}</b><span class="sp"></span><button class="ib" style="width:28px;height:28px" data-act="ntfx">${ic('x', 12)}</button></div><div style="color:var(--ink-2)">${esc(state.notif.b)}</div><div class="row" style="gap:6px"><button class="btn sm brand" data-act="ntfopen">Mở ghi chú</button><button class="btn sm" data-act="ntfsnooze">Hoãn 1 giờ</button></div></div>` : ''}${state.fsMode ? `<button class="btn fsx" data-act="fsmode">Thoát toàn màn hình</button>` : ''}${state.toast ? `<div class="toast">${esc(state.toast)}</div>` : ''}`;
   document.documentElement.style.setProperty('--term-size', state.fs + 'px'); document.documentElement.style.setProperty('--z', innerWidth <= 860 ? 1 : state.zoom / 100);
   const rb = document.getElementById('rbn'); if (rb) rb.oninput = () => { const ok = rb.value === rb.dataset.name, b = document.getElementById('rbok'); b.disabled = !ok; b.style.opacity = ok ? 1 : .45; };
   document.querySelectorAll('[data-th]').forEach((r) => { r.oninput = () => { state.th[r.dataset.th] = Number(r.value); document.getElementById('th-' + r.dataset.th).textContent = r.value + '%'; }; r.onchange = render; });
@@ -891,7 +935,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'ops') state.opsTab = Number(id);
   else if (a === 'range') state.range = Number(id);
   else if (a === 'note') state.noteId = Number(id);
-  else if (a === 'newnote') { const n = { id: Date.now(), t: 'Ghi chú mới', s: 'Vừa xong', b: '' }; NOTES.unshift(n); state.noteId = n.id; }
+  else if (a === 'newnote') { const n = { id: Date.now(), t: 'Ghi chú mới', s: 'Vừa xong', b: '', sess: '', rems: [] }; NOTES.unshift(n); state.noteId = n.id; }
   else if (a === 'mini') state.mini = !state.mini;
   else if (a === 'cols') state.cols = id === 'auto' ? 'auto' : Number(id);
   else if (a === 'reopen') { const id2 = state.closed.pop(); if (id2 && sess(id2)) { state.open.push(id2); state.tab = id2; } }
@@ -939,6 +983,27 @@ document.addEventListener('click', (e) => {
   else if (a === 'play') state.play = !state.play;
   else if (a === 'hammer') { state.hammer = !state.hammer; state.bubble = null; }
   else if (a === 'yardopen') state.yardOpen = !state.yardOpen;
+  else if (a === 'ntab') { state.noteTab = id; state.delArm = false; }
+  else if (a === 'nsw') state.nset[id] = !state.nset[id];
+  else if (a === 'ntest') { state.notif = { t: 'Đến giờ xem ghi chú', b: unfinished(NOTES[0].b) + ' việc chưa xong trong “' + NOTES[0].t + '”. Vào kiểm tra nhé!' }; render(); clearTimeout(window.__ntf); window.__ntf = setTimeout(() => { state.notif = null; render(); }, 7000); return; }
+  else if (a === 'ntfx') state.notif = null;
+  else if (a === 'ntfopen') { state.notif = null; state.view = 'note'; state.noteTab = 'notes'; }
+  else if (a === 'ntfsnooze') { state.notif = null; toast('Đã hoãn 1 giờ'); return; }
+  else if (a === 'missed') state.missed = 0;
+  else if (a === 'notedel') { if (!state.delArm) { state.delArm = true; render(); setTimeout(() => { state.delArm = false; render(); }, 3000); return; } const i = NOTES.findIndex((x) => x.id === state.noteId); if (NOTES.length > 1 && i >= 0) { NOTES.splice(i, 1); state.noteId = NOTES[0].id; } state.delArm = false; }
+  else if (a === 'ntpl') { const t = document.getElementById('nb'); const n = NOTES.find((x) => x.id === state.noteId); n.b = (t.value ? t.value + '\n\n' : '') + id; }
+  else if (a === 'ntime') { const t = document.getElementById('nb'); const n = NOTES.find((x) => x.id === state.noteId); n.b = t.value + (t.value && !t.value.endsWith('\n') ? '\n' : '') + '[' + new Date().toTimeString().slice(0, 5) + '] '; }
+  else if (a === 'rplus') { const d2 = new Date(Date.now() + Number(id) * 60000); document.getElementById('rtime').value = d2.toTimeString().slice(0, 5); return; }
+  else if (a === 'remadd') { const n = NOTES.find((x) => x.id === state.noteId), tx = document.getElementById('rtext').value.trim(); if (!tx) { toast('Nhập nội dung nhắc trước'); return; } n.rems.push({ id: Date.now(), t: tx, time: document.getElementById('rtime').value || '09:00', daily: document.getElementById('rdaily').checked, act: document.getElementById('ract').value, on: true }); }
+  else if (a === 'remdel') { const n = NOTES.find((x) => x.id === state.noteId); n.rems = n.rems.filter((r) => String(r.id) !== id); }
+  else if (a === 'remtog') { const n = NOTES.find((x) => x.id === state.noteId), r = n.rems.find((x) => String(x.id) === id); if (r) r.on = !r.on; }
+  else if (a === 'remtog2') { const [ni, ri] = id.split(':'), n = NOTES.find((x) => String(x.id) === ni), r = n && n.rems.find((x) => String(x.id) === ri); if (r) r.on = !r.on; }
+  else if (a === 'slotadd') { state.nset.slots.push({ id: Date.now(), time: document.getElementById('slt').value || '15:00', msg: 'Vào xem ghi chú', days: [1, 2, 3, 4, 5], on: true }); state.nset.slots.sort((p, q) => p.time.localeCompare(q.time)); }
+  else if (a === 'slotdel') state.nset.slots = state.nset.slots.filter((x) => String(x.id) !== id);
+  else if (a === 'slottog') { const x = state.nset.slots.find((y) => String(y.id) === id); if (x) x.on = !x.on; }
+  else if (a === 'slotday') { const [si, di] = id.split(':'), x = state.nset.slots.find((y) => String(y.id) === si), d3 = Number(di); if (x) x.days = x.days.includes(d3) ? x.days.filter((q) => q !== d3) : x.days.concat(d3).sort(); }
+  else if (a === 'slotdays') { const [si, k] = id.split(':'), x = state.nset.slots.find((y) => String(y.id) === si); if (x) x.days = k === 'wk' ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 6, 7]; }
+  else if (a === 'appok') { state.dlg = null; toast('Đã nối vào cuối file'); return; }
   else if (a === 'toast') { toast(id); return; }
   else if (a === 'logout') state.login = true;
   else if (a === 'login') state.login = false;
@@ -961,6 +1026,10 @@ document.addEventListener('submit', (e) => {
   setTimeout(() => { s.lines.push('<span class="g">●</span> Đã nhận: ' + esc(v) + '. Đang xử lý…'); render(); }, 800);
 });
 document.addEventListener('change', (e) => {
+  const inp = e.target.closest('input[data-act]');
+  if (inp) { const a2 = inp.dataset.act, id2 = inp.dataset.id; const x = state.nset.slots.find((y) => String(y.id) === id2);
+    if (a2 === 'slottime' && x) { x.time = inp.value; state.nset.slots.sort((p, q) => p.time.localeCompare(q.time)); render(); } if (a2 === 'slotmsg' && x) x.msg = inp.value; if (a2 === 'qfrom') { state.nset.qFrom = inp.value; render(); } if (a2 === 'qto') { state.nset.qTo = inp.value; render(); } return; }
+  const sel0 = e.target.closest('select[data-act=nsess]'); if (sel0) { NOTES.find((x) => x.id === state.noteId).sess = sel0.value; render(); return; }
   const el = e.target.closest('select[data-act]'); if (!el) return; const a = el.dataset.act;
   if (a === 'group') state.group = el.value; if (a === 'tokai') state.tokAI = el.value; if (a === 'tokhost') state.tokHost = el.value; if (a === 'opsauto') { toast(el.value === '0' ? 'Đã tắt tự làm mới' : 'Tự làm mới mỗi ' + el.value + ' giây'); return; }
   render();
@@ -983,6 +1052,9 @@ addEventListener('resize', render);
   if (h === 'login') state.login = true;
   if (h === 'night') state.hourOverride = 23;
   if (h === 'nopet') state.pets = false;
+  if (h === 'note') { state.view = 'note'; }
+  if (h === 'notes-set') { state.view = 'note'; state.noteTab = 'settings'; }
+  if (h === 'notes-rem') { state.view = 'note'; state.noteTab = 'remind'; }
   if (h === 'mini') { state.mini = true; state.pets = false; }
   if (h === 'night') { state.hourOverride = 23; }
   if (h === 'fs') { state.view = 'term'; state.tab = 'all'; state.fsMode = true; }

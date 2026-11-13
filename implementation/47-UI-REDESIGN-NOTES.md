@@ -31,3 +31,12 @@ Mockup bản cũ chỉ là hàng emoji tĩnh nên "kỳ"; bản mới vẽ lại
 3. Mặc định thu gọn trên màn nhỏ/điện thoại; tắt hẳn (đã mặc định tắt cho người cài mới).
 4. Hiệu năng: chỉ chuyển động khi tab hiện và đang ở Tổng quan, tôn trọng prefers-reduced-motion, giới hạn 14 thú.
 5. Đá bóng/búa/câu cá giữ làm trứng phục sinh, không là tính năng chính.
+
+## Màn Ghi chú (cập nhật 13/11)
+Giữ bố cục danh sách | soạn thảo, bổ sung đúng các tính năng thật (public/features/notes.js) và phần mới:
+- 3 tab: 📝 Ghi chú, ⏰ Nhắc việc (tất cả nhắc, nhắc bị lỡ khi app tắt, hoãn nhanh), ⚙ Cài đặt thông báo.
+- Soạn thảo: tiêu đề, phiên liên quan, thú cưng, Xóa (xác nhận "Xóa thật?"), + Việc hôm nay / Quyết định / Việc kế tiếp, ⏱ Chèn giờ, Xuất .md/.txt, Nối vào file…, đếm "việc chưa xong" theo mục "- [ ]".
+- Panel "Nhắc của ghi chú này": giờ, +10/+30/+1 giờ, lặp mỗi ngày, khi nhắc thì (chỉ thông báo / mở ghi chú / mở phiên liên quan), bật/tắt, xóa.
+- MỚI: "Lịch nhắc kiểm tra ghi chú": nhiều khung giờ chung (vd 09:00, 13:30, 17:30), mỗi khung có nội dung thông báo, ngày trong tuần (T2–CN, Ngày làm việc, Mỗi ngày), bật/tắt, xóa; "Chỉ nhắc khi còn việc chưa xong".
+- Cách báo: chuông trong TERMNEST, thông báo hệ điều hành, âm thanh, giờ yên lặng; gom nhắc bị lỡ khi mở lại app. Nút "Xem thử thông báo" hiện thẻ thông báo mẫu có Mở ghi chú / Hoãn 1 giờ.
+Bản thật cần thêm lưu cấu hình lịch nhắc chung (server hoặc localStorage) và bộ hẹn giờ chạy theo khung.
