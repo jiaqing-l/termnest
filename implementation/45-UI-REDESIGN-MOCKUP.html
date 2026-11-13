@@ -933,7 +933,7 @@ function render() {
     out.onscroll = () => { jb.classList.toggle('show', out.scrollHeight - out.scrollTop - out.clientHeight > 40); };
   }
   const q = document.getElementById('q'); if (q) { q.oninput = () => { state.q = q.value; const p = q.selectionStart; render(); const n = document.getElementById('q'); n.focus(); n.setSelectionRange(p, p); }; if (keepQ) q.focus(); }
-  const ti = document.getElementById('tinput'); if (ti) { ti.value = tv; if (keepT || state.focusIn) ti.focus(); }
+  const ti = document.getElementById('tinput'); if (ti) { ti.value = state.pendingIn != null ? state.pendingIn : tv; state.pendingIn = null; if (keepT || state.focusIn) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); } state.focusIn = false; }
   const f = document.getElementById('tin'); if (f) f.onsubmit = (e) => { e.preventDefault(); const v = ti.value.trim(); if (!v) return; const s = sess(state.tab); s.lines.push('<span class="b">›</span> ' + esc(v)); ti.value = ''; render();
     setTimeout(() => { s.lines.push('<span class="g">●</span> Đã nhận: ' + esc(v) + '. Đang xử lý…'); s.st = s.st === 'wait' ? 'run' : s.st; render(); }, 700); };
   if (state.focusTile) { const ti2 = document.querySelector('.wti[data-sid="' + state.focusTile + '"] input'); if (ti2) ti2.focus(); state.focusTile = null; }
@@ -1069,7 +1069,7 @@ document.addEventListener('click', (e) => {
   else if (a === 'fpmenu') state.fp.menu = !state.fp.menu;
   else if (a === 'fpreload') { toast('Đã tải lại'); return; }
   else if (a === 'fpcopy') { toast('Đã sao chép đường dẫn đầy đủ'); return; }
-  else if (a === 'fpins') { const sv = sess(state.tab); if (sv) sv.lines.push('<span class="b">›</span> /data/thanhlg/xspire-workspaces/' + (state.fp.path.length ? state.fp.path.join('/') + '/' : '') + state.fp.file); toast('Đã gõ đường dẫn vào phiên. Nhấn Enter ở đó để gửi.'); return; }
+  else if (a === 'fpins') { const cur = (document.getElementById('tinput') || {}).value || ''; state.pendingIn = (cur ? cur + ' ' : '') + '/data/thanhlg/xspire-workspaces/' + (state.fp.path.length ? state.fp.path.join('/') + '/' : '') + state.fp.file + ' '; state.focusIn = true; toast('Đã gõ đường dẫn vào ô nhập của phiên. Nhấn Enter ở đó để gửi.'); return; }
   else if (a === 'toast') { toast(id); return; }
   else if (a === 'logout') state.login = true;
   else if (a === 'login') state.login = false;
