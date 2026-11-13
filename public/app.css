@@ -1471,3 +1471,9 @@ dialog.drop-remote{display:none}
 
 #v-over .hero .chip.conn.partial{background:rgba(245,158,11,.22);border-color:rgba(253,186,116,.9)}
 #v-over .hero .chip.conn.partial::before{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.25)}
+
+/* Idle motion costs main-thread style work on SVG (not compositor-accelerated): no infinite pet animation when pets are off, motion is
+   reduced or the window is hidden (html.pets-still), a sleeping mascot does not blink, and nothing animates while the document is hidden. */
+.pets-off .pet-art *,.pets-still .pet-art *,.pets-still .pet-slot *,.pets-still #pet-yard *,.pets-still .crew-pet *,.pets-still .scene *{animation:none!important}
+.m:not(.m-run):not(.m-wait) .eye{animation:none}
+html.tab-hidden *,html.tab-hidden *::before,html.tab-hidden *::after{animation-play-state:paused!important}

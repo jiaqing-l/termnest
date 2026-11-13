@@ -1143,7 +1143,9 @@
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { fxLayer.textContent = ''; fxLayer.className = ''; return; }
     window.TwFx.render(fxLayer, fxKind(), AMOUNT[fxAmount()], innerWidth < 760);
   }
-  document.addEventListener('visibilitychange', function () { if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
+  function markHidden() { document.documentElement.classList.toggle('tab-hidden', document.hidden); }
+  markHidden();
+  document.addEventListener('visibilitychange', function () { markHidden(); if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
   function renderStylePicker() {
     var box = $('set-style'); if (!box) return; box.textContent = '';
     EFFECTS.forEach(function (x) {

@@ -38,3 +38,24 @@ Test: 785/787 đạt (2 lỗi cũ: vault copy fallback); thêm 2 test (trả wor
 ## Còn lại
 - RSS đỉnh khi quét vẫn ~880 MB (đo lại sau cải tiến): phần gộp `seen` theo message id của toàn bộ log Claude (8,4 GB) dựng lại mỗi lần đọc. Cần tổng hợp theo từng file và lưu kết quả đã gộp.
 - Poll tmux tuyến tính theo số phiên; `defer` script; tách `app.js`/`app.css`.
+
+## Kết quả đợt 2 (13/11/2026)
+Đo trên bản sao APFS (clone) của log thật (~14 GB: Claude 2 tài khoản + Codex 2.498 file), không ghi vào thư mục dữ liệu Termnest.
+Chữ ký tổng (today/week/ngày/tuần/phiên theo từng tài khoản) **trước = sau** (sha256 cắt 16 ký tự `e91d834f2358877a`); tổng token 7.763.963.139 / 6.304.571.054 / 9.499.881.364.
+
+| Hạng mục | Trước | Sau |
+|---|---|---|
+| Quét token nguội, RSS đỉnh | 938 MB | 432 MB |
+| Quét token ấm (khởi động có cache), RSS đỉnh / thời gian | 825 MB / 4,3 s | 153 MB / 0,5 s |
+| Phần tmux của poll, 40 phiên | 984 ms | 102 ms |
+| Phần tmux của poll, 5 phiên | 67 ms | 40 ms |
+
+Thay đổi:
+1. **Nguyên nhân thật của ~830 MB lúc khởi động** không phải bảng `seen` (chỉ ~44 nghìn message) mà là 3 file Codex (76–156 MB) có một dòng > 16 MB: đọc lỗi nên *không bao giờ vào cache* và bị đọc lại từ byte 0 mỗi lần quét (303 MB I/O + rác bộ nhớ). Nay lưu "file lỗi" theo (ino, size, mtime) trong `cache.failed`; file không đổi thì bỏ qua, kết quả/thông báo lỗi giữ nguyên (nên tổng không đổi; nếu muốn đếm cả các file đó cần quyết định riêng vì tổng sẽ tăng).
+2. `lib/token-source.js`: đọc bằng một buffer 1 MB dùng lại (không `Buffer.alloc` + `concat` mỗi chunk), chỉ sao chép dòng vắt qua chunk; dòng > 4 KB không chứa `"assistant"`/`"token_count"`/`"session_meta"`/`"cwd"` được bỏ qua ở mức byte, không giải mã/JSON.parse. Dòng ngắn vẫn parse nên dòng lỗi vẫn được đếm.
+3. `lib/token-cache.js`: worker quét được trả sau 30 s rảnh (trước 120 s).
+4. `lib/parse.js` `POLL_SCRIPT`: trước mỗi phiên tốn 1 tmux + grep + tail (+ 4 lần list). Nay 1 `list-sessions`, 1 client tmux chụp mọi pane qua chuỗi `;` + 1 awk, 1 tmux cho DETAIL+OWNERS: số tiến trình không còn tăng theo số phiên. Nếu một phiên biến mất giữa chừng (tmux huỷ chuỗi) thì chạy vòng cũ từng phiên. Đầu ra byte-by-byte giống bản cũ (so trên 40 phiên socket tmux riêng, đã xoá sau khi đo); chỉ đọc, không attach/kill phiên của người dùng.
+5. `public/index.html`: 25 thẻ `<script>` đều ở cuối body, không có `document.write`/`currentScript`; `i18n.js` tự xử lý readyState. Thêm `defer`; kiểm bằng Chrome headless: không lỗi JS, i18n áp dụng, `pets-off`/`pets-still` được đặt.
+6. Hoạt ảnh: `prefers-reduced-motion` đã tắt `*` từ trước. Thêm: tắt mọi animation của thú khi `pets-off`/`pets-still`; thú không chạy/chờ (ngủ) không còn chớp mắt vô hạn; class `html.tab-hidden` (đặt khi `document.hidden`) tạm dừng mọi animation. (Tab/view không hiển thị là `display:none` nên đã không chạy.)
+
+Còn lại: quét nguội lần đầu vẫn đọc ~14 GB (~47 s, đỉnh 432 MB); dòng JSONL > 16 MB bị bỏ (hành vi cũ, giữ để tổng không đổi); chưa đo CPU WebContent sau khi bỏ animation; pet off-screen trong cùng view chưa dùng IntersectionObserver; hẹn giờ chung và tách `app.js`/`app.css` chưa làm.

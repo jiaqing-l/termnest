@@ -48,7 +48,7 @@ test('Codex rollouts: mtime, start time (2nd timestamp), last turn event, file a
     const f = path.join(day, 'rollout-2026-11-10T09-00-00-abc.jsonl');
     fs.writeFileSync(f, JSON.stringify({ timestamp: '2026-11-10T02:00:01Z', type: 'session_meta', payload: { timestamp: '2026-11-10T02:00:00Z', cwd: '/work/app' } }) + '\n' +
       JSON.stringify({ type: 'event_msg', payload: { type: 'task_started' } }) + '\n' + JSON.stringify({ type: 'event_msg', payload: { type: 'task_complete' } }) + '\n');
-    const t = new Date('2026-11-10T02:05:00Z'); fs.utimesSync(f, t, t);
+    const t = new Date(Math.floor(Date.now() / 1000) * 1000 - 3600000); fs.utimesSync(f, t, t); // recent: the host script only looks at rollouts touched in the last 3 days
     // Only the rollout part, as if one Codex process was found.
     const a = section('AGENTIDS'), rolls = 'cx=1;' + a.slice(a.indexOf(' if [ -n "$cx" ]'));
     const out = run(home, rolls).split('\n').filter((l) => l.startsWith('codexroll '));
