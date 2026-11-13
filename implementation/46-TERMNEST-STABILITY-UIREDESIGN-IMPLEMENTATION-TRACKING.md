@@ -1,6 +1,6 @@
 # TERMNEST: ổn định, hiệu năng, giao diện mới — tracking
 
-Cập nhật: 2026-11-13 08:53 (giờ máy).
+Cập nhật: 2026-11-13 10:04 (giờ máy).
 
 | # | Việc | Trạng thái | Bằng chứng |
 |---|---|---|---|
@@ -12,3 +12,4 @@ Cập nhật: 2026-11-13 08:53 (giờ máy).
 | 6 | Tag `v1.1.18` đang trỏ nhầm `6a9b69f`; commit mới chưa đẩy | Chờ DEV chạy lệnh dời tag | xem hướng dẫn trong chat |
 
 Chưa chạy lại toàn bộ bộ test sau các thay đổi 1–3 (chỉ test liên quan).
+| 7 | Áp dụng thiết kế mới vào app thật (bản thử .gz) | Đang chạy: 3 subagent sonnet song song | A = skin CSS (app.css, features/*.css, index.html); B = cấu trúc UI (app.js, ux2.js/css); C = Ghi chú + lịch nhắc (notes.js/css, notes-core.js). Chuỗi ngôn ngữ ghi vào implementation/i18n-ux2-b.json, i18n-ux2-c.json, lead gộp vào locales. Sau đó: chạy test, đóng gói, cài, báo sha256 |
