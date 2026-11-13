@@ -997,7 +997,13 @@ const server = http.createServer(async (req, res) => {
   if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
   fs.stat(entry[0], (err, st) => {
     if (err) { res.writeHead(500); res.end(); return; }
-    let a; try { a = asset(entry[0], st.mtimeMs + ':' + st.size, () => fs.readFileSync(entry[0])); } catch { res.writeHead(500); res.end(); return; }
+    let a; try { a = asset(entry[0], st.mtimeMs + ':' + st.size, () => {
+      const buf = fs.readFileSync(entry[0]);
+      // xterm turns the mouse position into a row/column with clientX/Y and getBoundingClientRect() in screen pixels but cell sizes in layout
+      // pixels. Under the interface scale (CSS zoom) the two differ by the zoom factor: double-click selected a line above the pointer.
+      if (url.pathname === '/vendor/xterm.js') return Buffer.from(buf.toString('utf8').replace('return[t.clientX-s.left-n,t.clientY-s.top-o]', 'var z=parseFloat(e.getComputedStyle(e.document.documentElement).getPropertyValue("--ui-z"))||1;return[(t.clientX-s.left-n)/z,(t.clientY-s.top-o)/z]'));
+      return buf;
+    }); } catch { res.writeHead(500); res.end(); return; }
     sendAsset(req, res, entry[1], a);
   });
 });
