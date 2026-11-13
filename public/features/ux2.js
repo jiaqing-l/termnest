@@ -157,14 +157,14 @@
   // ---- interface scale (Settings → Giao diện): buttons [data-z] inside #set-zoom call window.TW_setZoom (index.html) ----
   function markZoom() {
     var box = root.document.getElementById('set-zoom'); if (!box) return;
-    var z = Number(store('tw-zoom')); if (!(z > 0)) z = 100;
+    var z = Number(store('tw-zoom2')); if (!(z > 0)) z = 100;
     box.querySelectorAll('[data-z]').forEach(function (b) { var on = Number(b.dataset.z) === z; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
   }
   function wireZoom() {
     var d = root.document;
     d.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('#set-zoom [data-z]');
-      if (b) { var z = Number(b.dataset.z); if (typeof root.TW_setZoom === 'function') root.TW_setZoom(z); else store('tw-zoom', String(z)); markZoom(); return; }
+      if (b) { var z = Number(b.dataset.z); if (typeof root.TW_setZoom === 'function') root.TW_setZoom(z); else store('tw-zoom2', String(z)); markZoom(); return; }
       if (e.target.closest && e.target.closest('.set-tab')) setTimeout(markZoom, 0);
     });
     markZoom();
