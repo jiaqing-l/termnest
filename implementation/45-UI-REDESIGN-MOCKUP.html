@@ -34,7 +34,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* ───────── Khung xem mockup ───────── */
-.viewer{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.viewer{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
 .vnav{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 16px;background:var(--surface);border-right:1px solid var(--line)}
 .vnav h1{font-size:15px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px}
 .vnav p{color:var(--ink-3);font-size:12px;margin-bottom:16px}
@@ -53,7 +53,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .note b{color:var(--primary)}
 
 /* ───────── Ứng dụng TERMNEST (khung 1280×800) ───────── */
-.win{width:1280px;max-width:100%;height:800px;background:var(--bg);border-radius:var(--r-xl);box-shadow:var(--sh);border:1px solid var(--line);overflow:hidden;display:grid;grid-template-rows:64px 1fr;position:relative}
+.win{width:1280px;flex:none;height:800px;background:var(--bg);border-radius:var(--r-xl);box-shadow:var(--sh);border:1px solid var(--line);overflow:hidden;display:grid;grid-template-rows:64px 1fr;position:relative}
 .top{display:flex;align-items:center;gap:16px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--line)}
 .logo{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.08em;font-size:15px}
 .logo i{width:28px;height:28px;border-radius:8px;background:var(--ink);display:grid;place-items:center;color:var(--bg);font-style:normal;font-size:13px}
@@ -66,7 +66,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .ib{width:40px;height:40px;border-radius:var(--r-m);display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);position:relative}
 .ib:hover{background:var(--surface-2)}
 .ib .bd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;display:grid;place-items:center;padding:0 4px;font-weight:600}
-.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r-m);border:1px solid var(--line-2);background:var(--surface);font-weight:600;font-size:13px}
+.btn{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r-m);border:1px solid var(--line-2);background:var(--surface);font-weight:600;font-size:13px}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
 .btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
@@ -126,7 +126,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .ctx{display:grid;gap:4px;font-size:12px;color:var(--ink-2)}
 .ctx div{display:flex;justify-content:space-between}
 /* terminal */
-.thead{display:flex;align-items:center;gap:12px}
+.thead{display:flex;align-items:center;gap:12px;min-width:0}
 .thead h2{font-size:18px;letter-spacing:-.01em}
 .wchips{display:flex;gap:8px}
 .wchip{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:inline-flex;gap:8px;align-items:center;font-weight:700;font-size:12px}
@@ -231,7 +231,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .cmp .bad,.cmp .good{border-radius:var(--r-l);padding:16px;border:1px solid var(--line);background:var(--surface);font-size:13px}
 .cmp h5{display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:13px}
 .cmp .x{color:var(--bad)}.cmp .v{color:var(--primary)}
-@media (max-width:1100px){.viewer{grid-template-columns:1fr}.vnav{position:static;height:auto}}
+@media (max-width:760px){.viewer{grid-template-columns:1fr}.vnav{position:static;height:auto}.stage{padding:16px}}
 </style>
 </head>
 <body>
@@ -405,7 +405,7 @@ SCREENS.ds = { g: 'Hệ thống thiết kế', t: 'Hệ thống thiết kế', d
 /* ───────── Khung xem ───────── */
 const ORDER = ['ds', 'login', 'over', 'focus', 'crew', 'wall', 'token', 'notes', 'ops1', 'ops2', 'ops3', 'set', 'dialogs', 'mobile'];
 let cur = (location.hash || '#over').slice(1); if (!SCREENS[cur]) cur = 'over';
-function render() {
+var render = function () {
   const groups = {}; ORDER.forEach((k) => (groups[SCREENS[k].g] ||= []).push(k));
   const theme = document.documentElement.dataset.theme === 'dark';
   document.getElementById('vnav').innerHTML = `<h1>TERMNEST</h1><p>Mockup giao diện mới · ${ORDER.length} màn</p>` +
@@ -414,11 +414,18 @@ function render() {
   const s = SCREENS[cur];
   document.getElementById('stage').innerHTML = `<div class="cap"><div><h2>${s.t}</h2><p>${s.d}</p></div></div>${s.f()}`;
   document.title = 'TERMNEST · ' + s.t;
-}
+};
 document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-k]'); if (a) { cur = a.dataset.k; location.hash = cur; render(); return; }
   const t = e.target.closest('[data-th]'); if (t) { document.documentElement.dataset.theme = t.dataset.th; render(); }
 });
+// The 1280px window is scaled down to fit narrow browser windows instead of being cut off on the right.
+function fit() {
+  const st = document.getElementById('stage'), w = st.querySelector('.win'); if (!w) return;
+  w.style.zoom = Math.min(1, (st.clientWidth - 64) / 1280);
+}
+const _render = render; render = function () { _render(); fit(); };
+addEventListener('resize', fit);
 render();
 </script>
 </body>
