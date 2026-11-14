@@ -23,6 +23,14 @@ function askHidden(label) {
 }
 
 async function main() {
+  // The running app holds the data folder's lock and writes the vault every few seconds with the OLD key: changing the password
+  // under it is silently undone. Take the same lock; refuse when the app is running.
+  let lock;
+  try { lock = await require('../lib/service-runtime').acquireDataLock(DATA, { strict: false }); }
+  catch (e) {
+    console.error(e.code === 'RUNTIME_ALREADY_RUNNING' ? 'TERMNEST đang chạy trên thư mục dữ liệu này. Hãy dừng TERMNEST trước khi đổi mật khẩu.' : `Không khóa được thư mục dữ liệu (${e.code || 'lỗi'}); chưa đổi mật khẩu.`);
+    process.exit(1);
+  }
   const v = new Vault(path.join(DATA, 'vault.json'));
   let data = { servers: [] };
   if (v.exists()) {
@@ -35,7 +43,11 @@ async function main() {
   const b = process.env.TW_NEW_PASSWORD || await askHidden('Nhập lại: ');
   if (a !== b) { console.error('Hai lần nhập không giống nhau.'); process.exit(1); }
   const fresh = new Vault(v.file);
+  const oldCopies = Vault.listCopies(v.file);
   fresh.create(a, data);
+  // Copies made with the OLD password would still open with it (and may sit in a synced folder): drop them once the new store opens.
+  if (new Vault(v.file).unlock(a)) for (const f of oldCopies) try { fs.rmSync(f, { force: true }); } catch { /* ignore */ }
+  lock.release();
   console.log('Đã đặt mật khẩu. Nếu TERMNEST đang chạy: systemctl restart tmux-web');
 }
 

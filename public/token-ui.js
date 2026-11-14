@@ -7,7 +7,7 @@ window.TokenUI = function (hooks) {
   const REASONS={'Chưa có phiên':'tokenui.chua_co_phien','Chưa có dữ liệu tuần':'tokenui.chua_co_du_lieu_tuan','Chưa có dữ liệu':'tokenui.chua_co_du_lieu','Chưa có bản ghi usage':'tokenui.chua_co_ban_ghi_usage','Không có giới hạn 5 giờ':'tokenui.khong_co_gioi_han_5_gio'};
   const reasonText=r=>REASONS[r]?i18n(REASONS[r]):r;
   const fmt = n => n == null ? i18n('tokenui.khong_doc_duoc') : new Intl.NumberFormat(i18n('lang.locale'),{notation:'compact',maximumFractionDigits:1}).format(n);
-  let showAllSessions=false, rendered=null, completeView=false, ages=[];
+  let showAllSessions=false, lastData=null, rendered=null, completeView=false, ages=[];
   const ageText=at=>i18n('tokenui.du_lieu_da_luu_phut', [Math.max(0,Math.floor((Date.now()-at)/60000))]);
   const label=a=>a.nickname || (a.tool==='claude'?'Claude':'Codex')+(a.email?' · '+a.email.split('@')[0]:'');
   let accounts=[], hosts=[], filter='all', period='days', busy=false, last=0, generation=0, scanning=true, updatedAt=null, scanError=null, readError=i18n('tokenui.chua_co_nguon_du_lieu');
@@ -139,12 +139,12 @@ window.TokenUI = function (hooks) {
     const wrap=node('div','token-table-wrap'),table=node('table'),tr=node('tr');[i18n('tokenui.phien'),i18n('tokenui.cong_cu'),i18n('tokenui.may'),i18n('tokenui.tai_khoan'),'Token',i18n('tokenui.trang_thai')].forEach(label=>tr.append(node('th','',label)));const th=node('thead');th.append(tr);table.append(th);
     const body=node('tbody');const all=rows.flatMap(a=>a.sessions.map(s=>({a,s}))).sort((x,y)=>y.s[period==='days'?'today':'week']-x.s[period==='days'?'today':'week']);all.slice(0,showAllSessions?all.length:10).forEach(({a,s})=>{
       const r=node('tr');[s.name,a.tool,s.hostName || a.hostName,a.email||i18n('tokenui.khong_doc_duoc'),fmt(s[period==='days'?'today':'week']),({run:i18n('app.dang_chay'),wait:i18n('app.cho_ban'),idle:i18n('app.dang_nghi')})[s.state]||i18n('tokenui.da_dong')].forEach((t,i)=>{const cell=node('td','',t);if(i===0)cell.title=s.id;r.append(cell);});body.append(r);
-    });table.append(body);wrap.append(table);sessions.append(wrap);if(all.length>10){const more=node('button','btn',showAllSessions?i18n('tokenui.thu_gon'):i18n('tokenui.xem_them'));more.onclick=()=>{showAllSessions=!showAllSessions;drawSessions(rows);};sessions.append(more);}if(!body.children.length)sessions.append(node('p','',i18n('tokenui.khong_doc_duoc_chua_co_2')));
+    });table.append(body);wrap.append(table);sessions.append(wrap);if(rows.reduce((n,a)=>n+(a.sessionsTotal!=null?a.sessionsTotal:a.sessions.length),0)>10){const more=node('button','btn',showAllSessions?i18n('tokenui.thu_gon'):i18n('tokenui.xem_them'));more.onclick=async()=>{showAllSessions=!showAllSessions;if(!(showAllSessions&&rows.some(a=>a.sessionsTotal!=null))){drawSessions(rows);return;}/* the list was trimmed: fetch every row, render() redraws with them */for(let i=0;i<20&&busy;i++)await new Promise(r=>setTimeout(r,150));await poll(true);if(accounts.some(a=>a.sessionsTotal!=null))drawSessions(rows);};sessions.append(more);}if(!body.children.length)sessions.append(node('p','',i18n('tokenui.khong_doc_duoc_chua_co_2')));
   }
   async function poll(force) {
     if(busy||document.hidden||(!section.classList.contains('on') && !mini.getClientRects().length)||(!force&&Date.now()-last<(scanning?5000:30000)))return;
     const current=generation;busy=true;last=Date.now();
-    try{const data=await hooks.api('GET','/api/tokens?zone='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone));if(current!==generation)return;accounts=(data.accounts||[]).slice().sort((a,b)=>a.tool.localeCompare(b.tool)||(a.email||'').localeCompare(b.email||'')||a.id.localeCompare(b.id));hosts=data.hosts||[];if(!data.scanning||data.refreshing)completeView=true;scanning=!!data.scanning;updatedAt=data.updatedAt;scanError=data.error||null;readError=data.error||i18n('tokenui.chua_co_nguon_du_lieu');render();}
+    try{let data=await hooks.api('GET','/api/tokens?zone='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)+(showAllSessions?'&sessions=all':'')+(lastData&&lastData.etag?'&etag='+lastData.etag:''));if(current!==generation)return;if(data&&data.notModified&&lastData)data=lastData;else lastData=data;accounts=(data.accounts||[]).slice().sort((a,b)=>a.tool.localeCompare(b.tool)||(a.email||'').localeCompare(b.email||'')||a.id.localeCompare(b.id));hosts=data.hosts||[];if(!data.scanning||data.refreshing)completeView=true;scanning=!!data.scanning;updatedAt=data.updatedAt;scanError=data.error||null;readError=data.error||i18n('tokenui.chua_co_nguon_du_lieu');render();}
     catch(e){if(current!==generation)return;scanning=false;scanError=e.message;readError=e.message;render();}
     finally{busy=false;}
   }
@@ -200,5 +200,5 @@ window.TokenUI = function (hooks) {
     const rows=accounts.filter(a=>(a.hostIds || [a.hostId]).includes(host)).flatMap(a=>a.sessions.filter(s=>(s.hostId || a.hostId)===host&&s.tmuxName===name).map(s=>({a,s})));
     return rows.length?{total:rows.reduce((n,r)=>n+r.s.total,0),today:rows.reduce((n,r)=>n+r.s.today,0),email:rows.map(r=>r.a.email||i18n('tokenui.khong_doc_duoc_email')).join(', ')}:null;
   }
-  return {poll,render:()=>{render();usage.render();},session,fmt,setView:v=>{section.classList.toggle('on',v==='token');tab.setAttribute('aria-pressed',v==='token');if(v==='token')usage.ensure();},clear:()=>{generation++;rendered=null;completeView=false;accounts=[];hosts=[];last=0;scanning=true;updatedAt=null;scanError=null;readError=i18n('tokenui.chua_co_nguon_du_lieu');render();}};
+  return {poll,render:()=>{render();usage.render();},session,fmt,setView:v=>{section.classList.toggle('on',v==='token');tab.setAttribute('aria-pressed',v==='token');if(v==='token')usage.ensure();},clear:()=>{generation++;lastData=null;rendered=null;completeView=false;accounts=[];hosts=[];last=0;scanning=true;updatedAt=null;scanError=null;readError=i18n('tokenui.chua_co_nguon_du_lieu');render();}};
 };

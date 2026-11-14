@@ -15,6 +15,17 @@
     var sys = ((root.navigator && root.navigator.language) || '').slice(0, 2).toLowerCase();   // first run: the system language when we have it, English otherwise
     return LOCALES[sys] ? sys : (LOCALES.en ? 'en' : FALLBACK);
   })();
+  // The server sends only the language in use and a name/flag stub for the others (see lib/web-assets.js). It learns the language from the
+  // tw-lang cookie; when the page's choice differs (first visit after the cookie was introduced, or ?lang=xx), the table is fetched once and the cookie set.
+  function remember(code) { try { if (root.document && typeof root.document.cookie === 'string') root.document.cookie = 'tw-lang=' + code + ';path=/;max-age=31536000;samesite=lax'; } catch (e) { /* optional */ } }
+  function ensureTable(code) {
+    if (!LOCALES[code] || !LOCALES[code].__stub || typeof root.XMLHttpRequest !== 'function') return;
+    try {
+      var x = new root.XMLHttpRequest(); x.open('GET', '/locales.js?format=json&lang=' + encodeURIComponent(code), false); x.send();
+      if (x.status === 200) { var table = JSON.parse(x.responseText)[code]; if (table) LOCALES[code] = table; }
+    } catch (e) { /* the fallback language is shown */ }
+  }
+  ensureTable(lang); remember(lang);
   function t(key, params) {
     var table = LOCALES[lang] || {}, msg = table[key];
     // Singular form: key + '_one' is used when the first number is exactly 1 (only languages that need it define it).
@@ -45,7 +56,7 @@
       b.append(flag, name); b.onclick = function () { if (l.code !== lang) setLang(l.code); }; host.append(b);
     });
   }
-  function setLang(next) { if (!LOCALES[next]) return false; try { root.localStorage.setItem('tw-lang', next); } catch (e) { /* optional */ } if (root.location) root.location.reload(); return true; }
+  function setLang(next) { if (!LOCALES[next]) return false; try { root.localStorage.setItem('tw-lang', next); } catch (e) { /* optional */ } remember(next); if (root.location) root.location.reload(); return true; }
   var api = { t: t, apply: apply, setLang: setLang, lang: function () { return lang; }, languages: function () { return Object.keys(LOCALES).map(function (k) { return { code: k, name: (LOCALES[k]['lang.name']) || k, flag: LOCALES[k]['lang.flag'] || '' }; }); }, picker: picker, locales: LOCALES };
   root.i18n = t; root.TW_I18N = api;   // the global is called i18n, never t: dozens of local variables are named t
   // The markup is above this script, so the texts can be filled in at once; the page stays hidden (CSS) until they are, so no empty labels flash.

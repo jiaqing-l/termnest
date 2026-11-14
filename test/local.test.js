@@ -57,7 +57,7 @@ test('local uses WSL arguments and keeps private socket out of user command text
 test('SSH attach command and PTY shape are preserved', () => {
   const r = new Remote({}, () => {});
   r.client = { exec: (...args) => {
-    assert.equal(args[0], "tmux -u attach-session -t '=safe'");
+    assert.equal(args[0], `${require('../lib/backend').windowSizeCmd('safe')}; tmux -u attach-session -t '=safe'`);   // single command: option (when unset) + attach
     assert.deepEqual(args[1], { pty: { term: 'xterm-256color', cols: 80, rows: 24 } });
     args[2](null, 'ssh-channel');
   } };

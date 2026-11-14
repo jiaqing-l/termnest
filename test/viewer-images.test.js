@@ -51,6 +51,6 @@ test('report links are injected before </body> or appended, leaving the report u
   const html = '<html><body><p>x /r/a.png</p></body></html>';
   const out = injectReportLinks(html);
   assert.ok(out.indexOf('twimg') > out.indexOf('</p>') && out.indexOf('twimg') < out.lastIndexOf('</body>'));
-  assert.ok(out.startsWith('<html><body><p>x /r/a.png</p>'));
+  assert.ok(out.startsWith('<html>') && out.includes('<body><p>x /r/a.png</p>') && out.indexOf('navigation.addEventListener') < out.indexOf('<body>'));
   assert.ok(injectReportLinks('<p>no body</p>').endsWith('</script>'));
 });

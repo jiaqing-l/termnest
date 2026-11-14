@@ -128,3 +128,26 @@ test('process termination after fsync but before catalog rename leaves old publi
   const restarted = new SnapshotStore(dir, key); assert.deepEqual(restarted.snapshots('vm1').map(s => s.id), [good.id]); assert.deepEqual(content(restarted, good), Buffer.from('last complete copy'));
   restarted.begin('vm1', 'VM'); assert.ok(!fs.readdirSync(store.root).some(n => n.startsWith('tmp-')));
 });
+
+test('tiered retention keeps hourly/daily versions; unchanged trees and stray files never stop the store', () => {
+  const { tieredKeep } = require('../lib/server-backup-store');
+  const now = Date.UTC(2026, 10, 14, 12), H = 3600000, D = 24 * H;
+  const snaps = [];
+  for (let i = 0; i < 40; i++) snaps.push({ id: String(i).padStart(64, '0'), at: now - i * 5 * 60000 });   // 40 five-minute snapshots
+  for (let d = 1; d <= 10; d++) snaps.push({ id: 'd' + String(d).padStart(63, '0'), at: now - d * D });
+  snaps.sort((a, b) => b.at - a.at);
+  const kept = tieredKeep(snaps, 8, now);
+  for (let d = 1; d <= 10; d++) assert.ok(kept.some((s) => s.id === 'd' + String(d).padStart(63, '0')), 'day ' + d);
+  assert.ok(kept.length <= 100 && kept.length >= 8);
+});
+
+test('an identical tree is not committed twice, and a .DS_Store in the folder does not stop saving', (t) => {
+  const { dir, store } = fixture(t);
+  const a = save(store, 'one'), same = save(store, 'one');
+  assert.equal(same.unchanged, true); assert.equal(store.snapshots('vm1').length, 1); assert.equal(same.id, a.id);
+  const b = save(store, 'two'); assert.notEqual(b.id, a.id); assert.equal(store.snapshots('vm1').length, 2);
+  const stray = path.join(dir, 'server-backups', '.DS_Store'); fs.writeFileSync(stray, 'x', { mode: 0o644 });
+  assert.doesNotThrow(() => save(store, 'three'));
+  assert.doesNotThrow(() => new SnapshotStore(dir, store.key));
+  assert.ok(fs.existsSync(stray), 'foreign file left alone');
+});

@@ -157,6 +157,7 @@ test('a reconnect waiting behind another host catches up immediately even after 
   await f.request('POST', '/run', { serverId: 'vm' }); await finish(f.controller);
   const first = f.controller.store.snapshots('vm')[0];
   f.remotes.get('vm').ready = false; f.controller.tick();
+  f.write('.codex/sessions/a.jsonl', 'recent conversation, then more');   // an unchanged tree is not stored again
   // The global gate is held while this host reconnects. Catch-up must survive that busy tick.
   f.controller.job = { serverId: 'other-host', abort: new AbortController() };
   f.remotes.get('vm').ready = true; f.controller.tick(); f.controller.job = null;
