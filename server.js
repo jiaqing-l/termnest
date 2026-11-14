@@ -1022,7 +1022,8 @@ server.on('upgrade', (req, socket, head) => {
   const r = remotes.get(url.searchParams.get('server'));
   const name = url.searchParams.get('session');
   if (url.pathname !== '/ws/term' || !r || !r.ready || !name || name.length > 128) { reject(400); return; }
-  wss.handleUpgrade(req, socket, head, (ws) => { ws.twToken = cookieToken(req); attach(ws, r, name, url); });
+  const t0 = Date.now();
+  wss.handleUpgrade(req, socket, head, (ws) => { ws.twToken = cookieToken(req); ws.twT0 = t0; attach(ws, r, name, url); });
 });
 
 function clampSize(v, lo, hi, dflt) {
@@ -1049,6 +1050,9 @@ function attach(ws, r, name, url) {
     if (ws.readyState !== ws.OPEN) { try { stream.close(); } catch { /* already closed */ } return; }
     // Build the session folder's file-name index while the user reads, so a bare file name opens at once.
     setTimeout(() => { if (ws.readyState === ws.OPEN) require('./lib/file-viewer').prewarm(r, name); }, 8000);   // later: it must not compete with the terminal for the SSH channel and the host CPU while a session opens
+    // Only when the page asked (?timing=1): one tiny TEXT frame {t:'timing', open:<ms from upgrade request to channel open>}. The browser
+    // consumes it for its speed diagnostics and never writes it into the terminal. Sent before any terminal bytes.
+    if (url.searchParams.get('timing') === '1') { try { ws.send(JSON.stringify({ t: 'timing', open: Date.now() - (ws.twT0 || Date.now()) })); } catch { /* diagnostics only */ } }
     openTerms.add(ws);
     ws.alive = true;
     ws.on('pong', () => { ws.alive = true; });

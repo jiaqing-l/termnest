@@ -21,7 +21,10 @@
   try { browserOn = localStorage.getItem('tw-notifications') === 'true'; } catch (e) { /* optional */ }
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
-  function api(method, path, body) {
+  // UX3: GET calls for a few read-only routes go through a stale-while-revalidate wrapper (public/features/ux3.js).
+  // Anything else, or ux3 missing/off, runs apiRaw unchanged.
+  function api(method, path, body) { var u = window.TWUX3; return u && u.wrapGet ? u.wrapGet(apiRaw, method, path, body) : apiRaw(method, path, body); }
+  function apiRaw(method, path, body) {
     var headers = body ? { 'Content-Type': 'application/json' } : {}; if (window.TW_I18N) headers['X-TW-Lang'] = window.TW_I18N.lang(); if (document.hidden) headers['X-TW-Hidden'] = '1';
     return fetch(path, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' })
       .then(function (r) {
@@ -170,7 +173,7 @@
       var head = el('div', 'group grp-h'); head.append(el('span', '', g.text || i18n(g.key)), el('span', 'cnt', String(g.items.length))); box.append(head);
       g.items.forEach(function (r) {
         var x = r.x;
-        var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
+        var b = el('button', 'sess'); b.dataset.k = x.v.id + '/' + x.s.name; b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
         var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state);
         a.append(UX ? UX.monoNode(x.s.name) : el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
@@ -205,7 +208,7 @@
     ref.path.textContent = s.path;
   }
   function sessionCard(v, s) {
-    var c = el('div', 'card' + (s.state === 'wait' ? ' wait' : '')); c.style.setProperty('--c', color(s));
+    var c = el('div', 'card' + (s.state === 'wait' ? ' wait' : '')); c.dataset.k = v.id + '/' + s.name; c.style.setProperty('--c', color(s));
     c.setAttribute('aria-label', i18n('app.mo_phien', [s.name]));
     var h = el('div', 'card-head'); h.append(petSlot(v, s), monoAv(s.name));
     var t = el('div', 't'), sub = el('span', 's', subOf(s)); t.append(el('span', 'n', s.name), sub); h.append(t, el('span', 'pill ' + s.state, LABEL[s.state]));
@@ -668,6 +671,7 @@
     // Right-click menu, like VS Code's terminal: copy, paste, select all, clear the screen, clear the scrollback, interrupt.
     p.host.addEventListener('contextmenu', function (ev) { termMenu(p, ev); });
     p.term.attachCustomKeyEventHandler(function(event) {
+      if (window.TWUX3 && window.TWUX3.isPaletteKey(event)) return false; // Cmd/Ctrl-K opens the command palette; never sent to the session (^K)
       if (viewControls.handleKey(event)) return false;
       // Copy: ⌘C on a Mac; Ctrl+Shift+C anywhere; on Windows/Linux plain Ctrl+C copies while text is selected (else it interrupts).
       // Like Windows Terminal: copying never also sends Ctrl+C (interrupt) to the app; without a selection Ctrl+C interrupts.
@@ -755,6 +759,7 @@
       }, ms);
     });
   }
+  function ux3(ev, p, a) { try { if (window.TWUX3) window.TWUX3.ev(ev, p, a); } catch (e) { /* diagnostics only */ } }
   function connectPane(p) {
     var x = paneItem(p); if (!x || p.ime.isComposing()) return;
     var key = x.v.id + '/' + x.s.name;
@@ -766,18 +771,20 @@
     // Never viewed yet: the overview already holds the last lines of every session, show those instead of a black pane.
     var preview = screens[key] || (x.s.lines && x.s.lines.length ? x.s.lines : null);
     if (preview && x.v.mode !== 'powershell') p.term.write('\x1b[2m' + preview.join('\r\n') + '\x1b[0m\x1b[H');
-    var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
+    var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows + (window.TWUX3 && window.TWUX3.timingOn() ? '&timing=1' : '');
+    ux3('connecting', p, key);
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
     p.term.options.scrollback = plainPane(p) ? 50000 : 3000;
-    sock.onopen = function () { p.retries = 0; if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p);
+    sock.onopen = function () { p.retries = 0; ux3('open', p, key); if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p);
       // A fit() while the socket was still connecting could not tell the server: tmux kept the old size and drew garbled or repeated lines.
       sock.send(JSON.stringify({ t: 'resize', cols: p.term.cols, rows: p.term.rows })); nudgeBlank(p, sock); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
-    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); cropCheck(p); };
-    function retry() { clearTimeout(p.retry); p.retries = (p.retries || 0) + 1; p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, Math.min(2000, 300 * p.retries)); }   // first retries are quick: a busy SSH link often frees a channel in a moment
+    sock.onmessage = function (e) { if (p.ws !== sock) return; if (typeof e.data === 'string') { ux3('control', p, e.data); return; }   // text frame = control message (timing), never terminal output
+      ux3('data', p, key); var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); cropCheck(p); };
+    function retry() { clearTimeout(p.retry); p.retries = (p.retries || 0) + 1; var wait = Math.min(2000, 300 * p.retries); ux3('retry', p, wait); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, wait); }   // first retries are quick: a busy SSH link often frees a channel in a moment
     sock.onclose = function (e) {
-      if (p.ws !== sock) return; p.ws = null; p.key = '';
+      if (p.ws !== sock) return; ux3('close', p, e.code); p.ws = null; p.key = '';
       if (e.code === 4001) { refresh().then(function () { if (panes.indexOf(p) < 0 || p.ime.isComposing()) return; if (!paneItem(p)) { p.cur = null; p.ime.reset(); p.term.reset(); syncPanePickers(); if (p === panes[focusedPane]) { cur = null; renderDetail(); renderBar(); } say(i18n('app.phien_da_ket_thuc'), true, 2500); } else retry(); }); }
       else retry();
     };
@@ -1722,7 +1729,7 @@
     if (!window.TW_DESKTOP || asked !== null || !('Notification' in window)) return;
     var c = $('set-browser'); c.checked = true; c.onchange.call(c);
   }
-  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, setView: setView, showPanes: showPanes, current: function () { return cur; }, view: function () { return view; }, setPaneRo: setPaneRo, focusPane: function (i) { focusPane(i, true); }, compact: function () { return $('app').classList.contains('compact'); }, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
+  function enter() { desktopNotifyDefault(); $('login').hidden = true; api('GET', '/api/prefs').then(function (data) { prefs = data; renderSettings(); renderCommands(); renderFleet(); renderBell(); }).catch(function (e) { say(e.message, false, 4000); }); refresh(true).then(function () { setView('over'); startPolling(); tokens.poll(true); if (window.TW) { window.TW.attach({ openFile: function (host, session, path) { fileViewer.open(host, session, path); }, pickFile: function (host, session, cb) { return fileViewer.pick(host, session, cb); }, browseDir: function (host, start, cb) { browseDir(host, start, cb); }, typeText: function (t) { var p = panes[focusedPane]; if (p) { p.term.paste(t); focusTerminal(p); } }, dropTarget: function () { return $('split'); }, crewPopup: function (id, task, track, load) { openCrew({ id: id }, { task: task, track: track }, load); }, api: api, ux3Warm: function (key, lines) { if (!screens[key] && lines && lines.length) screens[key] = lines; }, ux3Has: function (key) { return !!screens[key]; }, ux3Refetch: function () { tokens.poll(true); }, setView: setView, showPanes: showPanes, current: function () { return cur; }, view: function () { return view; }, setPaneRo: setPaneRo, focusPane: function (i) { focusPane(i, true); }, compact: function () { return $('app').classList.contains('compact'); }, openSettings: openSettings, openSession: openSession, refresh: function () { return refresh(true, true); }, say: say, servers: function () { return servers; }, current: function () { return curItem(); } }); window.TW.load().then(function () { render(); }); } }); }
   $('form-login').onsubmit = function (e) {
     e.preventDefault(); $('login-err').textContent = '';
     api('POST', '/api/login', { password: $('login-pass').value }).then(function (r) { enter(); if (r && r.recoveredAt) say(i18n('app.du_lieu_khoi_phuc_ban_sao', [new Date(r.recoveredAt).toLocaleString(i18n('lang.locale'))]), false, 15000); }).catch(function (err) { $('login-err').textContent = err.message; });

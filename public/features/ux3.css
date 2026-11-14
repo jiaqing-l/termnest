@@ -1,0 +1,27 @@
+/* UX3: connection chip, command palette, stale marker, skeleton, diagnostics. Everything is additive. */
+#ux3-conn{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font:600 12px var(--sans,inherit);padding:3px 10px;border-radius:999px;border:1px solid var(--line,#e4e7f0);background:var(--surface,#fff);color:var(--fg,inherit);white-space:nowrap}
+#ux3-conn[hidden]{display:none}
+#ux3-conn::before{content:"";width:8px;height:8px;border-radius:50%;background:#999}
+#ux3-conn.connecting::before{background:#e0a100}
+#ux3-conn.ok::before{background:#1fa971}
+#ux3-conn.lost{border-color:#d9534f}
+#ux3-conn.lost::before{background:#d9534f}
+.main-top{display:flex;align-items:center}
+.ux3-hint{min-height:30px;padding:2px 10px;font-size:12px;opacity:.75}
+@media (max-width:700px){.ux3-hint{display:none}}
+.ux3-pal{position:fixed;top:14vh;left:50%;transform:translateX(-50%);margin:0;width:min(560px,calc(100vw - 24px));padding:0;border:1px solid var(--line-strong,#d3d8e6);border-radius:16px;background:var(--surface,#fff);color:var(--fg,inherit);box-shadow:0 24px 70px rgba(10,13,34,.35);overflow:hidden}
+.ux3-pal::backdrop{background:rgba(10,13,34,.4)}
+.ux3-pal input{display:block;width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line,#e4e7f0);padding:14px 16px;font:500 15px var(--sans,inherit);background:transparent;color:inherit;outline:none}
+.ux3-pal [role=listbox]{max-height:min(52vh,420px);overflow:auto;padding:6px}
+.ux3-grp{font:700 11px var(--sans,inherit);text-transform:uppercase;letter-spacing:.06em;opacity:.55;padding:8px 10px 4px}
+.ux3-opt{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:8px 10px;border-radius:10px;cursor:pointer}
+.ux3-opt small{opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ux3-opt[aria-selected=true]{background:var(--surface-3,#e9ebf5)}
+.ux3-none{padding:16px;opacity:.6;text-align:center}
+.ux3-stamp{font:500 11px var(--sans,inherit);opacity:.6;padding:2px 4px}
+.ux3-skel{display:grid;gap:10px;padding:12px 4px}
+.ux3-skel i{display:block;height:46px;border-radius:12px;background:linear-gradient(90deg,var(--surface-3,#e9ebf5) 25%,var(--surface-2,#f7f8fb) 50%,var(--surface-3,#e9ebf5) 75%);background-size:200% 100%;animation:ux3sh 1.3s linear infinite}
+@keyframes ux3sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.ux3-skel i{animation:none}}
+html.pets-off .ux3-skel i{animation:none}
+.ux3-diag-list{margin:6px 0 0;padding-left:20px;font:12px/1.6 var(--mono,monospace)}

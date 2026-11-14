@@ -5,7 +5,7 @@ const test = require('node:test'), assert = require('node:assert/strict'), fs = 
 
 test('a terminal channel granted after its viewer left is closed immediately', () => {
   const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
-  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 2400);
+  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 5000);
   assert.match(body, /if \(ws\.readyState !== ws\.OPEN\) \{ try \{ stream\.close\(\); \} catch \{[^}]*\} return; \}/);
   assert.ok(body.indexOf('ws.readyState !== ws.OPEN') < body.indexOf('openTerms.add(ws)'), 'checked before the channel is wired');
 });
@@ -25,7 +25,7 @@ test('switching back shows the last screen at once (tmux sessions) and window-si
 
 test('the first resize and keystrokes sent while the channel opens are kept and applied', () => {
   const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
-  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 2400);
+  const body = server.slice(server.indexOf('function attach(ws, r, name, url)'), server.indexOf('function attach(ws, r, name, url)') + 5000);
   assert.ok(body.indexOf("ws.on('message'") < body.indexOf('r.attach('), 'listens before the channel exists');
   assert.match(body, /stream\.setWindow\(clampSize\(size\.rows/);
   assert.match(body, /for \(const m of early\.splice\(0\)\) stream\.write\(m\)/);
