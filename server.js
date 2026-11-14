@@ -22,6 +22,8 @@ const { screensScript, parseScreens } = require('./lib/screens');
 const { keysScript, BAD: BAD_KEYS } = require('./lib/keys');
 const { injectReportLinks } = require('./lib/report-links');
 const { createFeatures } = require('./lib/features');
+const { createWebAssets } = require('./lib/web-assets');
+const tokenView = require('./lib/tokens-summary').createTokenView();
 const { cleanPrefs, mergePrefs, syncKnown, claudeSessionId, parseDirs, shq, validDir, validHost, validName, validUser } = require('./lib/parse');
 const { cleanFlags } = require('./lib/agent-flags');
 const { acquireDataLock, unlockFromFile } = require('./lib/service-runtime');
@@ -44,6 +46,7 @@ const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]',
 
 const vault = new Vault(path.join(DATA, 'vault.json'));
 const remotes = new Map();
+{ const n = Vault.orphanCopies(vault.file); if (n) console.error(`vault.json is missing but ${n} encrypted copies exist in ${path.join(DATA, 'backups')}: signing in with their password restores the newest one.`); }
 const HISTORY_FILE = path.join(DATA, 'history.json');
 let savedHistory = {};
 try {
@@ -73,24 +76,22 @@ function saveHistory() {
 const sessions = new Map(); // cookie token -> expiry
 const openTerms = new Set();
 let lastSeen = 0;
-let failures = 0;
-let lockedUntil = 0;
+// Login throttle is per client (address + User-Agent), so a stranger guessing from another client cannot lock the owner out.
+const loginTries = new Map(); // client key -> { n, lockedUntil, seen }
+function loginClient(req) {
+  return crypto.createHash('sha256').update(`${req.socket?.remoteAddress || ''}\0${req.headers['user-agent'] || ''}`).digest('base64').slice(0, 22);
+}
+function loginState(key, now) {
+  if (loginTries.size > 500) for (const [k, v] of loginTries) if (now - v.seen > 10 * LOGIN_LOCK_MS) loginTries.delete(k);
+  let st = loginTries.get(key);
+  if (!st) { st = { n: 0, lockedUntil: 0, seen: now }; loginTries.set(key, st); }
+  st.seen = now;
+  return st;
+}
 
 const NM = path.resolve(path.dirname(require('module').createRequire(path.join(__dirname, 'server.js')).resolve('@xterm/xterm')), '../../..');
 const PUB = path.join(__dirname, 'public');
-// Every public/locales/<lang>.json becomes one language of window.TW_LOCALES, so a new file is a new language.
-let localesCache = { stamp: '', script: '' };
-function localesScript() {
-  const dir = path.join(PUB, 'locales');
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
-  const stamp = files.map((f) => f + fs.statSync(path.join(dir, f)).mtimeMs).join('|');
-  if (stamp !== localesCache.stamp) {
-    const all = {};
-    for (const f of files) { try { all[f.slice(0, -5)] = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { /* a broken file never takes the others down */ } }
-    localesCache = { stamp, script: 'window.TW_LOCALES=' + JSON.stringify(all).replace(/</g, '\\u003c') + ';' };
-  }
-  return localesCache.script;
-}
+// Every public/locales/<lang>.json is one language; /locales.js sends the one in use (lib/web-assets.js).
 const STATIC = {
   '/': [path.join(PUB, 'index.html'), 'text/html; charset=utf-8'],
   '/markdown-worker.js': [path.join(PUB, 'markdown-worker.js'), 'text/javascript; charset=utf-8'],
@@ -131,8 +132,6 @@ const STATIC = {
   '/termnest-logo-dark.svg': [path.join(PUB, 'termnest-logo-dark.svg'), 'image/svg+xml'],
   '/termnest-logo-oncolor.svg': [path.join(PUB, 'termnest-logo-oncolor.svg'), 'image/svg+xml'],
   '/app.css': [path.join(PUB, 'app.css'), 'text/css; charset=utf-8'],
-  '/look.css': [path.join(PUB, 'look.css'), 'text/css; charset=utf-8'],
-  '/look.js': [path.join(PUB, 'look.js'), 'text/javascript; charset=utf-8'],
   '/vendor/xterm.js': [path.join(NM, '@xterm/xterm/lib/xterm.js'), 'text/javascript; charset=utf-8'],
   '/vendor/xterm.css': [path.join(NM, '@xterm/xterm/css/xterm.css'), 'text/css; charset=utf-8'],
   '/vendor/addon-fit.js': [path.join(NM, '@xterm/addon-fit/lib/addon-fit.js'), 'text/javascript; charset=utf-8'],
@@ -187,25 +186,7 @@ function send(res, code, body) {
   res.writeHead(code, headers);
   res.end(json);
 }
-// Page files (scripts, styles, fonts, locales): compressed once and revalidated by ETag. A reload asks "changed?" and gets
-// 304 instead of ~830 KB; a new version (new content) is fetched at once. API answers stay no-store.
-const assets = new Map();
-function asset(key, stamp, load) {
-  let a = assets.get(key);
-  if (!a || a.stamp !== stamp) {
-    const raw = load(), gz = zlib.gzipSync(raw, { level: 9 });
-    a = { stamp, raw, gz: gz.length < raw.length * 0.9 ? gz : null, etag: '"' + crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 22) + '"' };
-    assets.set(key, a);
-  }
-  return a;
-}
-function sendAsset(req, res, type, a) {
-  const headers = { 'Content-Type': type, ...HEADERS, 'Cache-Control': 'no-cache', ETag: a.etag, Vary: 'Accept-Encoding' };
-  if (String(req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(a.etag)) { res.writeHead(304, headers); res.end(); return; }
-  const gz = a.gz && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
-  res.writeHead(200, gz ? { ...headers, 'Content-Encoding': 'gzip' } : headers);
-  res.end(gz ? a.gz : a.raw);
-}
+// Page files (scripts, styles, fonts, locales): lib/web-assets.js (compressed once, versioned links, immutable caching). API answers stay no-store.
 function fail(res, code, error, extra) { send(res, code, { error, ...(extra || {}) }); }
 
 function readJson(req, limit = MAX_BODY) {
@@ -283,6 +264,19 @@ function forThisMachine(data) {
   return out;
 }
 
+// A restore must never take away the key that opens this machine's server-backup store: keep the current content key when the
+// store is (or may be) on disk, so the existing backups stay readable. A file without one gets the current key too.
+function keepContentKey(data, current) {
+  const key = current?.['server-backup']?.contentKey;
+  if (!key) return data;
+  const features = { ...(data.features || {}) };
+  features['server-backup'] = { ...(features['server-backup'] || {}), contentKey: key };
+  if (current['server-backup'].keyBackedUp !== undefined) features['server-backup'].keyBackedUp = current['server-backup'].keyBackedUp;
+  return { ...data, features };
+}
+const plainObj = (v) => v === undefined || (v && typeof v === 'object' && !Array.isArray(v));
+const restorable = (data) => !!data && Array.isArray(data.servers) && plainObj(data.prefs) && plainObj(data.features) && plainObj(data.known);
+
 // Chats carried by a "Chuyển máy" file wait (encrypted with the store's key) until this computer can place them.
 const INCOMING_FILE = path.join(DATA, 'incoming-chats.json');
 function keepIncoming(chats) {
@@ -344,25 +338,28 @@ function startRemotes() {
   }
 }
 
+// Behind a TLS reverse proxy the cookie must not travel over plain HTTP.
+const secureCookie = (req) => String(req?.headers['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase() === 'https';
 function setCookie(res, token) {
-  res.setHeader('Set-Cookie', `tw_sid=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MS / 1000}`);
+  res.setHeader('Set-Cookie', `tw_sid=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MS / 1000}${secureCookie(res.req) ? '; Secure' : ''}`);
 }
 
 async function login(req, res) {
   const { password } = await readJson(req);
   if (!vault.exists()) { fail(res, 409, tr('srv.server.chua_dat_mat_khau_cho')); return; }
   const now = Date.now();
-  if (now < lockedUntil) {
-    fail(res, 429, tr('srv.server.sai_qua_nhieu_lan_thu', [Math.ceil((lockedUntil - now) / 1000)]));
+  const client = loginState(loginClient(req), now);
+  if (now < client.lockedUntil) {
+    fail(res, 429, tr('srv.server.sai_qua_nhieu_lan_thu', [Math.ceil((client.lockedUntil - now) / 1000)]));
     return;
   }
   if (typeof password !== 'string' || !password || !vault.unlock(password)) {
-    failures += 1;
-    if (failures >= LOGIN_LIMIT) { failures = 0; lockedUntil = now + LOGIN_LOCK_MS; }
+    client.n += 1;
+    if (client.n >= LOGIN_LIMIT) { client.n = 0; client.lockedUntil = now + LOGIN_LOCK_MS; console.error('Login locked for a client after repeated wrong passwords.'); }
     fail(res, 401, tr('srv.server.sai_mat_khau'));
     return;
   }
-  failures = 0;
+  loginTries.delete(loginClient(req));
   const token = crypto.randomBytes(32).toString('base64url');
   sessions.set(token, now + SESSION_MS);
   setCookie(res, token);
@@ -445,6 +442,9 @@ function removeServer(res, id) {
   if (id === LOCAL_ID) { fail(res, 400, tr('srv.server.khong_the_go_may_nay')); return; }
   const r = remotes.get(id);
   if (!r) { fail(res, 404, tr('srv.server.khong_thay_may_chu_nay')); return; }
+  // Removing a server drops its key and its list of sessions: take a verified copy first, and stop if that is not possible.
+  try { vault.snapshot('preremove'); }
+  catch { fail(res, 500, 'Không tạo được bản sao an toàn trước khi gỡ máy chủ, nên chưa gỡ.'); return; }
   r.close();
   remotes.delete(id);
   vault.data.servers = vault.data.servers.filter((s) => s.id !== id);
@@ -735,7 +735,10 @@ async function api(req, res, url) {
   const m = req.method;
   const p = url.pathname;
   if (p === '/api/status' && m === 'GET') {
+    // vault.json is gone but encrypted copies remain: the page may offer recovery (nothing is restored automatically).
+    const orphan = vault.exists() ? 0 : Vault.orphanCopies(vault.file);
     send(res, 200, { setup: vault.exists(), authed: authed(req),
+      ...(orphan ? { vaultCopiesFound: orphan } : {}),
       ...(webSetupEnabled() ? { webSetup: true } : {}),
       ...(process.env.TW_PACKAGED === '1' ? { packaged: true } : {}) });
     return;
@@ -757,7 +760,7 @@ async function api(req, res, url) {
     if (typeof body.setupToken !== 'string' || !crypto.timingSafeEqual(digest(body.setupToken), digest(process.env.TW_SETUP_TOKEN))) { fail(res, 403, tr('srv.server.ma_thiet_lap_khong_hop')); return; }
     const opened = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
     const { data, chats } = restoredData(opened);
-    if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    if (!restorable(data)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
     vault.create(body.password, forThisMachine(data));
     keepIncoming(chats); vault.save();
     delete process.env.TW_SETUP_TOKEN;
@@ -791,7 +794,9 @@ async function api(req, res, url) {
     send(res, 200, { ok: true }); return;
   }
   if (p === '/api/logout' && m === 'POST') {
-    sessions.delete(cookieToken(req));
+    const out = cookieToken(req);
+    sessions.delete(out);
+    closeTermsOf(out);
     res.setHeader('Set-Cookie', 'tw_sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
     send(res, 200, { ok: true });
     return;
@@ -806,7 +811,7 @@ async function api(req, res, url) {
       if(p === '/api/file-preview' && !value.error){
         if(value.kind !== 'html'){fail(res,400,tr('srv.server.chi_ho_tro_ban_xem'));return;}
         res.writeHead(200, {...HEADERS, 'Content-Type':'text/html; charset=utf-8',
-          'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
+          'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; connect-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"});
         let page = value.text;
         try {
           const backend = remotes.get(url.searchParams.get('server')), session = url.searchParams.get('session'), reader = require('./lib/file-viewer').readSessionFile;
@@ -822,8 +827,10 @@ async function api(req, res, url) {
   if (p === '/api/tokens' && m === 'GET') {
     const zone = url.searchParams.get('zone') || 'UTC';
     try { new Intl.DateTimeFormat('en', { timeZone: zone }).format(); } catch { send(res, 400, { error: 'Invalid timezone' }); return; }
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...HEADERS });
-    res.end(tokenCache.get([...remotes.values()], mergePrefs(vault.data.prefs).aiAccounts, { zone })); return;
+    // Compact by default (top sessions per account, see lib/tokens-summary.js), gzipped; `etag=<last etag>` answers a tiny notModified when nothing changed.
+    const answer = tokenView(tokenCache.get([...remotes.values()], mergePrefs(vault.data.prefs).aiAccounts, { zone }), { full: url.searchParams.get('sessions') === 'all' });
+    if (url.searchParams.get('etag') === answer.etag) { send(res, 200, { notModified: true, etag: answer.etag }); return; }
+    web.sendJson(req, res, answer.text); return;
   }
   if (p === '/api/usage' && m === 'GET') {
     const zone = url.searchParams.get('zone') || 'UTC';
@@ -862,11 +869,14 @@ async function api(req, res, url) {
     const body = await readJson(req, 400 * 1024 * 1024);
     const opened = typeof body.backup === 'string' && typeof body.password === 'string' ? Vault.read(body.backup, body.password) : null;
     const { data, chats } = restoredData(opened);
-    if (!data || !Array.isArray(data.servers)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    if (!restorable(data)) { fail(res, 400, tr('srv.backup.khong_mo_duoc')); return; }
+    // A verified copy of the current data, kept apart from the rotating ones: if it cannot be made, nothing is replaced.
+    try { vault.snapshot('prerestore'); }
+    catch { fail(res, 500, 'Không tạo được bản sao an toàn của dữ liệu hiện tại, nên đã hủy khôi phục. Dữ liệu hiện tại không bị thay đổi.'); return; }
     vault.copy();
     const keep = new Set(data.servers.map((s) => s.id));
     for (const [id, r] of [...remotes]) if (id !== LOCAL_ID && !keep.has(id)) { r.close(); remotes.delete(id); }
-    vault.data = forThisMachine(data);
+    vault.data = keepContentKey(forThisMachine(data), vault.data.features);
     for (const cfg of vault.data.servers) if (remotes.has(cfg.id)) { remotes.get(cfg.id).close(); remotes.delete(cfg.id); }
     startRemotes(); keepIncoming(chats); saveVault();
     await placeIncoming().catch(() => {});
@@ -964,6 +974,11 @@ const features = createFeatures({ libDir: path.join(__dirname, 'lib', 'features'
     startSession: async (r, o) => { await startSession(r, o); await r.poll(); }, stopSession: async (r, name) => { const ok = await stopSession(r, name); if (ok) await r.poll(); return ok; },
     vault: () => vault, save: () => saveVault(), dataDir: DATA } });
 features.load();
+const web = createWebAssets({ pub: PUB, headers: HEADERS, features,
+  resolve: (p) => STATIC[p] || features.staticFile(p),
+  // xterm turns the mouse position into a row/column with clientX/Y and getBoundingClientRect() in screen pixels but cell sizes in layout
+  // pixels. Under the interface scale (CSS zoom) the two differ by the zoom factor: double-click selected a line above the pointer.
+  patch: (p, buf) => p === '/vendor/xterm.js' ? Buffer.from(buf.toString('utf8').replace('return[t.clientX-s.left-n,t.clientY-s.top-o]', 'var z=parseFloat(e.getComputedStyle(e.document.documentElement).getPropertyValue("--ui-z"))||1;return[(t.clientX-s.left-n)/z,(t.clientY-s.top-o)/z]')) : buf });
 
 const server = http.createServer(async (req, res) => {
   setLang(langOf(req));   // the page sends X-TW-Lang; every message this request produces follows it
@@ -992,20 +1007,8 @@ const server = http.createServer(async (req, res) => {
     } finally { activeRequests--; }
     return;
   }
-  if (url.pathname === '/locales.js' && req.method === 'GET') { const script = localesScript(); sendAsset(req, res, 'text/javascript; charset=utf-8', asset('/locales.js', localesCache.stamp, () => Buffer.from(script))); return; }
-  const entry = STATIC[url.pathname] || (req.method === 'GET' ? features.staticFile(url.pathname) : null);
-  if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
-  fs.stat(entry[0], (err, st) => {
-    if (err) { res.writeHead(500); res.end(); return; }
-    let a; try { a = asset(entry[0], st.mtimeMs + ':' + st.size, () => {
-      const buf = fs.readFileSync(entry[0]);
-      // xterm turns the mouse position into a row/column with clientX/Y and getBoundingClientRect() in screen pixels but cell sizes in layout
-      // pixels. Under the interface scale (CSS zoom) the two differ by the zoom factor: double-click selected a line above the pointer.
-      if (url.pathname === '/vendor/xterm.js') return Buffer.from(buf.toString('utf8').replace('return[t.clientX-s.left-n,t.clientY-s.top-o]', 'var z=parseFloat(e.getComputedStyle(e.document.documentElement).getPropertyValue("--ui-z"))||1;return[(t.clientX-s.left-n)/z,(t.clientY-s.top-o)/z]'));
-      return buf;
-    }); } catch { res.writeHead(500); res.end(); return; }
-    sendAsset(req, res, entry[1], a);
-  });
+  if (web.handle(req, res, url)) return;
+  res.writeHead(404); res.end();
 });
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
@@ -1019,7 +1022,7 @@ server.on('upgrade', (req, socket, head) => {
   const r = remotes.get(url.searchParams.get('server'));
   const name = url.searchParams.get('session');
   if (url.pathname !== '/ws/term' || !r || !r.ready || !name || name.length > 128) { reject(400); return; }
-  wss.handleUpgrade(req, socket, head, (ws) => attach(ws, r, name, url));
+  wss.handleUpgrade(req, socket, head, (ws) => { ws.twToken = cookieToken(req); attach(ws, r, name, url); });
 });
 
 function clampSize(v, lo, hi, dflt) {
@@ -1082,8 +1085,14 @@ setInterval(() => {
 
 setInterval(saveHistory, 5 * 60000).unref();
 
+// A closed or expired login must not leave a live shell open in the browser.
+function closeTermsOf(token) { if (token) for (const ws of openTerms) if (ws.twToken === token) ws.terminate(); }
+
 setInterval(() => {
+  const now = Date.now();
+  for (const [t, exp] of sessions) if (exp < now) { sessions.delete(t); closeTermsOf(t); }
   for (const ws of openTerms) {
+    if (ws.twToken && !sessions.has(ws.twToken)) { ws.terminate(); continue; }
     if (!ws.alive) { ws.terminate(); continue; }
     ws.alive = false;
     ws.ping();

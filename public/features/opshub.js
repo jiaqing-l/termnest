@@ -133,7 +133,7 @@
     }).catch(function () { loadErr = true; drawnSig = ''; draw(); });
   }
   function loadTokens() {
-    return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)).then(function (r) { tokens = r; drawQuota(); }).catch(function () { /* optional */ });
+    return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone) + (tokens && tokens.etag ? '&etag=' + tokens.etag : '')).then(function (r) { if (!(r && r.notModified && tokens)) tokens = r; drawQuota(); }).catch(function () { /* optional */ });
   }
   function loadReports() { return api('GET', '/reports').then(function (r) { reports = list(r.reports); if (tab === 'report') drawBody(true); }).catch(function () { reports = []; }); }
 

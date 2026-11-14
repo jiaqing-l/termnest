@@ -27,7 +27,7 @@ This inventory covers every production-lockfile entry, including optional and bu
 | ssh2 | 1.16.0 | MIT | Copyright Brian White. All rights reserved. | [LICENSE](docs/licenses/ssh2.txt) |
 | tweetnacl | 0.14.5 | Unlicense | Public domain dedication; no copyright holder line in LICENSE (Unlicense). | [LICENSE](docs/licenses/tweetnacl.txt) |
 | uc.micro | 2.1.0 | MIT | Copyright Mathias Bynens &lt;https://mathiasbynens.be/&gt; | [LICENSE](docs/licenses/uc.micro.txt) |
-| ws | 8.18.0 | MIT | Copyright (c) 2011 Einar Otto Stangvik &lt;einaros@gmail.com&gt;; Copyright (c) 2013 Arnout Kazemier and contributors; Copyright (c) 2016 Luigi Pinca and contributors | [LICENSE](docs/licenses/ws.txt) |
+| ws | 8.23.0 | MIT | Copyright (c) 2011 Einar Otto Stangvik &lt;einaros@gmail.com&gt;; Copyright (c) 2013 Arnout Kazemier and contributors; Copyright (c) 2016 Luigi Pinca and contributors | [LICENSE](docs/licenses/ws.txt) |
 
 ## Native terminal components
 

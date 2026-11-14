@@ -4,6 +4,8 @@
 window.TW = (function () {
   var listeners = {}, detail = [], card = [], serverHead = [], views = [], appApi = null, bannerBox = null, banners = {};
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  // The page lists the content version of each feature file in <meta name="tw-assets"> (path -> hash), so the browser can keep them for good.
+  function assetVersions() { try { var m = document.querySelector('meta[name="tw-assets"]'); return (m && JSON.parse(m.getAttribute('content'))) || {}; } catch (e) { return {}; } }
   function safe(fn, a, b, c) { try { return fn(a, b, c); } catch (e) { if (window.console) console.error('[TW]', e); return undefined; } }
   var TW = {
     el: el,
@@ -60,12 +62,14 @@ window.TW = (function () {
       if (TW.loaded) return Promise.resolve();
       TW.loaded = true;
       return appApi.api('GET', '/api/features').then(function (r) {
-        return (r.modules || []).reduce(function (chain, m) {
-          return chain.then(function () {
-            if (m.css) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/features/' + m.name + '.css'; document.head.append(l); }
-            return new Promise(function (resolve) { var s = document.createElement('script'); s.src = '/features/' + m.name + '.js'; s.onload = s.onerror = resolve; document.head.append(s); });
-          });
-        }, Promise.resolve());
+        // Every file is requested at once (the server already told the browser to preload them); scripts inserted with async=false still
+        // run one after the other in the order the server listed them, so the registration order is the same as when each waited for the previous.
+        var versions = assetVersions();
+        function url(path) { return versions[path] ? path + '?v=' + versions[path] : path; }
+        return Promise.all((r.modules || []).map(function (m) {
+          if (m.css) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = url('/features/' + m.name + '.css'); document.head.append(l); }
+          return new Promise(function (resolve) { var s = document.createElement('script'); s.async = false; s.src = url('/features/' + m.name + '.js'); s.onload = s.onerror = resolve; document.head.append(s); });
+        }));
       }).then(function () { TW.emit('ready'); }).catch(function () { TW.loaded = false; });
     },
   };

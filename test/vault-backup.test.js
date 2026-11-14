@@ -40,8 +40,9 @@ test('the copy interval follows the setting', () => {
     const v = new Vault(file); v.create('pw', { servers: [], prefs: { backupMinutes: 15 } });
     const copies = () => fs.readdirSync(path.join(dir, 'backups'));
     const only = copies()[0]; fs.renameSync(path.join(dir, 'backups', only), path.join(dir, 'backups', `vault-${Date.now() - 20 * 60000}.json`));
-    v.save(); assert.equal(copies().length, 2);   // 20 minutes > 15: a new copy
-    v.data.prefs.backupMinutes = 1440; v.save(); assert.equal(copies().length, 2);
+    v.save(); assert.equal(copies().length, 1);   // 20 minutes > 15 but nothing changed: no new copy
+    v.data.servers.push('x'); v.save(); assert.equal(copies().length, 2);   // changed: a new copy
+    v.data.prefs.backupMinutes = 1440; v.data.servers.push('y'); v.save(); assert.equal(copies().length, 2);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -76,5 +77,38 @@ test('a backup file opens only with its own password', () => {
     assert.deepEqual(Vault.read(text, 'old-machine').servers, [{ id: 's1' }]);
     assert.equal(Vault.read(text, 'old-machine').features.notes.notes[0].t, 'ghi chú');
     for (const [t, pw] of [[text, 'wrong'], ['not json', 'old-machine'], ['{"v":2}', 'old-machine'], ['{}', 'x']]) assert.equal(Vault.read(t, pw), null);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+const { expired } = require('../lib/vault');
+test('tiered retention keeps older days when many copies are made in a burst', () => {
+  const now = Date.UTC(2026, 10, 14, 12), H = 3600000, D = 24 * H;
+  const names = [];
+  for (let i = 0; i < 30; i++) names.push(`vault-${now - i * 60000}.json`);            // burst of 30 within half an hour
+  for (let d = 1; d <= 10; d++) names.push(`vault-${now - d * D}.json`);               // one a day before
+  names.sort().reverse();
+  const gone = new Set(expired(names, now)), kept = names.filter((n) => !gone.has(n));
+  assert.ok(kept.length <= 28);
+  for (let d = 1; d <= 10; d++) assert.ok(kept.includes(`vault-${now - d * D}.json`), `day ${d} kept`);
+  assert.ok(kept.includes(`vault-${now}.json`));
+});
+
+test('an unchanged unlock does not add a copy; snapshot is verified and kept apart; orphan copies are reported', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-vault-')), file = path.join(dir, 'vault.json');
+  try {
+    const v = new Vault(file); v.create('pw', { servers: ['a'] });
+    const copies = () => fs.readdirSync(path.join(dir, 'backups')).filter((f) => /^vault-\d{13}\.json$/.test(f));
+    assert.equal(copies().length, 1);
+    const w = new Vault(file); assert.equal(w.unlock('pw'), true); w.save();
+    assert.equal(copies().length, 1, 'restart with the same data: no new copy');
+    w.data.servers.push('b'); w.copyNext = true; w.save(); assert.equal(copies().length, 2);
+    const snap = w.snapshot('prerestore');
+    assert.ok(path.basename(snap).startsWith('vault-prerestore-')); assert.equal(copies().length, 2);
+    assert.equal(Vault.read(fs.readFileSync(snap, 'utf8'), 'pw').servers.length, 2);
+    assert.equal(Vault.orphanCopies(file), 0);
+    fs.rmSync(file); assert.equal(Vault.orphanCopies(file), 2);
+    // a snapshot that cannot be written throws
+    fs.rmSync(path.join(dir, 'backups'), { recursive: true }); fs.writeFileSync(path.join(dir, 'backups'), 'x');
+    assert.throws(() => w.snapshot('prerestore'));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

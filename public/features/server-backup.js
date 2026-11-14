@@ -124,8 +124,16 @@
     };
     return box;
   }
+  // The 10 s poll redraws the card only when what it shows changed (the same answer would rebuild the same rows).
+  var drawn = null;
   function render() {
     if (!card) return;
+    var sig = JSON.stringify([status, unavailable, pending, queued, runPending]);
+    if (sig === drawn && rows.firstChild) return;
+    renderCard();
+    drawn = JSON.stringify([status, unavailable, pending, queued, runPending]);
+  }
+  function renderCard() {
     // Preserve scope control values and open state through polling and failed writes.
     var focused = document.activeElement;
     var scopes = Object.create(null); rows.querySelectorAll('[data-server]').forEach(function (row) { var s = row.querySelector('.backup-scope'); if (s) scopes[row.dataset.server] = s; });

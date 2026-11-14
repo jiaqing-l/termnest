@@ -567,7 +567,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
   }
   // AI accounts near a limit, from the token readings TERMNEST already makes (Token AI tab); threshold from the pack.
   var tokens = null;
-  function loadTokens() { return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)).then(function (r) { tokens = r; }).catch(function () { /* optional */ }); }
+  function loadTokens() { return TW.api('GET', '/api/tokens?zone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone) + (tokens && tokens.etag ? '&etag=' + tokens.etag : '')).then(function (r) { if (!(r && r.notModified && tokens)) tokens = r; }).catch(function () { /* optional */ }); }
   // The account of the same tool with the most room left (highest of its 5-hour and weekly use, lowest wins). A suggestion only.
   function used(a) { var l = a.limits || {}, v = [l.session, l.weekly].filter(function (x) { return x && Number.isFinite(x.percent); }).map(function (x) { return x.percent; }); return v.length ? Math.max.apply(null, v) : null; }
   function bestOther(a) {
@@ -997,6 +997,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
     var editRules = reminderSettings && reminderSettings.querySelector('.ops-edit-rules'); if (editRules) editRules.disabled = !data;
     drawPlugins();
     if (!page) return;
+    // While another screen is showing, the board is not rebuilt (it is drawn from the latest data when the tab opens).
+    var shown = document.getElementById('v-ops'); if (shown && shown.classList && !shown.classList.contains('on')) return;
     page.textContent = '';
     var head = el('div', 'ops-head'), h = el('div', 'ops-title'), tools = el('div', 'ops-tools');
     h.append(el('h2', '', i18n('ops.tieu_de')), el('p', '', data ? i18n('ops.connections', [data.servers.length, data.servers.filter(function (s) { return s.online === true; }).length]) : i18n('ops.loading')));
@@ -1076,7 +1078,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = { opsSessi
       var legacy = el('details', 'ops-legacy'), sum = el('summary', 'ops-legacy-h', i18n('ops.legacy_title'));
       try { legacy.open = localStorage.getItem('tw-ops-legacy') === '1'; } catch (e) { /* optional */ }
       legacy.addEventListener('toggle', function () { try { localStorage.setItem('tw-ops-legacy', legacy.open ? '1' : '0'); } catch (e) { /* optional */ } });
-      legacy.append(sum, page); box.append(hub, legacy); page.append(el('p', 'ops-empty', i18n('ops.loading'))); }, onShow: load });
+      legacy.append(sum, page); box.append(hub, legacy); page.append(el('p', 'ops-empty', i18n('ops.loading'))); }, onShow: function () { draw(); load(); } });
     if (v) tab = v.tab;
     TW.opsTrackPopup = trackPopup;
     pluginPage = document.getElementById('plugins-settings-mount');
