@@ -29,6 +29,7 @@ const { acquireDataLock, unlockFromFile } = require('./lib/service-runtime');
 const HOST = '127.0.0.1'; // Local command execution is available: never expose directly to the LAN.
 const PORT = Number(process.env.TW_PORT || 7681);
 const DATA = process.env.TW_DATA || path.join(__dirname, 'data');
+require('./lib/crash-guard').install(DATA);
 const tokenCache = new TokenCache({dataDir:DATA});
 const usage = new UsageService();
 const POLL_MS = Number(process.env.TW_POLL_MS || 3000);
@@ -103,8 +104,10 @@ const STATIC = {
   '/view-controls.js': [path.join(PUB, 'view-controls.js'), 'text/javascript; charset=utf-8'],
   '/terminal-keys.js': [path.join(PUB, 'terminal-keys.js'), 'text/javascript; charset=utf-8'],
   '/mouse-filter.js': [path.join(PUB, 'mouse-filter.js'), 'text/javascript; charset=utf-8'],
+  '/status-crop.js': [path.join(PUB, 'status-crop.js'), 'text/javascript; charset=utf-8'],
   '/touch-scroll.js': [path.join(PUB, 'touch-scroll.js'), 'text/javascript; charset=utf-8'],
   '/tab-hide.js': [path.join(PUB, 'tab-hide.js'), 'text/javascript; charset=utf-8'],
+  '/ui-zoom.js': [path.join(PUB, 'ui-zoom.js'), 'text/javascript; charset=utf-8'],
   '/ime-input.js': [path.join(PUB, 'ime-input.js'), 'text/javascript; charset=utf-8'],
   '/pet-state.js': [path.join(PUB, 'pet-state.js'), 'text/javascript; charset=utf-8'],
   '/pet-scene.js': [path.join(PUB, 'pet-scene.js'), 'text/javascript; charset=utf-8'],
@@ -994,7 +997,13 @@ const server = http.createServer(async (req, res) => {
   if (!entry || req.method !== 'GET') { res.writeHead(404); res.end(); return; }
   fs.stat(entry[0], (err, st) => {
     if (err) { res.writeHead(500); res.end(); return; }
-    let a; try { a = asset(entry[0], st.mtimeMs + ':' + st.size, () => fs.readFileSync(entry[0])); } catch { res.writeHead(500); res.end(); return; }
+    let a; try { a = asset(entry[0], st.mtimeMs + ':' + st.size, () => {
+      const buf = fs.readFileSync(entry[0]);
+      // xterm turns the mouse position into a row/column with clientX/Y and getBoundingClientRect() in screen pixels but cell sizes in layout
+      // pixels. Under the interface scale (CSS zoom) the two differ by the zoom factor: double-click selected a line above the pointer.
+      if (url.pathname === '/vendor/xterm.js') return Buffer.from(buf.toString('utf8').replace('return[t.clientX-s.left-n,t.clientY-s.top-o]', 'var z=parseFloat(e.getComputedStyle(e.document.documentElement).getPropertyValue("--ui-z"))||1;return[(t.clientX-s.left-n)/z,(t.clientY-s.top-o)/z]'));
+      return buf;
+    }); } catch { res.writeHead(500); res.end(); return; }
     sendAsset(req, res, entry[1], a);
   });
 });
@@ -1036,7 +1045,7 @@ function attach(ws, r, name, url) {
     // Close the late channel at once, or every quick switch leaks one (OpenSSH allows 10 per connection; then new tabs stay black).
     if (ws.readyState !== ws.OPEN) { try { stream.close(); } catch { /* already closed */ } return; }
     // Build the session folder's file-name index while the user reads, so a bare file name opens at once.
-    require('./lib/file-viewer').prewarm(r, name);
+    setTimeout(() => { if (ws.readyState === ws.OPEN) require('./lib/file-viewer').prewarm(r, name); }, 8000);   // later: it must not compete with the terminal for the SSH channel and the host CPU while a session opens
     openTerms.add(ws);
     ws.alive = true;
     ws.on('pong', () => { ws.alive = true; });

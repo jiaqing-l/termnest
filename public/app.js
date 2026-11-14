@@ -102,7 +102,10 @@
     function chip(num, t, c) { var e = el('span', 'chip ' + (c || '')); e.append(el('b', '', num), t); box.append(e); }
     chip(on + '/' + servers.length, i18n('app.may_chu')); chip(visTabs().length, i18n('app.phien')); chip(r, i18n('app.dang_chay_3'));
     if (w) chip(w, i18n('app.cho_ban_2'), 'alert');
-    box.append(el('span', 'chip conn', online ? i18n('app.da_ket_noi') : i18n('app.mat_mang')));
+    // This dot is the link between this window and Termnest. When it is fine but some machines are down, say so: a green "connected"
+    // beside "2/3 machines" read as if every machine was reachable.
+    var down = servers.length - on;
+    box.append(el('span', 'chip conn' + (online && down ? ' partial' : ''), !online ? i18n('app.mat_mang') : down ? i18n('app.n_may_chu_mat_ket_noi', [down]) : i18n('app.da_ket_noi')));
     // The first session waiting for you gets a reply button right in the summary.
     var first = vis().filter(function (x) { return x.s.state === 'wait'; })[0];
     // One waiting session: reply to it. Several: show only the waiting ones (the "Chờ bạn" filter) and scroll to them.
@@ -113,6 +116,7 @@
       all.onclick = function () { var f = document.querySelector('#f button[data-f="wait"]'); if (f) f.click(); var g = $('grid') || document.querySelector('#v-over .grid'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
       box.append(all);
     }
+    if (window.TWUX2) window.TWUX2.heroStats({ sessions: visTabs().length, run: r, wait: w, crew: window.TW && window.TW.crewWorkerCount ? window.TW.crewWorkerCount() : 0 });
     $('shelf').innerHTML = scoped().flatMap(function (v) { return (v.houseSessions || v.sessions).map(function (s) { return { v: v, s: s }; }); }).slice(0, 5).map(function (x) { return pet(petFor(x.v, x.s), x.s.state); }).join('');
   }
   // Without pets (or in the narrow sidebar) a session shows the first letters of its name instead of an empty tile.
@@ -146,17 +150,41 @@
     row('all', i18n('app.tat_ca_may_chu'), i18n('app.so_may_chu', [servers.length]), total, false, 'all');
     servers.forEach(function (v) { row(v.id, v.name, v.local ? i18n('app.khong_can_ssh', [v.hostname]) : v.on ? v.user + '@' + v.host : i18n('app.mat_ket_noi_2', [v.user]), waitOf(v), !v.on, v.local ? 'local' : 'remote'); });
     var add = el('button', 'btn add-srv', i18n('app.them_may_chu')); add.onclick = addDlg; box.append(add);
-    [['wait', i18n('app.cho_ban')], ['run', i18n('app.dang_chay')], ['idle', i18n('app.dang_nghi')]].forEach(function (g) {
-      var list = vis().filter(function (x) { return x.s.state === g[0] && matches(x.s) && !inCrewWorker(x.v, x.s); }); if (!list.length) return;
-      box.append(el('div', 'group', g[1]));
-      list.forEach(function (x) {
+    // Session groups: "Nhóm phiên" picks how the list is ordered (default "Ưu tiên": pinned, waiting for you, running crews, running, resting).
+    // Without public/features/ux2.js the old three state groups are used.
+    var UX = window.TWUX2, pins = UX ? UX.getPins() : [], mode = UX ? UX.getMode() : 'stat';
+    if (UX) {
+      var bar = el('div', 'grpbar'), gs = el('select'); gs.id = 'grpsel'; gs.setAttribute('aria-label', i18n('ux2.grp_label'));
+      UX.MODES.forEach(function (m) { var o = el('option', '', i18n('ux2.g_' + m)); o.value = m; gs.append(o); }); gs.value = mode;
+      gs.onchange = function () { UX.setMode(gs.value); renderSide(); };
+      bar.append(el('span', '', i18n('ux2.grp_label')), gs); box.append(bar);
+    }
+    var rows = vis().filter(function (x) { return matches(x.s) && !inCrewWorker(x.v, x.s); }).map(function (x) {
+      var inc = inCrew(x.v, x.s);
+      return { x: x, key: tabKey(x), name: x.s.name, state: x.s.state, crew: inc, host: x.v.name, path: x.s.path, cmd: x.s.cmd, tool: x.s.aiTool };
+    });
+    var groups = UX ? UX.groupSessions(rows, mode, pins) : ['wait', 'run', 'idle'].map(function (st) {
+      return { id: st, text: i18n(st === 'wait' ? 'app.cho_ban' : st === 'run' ? 'app.dang_chay' : 'app.dang_nghi'), items: rows.filter(function (r) { return r.state === st; }) };
+    }).filter(function (g) { return g.items.length; });
+    groups.forEach(function (g) {
+      var head = el('div', 'group grp-h'); head.append(el('span', '', g.text || i18n(g.key)), el('span', 'cnt', String(g.items.length))); box.append(head);
+      g.items.forEach(function (r) {
+        var x = r.x;
         var b = el('button', 'sess'); b.style.setProperty('--c', color(x.s));
         b.setAttribute('aria-current', (view === 'focus' && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state); a.append(el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
+        var a = el('span', 'ava'); a.innerHTML = pet(petFor(x.v, x.s), x.s.state);
+        a.append(UX ? UX.monoNode(x.s.name) : el('span', 'ava-i', initials(x.s.name)), el('span', 'flag ' + x.s.state));
         b.title = x.s.name + ' · ' + x.v.name;
         var t = el('span', 'txt'); var crewNote = window.TW && window.TW.crewNote ? window.TW.crewNote(x.v.id, x.s.name) : '', baseSub = scope === 'all' ? x.v.name : subOf(x.s);
         t.append(el('span', 'n', x.s.name), el('span', 's', crewNote ? baseSub + ' · ' + crewNote : baseSub));
-        b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); }; box.append(b);
+        b.append(a, t); b.onclick = function () { openSession(x.v.id, x.s.name); };
+        if (UX) {   // ★ keeps a session at the top; a span, not a nested button
+          var on = pins.indexOf(r.key) >= 0, star = el('span', 'pinb' + (on ? ' on' : ''), '★'); star.setAttribute('role', 'button'); star.tabIndex = 0;
+          star.title = i18n(on ? 'ux2.unpin' : 'ux2.pin'); star.setAttribute('aria-label', star.title); star.setAttribute('aria-pressed', String(on));
+          var flip = function (ev) { ev.preventDefault(); ev.stopPropagation(); UX.togglePin(r.key); renderSide(); };
+          star.onclick = flip; star.onkeydown = function (ev) { if (ev.key === 'Enter' || ev.key === ' ') flip(ev); }; b.append(star);
+        }
+        box.append(b);
       });
     });
   }
@@ -179,7 +207,7 @@
   function sessionCard(v, s) {
     var c = el('div', 'card' + (s.state === 'wait' ? ' wait' : '')); c.style.setProperty('--c', color(s));
     c.setAttribute('aria-label', i18n('app.mo_phien', [s.name]));
-    var h = el('div', 'card-head'); h.append(petSlot(v, s));
+    var h = el('div', 'card-head'); h.append(petSlot(v, s), monoAv(s.name));
     var t = el('div', 't'), sub = el('span', 's', subOf(s)); t.append(el('span', 'n', s.name), sub); h.append(t, el('span', 'pill ' + s.state, LABEL[s.state]));
     var ref = { card: c, mini: el('div', 'mini'), foot: el('span', 'foot-t'), path: el('span', 'foot-p'), sub: sub };
     var f = el('div', 'card-foot'); f.append(ref.foot, ref.path);
@@ -239,6 +267,8 @@
     catch (e) { /* decoration is optional */ }
   }
   function petEvent(id, name, type) { try { if (window.PetScene) window.PetScene.event(id, name, type); } catch (e) { /* optional */ } }
+  // Pets off: a monogram on a hue taken from the name (ux2.css shows it only when html.pets-off).
+  function monoAv(name) { return window.TWUX2 ? window.TWUX2.monoNode(name) : document.createDocumentFragment(); }
   function petSlot(v, s) {
     var n = el('div', 'pet-slot'); n.dataset.key = v.id + '/' + s.name + '/' + s.created; return n;
   }
@@ -377,7 +407,7 @@
     visTabs().filter(function (x) { return !tabHide || !tabHide.isHidden(tabKey(x)); }).forEach(function (x) {
       var b = el('button', 'tab'); b.style.setProperty('--c', color(x.s)); b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', (!wallOn && cur && cur.id === x.v.id && cur.name === x.s.name) ? 'true' : 'false');
-      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); b.append(x.s.name);
+      b.innerHTML = pet(petFor(x.v, x.s), x.s.state); if (window.TWUX2) b.prepend(window.TWUX2.monoNode(x.s.name)); b.append(x.s.name);
       if (tabHide) {
         var close = el('span', 'tab-x', '✕'); close.setAttribute('role', 'button'); close.setAttribute('aria-label', i18n('app.dong_tab', [x.s.name])); close.title = i18n('app.dong_tab_phien_van_chay');
         close.onclick = function (e) { e.stopPropagation(); closeTab(x); }; b.append(close);
@@ -408,7 +438,7 @@
     var nextSignature = JSON.stringify(x ? [x.v.id, x.v.name, x.v.user, [x.s.name, x.s.state, x.s.cmd, x.s.path, ago(x.s.activityAge), x.s.created, x.s.diary], prefs.pets, tokens.session(x.v.id,x.s.name)] : null);
     if (nextSignature === detailSignature) return;
     detailSignature = nextSignature; box.textContent = ''; if (!x) return;
-    var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s));
+    var w = el('div', 'who'); w.style.setProperty('--c', color(x.s)); w.append(petSlot(x.v, x.s), monoAv(x.s.name));
     w.append(el('b', '', x.s.name), el('span', 'pill ' + x.s.state, LABEL[x.s.state]));
     var a = el('div'); a.append(el('h3', '', i18n('app.thong_tin')));
     var dl = el('dl', 'kv');
@@ -417,7 +447,7 @@
     a.append(dl);
     var acts = el('div', 'detail-actions'), d = el('button', 'btn', i18n('app.roi_van_chay')), k = el('button', 'btn danger', i18n('app.dung'));
     d.onclick = detach; k.onclick = killDlg; acts.append(d, k); box.append(w, a);
-    var edit = el('button', 'btn', i18n('app.doi_thu_cung')); edit.onclick = function () { editPet(x); }; box.append(edit);
+    var edit = el('button', 'btn pet-edit', i18n('app.doi_thu_cung')); edit.onclick = function () { editPet(x); }; box.append(edit);
     box.append(acts); if (window.TW) window.TW.renderDetail(box, x); petSync();
   }
   function renderBar() {
@@ -607,7 +637,7 @@
       e.preventDefault(); e.stopPropagation();
       applyScroll(lines(e), e.clientX, e.clientY);
     }, { capture: true, passive: false });
-    if (window.TouchScroll) window.TouchScroll.attach(p.host, { slop: 8, cell: function () { return p.host.clientHeight / p.term.rows; }, onLines: function (l, x, y) { if (p.cur) applyScroll(l, x, y); } });
+    if (window.TouchScroll) window.TouchScroll.attach(p.host, { slop: 8, cell: function () { return p.host.clientHeight / Math.max(1, p.term.rows - (p.crop || 0)); }, onLines: function (l, x, y) { if (p.cur) applyScroll(l, x, y); } });
     function toPosition(y) {
       var st = p.scroll; if (!st || st.history <= 0) return;
       var rect = p.bar.getBoundingClientRect(), size = p.thumb.offsetHeight;
@@ -628,7 +658,7 @@
     var p = { cur: null, ws: null, key: '', retry: null }, index = panes.length;
     p.node = el('div', 'pane'); p.node.classList.toggle('active', index === focusedPane); p.picker = el('select'); p.picker.setAttribute('aria-label', i18n('app.phien_o', [(index + 1)]));
     p.host = el('div', 'terminal'); p.node.append(p.picker, p.host); $('split').append(p.node); panes.push(p);
-    p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: '#101527', foreground: '#dfe6f5' } });
+    p.term = new window.Terminal({ cursorBlink: true, macOptionClickForcesSelection: true, fontFamily: '"JetBrains Mono",monospace', fontSize: viewControls.font(), scrollback: 3000, theme: { background: (typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark') ? '#121418' : '#181A1F', foreground: '#D3D6DC', cursor: '#9AA5F4', selectionBackground: '#3A4068' } });
     p.fit = new window.FitAddon.FitAddon(); p.term.loadAddon(p.fit); p.term.open(p.host);
     applySoftKeyboard(p);
     p.term.registerLinkProvider(window.FileViewer.provider(p.term, function(path) { if (p.cur) fileViewer.open(p.cur.id, p.cur.name, path); }));
@@ -658,11 +688,12 @@
     p.term.onData(p.ime.onData); p.term.onBinary(send);
     p.term.onResize(function (size) {
       if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify({ t: 'resize', cols: size.cols, rows: size.rows }));
+      cropCheck(p);
       // A full-screen app (Claude, Codex) redraws only the lines it believes it drew, so a resize that lands after it has printed
       // leaves old wrapped text mixed into the new. Once the size has settled, ask it to repaint (Ctrl+L).
       clearTimeout(p.repaint);
       p.repaint = setTimeout(function () {
-        if (!p.ws || p.ws.readyState !== 1 || p.ro || p.ime.isComposing() || !p.scroll || !p.scroll.alternate) return;
+        var it = paneItem(p); if (!p.ws || p.ws.readyState !== 1 || p.ro || p.ime.isComposing() || !p.scroll || !p.scroll.alternate || !(it && it.s && it.s.aiTool)) return; // only a known Claude/Codex session; never a shell or another program
         rawSend(p, '\x0c');
       }, 500);
     });
@@ -682,7 +713,29 @@
     });
     if (panes.length) cur = panes[focusedPane].cur;
   }
-  function fitPane(p) { if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) { try { p.fit.fit(); } catch (e) { /* hidden */ } } }
+  function fitPane(p) {
+    if (!p.ime.isComposing() && view === 'focus' && p.host.clientWidth && p.host.clientHeight) {
+      try {
+        // tmux status rows hidden (see cropCheck): ask for that many extra rows; the host clips them.
+        var d = p.crop ? p.fit.proposeDimensions() : null;
+        if (d && d.cols > 0 && d.rows > 0) { if (d.cols !== p.term.cols || d.rows + p.crop !== p.term.rows) p.term.resize(d.cols, d.rows + p.crop); } else p.fit.fit();
+      } catch (e) { /* hidden */ }
+    }
+  }
+  // Settings → "Ẩn thanh trạng thái tmux" (tw-hide-tmux-status, default on). The tmux session itself is never changed.
+  // Off by default: cropping rows shifts the terminal's click mapping (links were only clickable a few rows below the text).
+  function hideTmuxStatus() { try { return localStorage.getItem('tw-hide-tmux-status') === '1'; } catch (e) { return false; } }
+  // After output (throttled) and on resize: count the status rows at the bottom; only act when two checks in a row agree.
+  function cropCheck(p) {
+    if (p.cropTimer) return;
+    p.cropTimer = setTimeout(function () {
+      p.cropTimer = 0; if (!p.term || view !== 'focus') return;
+      var n = !hideTmuxStatus() || plainPane(p) || !window.StatusCrop ? 0 : window.StatusCrop.detect(p.term);
+      if (n === (p.crop || 0)) { p.cropSeen = n; return; }
+      if (n === p.cropSeen || n === 0 && !hideTmuxStatus()) { p.cropSeen = n; p.crop = n; fitPane(p); return; }
+      p.cropSeen = n; cropCheck(p);
+    }, 400);
+  }
   function sizeTerm() { if (!wallOn) panes.forEach(fitPane); }
   function sendData(d) { var p = panes[focusedPane]; if (p) paneSend(p, d); }
   function closeTerm() { panes.forEach(function (p) { closePane(p); p.cur = null; p.term.reset(); }); }
@@ -719,7 +772,7 @@
       sock.send(JSON.stringify({ t: 'resize', cols: p.term.cols, rows: p.term.rows })); nudgeBlank(p, sock); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
-    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); };
+    sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); cropCheck(p); };
     function retry() { clearTimeout(p.retry); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, 2000); }
     sock.onclose = function (e) {
       if (p.ws !== sock) return; p.ws = null; p.key = '';
@@ -773,7 +826,7 @@
     if (window.TW && window.TW.openCrewFor && window.TW.openCrewFor(id, name)) return;
     if (/\bcrew[TL]\b/.test($('split').className) && !inCrew({ id: id }, { name: name })) { focusedPane = 0; setSplit(1); }
     if (wallOn) setWall(false); var v = srv(id), s = v && v.sessions.find(function (s) { return s.name === name; }); if (s && s.created > 0) say(i18n('app.em_chay_roi', [span(Math.max(0, Date.now() / 1000 - s.created))]), true, 3000); cur = { id: id, name: name }; if (tabHide) tabHide.show(id + '/' + name); if (panes.length) panes[focusedPane].cur = cur; setView('focus'); }
-  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', ctrlb: '\x02', nl: '\n' };
+  var KEYS = { ctrlc: '\x03', esc: '\x1b', tab: '\t', up: '\x1b[A', down: '\x1b[B', left: '\x1b[D', right: '\x1b[C', enter: '\r', ctrld: '\x04', ctrll: '\x0c', ctrlb: '\x02', nl: '\n' };
   document.querySelectorAll('.keybar .btn').forEach(function (b) { b.onclick = function () { if (b.dataset.k === 'kbd') { toggleSoftKeyboard(); return; } if (b.dataset.k === 'file') { if (cur) fileViewer.browse(cur.id, cur.name); else say(i18n('app.chua_mo_phien_nao'), false, 3000); return; } sendData(KEYS[b.dataset.k]); if (panes.length) focusTerminal(panes[focusedPane]); }; });
   $('key-more-btn').onclick = function (e) { e.stopPropagation(); popToggle(this, $('key-more')); };
   $('key-more').addEventListener('click', function () { this.hidden = true; $('key-more-btn').setAttribute('aria-expanded', 'false'); });
@@ -859,11 +912,18 @@
       var sys = v.sys, p = problems(v), card = el('article', 'fc' + (p.length ? ' hot' : '') + (v.on ? '' : ' off')), head = el('div', 'fc-h'), title = el('div', 't');
       var details = el('button', 'fc-details'); details.type = 'button'; details.setAttribute('aria-label', i18n('app.chi_tiet', [v.name])); details.onclick = function () { openDetail(v.id); };
       title.append(el('b', '', v.name), el('small', '', v.rebooting ? i18n('app.dang_khoi_dong_lai') : !v.on ? i18n('app.mat_ket_noi_4', [(v.offSince ? span(Math.max(0, (Date.now() - v.offSince) / 1000)) : i18n('app.tu_luc_chua_xac_dinh'))]) : sys ? [sys.os, sys.cores != null ? i18n('app.loi', [sys.cores]) : '', sys.uptimeSec != null ? i18n('app.chay', [span(sys.uptimeSec)]) : ''].filter(function (part) { return part; }).join(' · ') : i18n('app.dang_cho_so_lieu_he')));
-      details.append(title); head.append(details, el('span', 'pill ' + (p.length ? 'bad' : 'run'), v.rebooting ? i18n('app.dang_khoi_dong_lai') : p[0] || i18n('app.on_dinh'))); card.append(head);
+      details.append(title); var fcIc = el('span', 'fc-ic'); fcIc.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="11" rx="2"/><path d="M8 20h8M12 16v4"/></svg>'; head.append(fcIc, details, el('span', 'pill ' + (p.length ? 'bad' : 'run'), v.rebooting ? i18n('app.dang_khoi_dong_lai') : p[0] || i18n('app.on_dinh'))); card.append(head);
       {
         var rs = el('div', 'rings'), disk = sys && (sys.disks || []).filter(function (d) { return d.mount === '/'; })[0];
         rs.append(ring(v, 'cpu', 'CPU', sys && sys.cores != null ? i18n('app.loi', [sys.cores]) : ''), ring(v, 'ram', 'RAM', sys ? compactNumber(sys.ramUsedGb) + '/' + compactNumber(sys.ramTotalGb) + 'G' : ''), ring(v, 'disk', 'Disk', disk ? compactNumber(disk.usedGb) + '/' + compactNumber(disk.totalGb) + 'G' : ''));
         card.append(rs);
+        var bars = el('div', 'fc-bars');
+        [['cpu', 'CPU'], ['ram', 'RAM'], ['disk', i18n('app.disk_short')]].forEach(function (k) {
+          var val = v[k[0]], pctv = Number.isFinite(val) ? Math.max(0, Math.min(100, val)) : null, row = el('div', 'fb'), bar = el('div', 'bar'), fill = el('i');
+          fill.style.setProperty('--v', pctv == null ? 0 : pctv); if (pctv != null && pctv >= 90) fill.className = 'b'; else if (pctv != null && pctv >= 75) fill.className = 'w';
+          bar.append(fill); row.append(el('span', '', k[1]), bar, el('b', '', pctv == null ? '—' : Math.round(pctv) + '%')); bars.append(row);
+        });
+        card.append(bars);
         if (sys) {
           var rows = el('div', 'fc-rows'); rows.append(resourceRow(i18n('app.tai_1_phut'), sys.load1 / sys.cores * 100, HP.cpu[1], number(sys.load1) + ' / ' + sys.cores), resourceRow('Swap', sys.swapTotalGb ? sys.swapUsedGb / sys.swapTotalGb * 100 : 0, HP.ram[1], number(sys.swapUsedGb) + ' / ' + number(sys.swapTotalGb) + ' GB'));
           var net = el('div', 'fr'), graph = el('div'); graph.innerHTML = sparkSVG((sys.net || []).filter(Number.isFinite), '#2f80ed'); net.append(el('span', '', i18n('app.mang')), graph, el('b', '', '↓' + number(sys.downMBs) + ' ↑' + number(sys.upMBs) + ' MB/s')); rows.append(net);
@@ -1097,7 +1157,7 @@
     return api('PUT', '/api/prefs', patch).then(function (data) { prefs = data; renderCommands(); renderTemplates(); renderFleet(); renderBell(); return data; });
   }
   function renderTemplates() {
-    var box = $('templates'); box.textContent = ''; $('templates-block').hidden = !prefs.templates.length; $('recent-block').hidden = !prefs.recentDirs.length;
+    var box = $('templates') || el('span'); box.textContent = ''; $('recent-block').hidden = !prefs.recentDirs.length;
     prefs.templates.forEach(function (t, index) {
       var row = el('span', 'template'), use = el('button', 'btn', t.name), remove = el('button', 'btn', '×'); use.type = remove.type = 'button'; remove.setAttribute('aria-label', i18n('app.xoa_mau', [t.name]));
       use.onclick = function () { $('n-name').value = t.name; $('n-dir').value = t.dir; $('n-run').value = t.run; };
@@ -1112,18 +1172,24 @@
     document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; });
     document.querySelectorAll('.term-tools .key-more-btn').forEach(function (x) { x.setAttribute('aria-expanded', 'false'); });
     menu.hidden = !open; btn.setAttribute('aria-expanded', String(open));
-    cmdOpen = menu.id === 'cmd-pop' && open;
+    cmdOpen = menu.id === 'cmd-pop' && open; layOpen = menu.id === 'lay-pop' && open;
   }
-  var cmdOpen = false;
-  document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.key-more-wrap')) { cmdOpen = false; document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); } });
+  var cmdOpen = false, layOpen = false;
+  document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.key-more-wrap')) { cmdOpen = false; layOpen = false; document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); } });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.term-tools .pop').forEach(function (m) { m.hidden = true; }); });
   function renderCommands() {
     var box = $('command-list'); box.textContent = '';
-    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), '⊞ ' + n); b.title = i18n('app.o', [n]); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; box.append(b); });
+    // "Chia màn ▾": 1 / 2 / 4 panes in one menu (it stays open across redraws like the commands menu until a click elsewhere).
+    var lw = el('span', 'key-more-wrap'), lb = el('button', 'btn key-more-btn', '⊞ ' + (wallOn ? '' : paneCount + ' ') + '▾'), lm = el('span', 'key-more pop menu');
+    lm.id = 'lay-pop'; lb.type = 'button'; lb.title = i18n('ux2.split'); lb.setAttribute('aria-label', i18n('ux2.split')); lb.setAttribute('aria-expanded', String(layOpen)); lm.hidden = !layOpen;
+    [1, 2, 4].forEach(function (n) { var b = el('button', 'btn pane-opt' + (n > 1 ? ' split-option' : ''), (!wallOn && paneCount === n ? '✓ ' : '') + i18n('ux2.n_screens', [n])); b.title = i18n('app.o', [n]); b.setAttribute('aria-pressed', !wallOn && paneCount === n); b.onclick = function () { setSplit(n); }; lm.append(b); });
+    lm.addEventListener('click', function () { layOpen = false; lm.hidden = true; lb.setAttribute('aria-expanded', 'false'); });
+    lb.onclick = function (e) { e.stopPropagation(); popToggle(lb, lm); };
+    lw.append(lb, lm);
     // Saved commands live in one "Lệnh mẫu ▾" menu instead of a row of chips.
     var wrap = el('span', 'key-more-wrap'), mb = el('button', 'btn key-more-btn', '⚡ ' + i18n('term.commands') + ' ▾'), menu = el('span', 'key-more pop');
     // Redrawn on every poll: the menu stays open across redraws until a click elsewhere closes it.
-    menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap);
+    menu.id = 'cmd-pop'; mb.type = 'button'; mb.setAttribute('aria-expanded', String(cmdOpen)); menu.hidden = !cmdOpen; wrap.append(mb, menu); box.append(wrap, lw);
     menu.addEventListener('click', function () { cmdOpen = false; menu.hidden = true; mb.setAttribute('aria-expanded', 'false'); });
     mb.onclick = function (e) { e.stopPropagation(); popToggle(mb, menu); };
     prefs.commands.forEach(function (c) { var b = el('button', 'btn cmd-custom', c); b.title = c; b.onclick = function () { var x = curItem(); if (!x) { say(i18n('app.chon_phien_truoc_khi_gui'), false, 2500); return; } sendKeys(x.v.id, x.s.name, c).catch(function (err) { say(err.message, false, 4000); }); }; menu.append(b); });
@@ -1140,7 +1206,9 @@
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { fxLayer.textContent = ''; fxLayer.className = ''; return; }
     window.TwFx.render(fxLayer, fxKind(), AMOUNT[fxAmount()], innerWidth < 760);
   }
-  document.addEventListener('visibilitychange', function () { if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
+  function markHidden() { document.documentElement.classList.toggle('tab-hidden', document.hidden); }
+  markHidden();
+  document.addEventListener('visibilitychange', function () { markHidden(); if (fxLayer) fxLayer.classList.toggle('paused', document.hidden); });
   function renderStylePicker() {
     var box = $('set-style'); if (!box) return; box.textContent = '';
     EFFECTS.forEach(function (x) {
@@ -1167,6 +1235,7 @@
   function renderSettings() {
     renderStylePicker();
     var ime = $('set-ime'); if (ime) { try { ime.value = localStorage.getItem('tw-ime') || 'auto'; } catch (e) { ime.value = 'auto'; } ime.onchange = function () { try { localStorage.setItem('tw-ime', ime.value === 'auto' ? '' : ime.value); } catch (e) { /* optional */ } $('set-note').textContent = i18n('settings.ime_reopen'); }; }
+    var hs = $('set-hide-tmux'); if (hs) { hs.checked = hideTmuxStatus(); hs.onchange = function () { try { localStorage.setItem('tw-hide-tmux-status', hs.checked ? '1' : '0'); } catch (e) { /* optional */ } panes.forEach(function (q) { q.cropSeen = -1; cropCheck(q); }); }; }
     renderCleanup();
     $('set-auto-restore').checked = !!prefs.autoRestoreLocal;
     $('set-backup-every').value = String(prefs.backupMinutes || 60);
@@ -1335,7 +1404,7 @@
   $('dt-see').onclick = function () { $('dlg-detail').close(); setScope(detailId); setView('over'); };
   document.querySelectorAll('#dt-range button').forEach(function (b) { b.onclick = function () { loadHistory(Number(b.dataset.r.replace('h', ''))); }; });
   $('dlg-detail').addEventListener('close', function () { historyRequest++; });
-  $('n-save').onclick = function () {
+  if ($('n-save')) $('n-save').onclick = function () {
     var t = { name: $('n-name').value.trim(), dir: $('n-dir').value, run: $('n-run').value };
     if (!/^[A-Za-z0-9_-]{1,32}$/.test(t.name)) { $('n-err').textContent = i18n('app.ten_chi_dung_chu_khong'); return; }
     var templates = prefs.templates.filter(function (x) { return x.name !== t.name; }); templates.push(t);

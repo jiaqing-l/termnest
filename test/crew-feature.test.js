@@ -117,3 +117,12 @@ test('state files the session worked with are returned: only existing snapshot/t
   assert.deepEqual(out.stateFiles.map((x) => x.path), ['docs/Implementation/SV/16-IMPLEMENTATION-TRACKING.md', 'docs/Implementation/SV/00-INDEX.md']);
   assert.ok(out.stateFiles[0].at > out.stateFiles[1].at); assert.equal(out.stateFiles[0].mentions, 2);
 });
+
+test('workerFeed turns a Codex log tail into commands, edited files and what the worker says', () => {
+  const { workerFeed } = require('../lib/crew');
+  const L = (t) => '2026-11-09T19:08:53+0700 ' + t;
+  const log = ['exec', '/bin/bash -lc "git status" in /w', ' succeeded in 1500ms:', 'out', 'apply patch', 'patch: completed', '/w/src/a.cs', 'codex', 'Xong bước 1'].map(L).join('\n');
+  const f = workerFeed(log).split('\n');
+  assert.deepEqual(f, ['$ git status  ✔ 1.5s', '✎ src/a.cs', '› Xong bước 1']);
+  assert.equal(workerFeed(''), '');
+});

@@ -1052,3 +1052,20 @@ test('a running crew worker reports the model it was started with, never the com
   assert.equal(by.W3.model, '');
   assert.ok(!JSON.stringify(by).includes('SECRET123'));
 });
+
+test('a Claude prompt that looks idle but lists background shells or agents is running', () => {
+  const { officialState } = require('../lib/parse');
+  const footer = ['❯ ok tiếp tục chạy đi', '', '  ▸▸ auto mode on · 3 shells · ↓ to manage', '', '  ● main', '  ○ general-purpose  Checking embed_crops.log progress                5m 8s · ↓ 95.4k tokens'];
+  const busy = { state: 'idle', asking: false, aiTool: 'claude', cmd: 'claude', lines: footer };
+  officialState(busy);
+  assert.equal(busy.state, 'run');
+  const agentsOnly = { state: 'idle', asking: false, aiTool: 'claude', cmd: 'claude', lines: [footer[0], footer[4], footer[5]] };
+  officialState(agentsOnly);
+  assert.equal(agentsOnly.state, 'run');
+  const quiet = { state: 'idle', asking: false, aiTool: 'claude', cmd: 'claude', lines: ['❯ ', '', '  ▸▸ auto mode on · ↓ to manage'] };
+  officialState(quiet);
+  assert.equal(quiet.state, 'idle');
+  const asking = { state: 'run', asking: false, aiTool: 'claude', cmd: 'claude', lines: footer, aiStatus: { tool: 'claude', status: 'waiting', at: 1 } };
+  officialState(asking);
+  assert.equal(asking.state, 'wait');
+});

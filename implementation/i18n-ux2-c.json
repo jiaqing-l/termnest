@@ -1,0 +1,40 @@
+{
+  "vi": {
+    "notes2.open_tasks": "{0} việc chưa xong",
+    "notes2.tab_settings": "⚙ Cài đặt thông báo",
+    "notes2.slot_default_msg": "Đến giờ xem ghi chú",
+    "notes2.slot_card": "Đến giờ xem ghi chú · {0} việc chưa xong",
+    "notes2.done": "Xong",
+    "notes2.slots_title": "Lịch nhắc kiểm tra ghi chú",
+    "notes2.slots_sub": "Gửi thông báo theo nhiều khung giờ để bạn vào xem ghi chú.",
+    "notes2.slots_empty": "Chưa có khung giờ nào. Thêm một khung bên dưới.",
+    "notes2.slot_msg": "Nội dung thông báo",
+    "notes2.slot_delete": "Xóa khung giờ",
+    "notes2.repeat_on": "Lặp vào",
+    "notes2.dow_1": "T2", "notes2.dow_2": "T3", "notes2.dow_3": "T4", "notes2.dow_4": "T5", "notes2.dow_5": "T6", "notes2.dow_6": "T7", "notes2.dow_sun": "CN",
+    "notes2.workdays": "Ngày làm việc",
+    "notes2.everyday": "Mỗi ngày",
+    "notes2.add_slot": "＋ Thêm khung giờ",
+    "notes2.only_open": "Chỉ nhắc khi còn việc chưa xong",
+    "notes2.only_open_sub": "Bỏ qua nếu mọi ghi chú đã hết mục “- [ ]”."
+  },
+  "en": {
+    "notes2.open_tasks": "{0} open tasks",
+    "notes2.tab_settings": "⚙ Notification settings",
+    "notes2.slot_default_msg": "Time to review your notes",
+    "notes2.slot_card": "Time to review your notes · {0} open tasks",
+    "notes2.done": "Done",
+    "notes2.slots_title": "Notes check-in schedule",
+    "notes2.slots_sub": "Get notified at several times of day so you look at your notes.",
+    "notes2.slots_empty": "No time slots yet. Add one below.",
+    "notes2.slot_msg": "Notification text",
+    "notes2.slot_delete": "Delete time slot",
+    "notes2.repeat_on": "Repeat on",
+    "notes2.dow_1": "Mon", "notes2.dow_2": "Tue", "notes2.dow_3": "Wed", "notes2.dow_4": "Thu", "notes2.dow_5": "Fri", "notes2.dow_6": "Sat", "notes2.dow_sun": "Sun",
+    "notes2.workdays": "Weekdays",
+    "notes2.everyday": "Every day",
+    "notes2.add_slot": "＋ Add time slot",
+    "notes2.only_open": "Only remind when tasks remain",
+    "notes2.only_open_sub": "Skipped if no note has an unchecked “- [ ]” item."
+  }
+}

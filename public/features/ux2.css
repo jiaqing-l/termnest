@@ -1,0 +1,30 @@
+/* UX2: only the small rules the contract classes of the design do not already cover. */
+/* Monogram avatar: shown instead of a pet when pets are off. The pet art and the monogram never show together. */
+.av-mono{display:none}
+html.pets-off .av-mono{display:inline-grid}
+html.pets-off .sess .ava .av-mono{width:100%;height:100%;border-radius:inherit}
+/* Sidebar: group selector, group headers and the pin star */
+.grpbar{display:flex;align-items:center;gap:8px;margin:10px 4px 2px}
+.grpbar span{font-size:12px;opacity:.7;white-space:nowrap}
+.grpbar select{flex:1;min-width:0;height:30px;border-radius:9px}
+.side-mini .grpbar{display:none}
+.grp-h{display:flex;justify-content:space-between;align-items:center}
+.sess{position:relative}
+.sess .pinb{position:absolute;right:8px;top:8px;width:22px;height:22px;display:grid;place-items:center;border-radius:7px;cursor:pointer;opacity:0;font-size:14px;line-height:1}
+.sess:hover .pinb,.sess .pinb.on,.sess:focus-within .pinb{opacity:1}
+.side-mini .sess .pinb{display:none}
+/* Menus built by the dock and the session bar sit above the terminal */
+.term-tools .menu{z-index:30}
+.cp-bar .mw{position:relative;display:inline-flex}
+.cp-bar .mw>.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:240px}
+.cp-bar .mw>.menu a,.cp-bar .mw>.menu button{display:block;width:100%;text-align:left}
+.cp-bar .ib{position:relative}
+/* Quick tooltips (data-tip) */
+[data-tip]:hover::after,[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);right:0;white-space:nowrap;padding:4px 9px;border-radius:8px;background:#1b2140;color:#fff;font:600 12px var(--sans,inherit);z-index:60;pointer-events:none}
+.cp-bar .ib.tgl{background:var(--brand-soft,rgba(32,40,90,.12));color:var(--brand,#20285a)}
+/* Hero stats keep clicking affordance */
+.hstats .hs.need{cursor:pointer}
+#app.wall-on .key-more-wrap:has(#lay-pop){display:none}
+
+.term-tools [data-tip]:hover::after{top:auto!important;bottom:calc(100% + 8px);right:0}
+.term-tools .menu{max-width:calc(100vw - 24px)}

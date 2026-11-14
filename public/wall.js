@@ -138,6 +138,12 @@
       if (!typing || grid.children.length !== order.length) order.forEach(function (node, i) { if (grid.children[i] !== node) grid.insertBefore(node, grid.children[i] || null); });
       empty.textContent = want.length ? '' : opts.emptyText(); empty.hidden = !!want.length;
     }
+    // The tiles stretch to fill the height when there are few of them, so ask for as many lines as the pane can show (never fewer than LINES).
+    function fitLines() {
+      var any = grid.querySelector('.w-body'); if (!any || !any.clientHeight) return LINES;
+      var fs = parseFloat(root.getComputedStyle(any).fontSize) || 11.5;
+      return Math.max(LINES, Math.min(60, Math.ceil(any.clientHeight / (1.45 * fs)) + 1));
+    }
     function tick() {
       if (!shown || root.document.hidden) return;
       var byServer = {};
@@ -145,7 +151,7 @@
       Object.keys(byServer).forEach(function (id) {
         if (busy.has(id)) return;   // never queue behind a slow server
         var names = byServer[id].slice(0, 40); busy.add(id);
-        opts.api('POST', '/api/servers/' + id + '/screens', { names: names, lines: LINES }).then(function (r) {
+        opts.api('POST', '/api/servers/' + id + '/screens', { names: names, lines: fitLines() }).then(function (r) {
           names.forEach(function (n) {
             var t = tiles.get(id + '/' + n), text = r && r.screens && r.screens[n];
             if (!t || typeof text !== 'string' || text === t.text) return;

@@ -35,3 +35,12 @@ test('a channel that is never granted fails within the time limit instead of han
   r.client = fake().client;
   assert.equal((await r.exec('y', 500)).out, 'ok y');
 });
+
+test('commands waiting for a channel fail cleanly (no crash) when the connection drops meanwhile', async () => {
+  const r = fake({ delay: 30 });
+  const all = Promise.allSettled(Array.from({ length: 12 }, (_, i) => r.exec('c' + i)));
+  setTimeout(() => { r.client = null; r.ready = false; }, 10);
+  const res = await all;
+  assert.equal(res.length, 12);
+  assert.ok(res.some((x) => x.status === 'rejected'));
+});

@@ -9,8 +9,9 @@
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/svg+xml" href="/termnest-icon.svg">
 <link rel="stylesheet" href="/vendor/xterm.css">
+<script src="/ui-zoom.js"></script>
 <link rel="stylesheet" href="/fonts/fonts.css">
-<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css">
+<link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/guide.css"><link rel="stylesheet" href="/look.css"><link rel="stylesheet" href="/features/ux2.css">
 </head>
 <body>
 <div id="stage"><div id="app">
@@ -92,7 +93,7 @@
 
         <div id="fleet"></div>
         <div id="tools"><input id="q" autocomplete="off" data-i18n-attrs="placeholder:html.tim_phien_theo_ten_thu;aria-label:html.tim_phien"><div id="f" role="group" data-i18n-attrs="aria-label:html.loc_phien"><button type="button" data-f="all" aria-pressed="true" data-i18n="usageui.tat_ca"></button><button type="button" data-f="wait" aria-pressed="false" data-i18n="app.cho_ban"></button><button type="button" data-f="run" aria-pressed="false" data-i18n="app.dang_chay"></button><button type="button" data-f="idle" aria-pressed="false" data-i18n="app.dang_nghi"></button></div></div>
-<section class="playground"><b><span data-i18n="html.san_choi"></span></b><div id="pet-yard" aria-hidden="true"></div><div id="pet-yard2" class="yd" data-i18n-attrs="aria-label:html.san_choi_thu_cung"></div></section>
+<section class="playground" id="playground"><b><span data-i18n="html.san_choi"></span><button type="button" class="btn sm yd-fold" id="yard-fold" aria-pressed="false" data-i18n="ux2.yard_compact"></button></b><div id="pet-yard" aria-hidden="true"></div><div id="pet-yard2" class="yd" data-i18n-attrs="aria-label:html.san_choi_thu_cung"></div></section>
         <div id="grid"></div>
       </section>
 
@@ -132,13 +133,11 @@
 <dialog id="dlg-new"><form id="form-new" class="f" novalidate>
   <div class="dlg-pet" id="n-pet"></div>
   <h2><span data-i18n="app.phien_moi"></span></h2>
-  <label for="n-srv"><span data-i18n="app.may_chu_2"></span><select id="n-srv"></select></label>
   <label for="n-name"><span data-i18n="html.ten"></span><input id="n-name" maxlength="32" data-i18n-attrs="placeholder:html.ph_session_name" autocomplete="off"></label>
+  <label for="n-srv"><span data-i18n="app.may_chu_2"></span><select id="n-srv"></select></label>
   <div><label for="n-dir" data-i18n="app.thu_muc"></label><div class="dir-input"><input id="n-dir" autocomplete="off" data-i18n-attrs="placeholder:html.de_trong_dung_thu_muc"><button type="button" class="btn" id="n-browse" data-i18n="tokenui.chon"></button></div></div>
-  <label for="n-run"><span data-i18n="html.mo_bang"></span><select id="n-run"><option value="shell">Terminal</option><option value="claude">Claude</option><option value="codex">Codex</option></select></label>
-  <div id="templates-block"><div class="lab-s" data-i18n="html.mau_phien"></div><div id="templates" class="chips-f"></div></div>
+  <input type="hidden" id="n-run" value="shell">
   <div id="recent-block"><div class="lab-s" data-i18n="html.thu_muc_gan_day"></div><div id="recent" class="chips-f"></div></div>
-  <button type="button" class="btn" id="n-save" data-i18n="html.luu_lam_mau"></button>
   <div class="err" id="n-err"></div>
   <div class="dlg-actions"><button type="button" class="btn" id="n-cancel" data-i18n="tokenui.huy"></button><button class="btn primary" type="submit" data-i18n="html.tao"></button></div>
 </form></dialog>
@@ -222,7 +221,7 @@
   <nav class="set-nav" role="tablist"><button type="button" class="set-tab" role="tab" data-tab="look" data-i18n="settings.tab_look"></button><button type="button" class="set-tab" role="tab" data-tab="alerts" data-i18n="settings.tab_alerts"></button><button type="button" class="set-tab" role="tab" data-tab="servers" data-i18n="settings.tab_servers"></button><button type="button" class="set-tab" role="tab" data-tab="sessions" data-i18n="settings.tab_sessions"></button><button type="button" class="set-tab" role="tab" data-tab="backup" data-i18n="settings.tab_backup"></button><button type="button" class="set-tab" role="tab" data-tab="plugins" data-i18n="pl.tieu_de"></button><button type="button" class="set-tab" role="tab" data-tab="commands" data-i18n="settings.tab_commands"></button><button type="button" class="set-tab" role="tab" data-tab="connect" data-i18n="settings.tab_connect"></button><button type="button" class="set-tab" role="tab" data-tab="more" data-i18n="settings.tab_more"></button></nav>
   <div class="set-panes">
   <section class="set-pane" data-pane="look">
-    <div class="set-group"><label class="sw"><span data-i18n="settings.pets_label"></span><input id="pets-enabled" type="checkbox" checked></label><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label></div>
+    <div class="set-group"><div class="sw"><span data-i18n="ux2.cho_giao_dien"></span><div class="subseg" id="set-zoom" role="group"><button type="button" data-z="70">70%</button><button type="button" data-z="80">80%</button><button type="button" data-z="90">90%</button><button type="button" data-z="100">100%</button></div></div><label class="sw"><span data-i18n="settings.pets_label"></span><input id="pets-enabled" type="checkbox" checked></label><label class="sw"><span data-i18n="settings.language_label"></span><span id="set-lang" class="lang-pick" data-lang-picker></span></label><label class="sw"><span data-i18n="settings.density_compact"></span><input type="checkbox" id="set-density"></label><label class="sw"><span data-i18n="settings.ime"></span><select id="set-ime"><option value="auto" data-i18n="settings.ime_auto"></option><option value="on" data-i18n="settings.ime_on"></option><option value="off" data-i18n="settings.ime_off"></option></select></label><label class="sw"><span data-i18n="settings.hide_tmux_status"></span><input id="set-hide-tmux" type="checkbox" checked></label></div>
     <h4 data-i18n="look.theme"></h4>
     <div class="set-free"><p class="hint" data-i18n="look.theme_hint"></p><div id="set-theme" class="style-grid" role="radiogroup"></div></div>
     <h4 data-i18n="settings.style_label"></h4>
@@ -285,30 +284,32 @@
 </dialog>
 
 
-<script src="/locales.js"></script>
-<script src="/i18n.js"></script>
-<script src="/vendor/xterm.js"></script>
-<script src="/vendor/addon-fit.js"></script>
-<script src="/guide.js"></script>
-<script src="/wall.js"></script>
-<script src="/pets.js"></script>
-<script src="/pet-state.js"></script>
-<script src="/pet-scene.js"></script>
-<script src="/pet-yard.js"></script>
-<script src="/notes-core.js"></script>
-<script src="/features-host.js"></script>
-<script src="/usage-ui.js"></script>
-<script src="/token-ui.js"></script>
-<script src="/vendor/markdown-it.js"></script>
-<script src="/file-viewer.js"></script>
-<script src="/ime-input.js"></script>
-<script src="/tab-hide.js"></script>
-<script src="/mouse-filter.js"></script>
-<script src="/terminal-keys.js"></script>
-<script src="/touch-scroll.js"></script>
-<script src="/view-controls.js"></script>
-<script src="/fx.js"></script>
-<script src="/app.js"></script>
-<script src="/look.js"></script>
+<script defer src="/locales.js"></script>
+<script defer src="/i18n.js"></script>
+<script defer src="/vendor/xterm.js"></script>
+<script defer src="/vendor/addon-fit.js"></script>
+<script defer src="/guide.js"></script>
+<script defer src="/wall.js"></script>
+<script defer src="/pets.js"></script>
+<script defer src="/pet-state.js"></script>
+<script defer src="/pet-scene.js"></script>
+<script defer src="/pet-yard.js"></script>
+<script defer src="/notes-core.js"></script>
+<script defer src="/features-host.js"></script>
+<script defer src="/usage-ui.js"></script>
+<script defer src="/token-ui.js"></script>
+<script defer src="/vendor/markdown-it.js"></script>
+<script defer src="/file-viewer.js"></script>
+<script defer src="/ime-input.js"></script>
+<script defer src="/tab-hide.js"></script>
+<script defer src="/mouse-filter.js"></script>
+<script defer src="/terminal-keys.js"></script>
+<script defer src="/status-crop.js"></script>
+<script defer src="/touch-scroll.js"></script>
+<script defer src="/view-controls.js"></script>
+<script defer src="/fx.js"></script>
+<script defer src="/features/ux2.js"></script>
+<script defer src="/app.js"></script>
+<script defer src="/look.js"></script>
 </body>
 </html>

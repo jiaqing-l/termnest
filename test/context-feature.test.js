@@ -87,3 +87,24 @@ test('sessions sharing one folder each get the log that matches their screen; an
     assert.equal(out.sa.ctx, 111001); assert.equal(out.sb.ctx, 55001); assert.equal(out.sc, undefined);
   } finally { cpc.spawnSync('tmux', ['-L', sock, 'kill-server']); }
 });
+
+test('context reader looks past the ten newest logs when many sessions share one folder', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../lib/features/context.js'), 'utf8');
+  assert.match(src, /for \(const c of cands\.slice\(0, 30\)\)/);
+  assert.match(src, /const tails = new Map\(\)/);
+  assert.match(src, /capture-pane', '-p', '-J'\], extra/);
+});
+
+test('sessions sharing one folder get their own log from the process record, not from a screen guess', async () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-ctx-')), cwd = '/work/space', proj = path.join(home, '.claude', 'projects', '-work-space');
+  fs.mkdirSync(proj, { recursive: true }); fs.mkdirSync(path.join(home, '.claude', 'sessions'), { recursive: true });
+  const ids = { A: '11111111-1111-4111-8111-111111111111', B: '22222222-2222-4222-8222-222222222222' };
+  const log = (tokens) => JSON.stringify({ type: 'assistant', message: { model: 'claude-x', usage: { input_tokens: tokens, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, output_tokens: 1 } } }) + '\n';
+  fs.writeFileSync(path.join(proj, ids.A + '.jsonl'), log(111)); fs.writeFileSync(path.join(proj, ids.B + '.jsonl'), log(222));
+  // B is the newest log, yet session A must still read A's own.
+  const t = Date.now() / 1000; fs.utimesSync(path.join(proj, ids.A + '.jsonl'), t - 60, t - 60);
+  for (const [name, id] of [['A', ids.A], ['B', ids.B]]) fs.writeFileSync(path.join(home, '.claude', 'sessions', (name === 'A' ? process.pid : process.ppid) + '.json'), JSON.stringify({ pid: name === 'A' ? process.pid : process.ppid, sessionId: id, cwd, startedAt: 1, tmux: name + ':@1.%1' }));
+  const out = await require('../lib/features/context').contextRuntime()({ sessions: [{ name: 'A', path: cwd }, { name: 'B', path: cwd }], home });
+  assert.equal(out.A && out.A.ctx, 111); assert.equal(out.B && out.B.ctx, 222);
+});

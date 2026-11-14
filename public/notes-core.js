@@ -66,5 +66,30 @@
     var m = now.getHours() * 60 + now.getMinutes(), a = Number(from.slice(0, 2)) * 60 + Number(from.slice(3)), b = Number(to.slice(0, 2)) * 60 + Number(to.slice(3));
     return a <= b ? m >= a && m < b : m >= a || m < b;
   }
-  return { toTxt: toTxt, slug: slug, fileName: fileName, exportBody: exportBody, due: due, markFired: markFired, snooze: snooze, whenText: whenText, quiet: quiet, firstOccurrence: firstOccurrence, TIME: TIME, LATE_MS: LATE_MS };
+  // ---------- check-in slots ("Lịch nhắc kiểm tra ghi chú") ----------
+  // Weekdays are 1..7 = Mon..Sun. A slot: { id, time, msg, days:[1..7], on, createdAt, lastFired }.
+  var WORKDAYS = [1, 2, 3, 4, 5], ALLDAYS = [1, 2, 3, 4, 5, 6, 7];
+  function isoDay(d) { return d.getDay() === 0 ? 7 : d.getDay(); }
+  function openTasks(text) { var m = String(text || '').match(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[ \][ \t]/gm); return m ? m.length : 0; }
+  function openTotal(notes) { return (notes || []).reduce(function (a, n) { return a + openTasks(n.text); }, 0); }
+  // Slots that must fire now: [{ slot, at, late, skip, silent, open }]. The caller marks each one fired (slot.lastFired = at),
+  // which is the per-slot/day/minute de-dup. skip = "only when tasks remain" and none do (marked fired, but no alert).
+  function dueSlots(slots, now, opts) {
+    opts = opts || {}; var out = [], open = openTotal(opts.notes), q = opts.quiet;
+    (slots || []).forEach(function (slot) {
+      if (!slot || !slot.on || !TIME.test(slot.time || '')) return;
+      if ((slot.days || []).indexOf(isoDay(now)) < 0) return;
+      var at = occurrenceOn(slot.time, now);
+      if (now.getTime() < at.getTime() || (slot.lastFired || 0) >= at.getTime() || (slot.createdAt || 0) > at.getTime()) return;
+      out.push({ slot: slot, at: at, late: now.getTime() - at.getTime() > LATE_MS, skip: !!opts.onlyOpen && open === 0,
+        silent: !!(q && q.on && quiet(now, q.from, q.to)), open: open });
+    });
+    return out;
+  }
+  function toggleDay(days, d) { var s = (days || []).slice(), i = s.indexOf(d); if (i >= 0) s.splice(i, 1); else s.push(d); return s.sort(); }
+  function daysText(days) {
+    var k = (days || []).slice().sort().join('');
+    return k === '1234567' ? 'all' : k === '12345' ? 'work' : 'custom';
+  }
+  return { WORKDAYS: WORKDAYS, ALLDAYS: ALLDAYS, isoDay: isoDay, openTasks: openTasks, openTotal: openTotal, dueSlots: dueSlots, toggleDay: toggleDay, daysText: daysText, toTxt: toTxt, slug: slug, fileName: fileName, exportBody: exportBody, due: due, markFired: markFired, snooze: snooze, whenText: whenText, quiet: quiet, firstOccurrence: firstOccurrence, TIME: TIME, LATE_MS: LATE_MS };
 });
