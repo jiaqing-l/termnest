@@ -1,6 +1,6 @@
 # TERMNEST: ổn định, hiệu năng, giao diện mới — tracking
 
-Cập nhật: 2026-11-13 11:06 (giờ máy).
+Cập nhật: 2026-11-14 15:26 (giờ máy).
 
 | # | Việc | Trạng thái | Bằng chứng |
 |---|---|---|---|
@@ -15,3 +15,5 @@ Chưa chạy lại toàn bộ bộ test sau các thay đổi 1–3 (chỉ test l
 | 7 | Áp dụng thiết kế mới vào app thật (bản thử .gz) | Đang chạy: 3 subagent sonnet song song | A = skin CSS (app.css, features/*.css, index.html); B = cấu trúc UI (app.js, ux2.js/css); C = Ghi chú + lịch nhắc (notes.js/css, notes-core.js). Chuỗi ngôn ngữ ghi vào implementation/i18n-ux2-b.json, i18n-ux2-c.json, lead gộp vào locales. Sau đó: chạy test, đóng gói, cài, báo sha256 |
 | 7a | Redesign vào app thật (3 agent + QA parity) | Đã cài nhiều bản thử (.gz); còn lệch nhỏ: Ghi chú tab, Token/Vận hành chỉ đổi màu | cỡ giao diện đã sửa nguyên nhân CSP (ui-zoom.js); bỏ tab Nhắc việc; menu dock trong cửa sổ |
 | 8 | Tối ưu mở phiên Crew + ẩn thanh trạng thái tmux 2 dòng | Đang chạy: subagent sonnet | batch log thợ 1 request/crew, cache, ẩn status tmux phía client (không đổi tmux); kết quả sẽ ghi vào 44-PERF-AUDIT.md |
+| 9 | Merge vào main | Xong: PR #39 (merge commit 435d604); CI dựng bộ cài còn chạy | tag v1.1.18 vẫn trỏ 6a9b69f, chưa có release |
+| 10 | Rà soát bảo mật, rủi ro dữ liệu, tốc độ | Đang chạy: 3 subagent sonnet (chỉ đọc/đo) | báo cáo: 48-AUDIT-SECURITY.md, 49-AUDIT-DATA-RISK.md, 50-AUDIT-LOAD-SPEED.md |
