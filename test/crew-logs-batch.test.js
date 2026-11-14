@@ -30,7 +30,7 @@ function harness(root, opts = {}) {
   return { call: (b) => routes['POST /logs']({ req: { body: b }, res: {} }).then(() => ({ ...out })), execs: () => execs.filter((c) => !/^tmux/.test(c)), backend };
 }
 
-test('batched script: feed per track, prompt files and a swapped logs symlink are never read', async () => {
+test('batched script: feed per track, prompt files and a swapped logs symlink are never read', { skip: process.platform === 'win32' }, async () => {
   const f = fixture(3);
   fs.rmSync(path.join(f.dir, 'tracks', 'W2', 'logs'), { recursive: true }); fs.mkdirSync(path.join(f.root, 'outside')); fs.writeFileSync(path.join(f.root, 'outside', 'x.log'), 'ESCAPED');
   fs.symlinkSync(path.join(f.root, 'outside'), path.join(f.dir, 'tracks', 'W2', 'logs'));
@@ -44,7 +44,7 @@ test('batched script: feed per track, prompt files and a swapped logs symlink ar
   assert.equal(h.execs().length, 1, 'one host command for the three tracks');
 });
 
-test('measured: 8 tracks cost 1 host command per refresh (the old route cost 8) and repeats are cached/deduped', async () => {
+test('measured: 8 tracks cost 1 host command per refresh (the old route cost 8) and repeats are cached/deduped', { skip: process.platform === 'win32' }, async () => {
   const f = fixture(8), h = harness(f.root, { delay: 30 }), body = { server: 'srv', session: 'lead', tracks: f.ids.map((track) => ({ task: 'T1', track })) };
   const [a, b, c] = await Promise.all([h.call(body), h.call(body), h.call(body)]);
   assert.equal(Object.keys(a.body.logs).length, 8); assert.deepEqual(a.body, b.body); assert.deepEqual(b.body, c.body);
@@ -52,7 +52,7 @@ test('measured: 8 tracks cost 1 host command per refresh (the old route cost 8) 
   await h.call(body); assert.equal(h.execs().length, first, 'a repeat inside the cache window asks the host nothing');
 });
 
-test('an unknown track is reported missing; bad names, empty or oversized lists are refused', async () => {
+test('an unknown track is reported missing; bad names, empty or oversized lists are refused', { skip: process.platform === 'win32' }, async () => {
   const f = fixture(1), h = harness(f.root);
   const r = await h.call({ server: 'srv', session: 'lead', tracks: [{ task: 'T1', track: 'W0' }, { task: 'T1', track: 'W9' }] });
   assert.equal(r.body.logs['T1/W9'].error, 'missing'); assert.ok(r.body.logs['T1/W0'].result);

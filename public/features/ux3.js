@@ -140,7 +140,7 @@
       }
     }
     else if (name === 'retry') states[key] = { st: 'lost', until: Date.now() + a };
-    else if (name === 'close') { if (a === 4001) states[key] = { st: 'ended' }; else if (!states[key] || states[key].st !== 'lost') states[key] = { st: 'lost', until: Date.now() + 300 }; }
+    else if (name === 'close') { if (a === 4001) states[key] = { st: 'ended' }; else if (!states[key] || states[key].st !== 'lost') states[key] = { st: 'lost', until: Date.now() + 300 };  if (states[key] && p && p.lastReason) states[key].why = p.lastReason; }
     paintChip();
   }
   function curKey() { try { var c = app().current(); return c && c.v && c.s ? c.v.id + '/' + c.s.name : null; } catch (e) { return null; } }
@@ -150,6 +150,8 @@
     if (!isOn() || !s || s.st === 'ended') { chip.hidden = true; return; }
     chip.hidden = false; chip.className = 'ux3-chip ' + s.st;
     chip.textContent = s.st === 'connecting' ? t('ux3.chip_connecting') : s.st === 'ok' ? t('ux3.chip_ok', [s.ms]) : t('ux3.chip_lost', [Math.max(0, Math.ceil((s.until - Date.now()) / 1000))]);
+    chip.title = s.st === 'lost' && s.why ? s.why : '';
+    if (s.st === 'lost' && s.why) chip.textContent += ' · ' + s.why.replace(/^attach failed: /, '').slice(0, 44);
   }
 
   // -- diagnostics list in Cài đặt → Khác --

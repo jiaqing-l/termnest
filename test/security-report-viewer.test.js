@@ -20,7 +20,7 @@ test('report guard blocks navigation, drops meta refresh and keeps the doctype f
   assert.match(out, /addEventListener\('navigate'/);
 });
 
-test('drop folder: refuses a planted symlink, accepts a fresh 0700 folder', () => {
+test('drop folder: refuses a planted symlink, accepts a fresh 0700 folder', { skip: process.platform === 'win32' }, () => {   // POSIX mode bits and mkdir -m do not exist on Windows
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), cp = require('node:child_process');
   const { storeScript } = require('../lib/features/drop');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tn-drop-')), uid = process.getuid();
