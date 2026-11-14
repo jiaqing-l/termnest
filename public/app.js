@@ -763,17 +763,19 @@
     // Show the screen this session had when it was last viewed (dimmed) at once; tmux's own redraw replaces it as soon as
     // it arrives. On a slow link that is the difference between a black pane and an instant switch. tmux only: a plain
     // session replays its output and would append to it.
-    if (screens[key] && x.v.mode !== 'powershell') p.term.write('\x1b[2m' + screens[key].join('\r\n') + '\x1b[0m\x1b[H');
+    // Never viewed yet: the overview already holds the last lines of every session, show those instead of a black pane.
+    var preview = screens[key] || (x.s.lines && x.s.lines.length ? x.s.lines : null);
+    if (preview && x.v.mode !== 'powershell') p.term.write('\x1b[2m' + preview.join('\r\n') + '\x1b[0m\x1b[H');
     var q = 'server=' + encodeURIComponent(x.v.id) + '&session=' + encodeURIComponent(x.s.name) + '&cols=' + p.term.cols + '&rows=' + p.term.rows;
     var sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/term?' + q); p.ws = sock; sock.binaryType = 'arraybuffer';
     p.term.options.scrollback = plainPane(p) ? 50000 : 3000;
-    sock.onopen = function () { if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p);
+    sock.onopen = function () { p.retries = 0; if (!plainPane(p)) scrollCall(p, 'state').catch(function () {}); fitPane(p);
       // A fit() while the socket was still connecting could not tell the server: tmux kept the old size and drew garbled or repeated lines.
       sock.send(JSON.stringify({ t: 'resize', cols: p.term.cols, rows: p.term.rows })); nudgeBlank(p, sock); if (p === panes[focusedPane] && (document.activeElement === document.body || p.node.contains(document.activeElement))) focusTerminal(p); };
     p.mouse = window.MouseFilter ? window.MouseFilter.create() : null;
     // Output goes through the mouse filter unless the user chose to hand the mouse to the app (see mouse-mode below).
     sock.onmessage = function (e) { if (p.ws !== sock) return; var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); cropCheck(p); };
-    function retry() { clearTimeout(p.retry); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, 2000); }
+    function retry() { clearTimeout(p.retry); p.retries = (p.retries || 0) + 1; p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, Math.min(2000, 300 * p.retries)); }   // first retries are quick: a busy SSH link often frees a channel in a moment
     sock.onclose = function (e) {
       if (p.ws !== sock) return; p.ws = null; p.key = '';
       if (e.code === 4001) { refresh().then(function () { if (panes.indexOf(p) < 0 || p.ime.isComposing()) return; if (!paneItem(p)) { p.cur = null; p.ime.reset(); p.term.reset(); syncPanePickers(); if (p === panes[focusedPane]) { cur = null; renderDetail(); renderBar(); } say(i18n('app.phien_da_ket_thuc'), true, 2500); } else retry(); }); }

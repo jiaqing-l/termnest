@@ -19,7 +19,7 @@ test('a new session is opened once it shows up, not dropped back to All', () => 
 test('switching back shows the last screen at once (tmux sessions) and window-size is set once per session', () => {
   const app = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8'), remote = fs.readFileSync(path.join(__dirname, '../lib/remote.js'), 'utf8');
   assert.match(app, /snapshotPane\(p\); closePane\(p\); p\.key = key; p\.term\.reset\(\); fitPane\(p\);/);
-  assert.match(app, /if \(screens\[key\] && x\.v\.mode !== 'powershell'\) p\.term\.write\(/);
+  assert.match(app, /var preview = screens\[key\] \|\| \(x\.s\.lines && x\.s\.lines\.length \? x\.s\.lines : null\);\r?\n\s+if \(preview && x\.v\.mode !== 'powershell'\) p\.term\.write\(/);
   assert.match(remote, /this\.sized\.has\(name\) \? attachCmd : `\$\{windowSizeCmd\(name\)\}; \$\{attachCmd\}`/);
 });
 
