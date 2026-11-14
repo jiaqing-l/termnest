@@ -1044,7 +1044,7 @@ function attach(ws, r, name, url) {
     try { const c = JSON.parse(msg.toString('utf8')); if (c.t === 'resize') size = c; } catch { /* ignore a malformed control frame */ }
   });
   r.attach(name, cols, rows, (err, stream) => {
-    if (err) { ws.close(4000, 'attach failed'); return; }
+    if (err) { ws.close(4000, ('attach failed: ' + String((err && err.message) || err)).replace(/[^\x20-\x7e]/g, '?').slice(0, 110)); return; }   // the reason is shown in the terminal status chip
     // The viewer may have switched tabs while the SSH channel was opening: its socket is gone and its 'close' already fired.
     // Close the late channel at once, or every quick switch leaks one (OpenSSH allows 10 per connection; then new tabs stay black).
     if (ws.readyState !== ws.OPEN) { try { stream.close(); } catch { /* already closed */ } return; }

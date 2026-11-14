@@ -784,7 +784,7 @@
       ux3('data', p, key); var bytes = new Uint8Array(e.data); p.term.write(p.mouse && !appMouse() ? p.mouse.push(bytes) : bytes); cropCheck(p); };
     function retry() { clearTimeout(p.retry); p.retries = (p.retries || 0) + 1; var wait = Math.min(2000, 300 * p.retries); ux3('retry', p, wait); p.retry = setTimeout(function () { if (view === 'focus' && paneItem(p)) connectPane(p); }, wait); }   // first retries are quick: a busy SSH link often frees a channel in a moment
     sock.onclose = function (e) {
-      if (p.ws !== sock) return; ux3('close', p, e.code); p.ws = null; p.key = '';
+      if (p.ws !== sock) return; p.lastReason = e.reason || ''; ux3('close', p, e.code); p.ws = null; p.key = '';
       if (e.code === 4001) { refresh().then(function () { if (panes.indexOf(p) < 0 || p.ime.isComposing()) return; if (!paneItem(p)) { p.cur = null; p.ime.reset(); p.term.reset(); syncPanePickers(); if (p === panes[focusedPane]) { cur = null; renderDetail(); renderBar(); } say(i18n('app.phien_da_ket_thuc'), true, 2500); } else retry(); }); }
       else retry();
     };
